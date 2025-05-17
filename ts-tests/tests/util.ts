@@ -2,6 +2,7 @@ import Web3 from "web3";
 import { ethers } from "ethers";
 import { JsonRpcResponse } from "web3-core-helpers";
 import { spawn, ChildProcess } from "child_process";
+import { toBeHex, getAddress } from "ethers";
 
 import { NODE_BINARY_NAME, CHAIN_ID } from "./config";
 
@@ -172,3 +173,12 @@ export function describeWithFrontier(title: string, cb: (context: { web3: Web3 }
 export function describeWithFrontierWs(title: string, cb: (context: { web3: Web3 }) => void) {
 	describeWithFrontier(title, cb, "ws");
 }
+
+export function hash(n: number) {
+  const bytes = new Uint8Array(20); // 20 bytes = H160
+  const view = new DataView(bytes.buffer);
+  view.setBigUint64(12, BigInt(n)); // store in last 8 bytes, big-endian
+  const hex = "0x" + Buffer.from(bytes).toString("hex");
+  return getAddress(hex); // optional: applies EIP-55 checksum
+}
+
