@@ -38,28 +38,85 @@ describeWithFrontier("Hypertensor precompiles", (context) => {
     //     from: GENESIS_ACCOUNT,
     //     gasPrice: "0x3B9ACA00",
     // });
+    const subnetContract = new context.web3.eth.Contract(SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS);
 
-    // const subnetId = await subnetContract.methods.getSubnetId(TEST_PATH).call();
-    // console.log("staking subnetId:      ", subnetId)
-    const subnetId = 1;
+    const subnetId = await subnetContract.methods.getSubnetId(TEST_PATH).call();
+    console.log("staking subnetId:      ", subnetId)
+    // const subnetId = 1;
 
-    const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
-        from: GENESIS_ACCOUNT,
-        gasPrice: "0x3B9ACA00",
-    });
+    // const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
+    //     from: GENESIS_ACCOUNT,
+    //     gasPrice: "0x3B9ACA00",
+    //     // gas: 1,
+    //     // gasPrice: "21000",
+    // });
+    const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
 
     const balance = await context.web3.eth.getBalance(GENESIS_ACCOUNT);
     console.log("staking balance:       ", balance)
     console.log("staking balance:       ", BigInt(1000e18))
 
+    const balance2 = await context.web3.eth.getBalance(web3.eth.defaultAccount);
+    console.log("staking balance 2:     ", balance2)
+
     const sharesBefore = await contract.methods.accountSubnetDelegateStakeShares(TEST_ACCOUNT, subnetId).call();
     console.log("staking sharesBefore:  ", sharesBefore)
 
-    try {
-      await contract.methods.addToDelegateStake(subnetId, BigInt(1000e18)).call();
-		} catch (error) {
-      console.log("addToDelegateStake err: ", error)
-		}
+    await createAndFinalizeBlock(context.web3);
+
+    contract.methods.addToDelegateStake(subnetId, "10000000000000000000").send({
+      from: GENESIS_ACCOUNT,
+      gas: 21404,
+      gasPrice: GAS_PRICE,
+      value: "10000000000000000000"
+    })
+      .on('transactionHash', async function(hash: string){
+        console.log("hash", hash)
+        let receipt0 = await context.web3.eth.getTransactionReceipt(hash);
+        console.log("receipt0", receipt0)
+      })
+      .on('confirmation', function(confirmationNumber, receipt){
+        console.log("confirmationNumber", confirmationNumber)
+        console.log("receipt", receipt)
+      })
+      .on('receipt', function(receipt){
+          console.log("receipt", receipt)
+      })
+      .on('error', function(error, receipt) {
+          console.log("error", error)
+          console.log("receipt", receipt)
+      });
+
+
+    // try {
+    //   // const tx = await contract.methods.addToDelegateStake(subnetId, "10000000000000000000").send({from: GENESIS_ACCOUNT});
+    //   // console.log("yolo", tx)
+
+    //   contract.methods.addToDelegateStake(subnetId, "10000000000000000000").send({from: GENESIS_ACCOUNT})
+    //     .on('transactionHash', function(hash){
+    //       console.log("hash", hash)
+    //     })
+    //     .on('confirmation', function(confirmationNumber, receipt){
+    //       console.log("confirmationNumber", confirmationNumber)
+    //       console.log("receipt", receipt)
+    //     })
+    //     .on('receipt', function(receipt){
+    //        console.log("receipt", receipt)
+    //     })
+
+    //   // contract.methods.addToDelegateStake(subnetId, "10000000000000000000").send({from: GENESIS_ACCOUNT})
+    //   //   .on('receipt', function(tx){
+    //   //       console.log("yolo", tx)
+    //   //   });
+    //   // await contract.methods.addToDelegateStake(subnetId, "1000000000000000000000").send({
+    //   //   from: GENESIS_ACCOUNT,
+    //   //   value: "1", // or non-zero if your precompile expects it
+    //   //   gas: "100",
+    //   // });
+
+		// } catch (error) {
+    //   console.log("addToDelegateStake err: ", error)
+		// }
 
     await createAndFinalizeBlock(context.web3);
 

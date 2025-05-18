@@ -8,7 +8,7 @@ interface Staking  {
     uint256 subnetNodeId,
     uint256 hotkey,
     uint256 stakeToBeAdded
-  ) external;
+  ) external payable;
 
   function removeStake(
     uint256 subnetId,
@@ -22,7 +22,7 @@ interface Staking  {
   function addToDelegateStake(
     uint256 subnetId,
     uint256 stakeToBeAdded
-  ) external;
+  ) external payable;
 
   function swapDelegateStake(
     uint256 fromSubnetId,
@@ -39,13 +39,13 @@ interface Staking  {
   function increaseDelegateStake(
     uint256 subnetId,
     uint256 amount
-  ) external;
+  ) external payable;
 
   function addToNodeDelegateStake(
     uint256 subnetId,
     uint256 subnetNodeId,
     uint256 nodeSelegateStakeToBeAdded
-  ) external;
+  ) external payable;
 
   function transferNodeDelegateStake(
     uint256 fromSubnetId,
@@ -65,7 +65,7 @@ interface Staking  {
     uint256 subnetId,
     uint256 subnetNodeId,
     uint256 amount
-  ) external;
+  ) external payable;
 
   function transferFromNodeToSubnet(
     uint256 fromSubnetId,

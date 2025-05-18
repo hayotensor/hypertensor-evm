@@ -11,7 +11,7 @@ interface Subnet  {
     uint256 nodeQueuePeriod,
     uint256 maxNodePenalties,
     address[] memory coldkeys
-  ) external;
+  ) external payable;
 
   function activateSubnet(
     uint256 subnetId
