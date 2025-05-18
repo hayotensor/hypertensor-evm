@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 interface Subnet  {
   function registerSubnet(
-    string memory path,
+    string memory name,
     uint256 maxNodeRegistrationEpochs,
     uint256 nodeRegistrationInterval,
     uint256 nodeActivationInterval,
@@ -23,7 +23,7 @@ interface Subnet  {
 
   function ownerDeactivateSubnet(
     uint256 subnetId,
-    string memory path
+    string memory name
   ) external;
 
   function ownerUpdateRegistrationInterval(
@@ -37,6 +37,6 @@ interface Subnet  {
   ) external;
 
   function getSubnetId(
-    string memory path
+    string memory name
   ) external view returns (uint256);
 }
