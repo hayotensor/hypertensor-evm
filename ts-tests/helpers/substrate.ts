@@ -10,27 +10,28 @@ import { getPolkadotSigner } from "polkadot-api/signer"
 import { randomBytes } from 'crypto';
 import { encodeAddress, Keyring } from '@polkadot/keyring';
 import { SS58_PREFIX, TX_TIMEOUT } from "./config";
+import { dev } from "@polkadot-api/descriptors";
 // import { polkadotTypes } from "@polkadot-api/descriptors"
 
-// let api: TypedApi<typeof devnet> | undefined = undefined
+let api: TypedApi<typeof dev> | undefined = undefined
 
 // define url string as type to extend in the future
 // export type ClientUrlType = 'ws://localhost:9944' | 'wss://test.finney.opentensor.ai:443' | 'wss://dev.chain.opentensor.ai:443' | 'wss://archive.chain.opentensor.ai';
-// export type ClientUrlType = 'ws://localhost:9944'
+export type ClientUrlType = 'ws://localhost:9944'
 
-// export async function getClient(url: ClientUrlType) {
-//     const provider = getWsProvider(url);
-//     const client = createClient(provider);
-//     return client
-// }
+export async function getClient(url: ClientUrlType) {
+    const provider = getWsProvider(url);
+    const client = createClient(provider);
+    return client
+}
 
-// export async function getDevnetApi() {
-//     if (api === undefined) {
-//         let client = await getClient('ws://localhost:9944')
-//         api = client.getTypedApi(devnet)
-//     }
-//     return api
-// }
+export async function getSubstrateApi() {
+    if (api === undefined) {
+        let client = await getClient('ws://localhost:9944')
+        api = client.getTypedApi(dev)
+    }
+    return api
+}
 
 export function getAlice() {
     const entropy = mnemonicToEntropy(DEV_PHRASE)

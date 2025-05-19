@@ -4,7 +4,7 @@
 
 // import { AbiItem } from "web3-utils";
 
-// import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, TEST_PATH } from "./config";
+// import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, SEED_PATH } from "./config";
 // import { createAndFinalizeBlock, describeWithFrontier, customRequest, hash } from "./util";
 
 // // npm run test-script --PATH 'tests/test-staking.ts'

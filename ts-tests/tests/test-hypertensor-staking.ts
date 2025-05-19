@@ -5,7 +5,7 @@
 
 // import { AbiItem } from "web3-utils";
 
-// import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, TEST_PATH } from "./config";
+// import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, SEED_PATH } from "./config";
 // import { createAndFinalizeBlock, describeWithFrontier, customRequest, hash } from "./util";
 // import { getRandomSubstrateKeypair } from "../helpers/substrate";
 // import { forceSetBalanceToSs58Address } from "../helpers/balance";
@@ -43,7 +43,7 @@
 //     // });
 //     const subnetContract = new context.web3.eth.Contract(SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS);
 
-//     const subnetId = await subnetContract.methods.getSubnetId(TEST_PATH).call();
+//     const subnetId = await subnetContract.methods.getSubnetId(SEED_PATH).call();
 //     console.log("staking subnetId:      ", subnetId)
 //     // const subnetId = 1;
 

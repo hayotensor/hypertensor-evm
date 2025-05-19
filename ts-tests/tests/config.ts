@@ -18,7 +18,8 @@ export const ALL_ACCOUNTS = [
 	ETHAN_ACCOUNT
 ];
 
-export const TEST_PATH = "subnet-name";
+export const SEED_PATH = "subnet-name";
+export const TEST_PATH = "subnet-test-name";
 
 export const FIRST_CONTRACT_ADDRESS = "0xc2bf5f29a4384b1ab0c063e1c666f02121b6084a";
 
