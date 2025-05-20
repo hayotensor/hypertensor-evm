@@ -16,8 +16,8 @@ import { dev } from "@polkadot-api/descriptors";
 let api: TypedApi<typeof dev> | undefined = undefined
 
 // define url string as type to extend in the future
-// export type ClientUrlType = 'ws://localhost:9944' | 'wss://test.finney.opentensor.ai:443' | 'wss://dev.chain.opentensor.ai:443' | 'wss://archive.chain.opentensor.ai';
-export type ClientUrlType = 'ws://localhost:9944'
+// export type ClientUrlType = 'ws://127.0.0.1:9944' | 'wss://rpc.hypertensor.org:443'
+export type ClientUrlType = 'ws://127.0.0.1:9944'
 
 export async function getClient(url: ClientUrlType) {
     const provider = getWsProvider(url);
@@ -27,7 +27,7 @@ export async function getClient(url: ClientUrlType) {
 
 export async function getSubstrateApi() {
     if (api === undefined) {
-        let client = await getClient('ws://localhost:9944')
+        let client = await getClient('ws://127.0.0.1:9944')
         api = client.getTypedApi(dev)
     }
     return api

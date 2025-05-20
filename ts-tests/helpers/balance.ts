@@ -7,7 +7,7 @@ import { withPolkadotSdkCompat } from 'polkadot-api/polkadot-sdk-compat';
 import { getWsProvider } from 'polkadot-api/ws-provider/web';
 import { ss58ToEthAddress } from './address-utils';
 import { getAliceSigner } from './substrate';
-import { ALITH_ACCOUNT, GENESIS_ACCOUNT } from '../tests/config';
+import { ALITH_ACCOUNT, BALTATHAR_ACCOUNT, GENESIS_ACCOUNT } from '../tests/config';
 
 export async function forceSetBalanceToSs58Address(
   // api: ApiPromise, 
@@ -48,7 +48,7 @@ export async function forceSetBalanceToSs58Address(
   const call = api.tx.Balances.transfer_keep_alive({ 
     // if use ss58Address `Invalid length found on EthAddress`
     // if use EthAddress `Execution aborted due to trap: wasm trap: wasm `unreachable` instruction executed`
-    dest: ethAddress, 
+    dest: ss58Address, 
     value: balance
    })
 

@@ -365,7 +365,7 @@ impl<T: Config> Pallet<T> {
       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
       if subnet_penalty_count > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.path,
+          data.name,
           SubnetRemovalReason::MaxPenalties,
         );
       }
@@ -731,7 +731,7 @@ impl<T: Config> Pallet<T> {
       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
       if subnet_penalty_count > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.path.clone(),
+          data.name.clone(),
           SubnetRemovalReason::MaxPenalties,
         );
       }

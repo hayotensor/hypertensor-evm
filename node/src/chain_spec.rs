@@ -50,6 +50,7 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 
 fn properties() -> Properties {
 	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "TENSOR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 	properties.insert("ss58Format".into(), SS58Prefix::get().into());
 	properties
@@ -120,7 +121,7 @@ fn testnet_genesis(
 	chain_id: u64,
 	enable_manual_seal: bool,
 ) -> serde_json::Value {
-	let subnet_path: Vec<u8> = "bigscience/bloom-560m".into();
+	let subnet_path: Vec<u8> = "subnet-name".into();
 	let mut peer_index: u8 = 0;
 
 	let evm_accounts = {
@@ -181,5 +182,15 @@ fn testnet_genesis(
 		"evmChainId": { "chainId": chain_id },
 		"evm": { "accounts": evm_accounts },
 		"manualSeal": { "enable": enable_manual_seal },
+		"network": {
+			"subnetPath": subnet_path,
+			"subnetNodes": endowed_accounts.iter().cloned().map(|k| {
+				peer_index += 1;
+				(
+					k, 
+					peer(peer_index),
+				)
+			}).collect::<Vec<_>>(),
+		},
 	})
 }

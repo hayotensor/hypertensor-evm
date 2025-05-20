@@ -1283,7 +1283,7 @@ fn test_reward_subnets_v2_account_penalty_count() {
 //     let _ = Balances::deposit_creating(&account(1), cost+1000);
   
 //     let add_subnet_data = RegistrationSubnetData {
-//       path: subnet_path.clone().into(),
+//       name: subnet_path.clone().into(),
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
 //       node_queue_period: 1,

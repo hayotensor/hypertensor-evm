@@ -237,14 +237,14 @@ impl<T: Config> Pallet<T> {
     origin: T::RuntimeOrigin, 
     from_subnet_id: u32,
     to_subnet_id: u32,
-    delegate_stake_shares_to_be_swapped: u128,
+    delegate_stake_shares_to_swap: u128,
   ) -> DispatchResult {
     let account_id: T::AccountId = ensure_signed(origin)?;
 
     let (result, delegate_stake_to_be_removed, _) = Self::perform_do_remove_delegate_stake(
       &account_id, 
       from_subnet_id,
-      delegate_stake_shares_to_be_swapped,
+      delegate_stake_shares_to_swap,
       false,
     );
 

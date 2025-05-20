@@ -273,7 +273,7 @@ impl<T: Config> Pallet<T> {
   /// * `from_subnet_node_id` - Subnet node ID unstaking from .
   /// * `to_subnet_id` - Subnet ID adding staking to from in relation to subnet node ID.
   /// * `to_subnet_node_id` - Subnet node ID adding stake to.
-  /// * `node_delegate_stake_shares_to_be_swapped` - Shares to remove to then be added as converted balance
+  /// * `node_delegate_stake_shares_to_swap` - Shares to remove to then be added as converted balance
   ///
   pub fn do_swap_node_delegate_stake(
     origin: T::RuntimeOrigin, 
@@ -281,7 +281,7 @@ impl<T: Config> Pallet<T> {
     from_subnet_node_id: u32,
     to_subnet_id: u32,
     to_subnet_node_id: u32,
-    node_delegate_stake_shares_to_be_swapped: u128,
+    node_delegate_stake_shares_to_swap: u128,
   ) -> DispatchResult {
     let account_id: T::AccountId = ensure_signed(origin)?;
 
@@ -290,7 +290,7 @@ impl<T: Config> Pallet<T> {
       &account_id,
       from_subnet_id,
       from_subnet_node_id,
-      node_delegate_stake_shares_to_be_swapped,
+      node_delegate_stake_shares_to_swap,
       false,
     );
 

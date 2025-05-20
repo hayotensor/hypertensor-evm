@@ -1,4 +1,4 @@
-export const ETH_LOCAL_URL = 'http://localhost:9944'
+export const ETH_LOCAL_URL = 'http://127.0.0.1:9944'
 export const SUB_LOCAL_URL = 'ws://127.0.0.1:9944'
 export const SUB_PORT = 9944;
 export const SS58_PREFIX = 42;

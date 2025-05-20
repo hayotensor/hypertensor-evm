@@ -96,7 +96,7 @@ impl<T: Config> Pallet<T> {
               let subnet_nodes_count = subnet_node_ids.len();  
               if (subnet_nodes_count as u32) < min_subnet_nodes {
                 Self::do_remove_subnet(
-                  data.path,
+                  data.name,
                   SubnetRemovalReason::MinSubnetNodes,
                 );
               }
@@ -105,7 +105,7 @@ impl<T: Config> Pallet<T> {
               // --- Out of Enactment Period
               // If out of enactment period, ensure activated
               Self::do_remove_subnet(
-                data.path,
+                data.name,
                 SubnetRemovalReason::EnactmentPeriod,
               );
               continue
@@ -124,7 +124,7 @@ impl<T: Config> Pallet<T> {
       // --- Ensure min delegate stake balance is met
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
         Self::do_remove_subnet(
-          data.path,
+          data.name,
           SubnetRemovalReason::MinSubnetDelegateStake,
         );
         continue
@@ -145,14 +145,14 @@ impl<T: Config> Pallet<T> {
       let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
       if penalties > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.path,
+          data.name,
           SubnetRemovalReason::MaxPenalties,
         );
         continue
       }
 
       if excess_subnets {
-        subnet_delegate_stake.push((data.path, subnet_delegate_stake_balance));
+        subnet_delegate_stake.push((data.name, subnet_delegate_stake_balance));
       }
 
       Self::choose_validator(

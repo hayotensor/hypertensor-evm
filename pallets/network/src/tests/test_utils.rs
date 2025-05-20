@@ -94,7 +94,10 @@ pub fn build_activated_subnet(subnet_path: Vec<u8>, start: u32, mut end: u32, de
   let whitelist = get_coldkey_whitelist(start, end);
 
   let add_subnet_data = RegistrationSubnetData {
-    path: subnet_path.clone().into(),
+    name: subnet_path.clone().into(),
+    repo: Vec::new(),
+    description: Vec::new(),
+    misc: Vec::new(),
     max_node_registration_epochs: 16,
     node_registration_interval: 0,
     node_activation_interval: 0,
@@ -249,7 +252,10 @@ pub fn build_activated_subnet_with_delegator_rewards(
   let whitelist = get_coldkey_whitelist(start, end);
 
   let add_subnet_data = RegistrationSubnetData {
-    path: subnet_path.clone().into(),
+    name: subnet_path.clone().into(),
+    repo: Vec::new(),
+    description: Vec::new(),
+    misc: Vec::new(),
     max_node_registration_epochs: 16,
     node_registration_interval: 0,
     node_activation_interval: 0,
@@ -399,9 +405,9 @@ pub fn build_subnet_nodes(subnet_id: u32, start: u32, end: u32, deposit_amount: 
   amount_staked
 }
 
-pub fn post_subnet_removal_ensures(subnet_id: u32, path: Vec<u8>, start: u32, end: u32) {
+pub fn post_subnet_removal_ensures(subnet_id: u32, name: Vec<u8>, start: u32, end: u32) {
   assert_eq!(SubnetsData::<Test>::try_get(subnet_id), Err(()));
-  assert_eq!(SubnetPaths::<Test>::try_get(path), Err(()));
+  assert_eq!(SubnetPaths::<Test>::try_get(name), Err(()));
   assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationColdkeyWhitelist::<Test>::try_get(subnet_id), Err(()));

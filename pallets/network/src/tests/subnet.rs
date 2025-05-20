@@ -58,7 +58,10 @@ fn test_register_subnet() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
   
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -112,7 +115,10 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -142,7 +148,10 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -186,7 +195,10 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let subnet_path: Vec<u8> = "petals-team/StableBeluga4".into();
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -224,7 +236,10 @@ fn test_register_subnet_exists_error() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -273,7 +288,7 @@ fn test_register_subnet_exists_error() {
 //     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
 //     let add_subnet_data = RegistrationSubnetData {
-//       path: subnet_path.clone().into(),
+//       name: subnet_path.clone().into(),
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
 //       // coldkey_whitelist: Some(BTreeSet::new()),
@@ -295,7 +310,7 @@ fn test_register_subnet_exists_error() {
 //     );
 
 //     let add_subnet_data = RegistrationSubnetData {
-//       path: subnet_path.clone().into(),
+//       name: subnet_path.clone().into(),
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
 //       // coldkey_whitelist: Some(BTreeSet::new()),
@@ -338,10 +353,10 @@ fn test_register_subnet_exists_error() {
   
 //       let _ = Balances::deposit_creating(&account(0), cost+1000);
 
-//       let path: Vec<u8> = format!("model-name-{n}").into(); 
+//       let name: Vec<u8> = format!("model-name-{n}").into(); 
 
 //       let add_subnet_data = RegistrationSubnetData {
-//         path: path,
+//         name: name,
 //         max_node_registration_epochs: 16,
 //         node_registration_interval: 0,
       // coldkey_whitelist: Some(BTreeSet::new()),
@@ -381,7 +396,10 @@ fn test_register_subnet_not_enough_balance_err() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.into(),
+      name: subnet_path.into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -425,7 +443,10 @@ fn test_activate_subnet() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -453,7 +474,7 @@ fn test_activate_subnet() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes
@@ -505,7 +526,7 @@ fn test_activate_subnet() {
 
     // ensure subnet exists and nothing changed but the activation block
     assert_eq!(subnet.id, id);
-    assert_eq!(subnet.path, path);
+    assert_eq!(subnet.name, name);
     assert_eq!(subnet.state, SubnetState::Active);
   })
 }
@@ -528,7 +549,10 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -556,7 +580,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes
@@ -608,7 +632,10 @@ fn test_activate_subnet_already_activated_err() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -636,7 +663,7 @@ fn test_activate_subnet_already_activated_err() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes
@@ -710,7 +737,10 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -738,7 +768,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes
@@ -823,7 +853,10 @@ fn test_activate_subnet_initializing_error() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -851,7 +884,7 @@ fn test_activate_subnet_initializing_error() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes
@@ -975,7 +1008,10 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -1003,7 +1039,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Increase epochs to max registration epoch
@@ -1050,7 +1086,10 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let whitelist = get_coldkey_whitelist(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      path: subnet_path.clone().into(),
+      name: subnet_path.clone().into(),
+      repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
       max_node_registration_epochs: 16,
       node_registration_interval: 0,
       node_activation_interval: 0,
@@ -1078,7 +1117,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
-		let path = subnet.path;
+		let name = subnet.name;
 		let min_nodes = MinSubnetNodes::<Test>::get();
 
     // --- Add subnet nodes

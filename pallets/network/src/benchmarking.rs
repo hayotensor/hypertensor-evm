@@ -116,7 +116,10 @@ fn build_activated_subnet<T: Config>(
 	let whitelist = get_coldkey_whitelist::<T>(start, end);
 
 	let register_subnet_data = RegistrationSubnetData {
-		path: subnet_path.clone(),
+		name: subnet_path.clone(),
+		repo: Vec::new(),
+		description: Vec::new(),
+		misc: Vec::new(),
 		max_node_registration_epochs: 16,
 		node_registration_interval: 0,
 		node_activation_interval: 0,
@@ -319,7 +322,10 @@ mod benchmarks {
 		let whitelist = get_coldkey_whitelist::<T>(0, min_nodes);
 
 		let register_subnet_data = RegistrationSubnetData {
-			path: DEFAULT_SUBNET_PATH.into(),
+			name: DEFAULT_SUBNET_PATH.into(),
+			repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
 			max_node_registration_epochs: 16,
 			node_registration_interval: 0,
 			node_activation_interval: 0,
@@ -339,7 +345,7 @@ mod benchmarks {
 		let subnet = SubnetsData::<T>::get(1).unwrap();
 		assert_eq!(subnet.id, 1);
 		let path: Vec<u8> = DEFAULT_SUBNET_PATH.into();
-		assert_eq!(subnet.path, path);
+		assert_eq!(subnet.name, path);
 		
     // let minimum_balance = T::Currency::minimum_balance();
     // // let pot = T::Treasury::pot();
@@ -358,7 +364,10 @@ mod benchmarks {
 		let whitelist = get_coldkey_whitelist::<T>(0, end);
 
 		let register_subnet_data = RegistrationSubnetData {
-			path: DEFAULT_SUBNET_PATH.into(),
+			name: DEFAULT_SUBNET_PATH.into(),
+			repo: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
 			max_node_registration_epochs: 16,
 			node_registration_interval: 0,
 			node_activation_interval: 0,
@@ -456,7 +465,7 @@ mod benchmarks {
 
     // ensure subnet exists and nothing changed but the activation block
 		let path: Vec<u8> = DEFAULT_SUBNET_PATH.into();
-    assert_eq!(subnet.path, path);
+    assert_eq!(subnet.name, path);
     assert_eq!(subnet.state, SubnetState::Active);
 	}
 

@@ -8,6 +8,9 @@ import { NODE_BINARY_NAME, CHAIN_ID } from "./config";
 export const PORT = 19931;
 export const RPC_PORT = 19932;
 
+// export const PORT = 33137;
+// export const RPC_PORT = 9944;
+
 export const DISPLAY_LOG = process.env.FRONTIER_LOG || false;
 export const FRONTIER_LOG = process.env.FRONTIER_LOG || "info";
 export const FRONTIER_BUILD = process.env.FRONTIER_BUILD || "release";

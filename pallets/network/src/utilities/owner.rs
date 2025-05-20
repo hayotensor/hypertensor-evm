@@ -28,7 +28,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32, path: Vec<u8>) -> DispatchResult {
+  pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32, name: Vec<u8>) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -36,10 +36,10 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    // TODO: check path is subnet path
+    // TODO: check name is subnet name
 
     Self::do_remove_subnet(
-      path,
+      name,
       SubnetRemovalReason::Owner,
     ).map_err(|e| e)?;
 
