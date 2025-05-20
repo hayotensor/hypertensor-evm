@@ -5,7 +5,7 @@ import Subnet from "../build/contracts/Subnet.json";
 
 import { AbiItem } from "web3-utils";
 
-import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, SEED_PATH, ALITH_ACCOUNT } from "./config";
+import { GENESIS_ACCOUNT, GENESIS_ACCOUNT_PRIVATE_KEY, GENESIS_ACCOUNT_BALANCE, EXISTENTIAL_DEPOSIT, SEED_PATH, ALITH_ACCOUNT, ETH_BLOCK_GAS_LIMIT } from "./config";
 import { createAndFinalizeBlock, describeWithFrontier, customRequest, hash } from "./util";
 import { getRandomSubstrateKeypair, getSubstrateApi } from "../helpers/substrate";
 import { forceSetBalanceToSs58Address } from "../helpers/balance";
@@ -49,7 +49,7 @@ describeWithFrontier("Hypertensor staking", (context) => {
     // });
     const subnetContract = new context.web3.eth.Contract(SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS);
 
-    console.log("staking subnetContract.methods:       ", subnetContract.methods)
+    // console.log("staking subnetContract.methods:       ", subnetContract.methods)
 
     const subnetId = await subnetContract.methods.getSubnetId(SEED_PATH).call();
     console.log("staking subnetId:       ", subnetId)
@@ -62,18 +62,26 @@ describeWithFrontier("Hypertensor staking", (context) => {
     // const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
     //     from: ALITH_ACCOUNT,
     // });
-    const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
-    console.log("staking stakingContract.methods:       ", stakingContract.methods)
+    const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
+      from: GENESIS_ACCOUNT,
+      // gasPrice: "0x3B9ACA00",
+      // gas: 5242880,
+    });
+    // console.log("staking stakingContract.methods:       ", stakingContract.methods)
 
     const alithBalance = await context.web3.eth.getBalance(ALITH_ACCOUNT);
     console.log("staking alithBalance:     ", alithBalance)
 
-    const sharesBefore = await stakingContract.methods.accountSubnetDelegateStakeShares(ALITH_ACCOUNT, subnetId).call();
+    const sharesBefore = await stakingContract.methods.accountSubnetDelegateStakeShares(GENESIS_ACCOUNT, subnetId).call();
     console.log("staking sharesBefore:  ", sharesBefore)
 
-    stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send({
-      from: ALITH_ACCOUNT,
-      gasPrice: "0x3B9ACA00",
+    await createAndFinalizeBlock(context.web3);
+
+    let nonce = await context.web3.eth.getTransactionCount(GENESIS_ACCOUNT);
+
+    let tx = stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send({
+      gasLimit: ETH_BLOCK_GAS_LIMIT-10000000,
+      nonce: nonce ++
     })
       .on('transactionHash', async function(hash: string){
         console.log("hash", hash)
@@ -91,6 +99,15 @@ describeWithFrontier("Hypertensor staking", (context) => {
           console.log("error", error)
           console.log("receipt", receipt)
       });
+
+    tx = await tx
+    console.log("tx", tx)
+
+    // await createAndFinalizeBlock(context.web3);
+
+    // const sharesAfter = await stakingContract.methods.accountSubnetDelegateStakeShares(GENESIS_ACCOUNT, subnetId).call();
+    // console.log("staking sharesAfter:   ", sharesAfter)
+
 
     // const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
     //     from: GENESIS_ACCOUNT,

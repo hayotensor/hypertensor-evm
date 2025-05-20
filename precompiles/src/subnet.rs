@@ -235,12 +235,12 @@ where
   ) -> EvmResult<u32> {
 		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
-    let subnetId = match pallet_network::SubnetPaths::<R>::try_get::<Vec<u8>>(name.into()) {
+    let subnet_id = match pallet_network::SubnetPaths::<R>::try_get::<Vec<u8>>(name.into()) {
       Ok(subnet_id) => subnet_id,
       Err(()) => 0,
     };
 
-		Ok(subnetId)
+		Ok(subnet_id)
 	}
 
 

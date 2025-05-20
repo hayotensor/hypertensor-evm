@@ -140,10 +140,11 @@ where
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     stake_to_be_added: U256,
-  ) -> EvmResult {
-    handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-    let stake_to_be_added = stake_to_be_added.unique_saturated_into();
+  ) -> EvmResult<()> {
+    // handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
     let subnet_id = try_u256_to_u32(subnet_id)?;
+    let stake_to_be_added = stake_to_be_added.unique_saturated_into();
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
     let call = pallet_network::Call::<R>::add_to_delegate_stake {
@@ -151,7 +152,14 @@ where
       stake_to_be_added,
     };
 
-    let post_dispatch_info = RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 2100000)?;
+    let post_dispatch_info = RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
+
+    log::trace!(
+      target: "precompile", 
+      "subnet_id {:?}, stake_to_be_added {:?}", 
+      subnet_id, 
+      stake_to_be_added
+    );
 
     Ok(())
   }
@@ -244,7 +252,7 @@ where
       node_delegate_stake_to_be_added,
     };
 
-    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
 
     Ok(())
   }
