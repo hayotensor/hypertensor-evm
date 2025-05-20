@@ -63,9 +63,17 @@ describeWithFrontier("Hypertensor staking", (context) => {
     //     from: ALITH_ACCOUNT,
     // });
     const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
+    console.log("staking stakingContract.methods:       ", stakingContract.methods)
+
+    const alithBalance = await context.web3.eth.getBalance(ALITH_ACCOUNT);
+    console.log("staking alithBalance:     ", alithBalance)
+
+    const sharesBefore = await stakingContract.methods.accountSubnetDelegateStakeShares(ALITH_ACCOUNT, subnetId).call();
+    console.log("staking sharesBefore:  ", sharesBefore)
 
     stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send({
-      from: ALITH_ACCOUNT
+      from: ALITH_ACCOUNT,
+      gasPrice: "0x3B9ACA00",
     })
       .on('transactionHash', async function(hash: string){
         console.log("hash", hash)
