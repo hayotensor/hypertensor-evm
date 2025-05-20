@@ -41,53 +41,32 @@ describeWithFrontier("Hypertensor staking", (context) => {
   });
 
   step("add to delegate stake balance", async function () {
+    console.log("starting staking tests")
+
     // const subnetContract = new context.web3.eth.Contract(SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS, {
     //     from: GENESIS_ACCOUNT,
     //     gasPrice: "0x3B9ACA00",
     // });
     const subnetContract = new context.web3.eth.Contract(SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS);
 
+    console.log("staking subnetContract.methods:       ", subnetContract.methods)
+
     const subnetId = await subnetContract.methods.getSubnetId(SEED_PATH).call();
+    console.log("staking subnetId:       ", subnetId)
 
     const apiSubnetData = await api.query.Network.SubnetsData.getValue(subnetId)
 
     expect(Number(subnetId)).to.be.equal(Number(apiSubnetData.id));
     expect(Number(subnetId)).to.not.be.equal(0);
 
-    // const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
-    //     from: GENESIS_ACCOUNT,
-    //     gasPrice: "0x3B9ACA00",
-    //     // gas: 1,
-    //     // gasPrice: "21000",
+    // const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
+    //     from: ALITH_ACCOUNT,
     // });
-    const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
+    const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
 
-    const balance = await context.web3.eth.getBalance(GENESIS_ACCOUNT);
-    console.log("staking balance:       ", balance)
-    // console.log("staking balance:       ", BigInt(1000e18))
-
-    const balance2 = await context.web3.eth.getBalance(web3.eth.defaultAccount);
-    console.log("staking balance 2:     ", balance2)
-
-    const balance3 = await context.web3.eth.getBalance(ALITH_ACCOUNT);
-    console.log("staking balance 3:     ", balance3)
-
-    // const hotkey = getRandomSubstrateKeypair();
-    // const coldkey = getRandomSubstrateKeypair();
-
-    // console.log("hotkey:     ", hotkey)
-    // console.log("coldkey:    ", coldkey)
-
-    const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
-        from: ALITH_ACCOUNT,
-    });
-
-    // const alith = keyring.addFromUri('//Alith');
-    // console.log("alith", alith)
-    // const sudoAlithAddress = ss58ToEthAddress(alith.address)
-    // console.log("sudoAlithAddress", sudoAlithAddress)
-
-    stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send()
+    stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send({
+      from: ALITH_ACCOUNT
+    })
       .on('transactionHash', async function(hash: string){
         console.log("hash", hash)
         let receipt0 = await context.web3.eth.getTransactionReceipt(hash);
@@ -104,6 +83,57 @@ describeWithFrontier("Hypertensor staking", (context) => {
           console.log("error", error)
           console.log("receipt", receipt)
       });
+
+    // const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
+    //     from: GENESIS_ACCOUNT,
+    //     gasPrice: "0x3B9ACA00",
+    //     // gas: 1,
+    //     // gasPrice: "21000",
+    // });
+    // const contract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS);
+
+    // const balance = await context.web3.eth.getBalance(GENESIS_ACCOUNT);
+    // console.log("staking balance:       ", balance)
+    // // console.log("staking balance:       ", BigInt(1000e18))
+
+    // const balance2 = await context.web3.eth.getBalance(web3.eth.defaultAccount);
+    // console.log("staking balance 2:     ", balance2)
+
+    // const balance3 = await context.web3.eth.getBalance(ALITH_ACCOUNT);
+    // console.log("staking balance 3:     ", balance3)
+
+    // // const hotkey = getRandomSubstrateKeypair();
+    // // const coldkey = getRandomSubstrateKeypair();
+
+    // // console.log("hotkey:     ", hotkey)
+    // // console.log("coldkey:    ", coldkey)
+
+    // const stakingContract = new context.web3.eth.Contract(STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, {
+    //     from: ALITH_ACCOUNT,
+    // });
+
+    // // const alith = keyring.addFromUri('//Alith');
+    // // console.log("alith", alith)
+    // // const sudoAlithAddress = ss58ToEthAddress(alith.address)
+    // // console.log("sudoAlithAddress", sudoAlithAddress)
+
+    // stakingContract.methods.addToDelegateStake(subnetId, "100000000000000000000").send()
+    //   .on('transactionHash', async function(hash: string){
+    //     console.log("hash", hash)
+    //     let receipt0 = await context.web3.eth.getTransactionReceipt(hash);
+    //     console.log("receipt0", receipt0)
+    //   })
+    //   .on('confirmation', function(confirmationNumber, receipt){
+    //     console.log("confirmationNumber", confirmationNumber)
+    //     console.log("receipt", receipt)
+    //   })
+    //   .on('receipt', function(receipt){
+    //       console.log("receipt", receipt)
+    //   })
+    //   .on('error', function(error, receipt) {
+    //       console.log("error", error)
+    //       console.log("receipt", receipt)
+    //   });
 
 
     // await forceSetBalanceToSs58Address(convertPublicKeyToSs58(hotkey.publicKey));
