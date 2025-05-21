@@ -36,6 +36,7 @@ where
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
+  R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
   <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
       + GetDispatchInfo
       + Dispatchable<PostInfo = PostDispatchInfo>,
@@ -62,6 +63,7 @@ where
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
+  R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
   <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
       + GetDispatchInfo
       + Dispatchable<PostInfo = PostDispatchInfo>,

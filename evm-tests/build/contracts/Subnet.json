@@ -1,0 +1,886 @@
+{
+  "contractName": "Subnet",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxNodeRegistrationEpochs",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nodeRegistrationInterval",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nodeActivationInterval",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nodeQueuePeriod",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxNodePenalties",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address[]",
+          "name": "coldkeys",
+          "type": "address[]"
+        }
+      ],
+      "name": "registerSubnet",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        }
+      ],
+      "name": "activateSubnet",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeSubnet",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "ownerDeactivateSubnet",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "ownerUpdateRegistrationInterval",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "subnetNodeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ownerRemoveSubnet",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "getSubnetId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"activateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getSubnetId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"ownerDeactivateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"ownerRemoveSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"ownerUpdateRegistrationInterval\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"maxNodeRegistrationEpochs\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeRegistrationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeActivationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeQueuePeriod\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxNodePenalties\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"coldkeys\",\"type\":\"address[]\"}],\"name\":\"registerSubnet\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"removeSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/Subnet.sol\":\"Subnet\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/Subnet.sol\":{\"keccak256\":\"0x2a2eb430290f287dac1a926ef9d4faa66f9834af8959ae5d126e9a68f4abed3d\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://d11bab8dc97a2a1e0c58b6e72cec6d80491e7a9ad9bf111b9165b40768828dce\",\"dweb:/ipfs/QmR1gpgFPRhfq7VWbJChLBC7WSYuNphvCDchvswhT9CqQK\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.0;\n\ninterface Subnet  {\n  function registerSubnet(\n    string memory name,\n    uint256 maxNodeRegistrationEpochs,\n    uint256 nodeRegistrationInterval,\n    uint256 nodeActivationInterval,\n    uint256 nodeQueuePeriod,\n    uint256 maxNodePenalties,\n    address[] memory coldkeys\n  ) external payable;\n\n  function activateSubnet(\n    uint256 subnetId\n  ) external;\n\n  function removeSubnet(\n    uint256 subnetId\n  ) external;\n\n  function ownerDeactivateSubnet(\n    uint256 subnetId,\n    string memory name\n  ) external;\n\n  function ownerUpdateRegistrationInterval(\n    uint256 subnetId,\n    uint256 value\n  ) external;\n\n  function ownerRemoveSubnet(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function getSubnetId(\n    string memory name\n  ) external view returns (uint256);\n}",
+  "sourcePath": "/home/bob/polkadot-sdk-solochain-template/evm-tests/contracts/Subnet.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/Subnet.sol",
+    "exportedSymbols": {
+      "Subnet": [
+        480
+      ]
+    },
+    "id": 481,
+    "license": "MIT",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 423,
+        "literals": [
+          "solidity",
+          "^",
+          "0.8",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "33:23:9"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "Subnet",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "id": 480,
+        "linearizedBaseContracts": [
+          480
+        ],
+        "name": "Subnet",
+        "nameLocation": "68:6:9",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "functionSelector": "2dbcdf1c",
+            "id": 441,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "registerSubnet",
+            "nameLocation": "89:14:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 439,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 425,
+                  "mutability": "mutable",
+                  "name": "name",
+                  "nameLocation": "123:4:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "109:18:9",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 424,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "109:6:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 427,
+                  "mutability": "mutable",
+                  "name": "maxNodeRegistrationEpochs",
+                  "nameLocation": "141:25:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "133:33:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 426,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "133:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 429,
+                  "mutability": "mutable",
+                  "name": "nodeRegistrationInterval",
+                  "nameLocation": "180:24:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "172:32:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 428,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "172:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 431,
+                  "mutability": "mutable",
+                  "name": "nodeActivationInterval",
+                  "nameLocation": "218:22:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "210:30:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 430,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "210:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 433,
+                  "mutability": "mutable",
+                  "name": "nodeQueuePeriod",
+                  "nameLocation": "254:15:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "246:23:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 432,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "246:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 435,
+                  "mutability": "mutable",
+                  "name": "maxNodePenalties",
+                  "nameLocation": "283:16:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "275:24:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 434,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "275:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 438,
+                  "mutability": "mutable",
+                  "name": "coldkeys",
+                  "nameLocation": "322:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 441,
+                  "src": "305:25:9",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_address_$dyn_memory_ptr",
+                    "typeString": "address[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 436,
+                      "name": "address",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "305:7:9",
+                      "stateMutability": "nonpayable",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      }
+                    },
+                    "id": 437,
+                    "nodeType": "ArrayTypeName",
+                    "src": "305:9:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_address_$dyn_storage_ptr",
+                      "typeString": "address[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "103:231:9"
+            },
+            "returnParameters": {
+              "id": 440,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "351:0:9"
+            },
+            "scope": 480,
+            "src": "80:272:9",
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "cead1c96",
+            "id": 446,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "activateSubnet",
+            "nameLocation": "365:14:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 444,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 443,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "393:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 446,
+                  "src": "385:16:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 442,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "385:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "379:26:9"
+            },
+            "returnParameters": {
+              "id": 445,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "414:0:9"
+            },
+            "scope": 480,
+            "src": "356:59:9",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "89c966c0",
+            "id": 451,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "removeSubnet",
+            "nameLocation": "428:12:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 449,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 448,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "454:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 451,
+                  "src": "446:16:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 447,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "446:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "440:26:9"
+            },
+            "returnParameters": {
+              "id": 450,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "475:0:9"
+            },
+            "scope": 480,
+            "src": "419:57:9",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "ffe3c6fb",
+            "id": 458,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "ownerDeactivateSubnet",
+            "nameLocation": "489:21:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 456,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 453,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "524:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 458,
+                  "src": "516:16:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 452,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "516:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 455,
+                  "mutability": "mutable",
+                  "name": "name",
+                  "nameLocation": "552:4:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 458,
+                  "src": "538:18:9",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 454,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "538:6:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "510:50:9"
+            },
+            "returnParameters": {
+              "id": 457,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "569:0:9"
+            },
+            "scope": 480,
+            "src": "480:90:9",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "2ab05358",
+            "id": 465,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "ownerUpdateRegistrationInterval",
+            "nameLocation": "583:31:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 463,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 460,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "628:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 465,
+                  "src": "620:16:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 459,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "620:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 462,
+                  "mutability": "mutable",
+                  "name": "value",
+                  "nameLocation": "650:5:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 465,
+                  "src": "642:13:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 461,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "642:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "614:45:9"
+            },
+            "returnParameters": {
+              "id": 464,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "668:0:9"
+            },
+            "scope": 480,
+            "src": "574:95:9",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "48111b06",
+            "id": 472,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "ownerRemoveSubnet",
+            "nameLocation": "682:17:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 470,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 467,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "713:8:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 472,
+                  "src": "705:16:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 466,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "705:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 469,
+                  "mutability": "mutable",
+                  "name": "subnetNodeId",
+                  "nameLocation": "735:12:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 472,
+                  "src": "727:20:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 468,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "727:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "699:52:9"
+            },
+            "returnParameters": {
+              "id": 471,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "760:0:9"
+            },
+            "scope": 480,
+            "src": "673:88:9",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "e1324916",
+            "id": 479,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getSubnetId",
+            "nameLocation": "774:11:9",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 475,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 474,
+                  "mutability": "mutable",
+                  "name": "name",
+                  "nameLocation": "805:4:9",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 479,
+                  "src": "791:18:9",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 473,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "791:6:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "785:28:9"
+            },
+            "returnParameters": {
+              "id": 478,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 477,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 479,
+                  "src": "837:7:9",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 476,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "837:7:9",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "836:9:9"
+            },
+            "scope": 480,
+            "src": "765:81:9",
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "scope": 481,
+        "src": "58:790:9",
+        "usedErrors": [],
+        "usedEvents": []
+      }
+    ],
+    "src": "33:815:9"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.25+commit.b61c2a91.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.16",
+  "updatedAt": "2025-05-20T19:28:54.986Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

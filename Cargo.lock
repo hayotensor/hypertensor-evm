@@ -4106,6 +4106,7 @@ dependencies = [
 name = "hypertensor-precompiles"
 version = "0.1.0"
 dependencies = [
+ "fp-account",
  "fp-evm",
  "frame-support",
  "frame-system",
@@ -4116,6 +4117,7 @@ dependencies = [
  "pallet-evm-precompile-sha3fips",
  "pallet-evm-precompile-simple",
  "pallet-network",
+ "pallet-template",
  "precompile-utils",
  "sp-core",
  "sp-runtime",
