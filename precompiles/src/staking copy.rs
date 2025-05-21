@@ -1,4 +1,4 @@
-use precompile_utils::{EvmResult, prelude::*, solidity::Codec};
+use precompile_utils::{EvmResult, prelude::*};
 use pallet_evm::{AddressMapping, ExitError, PrecompileFailure, PrecompileHandle};
 use sp_core::{H256, U256, H160};
 use sp_runtime::traits::{Dispatchable, StaticLookup, UniqueSaturatedInto};
@@ -8,31 +8,14 @@ use frame_system::RawOrigin;
 use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
 use sp_core::Decode;
 use fp_evm::Log;
-use fp_account::AccountId20;
-
-/// Alias for the Balance type for the provided Runtime and Instance.
-pub type BalanceOf<Runtime, Instance = ()> =
-	<Runtime as pallet_balances::Config<Instance>>::Balance;
 
 pub(crate) struct StakingPrecompile<R>(PhantomData<R>);
 
 impl<R> StakingPrecompile<R> 
 where
-  // R: frame_system::Config
-  //   + pallet_evm::Config
-  //   + pallet_network::Config
-  //   + pallet_balances::Config,
-  // <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
-  //   + From<pallet_balances::Call<R>>
-  //   + GetDispatchInfo
-  //   + Dispatchable<PostInfo = PostDispatchInfo>,
-  // <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
-  // <R as pallet_balances::Config>::Balance: TryFrom<U256>,
-  // <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
-  R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
   <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
       + GetDispatchInfo
       + Dispatchable<PostInfo = PostDispatchInfo>,
@@ -45,21 +28,9 @@ where
 #[precompile_utils::precompile]
 impl<R> StakingPrecompile<R> 
 where 
-  // R: frame_system::Config
-  //   + pallet_evm::Config
-  //   + pallet_network::Config
-  //   + pallet_balances::Config,
-  // <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
-  //   + From<pallet_balances::Call<R>>
-  //   + GetDispatchInfo
-  //   + Dispatchable<PostInfo = PostDispatchInfo>,
-  // <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
-  // <R as pallet_balances::Config>::Balance: TryFrom<U256>,
-  // <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
-  R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
   <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
       + GetDispatchInfo
       + Dispatchable<PostInfo = PostDispatchInfo>,
@@ -90,7 +61,6 @@ where
     };
 
     RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
-    // RuntimeHelper::<R>::try_dispatch(handle, Some(origin.clone()).into(), call, 0)?;
 
     Ok(())
   }
@@ -143,22 +113,28 @@ where
     stake_to_be_added: U256,
   ) -> EvmResult<()> {
     // handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-    // log::trace!(
-    //   target: "precompile", 
-    //   "add_to_delegate_stake", 
-    // );
+    log::trace!(
+      target: "precompile", 
+      "add_to_delegate_stake", 
+    );
 
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let stake_to_be_added = stake_to_be_added.unique_saturated_into();
-
-    let evm_caller: H160 = handle.context().caller;
-    let origin = R::AddressMapping::into_account_id(evm_caller);
+    
+    let origin = R::AddressMapping::into_account_id(handle.context().caller);
     let call = pallet_network::Call::<R>::add_to_delegate_stake {
       subnet_id,
       stake_to_be_added,
     };
 
-    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
+    let post_dispatch_info = RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
+
+    log::trace!(
+      target: "precompile", 
+      "subnet_id {:?}, stake_to_be_added {:?}", 
+      subnet_id, 
+      stake_to_be_added
+    );
 
     Ok(())
   }
@@ -453,11 +429,11 @@ where
 		Ok(total_subnet_delegate_stake_shares)
 	}
 
-  #[precompile::public("accountSubnetDelegateStakeShares(address,uint256)")]
+  #[precompile::public("accountSubnetDelegateStakeShares(bytes32,uint256)")]
 	#[precompile::view]
 	fn account_subnet_delegate_stake_shares(
     handle: &mut impl PrecompileHandle,
-    hotkey: Address,
+    hotkey: H256,
     subnet_id: U256,
   ) -> EvmResult<u128> {
 		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -465,83 +441,20 @@ where
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let account_subnet_delegate_stake_shares: u128 = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
-    Ok(account_subnet_delegate_stake_shares)
+
+		Ok(account_subnet_delegate_stake_shares)
 	}
 
-  // #[precompile::public("accountSubnetDelegateStakeBalance(address,uint256)")]
-	// #[precompile::view]
-	// fn account_subnet_delegate_stake_balance(
-  //   handle: &mut impl PrecompileHandle,
-  //   hotkey: Address,
-  //   subnet_id: U256,
-  // ) -> EvmResult<u128> {
-	// 	// handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-  //   // log::trace!(
-  //   //   target: "precompile", 
-  //   //   "account_subnet_delegate_stake_balance", 
-  //   // );
-  //   log::trace!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::info!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::error!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::debug!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-
-  //   // let hotkey: H160 = hotkey.into();
-  //   // let hotkey = R::AddressMapping::into_account_id(hotkey.into());
-
-  //   // let subnet_id = try_u256_to_u32(subnet_id)?;
-
-  //   // let account_delegate_stake_shares = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
-  //   // if account_delegate_stake_shares == 0 {
-  //   //   return Ok(0)
-  //   // }
-  //   // let total_subnet_delegated_stake_shares = pallet_network::TotalSubnetDelegateStakeShares::<R>::get(subnet_id);
-  //   // let total_subnet_delegated_stake_balance = pallet_network::TotalSubnetDelegateStakeBalance::<R>::get(subnet_id);
-
-  //   // let shares = U256::from(account_delegate_stake_shares);
-  //   // let total_balance = U256::from(total_subnet_delegated_stake_balance) + U256::from(1);
-  //   // let total_shares = U256::from(total_subnet_delegated_stake_shares) + U256::from(10_u128.pow(1));
-  
-  //   // let balance = shares * total_balance / total_shares;
-    
-  //   // Ok(balance.try_into().unwrap_or(u128::MAX))
-  //   Ok(0)
-	// }
-
-  #[precompile::public("accountSubnetDelegateStakeBalance(address,uint256)")]
+  #[precompile::public("accountSubnetDelegateStakeBalance(bytes32,uint256)")]
 	#[precompile::view]
 	fn account_subnet_delegate_stake_balance(
     handle: &mut impl PrecompileHandle,
-    hotkey: Address,
+    hotkey: H256,
     subnet_id: U256,
   ) -> EvmResult<u128> {
 		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-    // log::trace!(
-    //   target: "precompile", 
-    //   "account_subnet_delegate_stake_balance", 
-    // );
-    log::trace!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::info!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::error!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::debug!(
-      "account_subnet_delegate_stake_balance", 
-    );
 
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
-
     let subnet_id = try_u256_to_u32(subnet_id)?;
 
     let account_delegate_stake_shares = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
@@ -558,9 +471,7 @@ where
     let balance = shares * total_balance / total_shares;
     
     Ok(balance.try_into().unwrap_or(u128::MAX))
-    // Ok(0)
 	}
-
 }
 
 fn try_u256_to_u32(value: U256) -> Result<u32, PrecompileFailure> {

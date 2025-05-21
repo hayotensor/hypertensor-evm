@@ -143,6 +143,8 @@ pub fn build_activated_subnet(subnet_path: Vec<u8>, start: u32, mut end: u32, de
       ) 
     );
 
+    // log::error!("AccountID is here: {:?}", account(n));
+    // assert!(false);
     // assert_eq!(
     //   *network_events().last().unwrap(),
     //   Event::SubnetNodeActivated {

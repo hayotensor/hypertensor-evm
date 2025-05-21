@@ -12,18 +12,16 @@ use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripe
 use sp_runtime::traits::{StaticLookup, Dispatchable};
 // use sp_core::U256;
 use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
+// use sp_core::ByteArray;
 use sp_core::{H160, U256, crypto::ByteArray};
 
 use crate::staking::*;
 use crate::subnet::*;
 use crate::balance::*;
-use crate::template::*;
-
 
 mod staking;
 mod subnet;
 mod balance;
-mod template;
 
 pub struct FrontierPrecompiles<R>(PhantomData<R>);
 
@@ -105,7 +103,7 @@ where
 			+ pallet_evm::Config
 			+ pallet_balances::Config
 			+ pallet_network::Config,
-	R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
+	// R::AccountId: From<[u8; 32]> + ByteArray + Into<[u8; 32]>,
 	<R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
 			+ From<pallet_balances::Call<R>>
 			+ GetDispatchInfo
@@ -125,7 +123,7 @@ where
 			+ pallet_evm::Config
 			+ pallet_balances::Config
 			+ pallet_network::Config,
-	R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
+	// R::AccountId: From<[u8; 32]> + ByteArray + Into<[u8; 32]>,
 	<R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
 			+ From<pallet_balances::Call<R>>
 			+ GetDispatchInfo
@@ -137,7 +135,7 @@ where
 	pub fn new() -> Self {
 		Self(Default::default())
 	}
-	pub fn used_addresses() -> [H160; 9] {
+	pub fn used_addresses() -> [H160; 10] {
 		[
 			hash(1),
 			hash(2),
@@ -148,8 +146,7 @@ where
 			hash(1025),
 			hash(StakingPrecompile::<R>::HASH_N),
 			hash(SubnetPrecompile::<R>::HASH_N),
-			// hash(ERC20BalancePrecompile::<R>::HASH_N),
-			// hash(TemplatePrecompile::<R>::HASH_N),
+			hash(ERC20BalancePrecompile::<R>::HASH_N),
 		]
 	}
 }
@@ -159,7 +156,7 @@ where
 			+ pallet_evm::Config
 			+ pallet_balances::Config
 			+ pallet_network::Config,
-	R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
+	// R::AccountId: From<[u8; 32]> + ByteArray + Into<[u8; 32]>,
 	<R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
 			+ From<pallet_balances::Call<R>>
 			+ GetDispatchInfo
@@ -182,8 +179,7 @@ where
 			// Hypertensor
 			a if a == hash(StakingPrecompile::<R>::HASH_N) => Some(StakingPrecompile::<R>::execute(handle)),
 			a if a == hash(SubnetPrecompile::<R>::HASH_N) => Some(SubnetPrecompile::<R>::execute(handle)),
-			// a if a == hash(ERC20BalancePrecompile::<R>::HASH_N) => Some(ERC20BalancePrecompile::<R>::execute(handle)),
-			// a if a == hash(TemplatePrecompile::<R>::HASH_N) => Some(TemplatePrecompile::<R>::execute(handle)),
+			a if a == hash(ERC20BalancePrecompile::<R>::HASH_N) => Some(ERC20BalancePrecompile::<R>::execute(handle)),
 			_ => None,
 		}
 	}

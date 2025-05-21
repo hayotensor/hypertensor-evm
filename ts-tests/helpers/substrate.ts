@@ -1,5 +1,4 @@
 import * as assert from "assert";
-// import { devnet, MultiAddress } from '@polkadot-api/descriptors';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { createClient, TypedApi, Transaction, PolkadotSigner, Binary } from 'polkadot-api';
 import { getWsProvider } from 'polkadot-api/ws-provider/web';
