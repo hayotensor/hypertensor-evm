@@ -81,28 +81,9 @@ impl<T: Config> Pallet<T> {
       return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
     }
 
-    // let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((&account_id, subnet_id, subnet_node_id));
-    let total_node_delegated_stake_shares = match TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id) {
-      0 => {
-        // --- Mitigate inflation attack
-        TotalNodeDelegateStakeShares::<T>::mutate(subnet_id, subnet_node_id, |mut n| n.saturating_accrue(Self::MIN_LIQUIDITY));
-        0
-      },
-      shares => shares,
-    };
-
-    let total_node_delegated_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
-
-    // --- Get accounts current balance
-    // let account_delegate_stake_balance = Self::convert_to_balance(
-    //   account_node_delegate_stake_shares,
-    //   total_node_delegated_stake_shares,
-    //   total_node_delegated_stake_balance
-    // );
-
-    // if account_delegate_stake_balance.saturating_add(node_delegate_stake_to_be_added) > MaxDelegateStakeBalance::<T>::get() {
-    //   return (Err(Error::<T>::MaxDelegatedStakeReached.into()), 0, 0);
-    // }
+    if node_delegate_stake_to_be_added < MinDelegateStakeBalance::<T>::get() {
+      return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
+    }
 
     // --- Ensure the callers account_id has enough delegate_stake to perform the transaction.
     if !swap {
@@ -124,6 +105,17 @@ impl<T: Config> Pallet<T> {
         return (Err(Error::<T>::BalanceWithdrawalError.into()), 0, 0);
       }  
     }
+
+    // let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((&account_id, subnet_id, subnet_node_id));
+    let total_node_delegated_stake_shares = match TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id) {
+      0 => {
+        // --- Mitigate inflation attack
+        TotalNodeDelegateStakeShares::<T>::mutate(subnet_id, subnet_node_id, |mut n| n.saturating_accrue(Self::MIN_LIQUIDITY));
+        0
+      },
+      shares => shares,
+    };
+    let total_node_delegated_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
     // --- Get amount to be added as shares based on stake to balance added to account
     let mut delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
@@ -323,6 +315,90 @@ impl<T: Config> Pallet<T> {
 
     Ok(())
   }
+
+  // pub fn do_transfer_node_delegate_stake(
+  //   origin: T::RuntimeOrigin, 
+  //   subnet_id: u32,
+  //   subnet_node_id: u32, 
+  //   to_account_id: T::AccountId, 
+  //   node_delegate_stake_shares_to_transferred: u128
+  // ) -> DispatchResult {
+  //   let account_id: T::AccountId = ensure_signed(origin)?;
+
+  //   let (result, balance, shares) = Self::perform_do_remove_node_delegate_stake(
+  //     &account_id,
+  //     subnet_id,
+  //     subnet_node_id,
+  //     node_delegate_stake_shares_to_transferred,
+  //     false,
+  //   );
+
+  //   result?;
+
+  //   let (result, balance, shares) = Self::perform_do_add_node_delegate_stake(
+  //     &to_account_id,
+  //     subnet_id,
+  //     subnet_node_id,
+  //     shares,
+  //     true
+  //   );
+
+  //   result?;
+
+  //   Ok(())
+  // }
+
+  pub fn do_transfer_node_delegate_stake(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32,
+    subnet_node_id: u32, 
+    to_account_id: T::AccountId, 
+    node_delegate_stake_shares_to_transferred: u128
+  ) -> DispatchResult {
+    let account_id: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      node_delegate_stake_shares_to_transferred != 0,
+      Error::<T>::NotEnoughStakeToWithdraw
+    );
+
+    let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
+    let total_node_delegated_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+
+    // --- Get accounts current balance
+    let delegate_stake_to_be_transferred = Self::convert_to_balance(
+      node_delegate_stake_shares_to_transferred,
+      total_node_delegated_stake_shares,
+      total_node_delegated_stake_balance
+    );
+
+    // --- Ensure transfer balance is greater than the min
+    ensure!(
+      node_delegate_stake_shares_to_transferred >= MinDelegateStakeBalance::<T>::get(),
+      Error::<T>::CouldNotConvertToBalance
+    );
+
+    // --- Remove shares from caller
+    Self::decrease_account_node_delegate_stake_shares(
+      &account_id,
+      subnet_id,
+      subnet_node_id,
+      0, // Do not mutate balance
+      node_delegate_stake_shares_to_transferred,
+    );
+
+    // --- Increase shares to `to_account_id`
+    Self::increase_account_node_delegate_stake_shares(
+      &to_account_id,
+      subnet_id,
+      subnet_node_id,
+      0, // Do not mutate balance
+      node_delegate_stake_shares_to_transferred,
+    );
+
+    Ok(())
+  }
+
 
   pub fn increase_account_node_delegate_stake_shares(
     account_id: &T::AccountId,

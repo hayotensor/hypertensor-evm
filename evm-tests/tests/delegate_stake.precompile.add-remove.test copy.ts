@@ -10,12 +10,14 @@ import { generateRandomEthersWallet, getPublicClient, hash, SEED_PATH, STAKING_C
 import {
     addToDelegateStake,
     forceSetBalanceToEthAddress, forceSetBalanceToSs58Address,
+    removeDelegateStake,
     transferBalanceFromSudo
 } from "../src/network"
 import { ETH_LOCAL_URL, SUB_LOCAL_URL } from "../src/config";
 import { AbiItem, PublicClient } from "viem";
 import { forceSetBalance } from "../src/test";
 import { ApiPromise, WsProvider } from "@polkadot/api";
+import { expect } from "chai";
 
 describe("Test staking", () => {
     // init eth part
@@ -51,34 +53,11 @@ describe("Test staking", () => {
             wallet1.address,
             sudoTransferAmount,
         )
-
-        // convertSs58ToAccountId20(ss58: string)
-        // const hotkeySs58 = convertPublicKeyToSs58(hotkey.publicKey)
-        // console.log("hotkeySs58       ", hotkeySs58)
-        // const hotkeyAccountId20 = convertSs58ToAccountId20(hotkeySs58)
-        // const hotkeyAccountId202 = ss58ToAccountId20(hotkeySs58)
-
-        // console.log("hotkeyAccountId20 ", hotkeyAccountId20)
-        // console.log("hotkeyAccountId202", hotkeyAccountId202)
-
-        // await forceSetBalanceToSs58Address(api, hotkeyAccountId20)
-        // console.log("wallet1.address", wallet1.address)
-        // console.log("hotkey.publicKey", hotkey.publicKey)
-        // await forceSetBalanceToSs58Address(api, wallet1.address)
-
-        // await forceSetBalanceToSs58Address(api, convertPublicKeyToSs58(hotkey.publicKey))
-        // await forceSetBalanceToSs58Address(api, convertPublicKeyToSs58(coldkey.publicKey))
-        // await forceSetBalanceToSs58Address(api, convertPublicKeyToSs58(proxy.publicKey))
-        console.log("wallet1.address", wallet1.address)
-        // await forceSetBalanceToEthAddress(api, wallet1.address)
-        // await forceSetBalanceToEthAddress(api, wallet2.address)
     })
 
-    it("Can add stake", async () => {
+    it("testing add delegate stake", async () => {
         const subnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet1);
-
         const subnetId = await subnetContract.getSubnetId(SEED_PATH);
-        console.log("staking subnetId:       ", subnetId)
 
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
@@ -86,12 +65,8 @@ describe("Test staking", () => {
             wallet1.address, 
             subnetId
         );
-        console.log("staking sharesBefore:  ", sharesBefore)
+        const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
 
-        const balanceOnChain = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
-        console.log("staking balanceOnChain:  ", balanceOnChain)
-
-        // await stakingContract.addToDelegateStake(subnetId, stakeAmount)
         await addToDelegateStake(
           stakingContract, 
           subnetId,
@@ -99,12 +74,47 @@ describe("Test staking", () => {
         )
 
         const sharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet1.address, subnetId);
-
-        console.log("staking sharesAfter:   ", sharesAfter)
-
         const balanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
 
-        console.log("staking balanceAfter:   ", balanceAfter)
+		expect(sharesBefore).to.be.lessThan(sharesAfter);
+        expect(balanceBefore).to.be.lessThan(balanceAfter);
+    })
 
+    it("testing remove delegate stake", async () => {
+        const subnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet1);
+        const subnetId = await subnetContract.getSubnetId(SEED_PATH);
+
+        const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
+
+        // ==================
+        // Add delegate stake
+        // ==================
+        await addToDelegateStake(
+          stakingContract, 
+          subnetId,
+          stakeAmount
+        )
+
+        // ==================
+        // Remove delegate stake
+        // ==================
+
+        const sharesBefore = await stakingContract.accountSubnetDelegateStakeShares(
+            wallet1.address, 
+            subnetId
+        );
+        const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
+
+        await removeDelegateStake(
+          stakingContract, 
+          subnetId,
+          sharesBefore
+        )
+
+        const sharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet1.address, subnetId);
+        const balanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
+
+		expect(sharesBefore).to.be.greaterThan(sharesAfter);
+        expect(balanceBefore).to.be.greaterThan(balanceAfter);
     })
 });

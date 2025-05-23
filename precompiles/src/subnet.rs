@@ -86,7 +86,7 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,uint256,uint256,uint256,uint256,uint256,bytes32[])")]
+  #[precompile::public("registerSubnet(string,uint256,uint256,uint256,uint256,uint256,address[])")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
@@ -96,7 +96,7 @@ where
     node_activation_interval: U256,
     node_queue_period: U256,
     max_node_penalties: U256,
-    coldkeys: Vec<H256>,
+    coldkeys: Vec<Address>,
   ) -> EvmResult<()> {
     let max_node_registration_epochs = try_u256_to_u32(max_node_registration_epochs)?;
     let node_registration_interval = try_u256_to_u32(node_registration_interval)?;
@@ -246,12 +246,12 @@ where
 	}
 
 
-  #[precompile::public("addSubnetNode(uint256,bytes32,bytes32,bytes32,uint256,uint256)")]
+  #[precompile::public("addSubnetNode(uint256,address,bytes32,bytes32,uint256,uint256)")]
   #[precompile::payable]
   fn add_subnet_node(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
-    hotkey: H256,
+    hotkey: Address,
     peer_id: H256, 
     bootstrap_peer_id: H256,
     delegate_reward_rate: U256,
@@ -290,12 +290,12 @@ where
     Ok(())
   }
 
-  #[precompile::public("registerSubnetNode(uint256,bytes32,bytes32,bytes32,uint256,uint256)")]
+  #[precompile::public("registerSubnetNode(uint256,address,bytes32,bytes32,uint256,uint256)")]
   #[precompile::payable]
   fn register_subnet_node(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
-    hotkey: H256,
+    hotkey: Address,
     peer_id: H256, 
     bootstrap_peer_id: H256,
     delegate_reward_rate: U256,

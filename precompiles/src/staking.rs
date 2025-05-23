@@ -66,13 +66,13 @@ where
   <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
   <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
 {
-  #[precompile::public("addToStake(uint256,uint256,bytes32,uint256)")]
+  #[precompile::public("addToStake(uint256,uint256,address,uint256)")]
   #[precompile::payable]
   fn add_to_stake(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     subnet_node_id: U256,
-    hotkey: H256,
+    hotkey: Address,
     stake_to_be_added: U256,
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -95,12 +95,12 @@ where
     Ok(())
   }
 
-  #[precompile::public("removeStake(uint256,bytes32,uint256)")]
+  #[precompile::public("removeStake(uint256,address,uint256)")]
   #[precompile::payable]
   fn remove_stake(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
-    hotkey: H256,
+    hotkey: Address,
     stake_to_be_removed: U256,
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -409,11 +409,11 @@ where
 		Ok(total_subnet_stake)
 	}
 
-  #[precompile::public("accountSubnetStake(bytes32,uint256)")]
+  #[precompile::public("accountSubnetStake(address,uint256)")]
 	#[precompile::view]
 	fn account_subnet_stake(
     handle: &mut impl PrecompileHandle,
-    hotkey: H256,
+    hotkey: Address,
     subnet_id: U256,
   ) -> EvmResult<u128> {
 		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;

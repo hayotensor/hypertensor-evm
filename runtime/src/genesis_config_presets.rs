@@ -61,14 +61,6 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
-// fn properties() -> Properties {
-// 	let mut properties = Properties::new();
-// 	properties.insert("tokenSymbol".into(), "TENSOR".into());
-// 	properties.insert("tokenDecimals".into(), 18.into());
-// 	properties.insert("ss58Format".into(), SS58Prefix::get().into());
-// 	properties
-// }
-
 const UNITS: Balance = 1_000_000_000_000_000_000;
 
 // Returns the genesis config presets populated with given parameters.
@@ -249,9 +241,8 @@ pub fn development_config_genesis(enable_manual_seal: bool) -> Value {
 		],
 		vec![
 			authority_keys_from_seed("Alice"),
-			authority_keys_from_seed("Bob"),
 		],
-		42,
+		SS58Prefix::get() as u64,
 		enable_manual_seal,
 	)
 }
@@ -271,9 +262,8 @@ pub fn ethereum_development_config_genesis(enable_manual_seal: bool) -> Value {
 		],
 		vec![
 			authority_keys_from_seed("Alice"),
-			authority_keys_from_seed("Bob"),
 		],
-		42,
+		SS58Prefix::get() as u64,
 		enable_manual_seal,
 	)
 }
@@ -305,7 +295,7 @@ pub fn local_config_genesis() -> Value {
 pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 	let patch = match id.as_ref() {
 		"ETHEREUM_DEV_RUNTIME_PRESET" => ethereum_development_config_genesis(true),
-		sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(true),
+		sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(false),
 		sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET => local_config_genesis(),
 		_ => return None,
 	};

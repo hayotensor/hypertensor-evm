@@ -275,6 +275,83 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  // pub fn do_transfer_delegate_stake(
+  //   origin: T::RuntimeOrigin, 
+  //   subnet_id: u32,
+  //   to_account_id: T::AccountId,
+  //   delegate_stake_shares_to_transfer: u128,
+  // ) -> DispatchResult {
+  //   let account_id: T::AccountId = ensure_signed(origin)?;
+
+  //   let (result, balance, shares) = Self::perform_do_remove_delegate_stake(
+  //     &account_id, 
+  //     subnet_id,
+  //     delegate_stake_shares_to_transfer,
+  //     false
+  //   );
+
+  //   result?;
+
+  //   let (result, _, _) = Self::perform_do_add_delegate_stake(
+  //     &to_account_id,
+  //     subnet_id,
+  //     balance,
+  //     true
+  //   );
+
+  //   result?;
+
+  //   Ok(())
+  // }
+
+  pub fn do_transfer_delegate_stake(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32,
+    to_account_id: T::AccountId,
+    delegate_stake_shares_to_transfer: u128,
+  ) -> DispatchResult {
+    let account_id: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      delegate_stake_shares_to_transfer != 0,
+      Error::<T>::NotEnoughStakeToWithdraw
+    );
+
+    let total_subnet_delegated_stake_shares = TotalSubnetDelegateStakeShares::<T>::get(subnet_id);
+    let total_subnet_delegated_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+
+    // --- Get accounts current balance
+    let delegate_stake_to_be_transferred = Self::convert_to_balance(
+      delegate_stake_shares_to_transfer,
+      total_subnet_delegated_stake_shares,
+      total_subnet_delegated_stake_balance
+    );
+
+    // --- Ensure transfer balance is greater than the min
+    ensure!(
+      delegate_stake_to_be_transferred >= MinDelegateStakeBalance::<T>::get(),
+      Error::<T>::CouldNotConvertToBalance
+    );
+
+    // --- Remove shares from caller
+    Self::decrease_account_delegate_stake_shares(
+      &account_id,
+      subnet_id, 
+      0, // Do not mutate balance
+      delegate_stake_shares_to_transfer,
+    );
+
+    // --- Increase shares to `to_account_id`
+    Self::increase_account_delegate_stake_shares(
+      &to_account_id,
+      subnet_id, 
+      0, // Do not mutate balance
+      delegate_stake_shares_to_transfer,
+    );
+
+    Ok(())
+  }
+
   pub fn increase_account_delegate_stake_shares(
     account_id: &T::AccountId,
     subnet_id: u32, 

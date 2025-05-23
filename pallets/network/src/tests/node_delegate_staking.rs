@@ -54,13 +54,13 @@ use crate::{
 #[test]
 fn test_add_to_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     build_activated_subnet_with_delegator_rewards(
-      subnet_path.clone(), 
+      subnet_name.clone(), 
       0, 
       16, 
       deposit_amount, 
@@ -68,7 +68,7 @@ fn test_add_to_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -102,14 +102,14 @@ fn test_add_to_node_delegate_stake() {
 #[test]
 fn test_remove_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     build_activated_subnet_with_delegator_rewards(
-      subnet_path.clone(), 
+      subnet_name.clone(), 
       0, 
       16, 
       deposit_amount, 
@@ -117,7 +117,7 @@ fn test_remove_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -194,15 +194,15 @@ fn test_remove_node_delegate_stake() {
 }
 
 #[test]
-fn test_transfer_node_delegate_stake() {
+fn test_swap_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     build_activated_subnet_with_delegator_rewards(
-      subnet_path.clone(), 
+      subnet_name.clone(), 
       0, 
       16, 
       deposit_amount, 
@@ -210,7 +210,7 @@ fn test_transfer_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let from_subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let from_subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
     let total_from_subnet_nodes = TotalSubnetNodes::<Test>::get(from_subnet_id);
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
@@ -352,13 +352,13 @@ fn test_transfer_node_delegate_stake() {
 // #[test]
 // fn test_validate_with_delegate_rewards_rate() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 // let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
 //     build_activated_subnet_with_delegator_rewards(
-//       subnet_path.clone(), 
+//       subnet_name.clone(), 
 //       0, 
 //       16, 
 //       deposit_amount, 
@@ -366,7 +366,7 @@ fn test_transfer_node_delegate_stake() {
 //       DEFAULT_DELEGATE_REWARD_RATE,
 //     );
 
-//     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -457,8 +457,8 @@ fn test_transfer_node_delegate_stake() {
 
 //         // --- Subtract node delegator rewards
 //         if subnet_node.delegate_reward_rate != 0 {
-//           let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, hotkey_subnet_node_id);
-//           if total_node_delegated_stake_shares != 0 {
+//           let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, hotkey_subnet_node_id);
+//           if total_node_delegate_stake_shares != 0 {
 //             let node_delegate_reward = Network::percent_mul(validator_total_reward, subnet_node.delegate_reward_rate);
 //             validator_total_reward = validator_total_reward - node_delegate_reward;
 //           }
@@ -471,8 +471,8 @@ fn test_transfer_node_delegate_stake() {
 //         let mut reward: u128 = account_reward;
 
 //         if subnet_node.delegate_reward_rate != 0 {
-//           let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, hotkey_subnet_node_id);
-//           if total_node_delegated_stake_shares != 0 {
+//           let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, hotkey_subnet_node_id);
+//           if total_node_delegate_stake_shares != 0 {
 //             let node_delegate_reward = Network::percent_mul(reward, subnet_node.delegate_reward_rate);
 //             reward = reward - node_delegate_reward;
 //           }
@@ -483,3 +483,114 @@ fn test_transfer_node_delegate_stake() {
 //     }
 //   });
 // }
+
+#[test]
+fn test_transfer_node_delegate_stake() {
+  new_test_ext().execute_with(|| {
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet_node_id = 1;
+
+    let n_account = 1000;
+    let to_n_account = 1001;
+
+    let _ = Balances::deposit_creating(&account(n_account), amount+500);
+
+    // let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
+    // let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+
+    // let mut delegate_stake_to_be_added_as_shares = Network::convert_to_shares(
+    //   amount,
+    //   total_node_delegate_stake_shares,
+    //   total_node_delegate_stake_balance
+    // );
+
+    // if total_node_delegate_stake_shares == 0 {
+    //   delegate_stake_to_be_added_as_shares = delegate_stake_to_be_added_as_shares.saturating_sub(1000);
+    // }
+
+    // let starting_delegator_balance = Balances::free_balance(&account(n_account));
+
+    assert_ok!(
+      Network::add_to_node_delegate_stake(
+        RuntimeOrigin::signed(account(n_account)),
+        subnet_id,
+        subnet_node_id,
+        amount,
+      ) 
+    );
+
+    
+    let n_account_balance = Balances::free_balance(&account(n_account));
+    let to_n_account_balance = Balances::free_balance(&account(to_n_account));
+
+    let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(n_account), subnet_id, subnet_node_id));
+    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+    let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
+
+    let account_node_delegate_stake_balance = Network::convert_to_balance(
+      account_node_delegate_stake_shares,
+      total_node_delegate_stake_shares,
+      total_node_delegate_stake_balance
+    );
+
+    log::error!("account_node_delegate_stake_balance     {:?}", account_node_delegate_stake_balance);
+    log::error!("total_node_delegate_stake_shares        {:?}", total_node_delegate_stake_shares);
+    log::error!("total_node_delegate_stake_balance       {:?}", total_node_delegate_stake_balance);
+    log::error!("total_node_delegate_stake_balance_2     {:?}", Network::percent_mul(amount, 990000000));
+
+    assert!(
+      (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000)) &&
+      (account_node_delegate_stake_balance <= amount)
+    );
+
+    // log::error!("account_node_delegate_stake_balance     {:?}", account_node_delegate_stake_balance);
+    // log::error!("total_node_delegate_stake_shares       {:?}", total_node_delegate_stake_shares);
+    // log::error!("total_node_delegate_stake_balance      {:?}", total_node_delegate_stake_balance);
+
+    let to_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((account(to_n_account), subnet_id, subnet_node_id));
+
+    assert_eq!(to_delegate_shares, 0);
+
+    assert_ok!(
+      Network::transfer_node_delegate_stake(
+        RuntimeOrigin::signed(account(n_account)),
+        subnet_id,
+        subnet_node_id,
+        account(to_n_account),
+        account_node_delegate_stake_shares,
+      ) 
+    );
+
+    // no changes to balance
+    let after_n_account_balance = Balances::free_balance(&account(n_account));
+    assert_eq!(n_account_balance, after_n_account_balance);
+    let after_to_n_account_balance = Balances::free_balance(&account(to_n_account));
+    assert_eq!(to_n_account_balance, after_to_n_account_balance);
+
+    // no ledger balances
+    let n_account_unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
+    assert_eq!(n_account_unbondings.len(), 0);
+    let to_n_account_unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(to_n_account));
+    assert_eq!(to_n_account_unbondings.len(), 0);
+
+    let after_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((account(n_account), subnet_id, subnet_node_id));
+
+    let after_to_node_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((account(to_n_account), subnet_id, subnet_node_id));
+
+    let after_total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
+    let after_total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+
+    assert_eq!(after_delegate_shares, 0);
+    assert_eq!(account_node_delegate_stake_shares, after_to_node_delegate_shares);
+    assert_eq!(total_node_delegate_stake_shares, after_total_node_delegate_stake_shares);
+    assert_eq!(total_node_delegate_stake_balance, after_total_node_delegate_stake_balance);
+  });
+}

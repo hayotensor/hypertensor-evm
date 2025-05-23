@@ -29,15 +29,15 @@
     "absolutePath": "project:/contracts/IERC20BalanceTransfer.sol",
     "exportedSymbols": {
       "IERC20BalanceTransfer": [
-        83
+        7
       ]
     },
-    "id": 84,
+    "id": 8,
     "license": "MIT",
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 77,
+        "id": 1,
         "literals": [
           "solidity",
           "^",
@@ -45,7 +45,7 @@
           ".0"
         ],
         "nodeType": "PragmaDirective",
-        "src": "33:23:3"
+        "src": "33:23:0"
       },
       {
         "abstract": false,
@@ -54,36 +54,36 @@
         "contractDependencies": [],
         "contractKind": "interface",
         "fullyImplemented": false,
-        "id": 83,
+        "id": 7,
         "linearizedBaseContracts": [
-          83
+          7
         ],
         "name": "IERC20BalanceTransfer",
-        "nameLocation": "68:21:3",
+        "nameLocation": "68:21:0",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "functionSelector": "cd6f4eb1",
-            "id": 82,
+            "id": 6,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
             "name": "transfer",
-            "nameLocation": "105:8:3",
+            "nameLocation": "105:8:0",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 80,
+              "id": 4,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 79,
+                  "id": 3,
                   "mutability": "mutable",
                   "name": "data",
-                  "nameLocation": "122:4:3",
+                  "nameLocation": "122:4:0",
                   "nodeType": "VariableDeclaration",
-                  "scope": 82,
-                  "src": "114:12:3",
+                  "scope": 6,
+                  "src": "114:12:0",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -91,10 +91,10 @@
                     "typeString": "bytes32"
                   },
                   "typeName": {
-                    "id": 78,
+                    "id": 2,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "114:7:3",
+                    "src": "114:7:0",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -103,28 +103,28 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "113:14:3"
+              "src": "113:14:0"
             },
             "returnParameters": {
-              "id": 81,
+              "id": 5,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "144:0:3"
+              "src": "144:0:0"
             },
-            "scope": 83,
-            "src": "96:49:3",
+            "scope": 7,
+            "src": "96:49:0",
             "stateMutability": "payable",
             "virtual": false,
             "visibility": "external"
           }
         ],
-        "scope": 84,
-        "src": "58:89:3",
+        "scope": 8,
+        "src": "58:89:0",
         "usedErrors": [],
         "usedEvents": []
       }
     ],
-    "src": "33:114:3"
+    "src": "33:114:0"
   },
   "compiler": {
     "name": "solc",
@@ -132,7 +132,7 @@
   },
   "networks": {},
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-05-20T19:28:54.983Z",
+  "updatedAt": "2025-05-23T11:55:17.556Z",
   "devdoc": {
     "kind": "dev",
     "methods": {},

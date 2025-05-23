@@ -6,14 +6,14 @@ interface Staking  {
   function addToStake(
     uint256 subnetId,
     uint256 subnetNodeId,
-    bytes32 hotkey,
+    address hotkey,
     uint256 stakeToBeAdded
   ) external payable;
 
   function removeStake(
     uint256 subnetId,
     uint256 subnetNodeId,
-    bytes32 hotkey,
+    address hotkey,
     uint256 stakeToBeRemoved
   ) external;
 
@@ -82,7 +82,7 @@ interface Staking  {
 
   function totalSubnetStake(uint256 subnetId) external view returns (uint256);
 
-  function accountSubnetStake(bytes32 hotkey, uint256 subnetId) external view returns (uint256);
+  function accountSubnetStake(address hotkey, uint256 subnetId) external view returns (uint256);
 
   function totalSubnetDelegateStakeBalance(uint256 subnetId) external view returns (uint256);
 

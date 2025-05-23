@@ -9,6 +9,7 @@ import { hexToU8a, u8aToHex } from '@polkadot/util';
 import { KeyringPair } from "@polkadot/keyring/types";
 import { ApiPromise, Keyring, WsProvider } from "@polkadot/api";
 import { Contract } from "ethers";
+import { expect } from "chai";
 
 // force set balance for a ss58 address
 export async function forceSetBalanceToSs58Address(api: TypedApi<typeof dev>, ss58Address: string) {
@@ -66,29 +67,6 @@ export async function transferBalanceFromSudo(
 
   const alithSs58 = convertH160ToSS58(sudoPair.address)
   console.log("alithSs58", alithSs58)
-  // const nonce = await api.query.system.account(sudoPair);
-  // const nonce = await api.rpc.system.accountNextIndex(sudoPair.address);
-
-  // let tx = await api.tx.balances.transferKeepAlive(
-  //   who,
-  //   balance,
-  // ).signAndSend(sudoPair);
-
-  // const unsub = await api.tx.balances
-  //   .transferKeepAlive(who, balance)
-  //   .signAndSend(sudoPair, async (result) => {
-  //     console.log(`Current status is ${result.status}`);
-
-  //     if (result.status.isInBlock) {
-  //       console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
-  //     } else if (result.status.isFinalized) {
-  //       console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-  //       const balanceOnChain = (await api.query.system.account(who));
-  //       console.log("forceSetBalanceToSs58Address unsub balanceOnChain", balanceOnChain.toJSON())
-
-  //       unsub();
-  //     }
-  //   })
 
   await new Promise<void>((resolve, reject) => {
     api.tx.balances
@@ -123,6 +101,10 @@ export async function transferBalanceFromSudo(
 
     let unsub: () => void; // scoped outside to be accessible
   });
+
+  const balance_ = (await papiApi.query.System.Account.getValue(who)).data.free
+
+  expect(balance).to.be.equal(balance_);
 }
 
 export async function addToDelegateStake(
@@ -131,6 +113,16 @@ export async function addToDelegateStake(
   balance: bigint
 ) {
   const tx = await contract.addToDelegateStake(subnetId, balance, { value: balance });
+
+  await tx.wait();
+}
+
+export async function removeDelegateStake(
+  contract: Contract, 
+  subnetId: string,
+  shares: bigint
+) {
+  const tx = await contract.removeDelegateStake(subnetId, shares);
 
   const receipt = await tx.wait();
 }
