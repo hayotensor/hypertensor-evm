@@ -106,7 +106,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_add_to_coldkey_whitelist(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
+  pub fn do_owner_add_to_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -122,7 +122,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_remove_from_coldkey_whitelist(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
+  pub fn do_owner_remove_from_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(

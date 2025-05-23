@@ -76,7 +76,7 @@ export async function startFrontierNode(
 
 	const cmd = BINARY_PATH;
 	const args = [
-		`--chain=dev`,
+		`--chain=eth_dev`,
 		`--validator`, // Required by manual sealing to author the blocks
 		`--execution=Native`, // Faster execution using native
 		`--no-telemetry`,

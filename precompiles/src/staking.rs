@@ -468,53 +468,6 @@ where
     Ok(account_subnet_delegate_stake_shares)
 	}
 
-  // #[precompile::public("accountSubnetDelegateStakeBalance(address,uint256)")]
-	// #[precompile::view]
-	// fn account_subnet_delegate_stake_balance(
-  //   handle: &mut impl PrecompileHandle,
-  //   hotkey: Address,
-  //   subnet_id: U256,
-  // ) -> EvmResult<u128> {
-	// 	// handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-  //   // log::trace!(
-  //   //   target: "precompile", 
-  //   //   "account_subnet_delegate_stake_balance", 
-  //   // );
-  //   log::trace!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::info!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::error!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-  //   log::debug!(
-  //     "account_subnet_delegate_stake_balance", 
-  //   );
-
-  //   // let hotkey: H160 = hotkey.into();
-  //   // let hotkey = R::AddressMapping::into_account_id(hotkey.into());
-
-  //   // let subnet_id = try_u256_to_u32(subnet_id)?;
-
-  //   // let account_delegate_stake_shares = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
-  //   // if account_delegate_stake_shares == 0 {
-  //   //   return Ok(0)
-  //   // }
-  //   // let total_subnet_delegated_stake_shares = pallet_network::TotalSubnetDelegateStakeShares::<R>::get(subnet_id);
-  //   // let total_subnet_delegated_stake_balance = pallet_network::TotalSubnetDelegateStakeBalance::<R>::get(subnet_id);
-
-  //   // let shares = U256::from(account_delegate_stake_shares);
-  //   // let total_balance = U256::from(total_subnet_delegated_stake_balance) + U256::from(1);
-  //   // let total_shares = U256::from(total_subnet_delegated_stake_shares) + U256::from(10_u128.pow(1));
-  
-  //   // let balance = shares * total_balance / total_shares;
-    
-  //   // Ok(balance.try_into().unwrap_or(u128::MAX))
-  //   Ok(0)
-	// }
-
   #[precompile::public("accountSubnetDelegateStakeBalance(address,uint256)")]
 	#[precompile::view]
 	fn account_subnet_delegate_stake_balance(
@@ -544,21 +497,53 @@ where
 
     let subnet_id = try_u256_to_u32(subnet_id)?;
 
-    let account_delegate_stake_shares = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
+    let account_delegate_stake_shares: u128 = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
+    log::error!(
+      "account_subnet_delegate_stake_balance: {:?}", 
+      account_delegate_stake_shares
+    );
+
     if account_delegate_stake_shares == 0 {
       return Ok(0)
     }
     let total_subnet_delegated_stake_shares = pallet_network::TotalSubnetDelegateStakeShares::<R>::get(subnet_id);
     let total_subnet_delegated_stake_balance = pallet_network::TotalSubnetDelegateStakeBalance::<R>::get(subnet_id);
 
+    log::error!(
+      "total_subnet_delegated_stake_shares: {:?}", 
+      total_subnet_delegated_stake_shares
+    );
+    log::error!(
+      "total_subnet_delegated_stake_balance: {:?}", 
+      total_subnet_delegated_stake_balance
+    );
+
     let shares = U256::from(account_delegate_stake_shares);
+    log::error!(
+      "shares: {:?}", 
+      shares
+    );
+
     let total_balance = U256::from(total_subnet_delegated_stake_balance) + U256::from(1);
+    log::error!(
+      "total_balance: {:?}", 
+      total_balance
+    );
+
     let total_shares = U256::from(total_subnet_delegated_stake_shares) + U256::from(10_u128.pow(1));
+    log::error!(
+      "total_shares: {:?}", 
+      total_shares
+    );
+
   
     let balance = shares * total_balance / total_shares;
-    
+    log::error!(
+      "balance: {:?}", 
+      balance
+    );
+
     Ok(balance.try_into().unwrap_or(u128::MAX))
-    // Ok(0)
 	}
 
 }

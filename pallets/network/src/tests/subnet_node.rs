@@ -401,7 +401,7 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
   
     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
 
-    let whitelist = get_coldkey_whitelist(0, 1);
+    let whitelist = get_initial_coldkeys(0, 1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -413,8 +413,8 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -473,7 +473,7 @@ fn test_register_subnet_node_then_activate() {
   
     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
 
-    let whitelist = get_coldkey_whitelist(0, 1);
+    let whitelist = get_initial_coldkeys(0, 1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -485,7 +485,7 @@ fn test_register_subnet_node_then_activate() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
+      initial_coldkeys: whitelist,
     };
   
     let epoch_length = EpochLength::get();
@@ -594,7 +594,7 @@ fn test_activate_subnet_node_subnet_registering_or_activated_error() {
   
     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
 
-    let whitelist = get_coldkey_whitelist(0, 1);
+    let whitelist = get_initial_coldkeys(0, 1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -606,8 +606,8 @@ fn test_activate_subnet_node_subnet_registering_or_activated_error() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();

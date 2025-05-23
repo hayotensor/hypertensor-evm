@@ -64,6 +64,8 @@ export async function transferBalanceFromSudo(
   const keyring = new Keyring({ type: 'ethereum' });
   const sudoPair: KeyringPair = keyring.addFromUri("0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133");
 
+  const alithSs58 = convertH160ToSS58(sudoPair.address)
+  console.log("alithSs58", alithSs58)
   // const nonce = await api.query.system.account(sudoPair);
   // const nonce = await api.rpc.system.accountNextIndex(sudoPair.address);
 

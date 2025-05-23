@@ -6,7 +6,7 @@
 // import { tao } from "../src/balance-math"
 // import {
 //     forceSetBalanceToSs58Address, addNewSubnetwork, addStake,
-// } from "../src/subtensor"
+// } from "../src/network"
 // import { ethers } from "ethers";
 // import { generateRandomEthersWallet } from "../src/utils"
 // import { ISTAKING_V2_ADDRESS, IStakingV2ABI } from "../src/contracts/staking"
@@ -25,33 +25,5 @@
 //         await forceSetBalanceToSs58Address(api, convertPublicKeyToSs58(coldkey.publicKey))
 //         let netuid = await addNewSubnetwork(api, hotkey, coldkey)
 //         console.log("will test in subnet: ", netuid)
-//     })
-
-//     it("Staker receives rewards", async () => {
-//         let netuid = (await api.query.SubtensorModule.TotalNetworks.getValue()) - 1
-
-//         await addStake(api, netuid, convertPublicKeyToSs58(hotkey.publicKey), tao(1), coldkey)
-
-//         const contract = new ethers.Contract(
-//             ISTAKING_V2_ADDRESS,
-//             IStakingV2ABI,
-//             wallet1
-//         );
-
-//         const stake = BigInt(
-//             await contract.getStake(hotkey.publicKey, coldkey.publicKey, netuid)
-//         );
-
-//         // validator returned as bigint now. 
-//         const validators =
-//             await contract.getAlphaStakedValidators(hotkey.publicKey, netuid)
-
-//         const alpha = BigInt(
-//             await contract.getTotalAlphaStaked(hotkey.publicKey, netuid)
-//         );
-//         assert.ok(stake > 0)
-//         assert.equal(validators.length, 1)
-//         assert.ok(alpha > 0)
-
 //     })
 // })

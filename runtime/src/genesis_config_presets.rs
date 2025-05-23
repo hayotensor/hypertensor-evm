@@ -61,6 +61,14 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
+// fn properties() -> Properties {
+// 	let mut properties = Properties::new();
+// 	properties.insert("tokenSymbol".into(), "TENSOR".into());
+// 	properties.insert("tokenDecimals".into(), 18.into());
+// 	properties.insert("ss58Format".into(), SS58Prefix::get().into());
+// 	properties
+// }
+
 const UNITS: Balance = 1_000_000_000_000_000_000;
 
 // Returns the genesis config presets populated with given parameters.
@@ -71,7 +79,87 @@ fn testnet_genesis(
 	chain_id: u64,
 	enable_manual_seal: bool,
 ) -> serde_json::Value {
-	let subnet_path: Vec<u8> = "bigscience/bloom-560m".into();
+	let subnet_name: Vec<u8> = "subnet-name".into();
+	let mut peer_index: u8 = 0;
+
+	let evm_accounts = {
+		let mut map = BTreeMap::new();
+		map.insert(
+			// H160 address of Alice dev account
+			// Derived from SS58 (42 prefix) address
+			// SS58: 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+			// hex: 0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
+			// Using the full hex key, truncating to the first 20 bytes (the first 40 hex chars)
+			H160::from_str("d43593c715fdd31c61141abd04a99fd6822c8558")
+				.expect("internal H160 is valid; qed"),
+			fp_evm::GenesisAccount {
+				balance: U256::from(1_000_000_000_000_000_000_000_000u128),
+				code: Default::default(),
+				nonce: Default::default(),
+				storage: Default::default(),
+			},
+		);
+		map.insert(
+			// H160 address of CI test runner account
+			H160::from_str("6be02d1d3665660d22ff9624b7be0551ee1ac91b")
+				.expect("internal H160 is valid; qed"),
+			fp_evm::GenesisAccount {
+				balance: U256::from(1_000_000_000_000_000_000_000_000u128),
+				code: Default::default(),
+				nonce: Default::default(),
+				storage: Default::default(),
+			},
+		);
+		map.insert(
+			// H160 address for benchmark usage
+			H160::from_str("1000000000000000000000000000000000000001")
+				.expect("internal H160 is valid; qed"),
+			fp_evm::GenesisAccount {
+				nonce: U256::from(1),
+				balance: U256::from(1_000_000_000_000_000_000_000_000u128),
+				storage: Default::default(),
+				code: vec![0x00],
+			},
+		);
+		map
+	};
+
+	serde_json::json!({
+		"sudo": { "key": Some(sudo_key) },
+		"balances": {
+			"balances": endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, 1_000_000 * UNITS))
+				.collect::<Vec<_>>()
+		},
+		"aura": { "authorities": initial_authorities.iter().map(|x| (x.0.clone())).collect::<Vec<_>>() },
+		"grandpa": { "authorities": initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect::<Vec<_>>() },
+		"evmChainId": { "chainId": chain_id },
+		"evm": { "accounts": evm_accounts },
+		"manualSeal": { "enable": enable_manual_seal },
+		"network": {
+			"subnetName": subnet_name,
+			"subnetNodes": endowed_accounts.iter().cloned().map(|k| {
+				peer_index += 1;
+				(
+					k, 
+					peer(peer_index),
+				)
+			}).collect::<Vec<_>>(),
+		},
+	})
+}
+
+// Development testing mainly for ts-tests
+fn ethereum_testnet_genesis(
+	sudo_key: AccountId,
+	endowed_accounts: Vec<AccountId>,
+	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	chain_id: u64,
+	enable_manual_seal: bool,
+) -> serde_json::Value {
+	let subnet_name: Vec<u8> = "subnet-name".into();
 	let mut peer_index: u8 = 0;
 
 	let evm_accounts = {
@@ -132,14 +220,21 @@ fn testnet_genesis(
 		"evmChainId": { "chainId": chain_id },
 		"evm": { "accounts": evm_accounts },
 		"manualSeal": { "enable": enable_manual_seal },
-		// "template": { 
-
-		//  },
+		"network": {
+			"subnetName": subnet_name,
+			"subnetNodes": endowed_accounts.iter().cloned().map(|k| {
+				peer_index += 1;
+				(
+					k, 
+					peer(peer_index),
+				)
+			}).collect::<Vec<_>>(),
+		},
 	})
 }
 
 /// Return the development genesis config.
-pub fn development_config_genesis() -> Value {
+pub fn development_config_genesis(enable_manual_seal: bool) -> Value {
 	testnet_genesis(
 		// Sudo account (Alith)
 		AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")),
@@ -157,7 +252,29 @@ pub fn development_config_genesis() -> Value {
 			authority_keys_from_seed("Bob"),
 		],
 		42,
-		false,
+		enable_manual_seal,
+	)
+}
+
+pub fn ethereum_development_config_genesis(enable_manual_seal: bool) -> Value {
+	ethereum_testnet_genesis(
+		// Sudo account (Alith)
+		AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")),
+		// Pre-funded accounts
+		vec![
+			AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")), // Alith
+			AccountId::from(hex!("3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0")), // Baltathar
+			AccountId::from(hex!("798d4Ba9baf0064Ec19eB4F0a1a45785ae9D6DFc")), // Charleth
+			AccountId::from(hex!("773539d4Ac0e786233D90A233654ccEE26a613D9")), // Dorothy
+			AccountId::from(hex!("Ff64d3F6efE2317EE2807d223a0Bdc4c0c49dfDB")), // Ethan
+			AccountId::from(hex!("C0F0f4ab324C46e55D02D0033343B4Be8A55532d")), // Faith
+		],
+		vec![
+			authority_keys_from_seed("Alice"),
+			authority_keys_from_seed("Bob"),
+		],
+		42,
+		enable_manual_seal,
 	)
 }
 
@@ -187,7 +304,8 @@ pub fn local_config_genesis() -> Value {
 /// Provides the JSON representation of predefined genesis config for given `id`.
 pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 	let patch = match id.as_ref() {
-		sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(),
+		"ETHEREUM_DEV_RUNTIME_PRESET" => ethereum_development_config_genesis(true),
+		sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(true),
 		sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET => local_config_genesis(),
 		_ => return None,
 	};
@@ -201,6 +319,7 @@ pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 /// List of supported presets.
 pub fn preset_names() -> Vec<PresetId> {
 	vec![
+		PresetId::from("ETHEREUM_DEV_RUNTIME_PRESET"),
 		PresetId::from(sp_genesis_builder::DEV_RUNTIME_PRESET),
 		PresetId::from(sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET),
 	]

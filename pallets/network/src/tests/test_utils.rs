@@ -91,7 +91,7 @@ pub fn build_activated_subnet(subnet_path: Vec<u8>, start: u32, mut end: u32, de
     end = min_nodes;
   }
 
-  let whitelist = get_coldkey_whitelist(start, end);
+  let whitelist = get_initial_coldkeys(start, end);
 
   let add_subnet_data = RegistrationSubnetData {
     name: subnet_path.clone().into(),
@@ -103,7 +103,7 @@ pub fn build_activated_subnet(subnet_path: Vec<u8>, start: u32, mut end: u32, de
     node_activation_interval: 0,
     node_queue_period: 1,
     max_node_penalties: 3,
-    coldkey_whitelist: whitelist,
+    initial_coldkeys: whitelist,
   };
 
   // --- Register subnet for activation
@@ -188,6 +188,8 @@ pub fn build_activated_subnet(subnet_path: Vec<u8>, start: u32, mut end: u32, de
   // Add 100e18 to account for block increase on activation
   let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
   let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
+
+  assert_ne!(min_subnet_delegate_stake, u128::MAX);
   // --- Add the minimum required delegate stake balance to activate the subnet
   assert_ok!(
     Network::add_to_delegate_stake(
@@ -251,7 +253,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     end = min_nodes;
   }
 
-  let whitelist = get_coldkey_whitelist(start, end);
+  let whitelist = get_initial_coldkeys(start, end);
 
   let add_subnet_data = RegistrationSubnetData {
     name: subnet_path.clone().into(),
@@ -263,7 +265,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     node_activation_interval: 0,
     node_queue_period: 1,
     max_node_penalties: 3,
-    coldkey_whitelist: whitelist,
+    initial_coldkeys: whitelist,
   };
 
   // --- Register subnet for activation
@@ -374,7 +376,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
   );
 }
 
-pub fn get_coldkey_whitelist(start: u32, end: u32) -> BTreeSet<AccountId> {
+pub fn get_initial_coldkeys(start: u32, end: u32) -> BTreeSet<AccountId> {
   let mut whitelist = BTreeSet::new();
   for n in start+1..end+1 {
     whitelist.insert(account(n));

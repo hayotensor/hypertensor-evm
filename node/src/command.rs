@@ -43,17 +43,35 @@ impl SubstrateCli for Cli {
 		Ok(match id {
 			"dev" => {
 				let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
-				Box::new(chain_spec::development_config(enable_manual_seal))
+				Box::new(chain_spec::development_chain_spec(enable_manual_seal)?)
 			}
-			"development" => {
+			"eth_dev" => {
 				let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
-				Box::new(chain_spec::development_config(enable_manual_seal))
+				Box::new(chain_spec::eth_development_chain_spec(enable_manual_seal)?)
 			}
-			"" | "local" => Box::new(chain_spec::local_testnet_config()),
-			path => Box::new(chain_spec::ChainSpec::from_json_file(
-				std::path::PathBuf::from(path),
-			)?),
+			// "development" => {
+			// 	let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
+			// 	Box::new(chain_spec::development_chain_spec(enable_manual_seal)?)
+			// }
+			"" | "local" => Box::new(chain_spec::local_chain_spec()?),
+			path =>
+				Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
 		})
+
+		// Ok(match id {
+		// 	"dev" => {
+		// 		let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
+		// 		Box::new(chain_spec::development_config(enable_manual_seal))
+		// 	}
+		// 	"development" => {
+		// 		let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
+		// 		Box::new(chain_spec::development_config(enable_manual_seal))
+		// 	}
+		// 	"" | "local" => Box::new(chain_spec::local_testnet_config()),
+		// 	path => Box::new(chain_spec::ChainSpec::from_json_file(
+		// 		std::path::PathBuf::from(path),
+		// 	)?),
+		// })
 	}
 }
 

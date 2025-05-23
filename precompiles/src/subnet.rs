@@ -103,7 +103,7 @@ where
     let node_activation_interval = try_u256_to_u32(node_activation_interval)?;
     let node_queue_period = try_u256_to_u32(node_queue_period)?;
     let max_node_penalties = try_u256_to_u32(max_node_penalties)?;
-    let coldkey_whitelist: BTreeSet<R::AccountId> = coldkeys
+    let initial_coldkeys: BTreeSet<R::AccountId> = coldkeys
       .into_iter()
       .map(|a| R::AddressMapping::into_account_id(a.into()))
       .collect();
@@ -118,7 +118,7 @@ where
       node_activation_interval,
       node_queue_period,
       max_node_penalties,
-      coldkey_whitelist,
+      initial_coldkeys,
     };
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);

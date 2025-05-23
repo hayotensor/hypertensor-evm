@@ -55,7 +55,7 @@ fn test_register_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
   
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
   
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -67,8 +67,8 @@ fn test_register_subnet() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -112,7 +112,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -124,8 +124,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist.clone(),
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist.clone(),
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -157,8 +157,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist.clone(),
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist.clone(),
+      // initial_coldkeys: None,
     };
 
     assert_err!(
@@ -204,8 +204,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist.clone(),
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist.clone(),
+      // initial_coldkeys: None,
     };
 
     assert_err!(
@@ -233,7 +233,7 @@ fn test_register_subnet_exists_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -245,8 +245,8 @@ fn test_register_subnet_exists_error() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -291,8 +291,8 @@ fn test_register_subnet_exists_error() {
 //       name: subnet_path.clone().into(),
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
-//       // coldkey_whitelist: Some(BTreeSet::new()),
-//       coldkey_whitelist: None,
+//       // initial_coldkeys: Some(BTreeSet::new()),
+//       initial_coldkeys: None,
 //     };
     
 //     let epoch_length = EpochLength::get();
@@ -313,8 +313,8 @@ fn test_register_subnet_exists_error() {
 //       name: subnet_path.clone().into(),
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
-//       // coldkey_whitelist: Some(BTreeSet::new()),
-//       coldkey_whitelist: None,
+//       // initial_coldkeys: Some(BTreeSet::new()),
+//       initial_coldkeys: None,
 //     };
 
 //     assert_err!(
@@ -359,8 +359,8 @@ fn test_register_subnet_exists_error() {
 //         name: name,
 //         max_node_registration_epochs: 16,
 //         node_registration_interval: 0,
-      // coldkey_whitelist: Some(BTreeSet::new()),
-      // coldkey_whitelist: None,
+      // initial_coldkeys: Some(BTreeSet::new()),
+      // initial_coldkeys: None,
 //       };
 
 //       let next_subnet_total_memory_mb = TotalSubnetMemoryMB::<Test>::get() + subnet_mem_mb;
@@ -393,7 +393,7 @@ fn test_register_subnet_not_enough_balance_err() {
 
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.into(),
@@ -405,8 +405,8 @@ fn test_register_subnet_not_enough_balance_err() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
 
     let epoch_length = EpochLength::get();
@@ -440,7 +440,7 @@ fn test_activate_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -452,8 +452,8 @@ fn test_activate_subnet() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -546,7 +546,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -558,8 +558,8 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -629,7 +629,7 @@ fn test_activate_subnet_already_activated_err() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -641,8 +641,8 @@ fn test_activate_subnet_already_activated_err() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -734,7 +734,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -746,8 +746,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -850,7 +850,7 @@ fn test_activate_subnet_initializing_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -862,8 +862,8 @@ fn test_activate_subnet_initializing_error() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -1005,7 +1005,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -1017,8 +1017,8 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -1083,7 +1083,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_coldkey_whitelist(0, min_nodes+1);
+    let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
       name: subnet_path.clone().into(),
@@ -1095,8 +1095,8 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       node_activation_interval: 0,
       node_queue_period: 1,
       max_node_penalties: 3,
-      coldkey_whitelist: whitelist,
-      // coldkey_whitelist: None,
+      initial_coldkeys: whitelist,
+      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();

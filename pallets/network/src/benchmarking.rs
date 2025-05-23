@@ -113,7 +113,7 @@ fn build_activated_subnet<T: Config>(
 	let registration_blocks = MinSubnetRegistrationBlocks::<T>::get();
 
 	let min_nodes = MinSubnetNodes::<T>::get();
-	let whitelist = get_coldkey_whitelist::<T>(start, end);
+	let whitelist = get_initial_coldkeys::<T>(start, end);
 
 	let register_subnet_data = RegistrationSubnetData {
 		name: subnet_path.clone(),
@@ -125,7 +125,7 @@ fn build_activated_subnet<T: Config>(
 		node_activation_interval: 0,
 		node_queue_period: 1,
 		max_node_penalties: 3,
-		coldkey_whitelist: whitelist,
+		initial_coldkeys: whitelist,
 	};
 
 		// --- Register subnet for activation
@@ -295,7 +295,7 @@ pub fn u128_to_balance<T: frame_system::Config + pallet::Config>(
 	input.try_into().ok()
 }
 
-pub fn get_coldkey_whitelist<T: Config>(start: u32, end: u32) -> BTreeSet<T::AccountId> {
+pub fn get_initial_coldkeys<T: Config>(start: u32, end: u32) -> BTreeSet<T::AccountId> {
   let mut whitelist = BTreeSet::new();
   for n in start+1..end+1 {
     whitelist.insert(funded_account::<T>("subnet_node_account", n));
@@ -319,7 +319,7 @@ mod benchmarks {
 		let registration_blocks = MinSubnetRegistrationBlocks::<T>::get();
 
 		let min_nodes = MinSubnetNodes::<T>::get();
-		let whitelist = get_coldkey_whitelist::<T>(0, min_nodes);
+		let whitelist = get_initial_coldkeys::<T>(0, min_nodes);
 
 		let register_subnet_data = RegistrationSubnetData {
 			name: DEFAULT_SUBNET_PATH.into(),
@@ -331,7 +331,7 @@ mod benchmarks {
 			node_activation_interval: 0,
 			node_queue_period: 1,
 			max_node_penalties: 3,
-			coldkey_whitelist: whitelist,
+			initial_coldkeys: whitelist,
 		};
 	
 		let current_block_number = get_current_block_as_u32::<T>();
@@ -361,7 +361,7 @@ mod benchmarks {
 		let deposit_amount: u128 = DEFAULT_DEPOSIT_AMOUNT;
 		let amount: u128 = DEFAULT_SUBNET_NODE_STAKE;
 		let min_nodes = MinSubnetNodes::<T>::get();
-		let whitelist = get_coldkey_whitelist::<T>(0, end);
+		let whitelist = get_initial_coldkeys::<T>(0, end);
 
 		let register_subnet_data = RegistrationSubnetData {
 			name: DEFAULT_SUBNET_PATH.into(),
@@ -373,7 +373,7 @@ mod benchmarks {
 			node_activation_interval: 0,
 			node_queue_period: 1,
 			max_node_penalties: 3,
-			coldkey_whitelist: whitelist,
+			initial_coldkeys: whitelist,
 		};
 
 		assert_ok!(Network::<T>::register_subnet(RawOrigin::Signed(funded_initializer.clone()).into(), register_subnet_data));

@@ -648,7 +648,7 @@ pub mod pallet {
 	///															 - Blocks between each node acivation
 	/// * `node_queue_period` - Epochs a node stays in the Queue class before being Included in consensus.
 	/// * `max_node_penalties` - Maximum penalties a node can accrue before being removed.
-	/// * `coldkey_whitelist` - Whitelist of coldkeys for registration while subnets are registering. This is removed on activation.
+	/// * `initial_coldkeys` - Whitelist of coldkeys for registration while subnets are registering. This is removed on activation.
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct RegistrationSubnetData<AccountId> {
 		pub name: Vec<u8>,
@@ -660,7 +660,7 @@ pub mod pallet {
 		pub node_activation_interval: u32,
 		pub node_queue_period: u32,
 		pub max_node_penalties: u32,
-		pub coldkey_whitelist: BTreeSet<AccountId>,
+		pub initial_coldkeys: BTreeSet<AccountId>,
 	}
 	
 	// /// Subnet data used before activation
@@ -3566,7 +3566,7 @@ pub mod pallet {
 			// Store whitelisted coldkeys for registration period
 			SubnetRegistrationColdkeyWhitelist::<T>::insert(
 				subnet_id, 
-				subnet_registration_data.coldkey_whitelist
+				subnet_registration_data.initial_coldkeys
 			);
 
 			// Store unique name
@@ -4394,16 +4394,19 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
-		pub subnet_path: Vec<u8>,
+		pub subnet_name: Vec<u8>,
 		pub subnet_nodes: Vec<(T::AccountId, PeerId)>,
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
+			use sp_core::U256;
+			use sp_core::crypto::Ss58Codec;
+
 			MinSubnetRegistrationBlocks::<T>::put(50);
 
-			if self.subnet_path.last().is_none() {
+			if self.subnet_name.last().is_none() {
 				return
 			}
 			
@@ -4411,7 +4414,7 @@ pub mod pallet {
 				
 			let subnet_data = SubnetData {
 				id: subnet_id,
-				name: self.subnet_path.clone(),
+				name: self.subnet_name.clone(),
 				repo: Vec::new(),
 				description: Vec::new(),
 				misc: Vec::new(),
@@ -4420,7 +4423,7 @@ pub mod pallet {
 			
 			SubnetRegistrationEpoch::<T>::insert(subnet_id, 1);
 			// Store unique name
-			SubnetPaths::<T>::insert(self.subnet_path.clone(), subnet_id);
+			SubnetPaths::<T>::insert(self.subnet_name.clone(), subnet_id);
 			// Store subnet data
 			SubnetsData::<T>::insert(subnet_id, subnet_data.clone());
 			// Increase total subnets count
@@ -4434,30 +4437,83 @@ pub mod pallet {
 			let min_subnet_stake_balance = min_stake_balance;
 
 			let total_issuance_as_balance = T::Currency::total_issuance();
+
+			let alith = &self.subnet_nodes.iter().next();
+			log::info!("alith                                {:?}", alith);
+
+			// let alith_account_id: T::AccountId = <Result<AccountId32, PublicError> as Into<T>>::into(sp_runtime::AccountId32::from_ss58check("5Fghzk1AJt88PeFEzuRfXzbPchiBbsVGTTXcdx599VdZzkTA"));
+
+			let alith_balance = T::Currency::free_balance(&alith.unwrap().0);
+			log::info!("alith_balance                        {:?}", alith_balance);
+
 			let total_issuance: u128 = total_issuance_as_balance.try_into().unwrap_or(0);
+			log::info!("total_issuance                       {:?}", total_issuance);
+
 			let total_staked: u128 = TotalStake::<T>::get();
+			log::info!("total_staked                         {:?}", total_staked);
+
 			let total_delegate_staked: u128 = TotalDelegateStake::<T>::get();
+			log::info!("total_delegate_staked                {:?}", total_delegate_staked);
+
 			let total_node_delegate_staked: u128 = TotalNodeDelegateStake::<T>::get();
+			log::info!("total_node_delegate_staked           {:?}", total_node_delegate_staked);
+
 			let total_network_issuance = total_issuance
 				.saturating_add(total_staked)
 				.saturating_add(total_delegate_staked)
 				.saturating_add(total_node_delegate_staked);
 	
-			let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();	
-			let min_subnet_delegate_stake_balance = total_network_issuance.saturating_mul(factor).saturating_div(1000000000);
+			log::info!("total_network_issuance               {:?}", total_network_issuance);
 
-			TotalSubnetDelegateStakeBalance::<T>::insert(subnet_id, min_subnet_delegate_stake_balance);
-			
+			let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
+
+			let x = U256::from(total_network_issuance);
+			let y = U256::from(factor);
+
+			// x * y / 100.0
+
+			let result = x * y / U256([0xde0b6b3a7640000, 0x0, 0x0, 0x0]);
+			log::info!("result                               {:?}", result);
+
+			let min_subnet_delegate_stake_balance: u128 = result.try_into().unwrap_or(u128::MAX);
+
+			log::info!("min_subnet_delegate_stake_balance    {:?}", min_subnet_delegate_stake_balance);
+
+			// --- Mitigate inflation attack
+			TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(1000));
+
+			// =================
+			// convert_to_shares
+			// =================
+			let total_subnet_delegated_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+			log::info!("total_subnet_delegated_stake_balance {:?}", total_subnet_delegated_stake_balance);
+
+			let balance = U256::from(min_subnet_delegate_stake_balance);
+			log::info!("balance                              {:?}", balance);
+			let total_shares = U256::from(0) + U256::from(10_u128.pow(1));
+			log::info!("total_shares                         {:?}", total_shares);
+			let total_balance = U256::from(total_subnet_delegated_stake_balance) + U256::from(1);
+			log::info!("total_balance                        {:?}", total_balance);
+		
+			let shares = balance * total_shares / total_balance;
+			log::info!("shares U256                          {:?}", total_balance);
+			let shares: u128 = shares.try_into().unwrap_or(u128::MAX);
+			log::info!("shares u128                          {:?}", total_balance);
+
+			// =====================================
+			// increase_account_delegate_stake_shares
+			// =====================================
+			// -- increase total subnet delegate stake balance
+			TotalSubnetDelegateStakeBalance::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(min_subnet_delegate_stake_balance));
+			// -- increase total subnet delegate stake shares
+			TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(shares));
+			TotalDelegateStake::<T>::set(min_subnet_delegate_stake_balance);
+
 			// --- Initialize subnet nodes
 			// Only initialize to test using subnet nodes
 			// If testing using subnet nodes in a subnet, comment out the ``for`` loop
 
 			let mut stake_amount: u128 = MinStakeBalance::<T>::get();
-			
-
-			
-			
-			
 			
 			let mut count = 0;
 			for (account_id, peer_id) in &self.subnet_nodes {

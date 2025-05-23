@@ -1287,8 +1287,8 @@ fn test_reward_subnets_v2_account_penalty_count() {
 //       max_node_registration_epochs: 16,
 //       node_registration_interval: 0,
 //       node_queue_period: 1,
-      // coldkey_whitelist: Some(BTreeSet::new()),
-      // coldkey_whitelist: None,
+      // initial_coldkeys: Some(BTreeSet::new()),
+      // initial_coldkeys: None,
 //     };
   
 //     let epoch_length = EpochLength::get();

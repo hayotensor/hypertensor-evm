@@ -17,7 +17,7 @@ import { AbiItem, PublicClient } from "viem";
 import { forceSetBalance } from "../src/test";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 
-describe("Test neuron precompile reveal weights", () => {
+describe("Test staking", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
