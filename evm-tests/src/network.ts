@@ -66,7 +66,6 @@ export async function transferBalanceFromSudo(
   const sudoPair: KeyringPair = keyring.addFromUri("0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133");
 
   const alithSs58 = convertH160ToSS58(sudoPair.address)
-  console.log("alithSs58", alithSs58)
 
   await new Promise<void>((resolve, reject) => {
     api.tx.balances
@@ -78,9 +77,6 @@ export async function transferBalanceFromSudo(
           console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
         } else if (result.status.isFinalized) {
           console.log(`Transaction finalized at blockHash ${result.status.asFinalized}`);
-
-          const balanceOnChain = (await api.query.system.account(who));
-          console.log("forceSetBalanceToSs58Address unsub balanceOnChain", balanceOnChain.toJSON())
 
           // unsubscribe safely if available
           if (typeof unsub === "function") unsub();
@@ -107,6 +103,128 @@ export async function transferBalanceFromSudo(
   expect(balance).to.be.equal(balance_);
 }
 
+// ==================
+// Subnet interaction
+// ==================
+
+export async function registerSubnet(
+  contract: Contract, 
+  name: string,
+  repo: string,
+  description: string,
+  misc: string,
+  maxNodeRegistrationEpochs: string,
+  nodeRegistrationInterval: string,
+  nodeActivationInterval: string,
+  nodeQueuePeriod: string,
+  maxNodePenalties: string,
+  initialColdkeys: string[],
+  fee: bigint
+) {
+  const tx = await contract.registerSubnet(
+    name,
+    repo,
+    description,
+    misc,
+    maxNodeRegistrationEpochs,
+    nodeRegistrationInterval,
+    nodeActivationInterval,
+    nodeQueuePeriod,
+    maxNodePenalties,
+    initialColdkeys,
+    { value: fee }
+  );
+
+  await tx.wait();
+}
+
+export async function getCurrentRegistrationCost(
+  contract: Contract, 
+  api: ApiPromise,
+) {
+    const ethBlockNumber = await api.rpc.eth.blockNumber()
+
+    // Get the current block number
+    const header = await api.rpc.chain.getHeader();
+    const subBlock = header.number.toNumber();
+
+    expect(Number(ethBlockNumber)).to.be.equal(Number(subBlock))
+
+    const epochLength = api.consts.network.epochLength.toHuman()
+    const epoch = BigInt(subBlock) / BigInt(Number(epochLength))
+
+    const cost = await contract.registrationCost(epoch);
+
+    return cost
+}
+
+// ===========
+// Subnet node
+// ===========
+export async function addSubnetNode(
+  contract: Contract, 
+  subnetId: string,
+  hotkey: string,
+  peerId: string,
+  bootstrapPeerId: string,
+  delegateRewardRate: string,
+  stakeToBeAdded: bigint,
+) {
+  const tx = await contract.addSubnetNode(
+    subnetId,
+    hotkey,
+    peerId,
+    bootstrapPeerId,
+    delegateRewardRate,
+    stakeToBeAdded,
+    { value: stakeToBeAdded }
+  );
+
+  await tx.wait();
+}
+
+export async function registerSubnetNode(
+  contract: Contract, 
+  subnetId: string,
+  hotkey: string,
+  peerId: string,
+  bootstrapPeerId: string,
+  delegateRewardRate: string,
+  stakeToBeAdded: bigint,
+) {
+  const tx = await contract.registerSubnetNode(
+    subnetId,
+    hotkey,
+    peerId,
+    bootstrapPeerId,
+    delegateRewardRate,
+    stakeToBeAdded,
+    { value: stakeToBeAdded }
+  );
+
+  await tx.wait();
+}
+
+export async function activateSubnetNode(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+) {
+  const tx = await contract.activateSubnetNode(
+    subnetId,
+    subnetNodeId,
+  );
+
+  await tx.wait();
+}
+
+
+
+
+// ==============
+// Delegate stake
+// ==============
+
 export async function addToDelegateStake(
   contract: Contract, 
   subnetId: string,
@@ -124,5 +242,89 @@ export async function removeDelegateStake(
 ) {
   const tx = await contract.removeDelegateStake(subnetId, shares);
 
-  const receipt = await tx.wait();
+  await tx.wait();
+}
+
+export async function swapDelegateStake(
+  contract: Contract, 
+  fromSubnetId: string,
+  toSubnetId: string,
+  shares: bigint
+) {
+  const tx = await contract.swapDelegateStake(fromSubnetId, toSubnetId, shares);
+
+  await tx.wait();
+}
+
+export async function transferDelegateStake(
+  contract: Contract, 
+  subnetId: string,
+  toAccount: string,
+  shares: bigint
+) {
+  const tx = await contract.transferDelegateStake(subnetId, toAccount, shares);
+
+  await tx.wait();
+}
+
+// ===================
+// Node delegate stake
+// ===================
+
+export async function addToNodeDelegateStake(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+  stakeAmount: bigint
+) {
+  const tx = await contract.addToNodeDelegateStake(subnetId, subnetNodeId, stakeAmount);
+
+  await tx.wait();
+}
+
+export async function removeNodeDelegateStake(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+  shares: bigint
+) {
+  const tx = await contract.removeNodeDelegateStake(subnetId, subnetNodeId, shares);
+
+  await tx.wait();
+}
+
+export async function swapNodeDelegateStake(
+  contract: Contract, 
+  fromSubnetId: string,
+  fromSubnetNodeId: string,
+  toSubnetId: string,
+  toSubnetNodeId: string,
+  shares: bigint
+) {
+  const tx = await contract.swapNodeDelegateStake(
+    fromSubnetId,
+    fromSubnetNodeId,
+    toSubnetId,
+    toSubnetNodeId,
+    shares
+  );
+
+  await tx.wait();
+}
+
+export async function transferNodeDelegateStake(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+  toAccountId: string,
+  shares: bigint
+) {
+  const tx = await contract.transferNodeDelegateStake(
+    subnetId,
+    subnetNodeId,
+    toAccountId,
+    shares,
+  );
+
+  await tx.wait();
 }

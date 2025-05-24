@@ -30,6 +30,12 @@ interface Staking  {
     uint256 delegateStakeSharesToSwap
   ) external;
   
+  function transferDelegateStake(
+    uint256 subnetId,
+    address toAccount,
+    uint256 delegateStakeSharesToTransfer
+  ) external;
+
   function removeDelegateStake(
     uint256 subnetId,
     uint256 sharesToBeRemoved
@@ -46,12 +52,19 @@ interface Staking  {
     uint256 nodeDelegateStakeToBeAdded
   ) external payable;
 
-  function transferNodeDelegateStake(
+  function swapNodeDelegateStake(
     uint256 fromSubnetId,
     uint256 fromSubnetNodeId,
     uint256 toSubnetId,
     uint256 toSubnetNodeId,
     uint256 nodeDelegateStakeSharesToSwap
+  ) external;
+
+  function transferNodeDelegateStake(
+    uint256 subnetId,
+    uint256 subnetNodeId,
+    address toAccount,
+    uint256 delegateStakeSharesToTransfer
   ) external;
 
   function removeNodeDelegateStake(
@@ -91,4 +104,8 @@ interface Staking  {
   function accountSubnetDelegateStakeShares(address hotkey, uint256 subnetId) external view returns (uint256);
 
   function accountSubnetDelegateStakeBalance(address hotkey, uint256 subnetId) external view returns (uint256);
+
+  function accountNodeDelegateStakeShares(address hotkey, uint256 subnetId, uint256 subnetNodeId) external view returns (uint256);
+
+  function accountNodeDelegateStakeBalance(address hotkey, uint256 subnetId, uint256 subnetNodeId) external view returns (uint256);
 }

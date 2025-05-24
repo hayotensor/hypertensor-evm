@@ -4,11 +4,14 @@ import { ethers, getAddress } from "ethers"
 import { ETH_LOCAL_URL } from "./config"
 import Subnet from "../build/contracts/Subnet.json";
 import Staking from "../build/contracts/Staking.json";
+import PeerId from 'peer-id'
 
 export const SEED_PATH = "subnet-name";
 export const TEST_PATH = "subnet-test-name";
 export const GENESIS_ACCOUNT = "0x6be02d1d3665660d22ff9624b7be0551ee1ac91b";
 export const GENESIS_ACCOUNT_PRIVATE_KEY = "0x99B3C12287537E38C90A9219D4CB074A89A16E9CDB20BF85728EBD97C343E342";
+
+
 export const SUBNET_CONTRACT_ABI = Subnet.abi;
 export const SUBNET_CONTRACT_ADDRESS = hash(2049);
 
@@ -73,4 +76,21 @@ export function hash(n: number) {
   view.setBigUint64(12, BigInt(n)); // store in last 8 bytes, big-endian
   const hex = "0x" + Buffer.from(bytes).toString("hex");
   return getAddress(hex); // optional: applies EIP-55 checksum
+}
+
+const characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+export function generateRandomString(length: number) {
+    let result = ' ';
+    const charactersLength = characters.length;
+    for ( let i = 0; i < length; i++ ) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+    return result;
+}
+
+export async function generateRandomEd25519PeerId() {
+    const id = await PeerId.create({ bits: 256, keyType: 'Ed25519' })
+    return id.toB58String()
 }

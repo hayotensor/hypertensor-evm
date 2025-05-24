@@ -1,23 +1,28 @@
 import * as assert from "assert";
-import { getDevnetApi, getRandomSubstrateKeypair } from "../src/substrate"
+import { getDevnetApi, getRandomSubstrateKeypair, waitForFinalizedBlock } from "../src/substrate"
 import { dev } from "@polkadot-api/descriptors"
 import { PolkadotSigner, TypedApi } from "polkadot-api";
+import { convertPublicKeyToSs58, convertH160ToSS58, convertSs58ToAccountId20, ss58ToAccountId20 } from "../src/address-utils"
 import { ethers } from "ethers"
-import { generateRandomEthersWallet, generateRandomString, getPublicClient, STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS } from "../src/utils"
+import { generateRandomEthersWallet, generateRandomString, getPublicClient, hash, SEED_PATH, STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS } from "../src/utils"
 import {
     addToDelegateStake,
+    forceSetBalanceToEthAddress, forceSetBalanceToSs58Address,
     getCurrentRegistrationCost,
     registerSubnet,
     removeDelegateStake,
-    transferBalanceFromSudo
+    swapDelegateStake,
+    transferBalanceFromSudo,
+    transferDelegateStake
 } from "../src/network"
 import { ETH_LOCAL_URL, SUB_LOCAL_URL } from "../src/config";
-import { PublicClient } from "viem";
+import { AbiItem, PublicClient } from "viem";
+import { forceSetBalance } from "../src/test";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 
 // npm test -- -g "test delegate staking"
-describe("test delegate staking", () => {
+describe("test swap and transfer delegate staking", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -76,7 +81,7 @@ describe("test delegate staking", () => {
             wallet1.address,
             sudoTransferAmount,
         )
-        
+
         await transferBalanceFromSudo(
             api,
             papiApi,
@@ -108,9 +113,13 @@ describe("test delegate staking", () => {
         subnetId = await subnetContract.getSubnetId(subnetName);
     })
 
-    // Status: passing
-    // npm test -- -g "testing add delegate stake"
-    it("testing add delegate stake", async () => {
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // Requires precompiling/seeding subnet (see `build` in pallets/network/src/lib.rs)
+    // - This test requires 2 subnets -
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // Status: pending
+    // npm test -- -g "testing swap delegate stake" 
+    it("testing swap delegate stake", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
         // ==================
@@ -122,9 +131,6 @@ describe("test delegate staking", () => {
         );
         const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
 
-        expect(Number(sharesBefore)).to.be.equal(0);
-        expect(Number(balanceBefore)).to.be.equal(0);
-
         await addToDelegateStake(
           stakingContract, 
           subnetId,
@@ -134,16 +140,37 @@ describe("test delegate staking", () => {
         const sharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet1.address, subnetId);
         const balanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, subnetId);
 
-        expect(Number(sharesAfter)).to.be.greaterThan(0);
-        expect(Number(balanceAfter)).to.be.greaterThan(0);
-		expect(sharesBefore).to.be.lessThan(sharesAfter);
+        expect(sharesBefore).to.be.lessThan(sharesAfter);
         expect(balanceBefore).to.be.lessThan(balanceAfter);
+
+        // ==================
+        // Swap delegate stake
+        // ==================
+        const toSubnetId = "2";
+        await swapDelegateStake(
+          stakingContract, 
+          subnetId,
+          toSubnetId,
+          sharesBefore
+        )
+
+        const toSharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet1.address, toSubnetId);
+        const toBalanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet1.address, toSubnetId);
+
+        expect(toBalanceAfter).to.be.within(balanceBefore * 0.99, balanceBefore);
     })
 
     // Status: passing
-    // npm test -- -g "testing remove delegate stake"
-    it("testing remove delegate stake", async () => {
-        const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
+    // npm test -- -g "testing transfer delegate stake" 
+    it("testing transfer delegate stake", async () => {
+        let stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
+
+        const sharesBefore = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
+        const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+
+        // Ensure fresh wallet
+        expect(Number(sharesBefore)).to.be.equal(0);
+        expect(Number(balanceBefore)).to.be.equal(0);
 
         // ==================
         // Add delegate stake
@@ -154,29 +181,41 @@ describe("test delegate staking", () => {
           stakeAmount
         )
 
-        // ==================
-        // Remove delegate stake
-        // ==================
+        // =======================
+        // Transfer delegate stake 
+        //
+        // from wallet2 to wallet8
+        // =======================
 
-        const sharesBefore = await stakingContract.accountSubnetDelegateStakeShares(
-            wallet2.address, 
-            subnetId
-        );
-        const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+        const sharesBeforeTransfer = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
+        const balanceBeforeTransfer = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
 
-        expect(Number(sharesBefore)).to.be.equal(0);
-        expect(Number(balanceBefore)).to.be.equal(0);
+        // Ensure stake added
+        expect(Number(sharesBeforeTransfer)).to.be.greaterThan(0);
+        expect(Number(balanceBeforeTransfer)).to.be.greaterThan(0);
 
-        await removeDelegateStake(
+        const toSharesBeforeTransfer = await stakingContract.accountSubnetDelegateStakeShares(wallet8.address, subnetId);
+        const toBalanceBeforeTransfer = await stakingContract.accountSubnetDelegateStakeBalance(wallet8.address, subnetId);
+
+        // Ensure fresh wallet
+        expect(Number(toSharesBeforeTransfer)).to.be.equal(0);
+        expect(Number(toBalanceBeforeTransfer)).to.be.equal(0);
+
+        await transferDelegateStake(
           stakingContract, 
           subnetId,
-          sharesBefore
+          wallet8.address,
+          sharesBeforeTransfer
         )
 
-        const sharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
-        const balanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+        const sharesAfterTransfer = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
+        const balanceAfterTransfer = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
 
-		expect(sharesBefore).to.be.greaterThan(sharesAfter);
-        expect(balanceBefore).to.be.greaterThan(balanceAfter);
+        expect(sharesAfterTransfer).to.be.equal(BigInt(0));
+
+        const toSharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet8.address, subnetId);
+        const toBalanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet8.address, subnetId);
+
+        expect(toSharesAfter).to.be.equal(sharesBeforeTransfer);
     })
 });
