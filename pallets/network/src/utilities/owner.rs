@@ -25,10 +25,16 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    // SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+    //   if let Some(data) = maybe_data {
+    //     data.name = value.clone();
+    //   }
+    // });
+
     Ok(())
   }
 
-  pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32, name: Vec<u8>) -> DispatchResult {
+  pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -36,12 +42,268 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    // TODO: check name is subnet name
-
     Self::do_remove_subnet(
-      name,
+      subnet_id,
       SubnetRemovalReason::Owner,
     ).map_err(|e| e)?;
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_name(origin: T::RuntimeOrigin, subnet_id: u32, value: Vec<u8>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+      if let Some(data) = maybe_data {
+        data.name = value.clone();
+      }
+    });
+
+    Self::deposit_event(Event::SubnetNameUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_repo(origin: T::RuntimeOrigin, subnet_id: u32, value: Vec<u8>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+      if let Some(data) = maybe_data {
+        data.repo = value.clone();
+      }
+    });
+
+    Self::deposit_event(Event::SubnetRepoUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_description(origin: T::RuntimeOrigin, subnet_id: u32, value: Vec<u8>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+      if let Some(data) = maybe_data {
+        data.description = value.clone();
+      }
+    });
+
+    Self::deposit_event(Event::SubnetDescriptionUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_misc(origin: T::RuntimeOrigin, subnet_id: u32, value: Vec<u8>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+      if let Some(data) = maybe_data {
+        data.misc = value.clone();
+      }
+    });
+
+    Self::deposit_event(Event::SubnetMiscUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_churn_limit(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ChurnLimit::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::ChurnLimitUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_registration_queue_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    RegistrationQueueEpochs::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::RegistrationQueueEpochsUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_activation_grace_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ActivationGraceEpochs::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::ActivationGraceEpochsUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_queue_classification_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    QueueClassificationEpochs::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::QueueClassificationEpochsUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_included_classification_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    IncludedClassificationEpochs::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::IncludedClassificationEpochsUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_max_node_penalties(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    MaxSubnetNodePenalties::<T>::insert(subnet_id, value);
+
+    Self::deposit_event(Event::MaxSubnetNodePenaltiesUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_add_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      !Self::is_subnet_active(subnet_id),
+      Error::<T>::SubnetMustBeRegistering
+    );
+
+    SubnetRegistrationInitialColdkeys::<T>::mutate(subnet_id, |accounts| {
+      let accounts_set = accounts.get_or_insert_with(BTreeSet::new);
+      accounts_set.extend(coldkeys.iter().cloned());
+    });
+
+    Ok(())
+  }
+
+  pub fn do_owner_remove_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      !Self::is_subnet_active(subnet_id),
+      Error::<T>::SubnetMustBeRegistering
+    );
+
+    SubnetRegistrationInitialColdkeys::<T>::mutate(subnet_id, |maybe_accounts| {
+      if let Some(existing_accounts) = maybe_accounts {
+        // Remove all accounts that exist in coldkeys
+        for account in &coldkeys {
+          existing_accounts.remove(account);
+        }
+        
+        // Clean up if the set becomes empty
+        if existing_accounts.is_empty() {
+          *maybe_accounts = None;
+        }
+      }
+    });
 
     Ok(())
   }
@@ -54,86 +316,6 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-
-    Ok(())
-  }
-
-  pub fn do_owner_update_registration_interval(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    ensure!(
-      value <= MaxSubnetRegistrationInterval::<T>::get(),
-      Error::<T>::MaxSubnetRegistration
-    );
-
-    SubnetNodeRegistrationInterval::<T>::insert(subnet_id, value);
-
-    Self::deposit_event(Event::SubnetEntryIntervalUpdate { 
-      subnet_id: subnet_id,
-      owner: coldkey, 
-      value: value 
-    });
-
-    Ok(())
-  }
-
-  pub fn do_owner_update_activation_interval(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    ensure!(
-      value <= MaxSubnetActivationInterval::<T>::get(),
-      Error::<T>::MaxSubnetActivation
-    );
-
-    SubnetNodeActivationInterval::<T>::insert(subnet_id, value);
-
-    Self::deposit_event(Event::SubnetEntryIntervalUpdate { 
-      subnet_id: subnet_id,
-      owner: coldkey, 
-      value: value 
-    });
-
-    Ok(())
-  }
-
-  pub fn do_owner_add_to_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    ensure!(
-      !Self::is_subnet_active(subnet_id),
-      Error::<T>::SubnetMustBeRegistering
-    );
-
-    Ok(())
-  }
-
-  pub fn do_owner_remove_from_initial_coldkeys(origin: T::RuntimeOrigin, subnet_id: u32, coldkeys: BTreeSet<T::AccountId>) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    ensure!(
-      !Self::is_subnet_active(subnet_id),
-      Error::<T>::SubnetMustBeRegistering
-    );
 
     Ok(())
   }
@@ -193,18 +375,23 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  /// Update max subnet node penalties
-  pub fn do_owner_update_max_penalties(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    Ok(())
-  }
-
+  /// Initiates the transfer of a subnet's ownership to a new account using a 2-step model.
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  /// It sets a pending owner, who must later explicitly accept the transfer via
+  /// [`do_accept_subnet_ownership`]. Ownership is not transferred immediately.
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet being transferred.
+  /// - `new_owner`: The `AccountId` of the new proposed owner.
+  ///
+  /// # Undoing a Transfer
+  /// To cancel a pending transfer, the current owner may call this function
+  /// again with a zero address, effectively invalidating the pending owner.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
   pub fn do_transfer_subnet_ownership(origin: T::RuntimeOrigin, subnet_id: u32, new_owner: T::AccountId) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -218,6 +405,20 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  /// Accepts ownership of a subnet that was previously offered via a transfer.
+  ///
+  /// This function must be called by the account set as the `PendingSubnetOwner`
+  /// for the specified subnet. Upon successful execution, the caller becomes
+  /// the new `SubnetOwner`.
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must match the pending owner.
+  /// - `subnet_id`: The ID of the subnet being claimed.
+  ///
+  /// # Errors
+  /// - [`NoPendingSubnetOwner`]: No transfer was initiated.
+  /// - [`NotPendingSubnetOwner`]: Caller is not the designated pending owner.
+  /// - [`InvalidSubnetId`]: Subnet does not exist or has no registered owner.
   pub fn do_accept_subnet_ownership(origin: T::RuntimeOrigin, subnet_id: u32) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -242,7 +443,8 @@ impl<T: Config> Pallet<T> {
       }
     )?;
 
+    PendingSubnetOwner::<T>::remove(subnet_id);
+
     Ok(())
   }
-
 }

@@ -54,7 +54,7 @@ use crate::{
 #[test]
 fn test_add_to_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
@@ -102,7 +102,7 @@ fn test_add_to_node_delegate_stake() {
 #[test]
 fn test_remove_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
 
@@ -196,7 +196,7 @@ fn test_remove_node_delegate_stake() {
 #[test]
 fn test_swap_node_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
@@ -352,7 +352,7 @@ fn test_swap_node_delegate_stake() {
 // #[test]
 // fn test_validate_with_delegate_rewards_rate() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_name: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 // let stake_amount: u128 = MinStakeBalance::<Test>::get();

@@ -21,8 +21,8 @@ import { forceSetBalance } from "../src/test";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 
-// npm test -- -g "test delegate staking"
-describe("test swap and transfer delegate staking", () => {
+// npm test -- -g "test swap and transfer delegate staking-0xrh2"
+describe("test swap and transfer delegate staking-0xrh2", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -110,6 +110,9 @@ describe("test swap and transfer delegate staking", () => {
             cost // fee: u32
         )
 
+        // TODO:
+        //  - Remove subnet registration interval to add second subnet
+
         subnetId = await subnetContract.getSubnetId(subnetName);
     })
 
@@ -118,8 +121,8 @@ describe("test swap and transfer delegate staking", () => {
     // - This test requires 2 subnets -
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // Status: pending
-    // npm test -- -g "testing swap delegate stake" 
-    it("testing swap delegate stake", async () => {
+    // npm test -- -g "testing swap delegate stake-0xHWe28" 
+    it("testing swap delegate stake-0xHWe28", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
         // ==================
@@ -161,8 +164,8 @@ describe("test swap and transfer delegate staking", () => {
     })
 
     // Status: passing
-    // npm test -- -g "testing transfer delegate stake" 
-    it("testing transfer delegate stake", async () => {
+    // npm test -- -g "testing transfer delegate stake-0xZPQG6sy123" 
+    it("testing transfer delegate stake-0xZPQG6sy123", async () => {
         let stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
 
         const sharesBefore = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);

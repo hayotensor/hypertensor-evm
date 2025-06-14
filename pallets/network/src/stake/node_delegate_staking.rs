@@ -321,7 +321,7 @@ impl<T: Config> Pallet<T> {
   //   subnet_id: u32,
   //   subnet_node_id: u32, 
   //   to_account_id: T::AccountId, 
-  //   node_delegate_stake_shares_to_transferred: u128
+  //   node_delegate_stake_shares_to_transfer: u128
   // ) -> DispatchResult {
   //   let account_id: T::AccountId = ensure_signed(origin)?;
 
@@ -329,7 +329,7 @@ impl<T: Config> Pallet<T> {
   //     &account_id,
   //     subnet_id,
   //     subnet_node_id,
-  //     node_delegate_stake_shares_to_transferred,
+  //     node_delegate_stake_shares_to_transfer,
   //     false,
   //   );
 
@@ -353,12 +353,12 @@ impl<T: Config> Pallet<T> {
     subnet_id: u32,
     subnet_node_id: u32, 
     to_account_id: T::AccountId, 
-    node_delegate_stake_shares_to_transferred: u128
+    node_delegate_stake_shares_to_transfer: u128
   ) -> DispatchResult {
     let account_id: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      node_delegate_stake_shares_to_transferred != 0,
+      node_delegate_stake_shares_to_transfer != 0,
       Error::<T>::NotEnoughStakeToWithdraw
     );
 
@@ -367,14 +367,14 @@ impl<T: Config> Pallet<T> {
 
     // --- Get accounts current balance
     let delegate_stake_to_be_transferred = Self::convert_to_balance(
-      node_delegate_stake_shares_to_transferred,
+      node_delegate_stake_shares_to_transfer,
       total_node_delegated_stake_shares,
       total_node_delegated_stake_balance
     );
 
     // --- Ensure transfer balance is greater than the min
     ensure!(
-      node_delegate_stake_shares_to_transferred >= MinDelegateStakeBalance::<T>::get(),
+      node_delegate_stake_shares_to_transfer >= MinDelegateStakeBalance::<T>::get(),
       Error::<T>::CouldNotConvertToBalance
     );
 
@@ -384,7 +384,7 @@ impl<T: Config> Pallet<T> {
       subnet_id,
       subnet_node_id,
       0, // Do not mutate balance
-      node_delegate_stake_shares_to_transferred,
+      node_delegate_stake_shares_to_transfer,
     );
 
     // --- Increase shares to `to_account_id`
@@ -393,7 +393,7 @@ impl<T: Config> Pallet<T> {
       subnet_id,
       subnet_node_id,
       0, // Do not mutate balance
-      node_delegate_stake_shares_to_transferred,
+      node_delegate_stake_shares_to_transfer,
     );
 
     Ok(())

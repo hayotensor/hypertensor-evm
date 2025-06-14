@@ -20,8 +20,8 @@ import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 import { Option } from '@polkadot/types';
 
-// npm test -- -g "test node delegate staking"
-describe("test node delegate staking", () => {
+// npm test -- -g "test node delegate staking-0x835yv"
+describe("test node delegate staking-0x835yv", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -153,8 +153,8 @@ describe("test node delegate staking", () => {
     })
 
     // Status: passing
-    // npm test -- -g "testing add node delegate stake"
-    it("testing add node delegate stake", async () => {
+    // npm test -- -g "testing add node delegate stake-0xw98546"
+    it("testing add node delegate stake-0xw98546", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
         const sharesBeforeAdd = await stakingContract.accountNodeDelegateStakeShares(wallet1.address, subnetId, subnetNodeId);
@@ -185,8 +185,8 @@ describe("test node delegate staking", () => {
     })
 
     // Status: passing
-    // npm test -- -g "testing remove node delegate stake"
-    it("testing remove node delegate stake", async () => {
+    // npm test -- -g "testing remove node delegate stake-0x0987s"
+    it("testing remove node delegate stake-0x0987s", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
 
         const sharesBeforeAdd = await stakingContract.accountNodeDelegateStakeShares(wallet2.address, subnetId, subnetNodeId);

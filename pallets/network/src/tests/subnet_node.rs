@@ -36,6 +36,9 @@ use crate::{
   SubnetRegistrationEpochs,
   MinStakeBalance,
   RegisteredStakeCooldownEpochs,
+  RegistrationQueue,
+  ChurnLimit,
+  RegistrationQueueEpochs,
 };
 
 ///
@@ -57,7 +60,7 @@ use crate::{
 #[test]
 fn test_register_subnet_node() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -110,7 +113,7 @@ fn test_register_subnet_node() {
 #[test]
 fn test_update_coldkey() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -317,7 +320,7 @@ fn test_update_coldkey() {
 #[test]
 fn test_update_coldkey_key_taken_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -343,7 +346,7 @@ fn test_update_coldkey_key_taken_err() {
 #[test]
 fn test_update_hotkey() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -399,7 +402,7 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
   
     let _ = Balances::deposit_creating(&account(1), cost+1000);
   
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let whitelist = get_initial_coldkeys(0, 1);
 
@@ -408,13 +411,13 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
+      max_node_penalties: 4,
       initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
     };
   
     let epoch_length = EpochLength::get();
@@ -471,7 +474,7 @@ fn test_register_subnet_node_then_activate() {
   
     let _ = Balances::deposit_creating(&account(1), cost+deposit_amount);
   
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let whitelist = get_initial_coldkeys(0, 1);
 
@@ -480,10 +483,11 @@ fn test_register_subnet_node_then_activate() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
       initial_coldkeys: whitelist,
     };
@@ -535,7 +539,7 @@ fn test_register_subnet_node_then_activate() {
 #[test]
 fn test_activate_subnet_then_register_subnet_node_then_activate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -577,89 +581,89 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
   })
 }
 
-#[test]
-fn test_activate_subnet_node_subnet_registering_or_activated_error() {
-  new_test_ext().execute_with(|| {
+// #[test]
+// fn test_activate_subnet_node_subnet_registering_or_activated_error() {
+//   new_test_ext().execute_with(|| {
 
-    let deposit_amount: u128 = 10000000000000000000000;
-    let amount: u128 = 1000000000000000000000;
+//     let deposit_amount: u128 = 10000000000000000000000;
+//     let amount: u128 = 1000000000000000000000;
 
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+//     let cost = Network::registration_cost(epoch);
   
-    let _ = Balances::deposit_creating(&account(1), cost+1000+deposit_amount);
+//     let _ = Balances::deposit_creating(&account(1), cost+1000+deposit_amount);
   
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 
-    let whitelist = get_initial_coldkeys(0, 1);
+//     let whitelist = get_initial_coldkeys(0, 1);
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+//     let add_subnet_data = RegistrationSubnetData {
+//       name: subnet_path.clone().into(),
+//       repo: Vec::new(),
+// 			description: Vec::new(),
+// 			misc: Vec::new(),
+//       max_node_registration_epochs: 16,
+//       node_registration_interval: 0,
+//       node_activation_interval: 0,
+//       node_queue_period: 1,
+//       max_node_penalties: 3,
+//       initial_coldkeys: whitelist,
+//       // initial_coldkeys: None,
+//     };
   
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
-    let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-    increase_epochs(next_registration_epoch - epoch);
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
+//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
+//     increase_epochs(next_registration_epoch - epoch);
 
-    // --- Register subnet for activation
-    assert_ok!(
-      Network::register_subnet(
-        RuntimeOrigin::signed(account(1)),
-        add_subnet_data,
-      )
-    );
+//     // --- Register subnet for activation
+//     assert_ok!(
+//       Network::register_subnet(
+//         RuntimeOrigin::signed(account(1)),
+//         add_subnet_data,
+//       )
+//     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
-    let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+//     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
-    assert_ok!(
-      Network::register_subnet_node(
-        RuntimeOrigin::signed(account(1)),
-        subnet_id,
-        account(1),
-        peer(1),
-        peer(1),
-        0,
-        amount,
-        None,
-        None,
-        None,
-      )
-    );
+//     assert_ok!(
+//       Network::register_subnet_node(
+//         RuntimeOrigin::signed(account(1)),
+//         subnet_id,
+//         account(1),
+//         peer(1),
+//         peer(1),
+//         0,
+//         amount,
+//         None,
+//         None,
+//         None,
+//       )
+//     );
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+//     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
-    // assert_err!(
-    //   Network::activate_subnet_node(
-    //     RuntimeOrigin::signed(account(1)),
-    //     subnet_id,
-    //     subnet_node_id,
-    //   ),
-    //   Error::<Test>::SubnetMustBeRegisteringOrActivated
-    // );
-  })
-}
+//     // assert_err!(
+//     //   Network::activate_subnet_node(
+//     //     RuntimeOrigin::signed(account(1)),
+//     //     subnet_id,
+//     //     subnet_node_id,
+//     //   ),
+//     //   Error::<Test>::SubnetMustBeRegisteringOrActivated
+//     // );
+//   })
+// }
 
 
 #[test]
 fn test_register_subnet_node_activate_subnet_node() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -727,7 +731,7 @@ fn test_register_subnet_node_activate_subnet_node() {
 #[test]
 fn test_deactivate_subnet_node_reactivate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -820,7 +824,7 @@ fn test_add_subnet_node_subnet_err() {
 #[test]
 fn test_get_classification_subnet_nodes() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -843,7 +847,7 @@ fn test_get_classification_subnet_nodes() {
 #[test]
 fn test_add_subnet_node_not_exists_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -917,7 +921,7 @@ fn test_add_subnet_node_not_exists_err() {
 #[test]
 fn test_add_subnet_node_stake_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -954,7 +958,7 @@ fn test_add_subnet_node_stake_err() {
 #[test]
 fn test_add_subnet_node_stake_not_enough_balance_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -990,7 +994,7 @@ fn test_add_subnet_node_stake_not_enough_balance_err() {
 #[test]
 fn test_add_subnet_node_invalid_peer_id_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1027,7 +1031,7 @@ fn test_add_subnet_node_invalid_peer_id_err() {
 // // #[test]
 // // fn test_add_subnet_node_remove_readd_err() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
@@ -1073,7 +1077,7 @@ fn test_add_subnet_node_invalid_peer_id_err() {
 #[test]
 fn test_add_subnet_node_remove_readd() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1144,7 +1148,7 @@ fn test_add_subnet_node_remove_readd() {
 #[test]
 fn test_add_subnet_node_not_key_owner() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1191,7 +1195,7 @@ fn test_add_subnet_node_not_key_owner() {
 #[test]
 fn test_add_subnet_node_remove_readd_must_unstake_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1252,7 +1256,7 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
 #[test]
 fn test_add_subnet_node_remove_stake_partial_readd() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1334,7 +1338,7 @@ fn test_add_subnet_node_remove_stake_partial_readd() {
 #[test]
 fn test_add_subnet_node_remove_stake_readd() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1410,7 +1414,7 @@ fn test_add_subnet_node_remove_stake_readd() {
 #[test]
 fn test_register_subnet_node_with_a_param() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1452,7 +1456,7 @@ fn test_register_subnet_node_with_a_param() {
 #[test]
 fn test_register_subnet_node_and_then_update_a_param() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1537,7 +1541,7 @@ fn test_register_subnet_node_and_then_update_a_param() {
 #[test]
 fn test_register_subnet_node_with_non_unique_param() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1584,7 +1588,7 @@ fn test_register_subnet_node_with_non_unique_param() {
 #[test]
 fn test_update_subnet_node_with_non_unique_param() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1672,7 +1676,7 @@ fn test_update_subnet_node_with_non_unique_param() {
 // // #[test]
 // // fn test_remove_peer_error() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 1000000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
@@ -1717,7 +1721,7 @@ fn test_update_subnet_node_with_non_unique_param() {
 // // // #[test]
 // // // fn test_remove_peer_unstake_epochs_err() {
 // // //   new_test_ext().execute_with(|| {
-// // //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// // //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // // //     build_subnet(subnet_path.clone());
 // // //     let deposit_amount: u128 = 1000000000000000000000000;
@@ -1790,7 +1794,7 @@ fn test_update_subnet_node_with_non_unique_param() {
 #[test]
 fn test_remove_peer_unstake_total_balance() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1840,7 +1844,6 @@ fn test_remove_peer_unstake_total_balance() {
     
     let epoch_length = EpochLength::get();
     let min_required_unstake_epochs = StakeCooldownEpochs::get();
-    // System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
     increase_epochs(min_required_unstake_epochs + 1);
     
     let remaining_account_stake_balance: u128 = AccountSubnetStake::<Test>::get(&account(total_subnet_nodes+1), subnet_id);
@@ -1861,7 +1864,7 @@ fn test_remove_peer_unstake_total_balance() {
 #[test]
 fn test_claim_stake_unbondings() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1931,15 +1934,14 @@ fn test_claim_stake_unbondings() {
     assert_eq!(unbondings.len(), 1);
     let (first_key, first_value) = unbondings.iter().next().unwrap();
     
-    // assert_eq!(*first_key, &epoch + StakeCooldownEpochs::get());
-    assert_eq!(*first_key, &epoch + RegisteredStakeCooldownEpochs::<Test>::get());
+    assert_eq!(*first_key, &epoch + StakeCooldownEpochs::get());
     assert!(*first_value <= stake_balance);
     
-    // let stake_cooldown_epochs = StakeCooldownEpochs::get();
-    let stake_cooldown_epochs = RegisteredStakeCooldownEpochs::<Test>::get();
+    let stake_cooldown_epochs = StakeCooldownEpochs::get();
 
     increase_epochs(stake_cooldown_epochs + 1);
-    // System::set_block_number(System::block_number() + ((epoch_length  + 1) * stake_cooldown_epochs));
+
+    let epoch = System::block_number() / epoch_length;
 
     assert_ok!(
       Network::claim_unbondings(
@@ -1960,7 +1962,7 @@ fn test_claim_stake_unbondings() {
 #[test]
 fn test_remove_stake_twice_in_epoch() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2093,7 +2095,7 @@ fn test_remove_stake_twice_in_epoch() {
 #[test]
 fn test_claim_stake_unbondings_no_unbondings_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2142,7 +2144,7 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
 #[test]
 fn test_remove_to_stake_max_unlockings_reached_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2207,7 +2209,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
 #[test]
 fn test_remove_subnet_node() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2267,7 +2269,7 @@ fn test_remove_subnet_node() {
 #[test]
 fn test_deactivate_subnet_node_and_reactivate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2296,7 +2298,7 @@ fn test_deactivate_subnet_node_and_reactivate() {
 #[test]
 fn test_deactivate_subnet_node() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2326,7 +2328,7 @@ fn test_deactivate_subnet_node() {
 #[test]
 fn test_deactivation_ledger_as_attestor() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2409,7 +2411,7 @@ fn test_deactivation_ledger_as_attestor() {
 #[test]
 fn test_deactivation_ledger_as_chosen_validator() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -2490,7 +2492,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
 #[test]
 fn test_update_delegate_reward_rate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 

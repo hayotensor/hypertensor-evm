@@ -17,188 +17,100 @@ use crate::{
   SubnetRegistrationInterval,
 };
 
-// #[test]
-// fn test_registration_cost() {
-//   new_test_ext().execute_with(|| {    
-//     let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-//     let fee_min: u128 = MinSubnetRegistrationFee::<Test>::get();
-//     let fee_max: u128 = MaxSubnetRegistrationFee::<Test>::get();
-//     let period: u32 = SubnetRegistrationInterval::<Test>::get();
-//     // increase_epochs(period);
-
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-  
-//     // division is not perfect due to epoch values being so little
-//     let half_cycle_epoch = (period/2) as u32 % period;
-//     let half_decrease_per_epoch = (fee_max.saturating_sub(fee_min)) / period as u128;
-//     let half_fee = fee_max.saturating_sub(half_decrease_per_epoch * half_cycle_epoch as u128);
-    
-//     let cost = Network::registration_cost(0);
-//     assert_eq!(cost, fee_min);
-
-//     // Period is 100
-//     LastSubnetRegistrationEpoch::<Test>::set(period-1);
-//     let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-//     let next_registration_epoch = Network::get_next_registration_epoch(last_registration_epoch);
-
-//     // At 100, fee should be max
-//     let cost = Network::registration_cost(next_registration_epoch);
-//     assert_eq!(cost, fee_max);
-
-//     // middle of registration period
-//     let cost = Network::registration_cost(next_registration_epoch + (period/2));
-//     assert_eq!(cost, half_fee);
-
-//     // no registratin in current peroid, next period start should be min
-//     let cost = Network::registration_cost(next_registration_epoch + period);
-//     assert_eq!(cost, fee_min);
-
-//     let cost = Network::registration_cost(next_registration_epoch + period + period/10);
-//     assert_eq!(cost, fee_min);
-
-
-//     // set to 150
-//     LastSubnetRegistrationEpoch::<Test>::set(period+period/2);
-//     let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-//     let next_registration_epoch = Network::get_next_registration_epoch(last_registration_epoch); // 200
-
-//     // Between 150-200 shouldn't be able to register
-
-
-//     // At 200, fee should be max
-//     let cost = Network::registration_cost(next_registration_epoch);
-//     assert_eq!(cost, fee_max);
-
-//     // middle of registration period
-//     let cost = Network::registration_cost(next_registration_epoch + (period/2));
-//     assert_eq!(cost, half_fee);
-
-//     // no registratin in current peroid, next period start should be min
-//     let cost = Network::registration_cost(next_registration_epoch + period);
-//     assert_eq!(cost, fee_min);
-
-//     let cost = Network::registration_cost(next_registration_epoch + period + period/10);
-//     assert_eq!(cost, fee_min);
-
-
-//   })
-// }
-
 #[test]
-fn test_registration_cost2() {
-  new_test_ext().execute_with(|| {    
-    let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-    let fee_min: u128 = MinSubnetRegistrationFee::<Test>::get();
-    let fee_max: u128 = MaxSubnetRegistrationFee::<Test>::get();
-    let period: u32 = SubnetRegistrationInterval::<Test>::get();
-    // increase_epochs(period);
+fn registration_cost_no_registration_various_epochs() {
+  new_test_ext().execute_with(|| {
+    // No registration yet
+    LastSubnetRegistrationEpoch::<Test>::put(0);
+    MinSubnetRegistrationFee::<Test>::put(100);
+    MaxSubnetRegistrationFee::<Test>::put(1000);
+    SubnetRegistrationInterval::<Test>::put(100);
 
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
-  
-    // division is not perfect due to epoch values being so little
-    let half_cycle_epoch = (period/2) as u32 % period;
-    let half_decrease_per_epoch = (fee_max.saturating_sub(fee_min)) / period as u128;
-    let half_fee = fee_max.saturating_sub(half_decrease_per_epoch * half_cycle_epoch as u128);
-    
-    let cost = Network::registration_cost(0);
-    assert_eq!(cost, fee_max);
+    // Epoch 0: full cost
+    assert_eq!(Network::registration_cost(0), 1000);
 
-    let cost = Network::registration_cost(period/2);
-    assert_eq!(cost, half_fee);
+    // Epoch 10: 10% into period
+    assert_eq!(Network::registration_cost(10), 910);
 
-    let cost = Network::registration_cost(period);
-    assert_eq!(cost, fee_min);
+    // Epoch 99: near end of period
+    assert_eq!(Network::registration_cost(99), 109);
 
-    let cost = Network::registration_cost(period+1);
-    assert_eq!(cost, fee_min);
-
-    let cost = Network::registration_cost(period+period/2);
-    assert_eq!(cost, fee_min);
-
-    let cost = Network::registration_cost(period+period);
-    assert_eq!(cost, fee_min);
-
-    // Period is 100
-    LastSubnetRegistrationEpoch::<Test>::set(period-1);
-    let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-    let next_registration_epoch = Network::get_next_registration_epoch(last_registration_epoch);
-
-    // At 100, fee should be max
-    let cost = Network::registration_cost(next_registration_epoch);
-    assert_eq!(cost, fee_max);
-
-    // middle of registration period
-    let cost = Network::registration_cost(next_registration_epoch + (period/2));
-    assert_eq!(cost, half_fee);
-
-    // no registratin in current peroid, next period start should be min
-    let cost = Network::registration_cost(next_registration_epoch + period);
-    assert_eq!(cost, fee_min);
-
-    let cost = Network::registration_cost(next_registration_epoch + period + period/10);
-    assert_eq!(cost, fee_min);
-
-
-    // set to 150
-    LastSubnetRegistrationEpoch::<Test>::set(period+period/2);
-    let last_registration_epoch = LastSubnetRegistrationEpoch::<Test>::get();
-    let next_registration_epoch = Network::get_next_registration_epoch(last_registration_epoch); // 200
-
-    // Between 150-200 shouldn't be able to register
-
-
-    // At 200, fee should be max
-    let cost = Network::registration_cost(next_registration_epoch);
-    assert_eq!(cost, fee_max);
-
-    // middle of registration period
-    let cost = Network::registration_cost(next_registration_epoch + (period/2));
-    assert_eq!(cost, half_fee);
-
-    // no registratin in current peroid, next period start should be min
-    let cost = Network::registration_cost(next_registration_epoch + period);
-    assert_eq!(cost, fee_min);
-
-    let cost = Network::registration_cost(next_registration_epoch + period + period/10);
-    assert_eq!(cost, fee_min);
-
-
-  })
+    // Epoch 100+: minimum fee
+    assert_eq!(Network::registration_cost(100), 100);
+    assert_eq!(Network::registration_cost(150), 100);
+    assert_eq!(Network::registration_cost(500), 100);
+  });
 }
 
 #[test]
-fn test_get_next_registration_epoch() {
+fn registration_cost_with_prior_registration() {
   new_test_ext().execute_with(|| {
-    let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<Test>::get();
-    let period: u32 = SubnetRegistrationInterval::<Test>::get();
+    MinSubnetRegistrationFee::<Test>::put(100);
+    MaxSubnetRegistrationFee::<Test>::put(1000);
+    SubnetRegistrationInterval::<Test>::put(100);
 
-    // If no registrations yet, should return 0 to allow registration up to the SubnetRegistrationInterval
-    let next_registration_epoch = Network::get_next_registration_epoch(0);
-    assert_eq!(next_registration_epoch, 0);
+    // Simulate a prior registration at epoch 200
+    LastSubnetRegistrationEpoch::<Test>::put(200);
 
+    // Interval is 100 → next registration range is [200, 300)
 
-    LastSubnetRegistrationEpoch::<Test>::set(1);
+    assert_eq!(Network::registration_cost(200), 1000); // beginning of new interval
+    assert_eq!(Network::registration_cost(250), 550);  // halfway through
+    assert_eq!(Network::registration_cost(299), 109);  // near end
+    assert_eq!(Network::registration_cost(300), 100);  // minimum fee after interval
+    assert_eq!(Network::registration_cost(350), 100);  // still minimum
+  });
+}
 
-    let next_registration_epoch = Network::get_next_registration_epoch(1);
-    assert_eq!(next_registration_epoch, period);
+#[test]
+fn registration_cost_respects_min_fee() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(0);
+    SubnetRegistrationInterval::<Test>::put(1);
+    MinSubnetRegistrationFee::<Test>::put(999);
+    MaxSubnetRegistrationFee::<Test>::put(1000);
 
+    assert_eq!(Network::registration_cost(1), 999);
+    assert_eq!(Network::registration_cost(2), 999);
+  });
+}
 
-    LastSubnetRegistrationEpoch::<Test>::set(period);
+#[test]
+fn no_registration_yet_epoch_0() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(0);
+    assert_eq!(Network::get_next_registration_epoch(0), 0);
+  });
+}
 
-    let next_registration_epoch = Network::get_next_registration_epoch(period);
-    assert_eq!(next_registration_epoch, period*2);
+#[test]
+fn no_registration_yet_epoch_1010() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(0);
+    assert_eq!(Network::get_next_registration_epoch(1010), 1000);
+  });
+}
 
-    let next_registration_epoch = Network::get_next_registration_epoch(period-1);
-    assert_eq!(next_registration_epoch, period*2);
+#[test]
+fn last_registered_at_30_next_should_be_100() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(30);
+    assert_eq!(Network::get_next_registration_epoch(40), 100);
+  });
+}
 
+#[test]
+fn last_registered_at_100_next_should_be_200() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(100);
+    assert_eq!(Network::get_next_registration_epoch(150), 200);
+  });
+}
 
-    LastSubnetRegistrationEpoch::<Test>::set(period + period/2);
-
-    let next_registration_epoch = Network::get_next_registration_epoch(period + period/2);
-    assert_eq!(next_registration_epoch, period*2);
-  })
+#[test]
+fn no_registration_yet_epoch_199_should_be_100() {
+  new_test_ext().execute_with(|| {
+    LastSubnetRegistrationEpoch::<Test>::put(0);
+    assert_eq!(Network::get_next_registration_epoch(199), 100);
+  });
 }

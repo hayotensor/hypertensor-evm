@@ -66,6 +66,11 @@ interface Subnet  {
     uint256 subnetNodeId
   ) external;
 
+  function removeSubnetNode(
+    uint256 subnetId,
+    uint256 subnetNodeId
+  ) external;
+
   function getSubnetId(
     string memory name
   ) external view returns (uint256);

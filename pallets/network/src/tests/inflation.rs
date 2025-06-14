@@ -22,27 +22,28 @@ use crate::{
 //
 //
 
-#[test]
-fn test_inflation_total() {
-  new_test_ext().execute_with(|| {
-    let _ = env_logger::builder().is_test(true).try_init();
+// Taper test
+// #[test]
+// fn test_inflation_total() {
+//   new_test_ext().execute_with(|| {
+//     let _ = env_logger::builder().is_test(true).try_init();
 
-    let inflation = Inflation::default();
+//     let inflation = Inflation::default();
 
-    let mut last = inflation.total(0.0);
+//     let mut last = inflation.total(0.0);
 
-    for year in &[0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 100.0] {
-      log::error!("test_inflation_total year {:?}", year);
-      let total = inflation.total(*year);
-      log::error!("test_inflation_total total {:?}", total);
-      assert!(total < last);
-      assert!(total >= inflation.terminal);
-      last = total;
-    }
-    assert_eq!(last, inflation.terminal);
-    // assert!(false);
-  });
-}
+//     for year in &[0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 100.0] {
+//       log::error!("test_inflation_total year {:?}", year);
+//       let total = inflation.total(*year);
+//       log::error!("test_inflation_total total {:?}", total);
+//       assert!(total < last);
+//       assert!(total >= inflation.terminal);
+//       last = total;
+//     }
+//     assert_eq!(last, inflation.terminal);
+//     // assert!(false);
+//   });
+// }
 
 // #[test]
 // fn test_get_epoch_emissions_simple() {
@@ -92,6 +93,7 @@ fn test_inflation_total() {
 //   });
 // }
 
+// Interest rate decreases as utilization increases
 #[test]
 fn test_get_interest_rate() {
   new_test_ext().execute_with(|| {

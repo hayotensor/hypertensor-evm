@@ -53,7 +53,6 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  // Infallible
   pub fn do_claim_unbondings(coldkey: &T::AccountId) -> u32 {
     let epoch = Self::get_current_epoch_as_u32();
     let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
@@ -94,7 +93,6 @@ impl<T: Config> Pallet<T> {
       return false;
     }
 
-    // This bit is currently untested. @todo
     let new_potential_balance = current_balance - amount;
     let can_withdraw = T::Currency::ensure_can_withdraw(
       &coldkey,

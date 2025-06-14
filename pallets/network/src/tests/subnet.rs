@@ -43,7 +43,7 @@ use crate::{
 #[test]
 fn test_register_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -62,13 +62,13 @@ fn test_register_subnet() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -98,7 +98,7 @@ fn test_register_subnet() {
 #[test]
 fn test_register_subnet_subnet_registration_cooldown() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     increase_epochs(1);
 
@@ -119,13 +119,13 @@ fn test_register_subnet_subnet_registration_cooldown() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -152,13 +152,13 @@ fn test_register_subnet_subnet_registration_cooldown() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
 
     assert_err!(
@@ -191,7 +191,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
       )
     );
 
-
+    // --- Cooldown expected after registering again
     let subnet_path: Vec<u8> = "petals-team/StableBeluga4".into();
 
     let add_subnet_data = RegistrationSubnetData {
@@ -199,13 +199,13 @@ fn test_register_subnet_subnet_registration_cooldown() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
 
     assert_err!(
@@ -221,7 +221,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
 #[test]
 fn test_register_subnet_exists_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -240,13 +240,13 @@ fn test_register_subnet_exists_error() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -277,7 +277,7 @@ fn test_register_subnet_exists_error() {
 // #[test]
 // fn test_register_subnet_registration_blocks_err() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 
 //     let epoch_length = EpochLength::get();
 //     let block_number = System::block_number();
@@ -389,24 +389,24 @@ fn test_register_subnet_exists_error() {
 fn test_register_subnet_not_enough_balance_err() {
   new_test_ext().execute_with(|| {
     // let _ = Balances::deposit_creating(&account(0), cost+1000);  
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let min_nodes = MinSubnetNodes::<Test>::get();
 
     let whitelist = get_initial_coldkeys(0, min_nodes+1);
 
     let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.into(),
+      name: subnet_path.clone().into(),
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
 
     let epoch_length = EpochLength::get();
@@ -428,7 +428,7 @@ fn test_register_subnet_not_enough_balance_err() {
 #[test]
 fn test_activate_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -447,13 +447,13 @@ fn test_activate_subnet() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -534,7 +534,7 @@ fn test_activate_subnet() {
 #[test]
 fn test_activate_subnet_invalid_subnet_id_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -553,13 +553,13 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -609,7 +609,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
         RuntimeOrigin::signed(account(0)),
         subnet_id+1,
       ),
-      Error::<Test>::InvalidSubnetId
+      Error::<Test>::NotSubnetOwner
     );
   })
 }
@@ -617,7 +617,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
 #[test]
 fn test_activate_subnet_already_activated_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -636,13 +636,13 @@ fn test_activate_subnet_already_activated_err() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -722,7 +722,7 @@ fn test_activate_subnet_already_activated_err() {
 #[test]
 fn test_activate_subnet_enactment_period_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -741,13 +741,13 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -838,7 +838,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
 #[test]
 fn test_activate_subnet_initializing_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -857,13 +857,13 @@ fn test_activate_subnet_initializing_error() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -931,7 +931,7 @@ fn test_activate_subnet_initializing_error() {
 #[test]
 fn test_not_subnet_node_owner() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -993,7 +993,7 @@ fn test_not_subnet_node_owner() {
 #[test]
 fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1012,13 +1012,13 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();
@@ -1071,7 +1071,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
 #[test]
 fn test_activate_subnet_min_delegate_balance_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1090,13 +1090,13 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       repo: Vec::new(),
 			description: Vec::new(),
 			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
+      churn_limit: 4,
+      registration_queue_epochs: 4,
+      activation_grace_epochs: 4,
+      queue_classification_epochs: 4,
+      included_classification_epochs: 4,
       max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
+      initial_coldkeys: whitelist
     };
   
     let epoch_length = EpochLength::get();

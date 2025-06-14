@@ -23,7 +23,7 @@ use crate::{
 // #[test]
 // fn test_epoch_steps() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 

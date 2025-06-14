@@ -68,7 +68,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 #[test]
 fn test_validate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -126,7 +126,7 @@ fn test_validate() {
 #[test]
 fn test_validate_peer_with_0_score() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -185,7 +185,7 @@ fn test_validate_peer_with_0_score() {
 #[test]
 fn test_validate_invalid_validator() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -230,7 +230,7 @@ fn test_validate_invalid_validator() {
 #[test]
 fn test_attest() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -310,7 +310,7 @@ fn test_attest() {
 #[test]
 fn test_attest_remove_exiting_attester() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -414,7 +414,7 @@ fn test_attest_remove_exiting_attester() {
 #[test]
 fn test_attest_no_submission_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -451,7 +451,7 @@ fn test_attest_no_submission_err() {
 #[test]
 fn test_attest_already_attested_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -546,7 +546,7 @@ fn test_attest_already_attested_err() {
 #[test]
 fn test_reward_subnets() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -600,7 +600,7 @@ fn test_reward_subnets() {
 #[test]
 fn test_reward_subnets_v2() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -656,7 +656,7 @@ fn test_reward_subnets_v2() {
 // fn test_reward_subnets_remove_subnet_node() {
 //   new_test_ext().execute_with(|| {
 //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
@@ -783,7 +783,7 @@ fn test_reward_subnets_v2() {
 // // fn test_reward_subnets_absent_node_increment_decrement() {
 // //   new_test_ext().execute_with(|| {
 // //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
@@ -869,7 +869,7 @@ fn test_reward_subnets_v2() {
 //   new_test_ext().execute_with(|| {
 //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
 
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
@@ -960,7 +960,7 @@ fn test_reward_subnets_v2() {
 #[test]
 fn test_reward_subnets_validator_slash() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1009,7 +1009,7 @@ fn test_reward_subnets_validator_slash() {
 #[test]
 fn test_reward_subnets_v2_validator_slash() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1058,7 +1058,7 @@ fn test_reward_subnets_v2_validator_slash() {
 #[test]
 fn test_reward_subnets_subnet_penalty_count() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1118,7 +1118,7 @@ fn test_reward_subnets_v2_subnet_penalty_count() {
   new_test_ext().execute_with(|| {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1176,7 +1176,7 @@ fn test_reward_subnets_v2_subnet_penalty_count() {
 #[test]
 fn test_reward_subnets_account_penalty_count() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1221,7 +1221,7 @@ fn test_reward_subnets_account_penalty_count() {
 #[test]
 fn test_reward_subnets_v2_account_penalty_count() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
@@ -1272,7 +1272,7 @@ fn test_reward_subnets_v2_account_penalty_count() {
 // #[test]
 // fn test_do_epoch_preliminaries_deactivate_subnet_enactment_period() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 
 //     let epoch_length = EpochLength::get();
 //     let block_number = System::block_number();
@@ -1346,7 +1346,7 @@ fn test_reward_subnets_v2_account_penalty_count() {
 #[test]
 fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1388,7 +1388,7 @@ fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
 #[test]
 fn test_do_epoch_preliminaries_deactivate_max_penalties() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1423,7 +1423,7 @@ fn test_do_epoch_preliminaries_deactivate_max_penalties() {
 #[test]
 fn test_do_epoch_preliminaries_choose_validator() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
@@ -1450,7 +1450,7 @@ fn test_do_epoch_preliminaries_choose_validator() {
 // // // #[test]
 // // // fn test_add_subnet_node_signature() {
 // // //   new_test_ext().execute_with(|| {
-// // //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// // //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // // //     build_subnet(subnet_path.clone());
 // // //     assert_eq!(Network::total_subnets(), 1);
@@ -1534,7 +1534,7 @@ fn test_do_epoch_preliminaries_choose_validator() {
 // // // 		assert_ok!(Network::validate_signature(&encoded_data, &signature, &user_1));
 
 // // //     // validate signature is the owner of the peer_id
-// // //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// // //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // // //     build_subnet(subnet_path.clone());
 
@@ -1563,7 +1563,7 @@ fn test_reward_subnets_check_balances() {
   new_test_ext().execute_with(|| {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
@@ -1696,7 +1696,7 @@ fn test_reward_subnets_with_delegate_node_staking_check_balances() {
   new_test_ext().execute_with(|| {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();

@@ -24,8 +24,8 @@ import { forceSetBalance } from "../src/test";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 
-// npm test -- -g "test delegate staking"
-describe("test swap and transfer delegate staking", () => {
+// npm test -- -g "test swap and transfer delegate staking-0x0101d"
+describe("test swap and transfer delegate staking-0x0101d", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -118,6 +118,9 @@ describe("test swap and transfer delegate staking", () => {
             cost // fee: u32
         )
 
+        // TODO:
+        //  - Remove subnet registration interval to add second subnet
+
         subnetId = await subnetContract.getSubnetId(subnetName);
         toSubnetId = "2"
         subnetNodeId = "1"
@@ -129,8 +132,8 @@ describe("test swap and transfer delegate staking", () => {
     // - This test requires 2 subnets -
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // Status: pending
-    // npm test -- -g "testing swap node delegate stake" 
-    it("testing swap node delegate stake", async () => {
+    // npm test -- -g "testing swap node delegate stake-0x9284jw4" 
+    it("testing swap node delegate stake-0x9284jw4", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
         // ==================
@@ -173,9 +176,9 @@ describe("test swap and transfer delegate staking", () => {
         expect(toBalanceAfter).to.be.within(balanceBefore * 0.99, balanceBefore); // Not recommended
     })
 
-    // Status: passing
-    // npm test -- -g "testing transfer node delegate stake" 
-    it("testing transfer node delegate stake", async () => {
+    // Status: pending
+    // npm test -- -g "testing transfer node delegate stake-0xing9592" 
+    it("testing transfer node delegate stake-0xing9592", async () => {
         let stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
 
         const sharesBeforeAdd = await stakingContract.accountNodeDelegateStakeShares(wallet2.address, subnetId, subnetNodeId);

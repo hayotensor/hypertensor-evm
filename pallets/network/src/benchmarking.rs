@@ -44,7 +44,7 @@ const SEED: u32 = 0;
 
 const DEFAULT_SCORE: u128 = 5000;
 const DEFAULT_SUBNET_INIT_COST: u128 = 100e+18 as u128;
-const DEFAULT_SUBNET_PATH: &str = "petals-team/StableBeluga2";
+const DEFAULT_SUBNET_PATH: &str = "subnet-name";
 const DEFAULT_SUBNET_PATH_2: &str = "petals-team/StableBeluga3";
 const DEFAULT_SUBNET_NODE_STAKE: u128 = 1000e+18 as u128;
 const DEFAULT_SUBNET_REGISTRATION_BLOCKS: u64 = 130_000;

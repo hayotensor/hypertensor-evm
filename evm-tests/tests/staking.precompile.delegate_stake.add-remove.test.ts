@@ -16,8 +16,8 @@ import { PublicClient } from "viem";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 
-// npm test -- -g "test delegate staking"
-describe("test delegate staking", () => {
+// npm test -- -g "test delegate staking-0xDy454g"
+describe("test delegate staking-0xDy454g", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -109,8 +109,8 @@ describe("test delegate staking", () => {
     })
 
     // Status: passing
-    // npm test -- -g "testing add delegate stake"
-    it("testing add delegate stake", async () => {
+    // npm test -- -g "testing add delegate stake-0xpf3mf"
+    it("testing add delegate stake-0xpf3mf", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
 
         // ==================
@@ -141,9 +141,19 @@ describe("test delegate staking", () => {
     })
 
     // Status: passing
-    // npm test -- -g "testing remove delegate stake"
-    it("testing remove delegate stake", async () => {
+    // npm test -- -g "testing remove delegate stake-0xe5"
+    it("testing remove delegate stake-0xe5", async () => {
         const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet2);
+
+        const sharesBeforeDelegateStake = await stakingContract.accountSubnetDelegateStakeShares(
+            wallet2.address, 
+            subnetId
+        );
+        const balanceBeforeDelegateStake = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+
+        // Ensure fresh wallet
+        expect(Number(sharesBeforeDelegateStake)).to.be.equal(0);
+        expect(Number(balanceBeforeDelegateStake)).to.be.equal(0);
 
         // ==================
         // Add delegate stake
@@ -154,29 +164,30 @@ describe("test delegate staking", () => {
           stakeAmount
         )
 
-        // ==================
+        // =====================
         // Remove delegate stake
-        // ==================
+        // =====================
 
-        const sharesBefore = await stakingContract.accountSubnetDelegateStakeShares(
+        const sharesAfterDelegateStake = await stakingContract.accountSubnetDelegateStakeShares(
             wallet2.address, 
             subnetId
         );
-        const balanceBefore = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+        const balanceAfterDelegateStake = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
 
-        expect(Number(sharesBefore)).to.be.equal(0);
-        expect(Number(balanceBefore)).to.be.equal(0);
+        // Ensure there is a balance
+        expect(Number(sharesAfterDelegateStake)).to.not.equal(0);
+        expect(Number(balanceAfterDelegateStake)).to.not.equal(0);
 
         await removeDelegateStake(
           stakingContract, 
           subnetId,
-          sharesBefore
+          sharesAfterDelegateStake
         )
 
-        const sharesAfter = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
-        const balanceAfter = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
+        const sharesAfterRemove = await stakingContract.accountSubnetDelegateStakeShares(wallet2.address, subnetId);
+        const balanceAfterRemove = await stakingContract.accountSubnetDelegateStakeBalance(wallet2.address, subnetId);
 
-		expect(sharesBefore).to.be.greaterThan(sharesAfter);
-        expect(balanceBefore).to.be.greaterThan(balanceAfter);
+		expect(sharesAfterDelegateStake).to.be.greaterThan(sharesAfterRemove);
+        expect(balanceAfterDelegateStake).to.be.greaterThan(balanceAfterRemove);
     })
 });

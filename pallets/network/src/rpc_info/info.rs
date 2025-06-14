@@ -159,4 +159,53 @@ impl<T: Config> Pallet<T> {
       Err(()) => false,
     }
   }
+
+  /// Proof-of-stake
+  ///
+  /// - Returns if the node has a proof of stake
+  ///
+  /// # Options
+  ///
+  /// - Can use either a subnet node ID or peer ID, or bootstrap peer ID
+  ///
+  /// The most secure way to call this function is by peer ID with signatures
+  ///
+  /// # Arguments
+  ///
+  /// * `subnet_id` - Subnet ID.
+  /// * `subnet_node_id` - Subnet node ID
+  /// * `peer_id` - Subnet node peer ID
+  ///
+  pub fn proof_of_stake(
+    subnet_id: u32, 
+    subnet_node_id: u32,
+    peer_id: Vec<u8>
+  ) -> bool {
+    if !SubnetsData::<T>::contains_key(subnet_id) {
+      return false
+    }
+
+    if subnet_node_id > 0 {
+      let is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
+        Ok(_) => true,
+        Err(()) => false
+      };
+
+      return is_staked
+    }
+
+    let mut is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      Ok(_) => true,
+      Err(()) => false,
+    };
+
+    if is_staked {
+      return true
+    }
+
+    match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id)) {
+      Ok(_) => true,
+      Err(()) => false,
+    }
+  }
 }

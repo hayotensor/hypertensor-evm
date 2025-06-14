@@ -365,7 +365,8 @@ impl<T: Config> Pallet<T> {
       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
       if subnet_penalty_count > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.name,
+          // data.name,
+          subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
       }
@@ -438,26 +439,20 @@ impl<T: Config> Pallet<T> {
           },
           None => continue,
         };
-        log::error!("v2 weight                {:?}", weight);
 
         let overall_subnet_reward: u128 = Self::percent_mul(rewards, weight);
-        log::error!("v2 overall_subnet_reward {:?}", overall_subnet_reward);
 
         // --- Get owner rewards
         let subnet_owner_reward: u128 = Self::percent_mul(overall_subnet_reward, subnet_owner_percentage);
-        log::error!("v2 subnet_owner_reward   {:?}", subnet_owner_reward);
 
         // --- Get subnet rewards minus owner cut
         let subnet_reward: u128 = overall_subnet_reward.saturating_sub(subnet_owner_reward);
-        log::error!("v2 subnet_reward         {:?}", subnet_reward);
 
         // --- Get delegators rewards
         let delegate_stake_reward: u128 = Self::percent_mul(subnet_reward, delegate_stake_rewards_percentage);
-        log::error!("v2 delegate_stake_reward {:?}", delegate_stake_reward);
 
         // --- Get subnet nodes rewards total
         let subnet_node_reward: u128 = subnet_reward.saturating_sub(delegate_stake_reward);
-        log::error!("v2 subnet_node_reward    {:?}", subnet_node_reward);
 
         // --- Get subnet nodes count to check against attestation count and make sure min nodes are present during time of rewards
         let subnet_nodes: Vec<T::AccountId> = Self::get_classified_hotkeys(*subnet_id, &SubnetNodeClass::Validator, epoch);
@@ -482,7 +477,6 @@ impl<T: Config> Pallet<T> {
         let validator_subnet_node_id: u32 = submission.validator_id;
 
         let data_len = submission.data.len();
-        log::error!("data_len {:?}", data_len);
 
         /* 
           - Ensures the subnet has enough nodes.
@@ -527,6 +521,7 @@ impl<T: Config> Pallet<T> {
         // ==============================================
 
         // --- Deposit owners rewards
+        // `match` to ensure owner not renounced
         match SubnetOwner::<T>::try_get(subnet_id) {
           Ok(coldkey) => {
             let subnet_owner_reward_as_currency = Self::u128_to_balance(subnet_owner_reward);
@@ -556,7 +551,7 @@ impl<T: Config> Pallet<T> {
           //     - Used for SubnetNodeClass::Registered and SubnetNodeClass::Deactivated
           // --- (else if) Check if past Queue and can be included in validation data
           //
-          // Note: Only ``included`` or above nodes can get emissions
+          // Note: Only ``Included`` or above nodes can get emissions
           if subnet_node.classification.class <= SubnetNodeClass::Registered {
             if epoch > subnet_node.classification.start_epoch.saturating_add(max_subnet_node_registration_epochs) {
               // Node is past registration period and has not activated itself
@@ -731,7 +726,8 @@ impl<T: Config> Pallet<T> {
       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
       if subnet_penalty_count > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.name.clone(),
+          // data.name.clone(),
+          *subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
       }

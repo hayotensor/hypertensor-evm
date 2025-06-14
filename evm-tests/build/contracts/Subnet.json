@@ -274,6 +274,24 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "subnetNodeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeSubnetNode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "string",
           "name": "name",
           "type": "string"
@@ -291,7 +309,7 @@
       "type": "function"
     }
   ],
-  "metadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"activateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"activateSubnetNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"hotkey\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"peer_id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"bootstrap_peer_id\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"delegate_reward_rate\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stake_to_be_added\",\"type\":\"uint256\"}],\"name\":\"addSubnetNode\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"canSubnetRegister\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getSubnetId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"ownerDeactivateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"ownerRemoveSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"ownerUpdateRegistrationInterval\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"repo\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"misc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"maxNodeRegistrationEpochs\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeRegistrationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeActivationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeQueuePeriod\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxNodePenalties\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"initialColdkeys\",\"type\":\"address[]\"}],\"name\":\"registerSubnet\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"hotkey\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"peer_id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"bootstrap_peer_id\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"delegate_reward_rate\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stake_to_be_added\",\"type\":\"uint256\"}],\"name\":\"registerSubnetNode\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"registrationCost\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"removeSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/Subnet.sol\":\"Subnet\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/Subnet.sol\":{\"keccak256\":\"0x5abddf52fc51588c389303d64c29f09fc1d235c46e375bcf4ee29e3e68e5fb4a\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://0b5f195b1d5ab8a2007cc05c38dc5f0956f5778b5e2884bf7852dde1e82e971f\",\"dweb:/ipfs/QmSwacieMpdBSL2BnnUqDqC2FcFo9jAX1KixWjF1W8Wo23\"]}},\"version\":1}",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"activateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"activateSubnetNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"hotkey\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"peer_id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"bootstrap_peer_id\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"delegate_reward_rate\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stake_to_be_added\",\"type\":\"uint256\"}],\"name\":\"addSubnetNode\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"canSubnetRegister\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"getSubnetId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"}],\"name\":\"ownerDeactivateSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"ownerRemoveSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"ownerUpdateRegistrationInterval\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"repo\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"misc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"maxNodeRegistrationEpochs\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeRegistrationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeActivationInterval\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nodeQueuePeriod\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxNodePenalties\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"initialColdkeys\",\"type\":\"address[]\"}],\"name\":\"registerSubnet\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"hotkey\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"peer_id\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"bootstrap_peer_id\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"delegate_reward_rate\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stake_to_be_added\",\"type\":\"uint256\"}],\"name\":\"registerSubnetNode\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"registrationCost\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"}],\"name\":\"removeSubnet\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"subnetNodeId\",\"type\":\"uint256\"}],\"name\":\"removeSubnetNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/Subnet.sol\":\"Subnet\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/Subnet.sol\":{\"keccak256\":\"0xdc7bec4eca5581f61289a74d4f4a9b9cf5991c984da5cdcc33f5081e2587d9ae\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://4cbf4e5c5a7adc5f0dee40c54ba6df443f06252a476d195a9966a1edaf3a045e\",\"dweb:/ipfs/QmSc6w7AsFMBygN4mSG48ebLRvS2T4PASVqKc9sRboxxRF\"]}},\"version\":1}",
   "bytecode": "0x",
   "deployedBytecode": "0x",
   "immutableReferences": {},
@@ -299,16 +317,16 @@
   "deployedGeneratedSources": [],
   "sourceMap": "",
   "deployedSourceMap": "",
-  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.0;\n\ninterface Subnet  {\n  function registerSubnet(\n    string memory name,\n    string memory repo,\n    string memory description,\n    string memory misc,\n    uint256 maxNodeRegistrationEpochs,\n    uint256 nodeRegistrationInterval,\n    uint256 nodeActivationInterval,\n    uint256 nodeQueuePeriod,\n    uint256 maxNodePenalties,\n    address[] memory initialColdkeys\n  ) external payable;\n\n  function canSubnetRegister(uint256) external view returns (bool);\n\n  function registrationCost(uint256) external view returns (uint256);\n\n  function activateSubnet(\n    uint256 subnetId\n  ) external;\n\n  function removeSubnet(\n    uint256 subnetId\n  ) external;\n\n  function ownerDeactivateSubnet(\n    uint256 subnetId,\n    string memory name\n  ) external;\n\n  function ownerUpdateRegistrationInterval(\n    uint256 subnetId,\n    uint256 value\n  ) external;\n\n  function ownerRemoveSubnet(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function addSubnetNode(\n    uint256 subnetId,\n    address hotkey,\n    string memory peer_id,\n    string memory bootstrap_peer_id,\n    uint256 delegate_reward_rate,\n    uint256 stake_to_be_added\n  ) external payable;\n\n  function registerSubnetNode(\n    uint256 subnetId,\n    address hotkey,\n    string memory peer_id,\n    string memory bootstrap_peer_id,\n    uint256 delegate_reward_rate,\n    uint256 stake_to_be_added\n  ) external payable;\n\n  function activateSubnetNode(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function getSubnetId(\n    string memory name\n  ) external view returns (uint256);\n}",
+  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.0;\n\ninterface Subnet  {\n  function registerSubnet(\n    string memory name,\n    string memory repo,\n    string memory description,\n    string memory misc,\n    uint256 maxNodeRegistrationEpochs,\n    uint256 nodeRegistrationInterval,\n    uint256 nodeActivationInterval,\n    uint256 nodeQueuePeriod,\n    uint256 maxNodePenalties,\n    address[] memory initialColdkeys\n  ) external payable;\n\n  function canSubnetRegister(uint256) external view returns (bool);\n\n  function registrationCost(uint256) external view returns (uint256);\n\n  function activateSubnet(\n    uint256 subnetId\n  ) external;\n\n  function removeSubnet(\n    uint256 subnetId\n  ) external;\n\n  function ownerDeactivateSubnet(\n    uint256 subnetId,\n    string memory name\n  ) external;\n\n  function ownerUpdateRegistrationInterval(\n    uint256 subnetId,\n    uint256 value\n  ) external;\n\n  function ownerRemoveSubnet(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function addSubnetNode(\n    uint256 subnetId,\n    address hotkey,\n    string memory peer_id,\n    string memory bootstrap_peer_id,\n    uint256 delegate_reward_rate,\n    uint256 stake_to_be_added\n  ) external payable;\n\n  function registerSubnetNode(\n    uint256 subnetId,\n    address hotkey,\n    string memory peer_id,\n    string memory bootstrap_peer_id,\n    uint256 delegate_reward_rate,\n    uint256 stake_to_be_added\n  ) external payable;\n\n  function activateSubnetNode(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function removeSubnetNode(\n    uint256 subnetId,\n    uint256 subnetNodeId\n  ) external;\n\n  function getSubnetId(\n    string memory name\n  ) external view returns (uint256);\n}",
   "sourcePath": "/home/bob/polkadot-sdk-solochain-template/evm-tests/contracts/Subnet.sol",
   "ast": {
     "absolutePath": "project:/contracts/Subnet.sol",
     "exportedSymbols": {
       "Subnet": [
-        115
+        122
       ]
     },
-    "id": 116,
+    "id": 123,
     "license": "MIT",
     "nodeType": "SourceUnit",
     "nodes": [
@@ -330,9 +348,9 @@
         "contractDependencies": [],
         "contractKind": "interface",
         "fullyImplemented": false,
-        "id": 115,
+        "id": 122,
         "linearizedBaseContracts": [
-          115
+          122
         ],
         "name": "Subnet",
         "nameLocation": "68:6:0",
@@ -640,7 +658,7 @@
               "parameters": [],
               "src": "437:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "80:358:0",
             "stateMutability": "payable",
             "virtual": false,
@@ -723,7 +741,7 @@
               ],
               "src": "500:6:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "442:65:0",
             "stateMutability": "view",
             "virtual": false,
@@ -806,7 +824,7 @@
               ],
               "src": "568:9:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "511:67:0",
             "stateMutability": "view",
             "virtual": false,
@@ -861,7 +879,7 @@
               "parameters": [],
               "src": "640:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "582:59:0",
             "stateMutability": "nonpayable",
             "virtual": false,
@@ -916,7 +934,7 @@
               "parameters": [],
               "src": "701:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "645:57:0",
             "stateMutability": "nonpayable",
             "virtual": false,
@@ -998,7 +1016,7 @@
               "parameters": [],
               "src": "795:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "706:90:0",
             "stateMutability": "nonpayable",
             "virtual": false,
@@ -1080,7 +1098,7 @@
               "parameters": [],
               "src": "894:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "800:95:0",
             "stateMutability": "nonpayable",
             "virtual": false,
@@ -1162,7 +1180,7 @@
               "parameters": [],
               "src": "986:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "899:88:0",
             "stateMutability": "nonpayable",
             "virtual": false,
@@ -1353,7 +1371,7 @@
               "parameters": [],
               "src": "1205:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "991:215:0",
             "stateMutability": "payable",
             "virtual": false,
@@ -1544,7 +1562,7 @@
               "parameters": [],
               "src": "1429:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "1210:220:0",
             "stateMutability": "payable",
             "virtual": false,
@@ -1626,68 +1644,34 @@
               "parameters": [],
               "src": "1522:0:0"
             },
-            "scope": 115,
+            "scope": 122,
             "src": "1434:89:0",
             "stateMutability": "nonpayable",
             "virtual": false,
             "visibility": "external"
           },
           {
-            "functionSelector": "e1324916",
+            "functionSelector": "d3291370",
             "id": 114,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
-            "name": "getSubnetId",
-            "nameLocation": "1536:11:0",
+            "name": "removeSubnetNode",
+            "nameLocation": "1536:16:0",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 110,
+              "id": 112,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
                   "id": 109,
                   "mutability": "mutable",
-                  "name": "name",
-                  "nameLocation": "1567:4:0",
+                  "name": "subnetId",
+                  "nameLocation": "1566:8:0",
                   "nodeType": "VariableDeclaration",
                   "scope": 114,
-                  "src": "1553:18:0",
-                  "stateVariable": false,
-                  "storageLocation": "memory",
-                  "typeDescriptions": {
-                    "typeIdentifier": "t_string_memory_ptr",
-                    "typeString": "string"
-                  },
-                  "typeName": {
-                    "id": 108,
-                    "name": "string",
-                    "nodeType": "ElementaryTypeName",
-                    "src": "1553:6:0",
-                    "typeDescriptions": {
-                      "typeIdentifier": "t_string_storage_ptr",
-                      "typeString": "string"
-                    }
-                  },
-                  "visibility": "internal"
-                }
-              ],
-              "src": "1547:28:0"
-            },
-            "returnParameters": {
-              "id": 113,
-              "nodeType": "ParameterList",
-              "parameters": [
-                {
-                  "constant": false,
-                  "id": 112,
-                  "mutability": "mutable",
-                  "name": "",
-                  "nameLocation": "-1:-1:-1",
-                  "nodeType": "VariableDeclaration",
-                  "scope": 114,
-                  "src": "1599:7:0",
+                  "src": "1558:16:0",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -1695,10 +1679,37 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 111,
+                    "id": 108,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "1599:7:0",
+                    "src": "1558:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 111,
+                  "mutability": "mutable",
+                  "name": "subnetNodeId",
+                  "nameLocation": "1588:12:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 114,
+                  "src": "1580:20:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 110,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1580:7:0",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -1707,22 +1718,111 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "1598:9:0"
+              "src": "1552:52:0"
             },
-            "scope": 115,
-            "src": "1527:81:0",
+            "returnParameters": {
+              "id": 113,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "1613:0:0"
+            },
+            "scope": 122,
+            "src": "1527:87:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "e1324916",
+            "id": 121,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getSubnetId",
+            "nameLocation": "1627:11:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 117,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 116,
+                  "mutability": "mutable",
+                  "name": "name",
+                  "nameLocation": "1658:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 121,
+                  "src": "1644:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 115,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1644:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1638:28:0"
+            },
+            "returnParameters": {
+              "id": 120,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 119,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 121,
+                  "src": "1690:7:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 118,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1690:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1689:9:0"
+            },
+            "scope": 122,
+            "src": "1618:81:0",
             "stateMutability": "view",
             "virtual": false,
             "visibility": "external"
           }
         ],
-        "scope": 116,
-        "src": "58:1552:0",
+        "scope": 123,
+        "src": "58:1643:0",
         "usedErrors": [],
         "usedEvents": []
       }
     ],
-    "src": "33:1577:0"
+    "src": "33:1668:0"
   },
   "compiler": {
     "name": "solc",
@@ -1730,7 +1830,7 @@
   },
   "networks": {},
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-05-24T02:45:10.317Z",
+  "updatedAt": "2025-05-25T19:39:10.560Z",
   "devdoc": {
     "kind": "dev",
     "methods": {},

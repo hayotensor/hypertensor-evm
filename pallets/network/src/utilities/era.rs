@@ -56,7 +56,7 @@ impl<T: Config> Pallet<T> {
     let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
     let total_subnets: u32 = subnets.len() as u32;
     let excess_subnets: bool = total_subnets > MaxSubnets::<T>::get();
-    let mut subnet_delegate_stake: Vec<(Vec<u8>, u128)> = Vec::new();
+    let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
 
     for (subnet_id, data) in subnets {
       // ==========================
@@ -96,7 +96,8 @@ impl<T: Config> Pallet<T> {
               let subnet_nodes_count = subnet_node_ids.len();  
               if (subnet_nodes_count as u32) < min_subnet_nodes {
                 Self::do_remove_subnet(
-                  data.name,
+                  // data.name,
+                  subnet_id,
                   SubnetRemovalReason::MinSubnetNodes,
                 );
               }
@@ -105,7 +106,8 @@ impl<T: Config> Pallet<T> {
               // --- Out of Enactment Period
               // If out of enactment period, ensure activated
               Self::do_remove_subnet(
-                data.name,
+                // data.name,
+                subnet_id,
                 SubnetRemovalReason::EnactmentPeriod,
               );
               continue
@@ -124,7 +126,8 @@ impl<T: Config> Pallet<T> {
       // --- Ensure min delegate stake balance is met
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
         Self::do_remove_subnet(
-          data.name,
+          // data.name,
+          subnet_id,
           SubnetRemovalReason::MinSubnetDelegateStake,
         );
         continue
@@ -145,14 +148,15 @@ impl<T: Config> Pallet<T> {
       let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
       if penalties > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          data.name,
+          // data.name,
+          subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
         continue
       }
 
       if excess_subnets {
-        subnet_delegate_stake.push((data.name, subnet_delegate_stake_balance));
+        subnet_delegate_stake.push((subnet_id, subnet_delegate_stake_balance));
       }
 
       Self::choose_validator(

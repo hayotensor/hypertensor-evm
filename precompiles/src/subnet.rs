@@ -86,39 +86,47 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,uint256,uint256,uint256,uint256,uint256,address[])")]
+  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,address[])")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
     name: BoundedString<ConstU32<256>>,
-    max_node_registration_epochs: U256,
-    node_registration_interval: U256,
-    node_activation_interval: U256,
-    node_queue_period: U256,
-    max_node_penalties: U256,
-    coldkeys: Vec<Address>,
+    repo: BoundedString<ConstU32<1024>>,
+    description: BoundedString<ConstU32<1024>>,
+    misc: BoundedString<ConstU32<1024>>,
+		churn_limit: U256,
+		registration_queue_epochs: U256,
+		activation_grace_epochs: U256,
+		queue_classification_epochs: U256,
+		included_classification_epochs: U256,
+		max_node_penalties: U256,
+		initial_coldkeys: Vec<Address>,
   ) -> EvmResult<()> {
-    let max_node_registration_epochs = try_u256_to_u32(max_node_registration_epochs)?;
-    let node_registration_interval = try_u256_to_u32(node_registration_interval)?;
-    let node_activation_interval = try_u256_to_u32(node_activation_interval)?;
-    let node_queue_period = try_u256_to_u32(node_queue_period)?;
+    handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+    let churn_limit = try_u256_to_u32(churn_limit)?;
+    let registration_queue_epochs = try_u256_to_u32(registration_queue_epochs)?;
+    let activation_grace_epochs = try_u256_to_u32(activation_grace_epochs)?;
+    let queue_classification_epochs = try_u256_to_u32(queue_classification_epochs)?;
+    let included_classification_epochs = try_u256_to_u32(included_classification_epochs)?;
     let max_node_penalties = try_u256_to_u32(max_node_penalties)?;
-    let initial_coldkeys: BTreeSet<R::AccountId> = coldkeys
+    let initial_coldkeys: BTreeSet<R::AccountId> = initial_coldkeys
       .into_iter()
       .map(|a| R::AddressMapping::into_account_id(a.into()))
       .collect();
 
     let subnet_data = pallet_network::RegistrationSubnetData::<R::AccountId> {
       name: name.into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs,
-      node_registration_interval,
-      node_activation_interval,
-      node_queue_period,
+      repo: repo.into(),
+			description: description.into(),
+			misc: misc.into(),
+      churn_limit,
+      registration_queue_epochs,
+      activation_grace_epochs,
+      queue_classification_epochs,
+      included_classification_epochs,
       max_node_penalties,
-      initial_coldkeys,
+      initial_coldkeys
     };
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
@@ -126,11 +134,33 @@ where
       subnet_data
     };
 
-    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
 
     Ok(())
   }
 
+  #[precompile::public("canSubnetRegister(uint256)")]
+  #[precompile::view]
+  fn can_subnet_register(
+    handle: &mut impl PrecompileHandle,
+    epoch: U256,
+  ) -> EvmResult<bool> {
+    let epoch = try_u256_to_u32(epoch)?;
+    let can_register = pallet_network::Pallet::<R>::can_subnet_register(epoch);
+    Ok(can_register)
+  }
+
+  #[precompile::public("registrationCost(uint256)")]
+  #[precompile::view]
+  fn registration_cost(
+    handle: &mut impl PrecompileHandle,
+    epoch: U256,
+  ) -> EvmResult<u128> {
+    let epoch = try_u256_to_u32(epoch)?;
+    let cost = pallet_network::Pallet::<R>::registration_cost(epoch);
+    Ok(cost)
+  }
+  
   #[precompile::public("activateSubnet(uint256)")]
   #[precompile::payable]
   fn activate_subnet(
@@ -187,26 +217,26 @@ where
     Ok(())
   }
 
-  #[precompile::public("ownerUpdateRegistrationInterval(uint256,uint256)")]
-  #[precompile::payable]
-  fn owner_update_registration_interval(
-    handle: &mut impl PrecompileHandle,
-    subnet_id: U256,
-    value: U256,
-  ) -> EvmResult<()> {
-    let subnet_id = try_u256_to_u32(subnet_id)?;
-    let value = try_u256_to_u32(value)?;
+  // #[precompile::public("ownerUpdateRegistrationInterval(uint256,uint256)")]
+  // #[precompile::payable]
+  // fn owner_update_registration_interval(
+  //   handle: &mut impl PrecompileHandle,
+  //   subnet_id: U256,
+  //   value: U256,
+  // ) -> EvmResult<()> {
+  //   let subnet_id = try_u256_to_u32(subnet_id)?;
+  //   let value = try_u256_to_u32(value)?;
 
-    let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    let call = pallet_network::Call::<R>::owner_update_registration_interval {
-      subnet_id,
-      value
-    };
+  //   let origin = R::AddressMapping::into_account_id(handle.context().caller);
+  //   let call = pallet_network::Call::<R>::owner_update_registration_interval {
+  //     subnet_id,
+  //     value
+  //   };
 
-    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+  //   RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
   #[precompile::public("ownerRemoveSubnetNode(uint256,uint256)")]
   #[precompile::payable]
@@ -246,14 +276,14 @@ where
 	}
 
 
-  #[precompile::public("addSubnetNode(uint256,address,bytes32,bytes32,uint256,uint256)")]
+  #[precompile::public("addSubnetNode(uint256,address,string,string,uint256,uint256)")]
   #[precompile::payable]
   fn add_subnet_node(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     hotkey: Address,
-    peer_id: H256, 
-    bootstrap_peer_id: H256,
+    peer_id: BoundedString<ConstU32<64>>,
+    bootstrap_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
     // a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
@@ -268,39 +298,35 @@ where
     let stake_to_be_added: u128 = stake_to_be_added.unique_saturated_into();
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    // let call = pallet_network::Call::<R>::add_to_delegate_stake {
-    //   subnet_id,
-    //   stake_to_be_added: delegate_reward_rate,
-    // };
 
-    // let call = pallet_network::Call::<R>::add_subnet_node {
-    //   subnet_id,
-    //   hotkey,
-    //   peer_id,
-    //   bootstrap_peer_id,
-    //   delegate_reward_rate,
-    //   stake_to_be_added,
-    //   a,
-    //   b,
-    //   c,
-    // };
+    let call = pallet_network::Call::<R>::add_subnet_node {
+      subnet_id,
+      hotkey,
+      peer_id,
+      bootstrap_peer_id,
+      delegate_reward_rate,
+      stake_to_be_added,
+      a: None,
+      b: None,
+      c: None,
+    };
 
-    // RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
 
     Ok(())
   }
 
-  #[precompile::public("registerSubnetNode(uint256,address,bytes32,bytes32,uint256,uint256)")]
+  #[precompile::public("registerSubnetNode(uint256,address,string,string,uint256,uint256)")]
   #[precompile::payable]
   fn register_subnet_node(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     hotkey: Address,
-    peer_id: H256, 
-    bootstrap_peer_id: H256,
+    peer_id: BoundedString<ConstU32<64>>,
+    bootstrap_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
-    // a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+    // a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
     // b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
     // c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
   ) -> EvmResult<()> {
@@ -313,19 +339,19 @@ where
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
-    // let call = pallet_network::Call::<R>::register_subnet_node {
-    //   subnet_id,
-    //   hotkey,
-    //   peer_id,
-    //   bootstrap_peer_id,
-    //   delegate_reward_rate,
-    //   stake_to_be_added,
-    //   a,
-    //   b,
-    //   c,
-    // };
+    let call = pallet_network::Call::<R>::register_subnet_node {
+      subnet_id,
+      hotkey,
+      peer_id,
+      bootstrap_peer_id,
+      delegate_reward_rate,
+      stake_to_be_added,
+      a: None,
+      b: None,
+      c: None,
+    };
 
-    // RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
 
     Ok(())
   }

@@ -24,60 +24,94 @@ impl<T: Config> Pallet<T> {
     min_subnet_nodes
   }
 
-  pub fn registration_cost(epoch: u32) -> u128 {
+  /// Calculates the current subnet registration fee based on a linear decay model.
+  ///
+  /// The registration cost starts at a maximum value (`MaxSubnetRegistrationFee`)
+  /// and linearly decreases to a minimum (`MinSubnetRegistrationFee`) over a fixed
+  /// interval of epochs (`SubnetRegistrationInterval`). After the interval expires,
+  /// the cost remains at the minimum fee.
+  ///
+  /// # Arguments
+  ///
+  /// * `current_epoch` - The current epoch at which registration is being attempted.
+  ///
+  /// # Returns
+  ///
+  /// * `u128` - The computed registration fee in token units.
+  ///
+  /// # Behavior
+  ///
+  /// - If no registration has ever occurred (`LastSubnetRegistrationEpoch == 0`),
+  ///   the cost starts from `MaxSubnetRegistrationFee`.
+  /// - The cost decreases linearly from max to min across the interval.
+  /// - If the `current_epoch` is past the interval, the minimum fee is returned.
+  pub fn registration_cost(current_epoch: u32) -> u128 {
     let last_registration_epoch = LastSubnetRegistrationEpoch::<T>::get();
     let fee_min: u128 = MinSubnetRegistrationFee::<T>::get();
     let fee_max: u128 = MaxSubnetRegistrationFee::<T>::get();
     let period: u32 = SubnetRegistrationInterval::<T>::get();
 
-    // Calculate the start of the next registration period
-    let next_registration_lower_bound_epoch = Self::get_next_registration_epoch(last_registration_epoch);
-    let next_registration_upper_bound_epoch = next_registration_lower_bound_epoch + period;
+    // Determine the start of the current fee period
+    let start_epoch = if last_registration_epoch == 0 {
+      0
+    } else {
+      last_registration_epoch
+    };
 
-    // If the current epoch is beyond the next registration period, return min fee
-    if epoch >= next_registration_upper_bound_epoch {
-        return fee_min;
+    let end_epoch = start_epoch + period;
+
+    // If current epoch is after end of the period, return min fee
+    if current_epoch >= end_epoch {
+      return fee_min;
     }
 
-    // Calculate the current position within the registration period
-    let cycle_epoch = epoch.saturating_sub(next_registration_lower_bound_epoch);
+    // How far into the period we are
+    let cycle_epoch = current_epoch.saturating_sub(start_epoch);
 
-    // Calculate the fee decrease per epoch
-    let decrease_per_epoch = (fee_max.saturating_sub(fee_min)).saturating_div(period as u128);
+    // Decrease per epoch
+    let total_decrease = fee_max.saturating_sub(fee_min);
+    let decrease_per_epoch = total_decrease.saturating_div(period as u128);
 
-    // Calculate the current fee
-    let cost = fee_max.saturating_sub(decrease_per_epoch.saturating_mul(cycle_epoch as u128));
+    // Linear decrease
+    let fee = fee_max.saturating_sub(decrease_per_epoch.saturating_mul(cycle_epoch as u128));
 
-    // Ensure the fee doesn't go below the minimum
-    cost.max(fee_min)
-  }
-
-  fn get_registration_cost(
-    current_epoch: u32, 
-    last_registration_epoch: u32, 
-    fee_min: u128, 
-    fee_max: u128
-  ) {
-    let next_registration_lower_bound_epoch = Self::get_next_registration_epoch(last_registration_epoch);
-
+    fee.max(fee_min)
   }
 
   pub fn can_subnet_register(current_epoch: u32) -> bool {
     current_epoch >= Self::get_next_registration_epoch(current_epoch)
   }
 
-  /// Get the next registration epoch based on an epoch
   pub fn get_next_registration_epoch(current_epoch: u32) -> u32 {
     let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<T>::get();
-    // --- Handle genesis
+    let interval: u32 = SubnetRegistrationInterval::<T>::get();
+
+    // If no registration has happened yet, return current_interval-aligned epoch
     if last_registration_epoch == 0 {
-      return 0
+        return current_epoch - (current_epoch % interval);
     }
-    let period: u32 = SubnetRegistrationInterval::<T>::get();
-    last_registration_epoch.saturating_add(
-      period.saturating_sub(last_registration_epoch % period)
-    )
+
+    // Otherwise, calculate next registration interval after last one
+    ((last_registration_epoch / interval) + 1) * interval
   }
+
+  // /// Get the next registration epoch based on an epoch
+  // pub fn get_next_registration_epoch(current_epoch: u32) -> u32 {
+  //   let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<T>::get();
+  //   // --- Handle genesis
+  //   if last_registration_epoch == 0 {
+  //     return 0
+  //   }
+
+  //   let interval: u32 = SubnetRegistrationInterval::<T>::get();
+
+  //   let offset = current_epoch % interval;
+
+
+  //   last_registration_epoch.saturating_add(
+  //     interval.saturating_sub(last_registration_epoch % interval)
+  //   )
+  // }
 
   pub fn is_subnet_registering(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
