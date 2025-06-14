@@ -57,6 +57,7 @@ impl<T: Config> Pallet<T> {
     let total_subnets: u32 = subnets.len() as u32;
     let excess_subnets: bool = total_subnets > MaxSubnets::<T>::get();
     let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
+    let min_subnet_nodes = MinSubnetNodes::<T>::get();
 
     for (subnet_id, data) in subnets {
       // ==========================
@@ -75,7 +76,6 @@ impl<T: Config> Pallet<T> {
       //  - Remove if not activated.
       //
       // ==========================
-      let min_subnet_nodes = MinSubnetNodes::<T>::get();
 
       let is_registering = data.state == SubnetState::Registered;
       if is_registering {
@@ -96,7 +96,6 @@ impl<T: Config> Pallet<T> {
               let subnet_nodes_count = subnet_node_ids.len();  
               if (subnet_nodes_count as u32) < min_subnet_nodes {
                 Self::do_remove_subnet(
-                  // data.name,
                   subnet_id,
                   SubnetRemovalReason::MinSubnetNodes,
                 );
@@ -104,9 +103,8 @@ impl<T: Config> Pallet<T> {
               continue
             } else if is_registering && epoch > max_enactment_epoch {
               // --- Out of Enactment Period
-              // If out of enactment period, ensure activated
+              // If out of enactment period and not activated, remove subnet
               Self::do_remove_subnet(
-                // data.name,
                 subnet_id,
                 SubnetRemovalReason::EnactmentPeriod,
               );
@@ -126,7 +124,6 @@ impl<T: Config> Pallet<T> {
       // --- Ensure min delegate stake balance is met
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
         Self::do_remove_subnet(
-          // data.name,
           subnet_id,
           SubnetRemovalReason::MinSubnetDelegateStake,
         );
@@ -148,7 +145,6 @@ impl<T: Config> Pallet<T> {
       let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
       if penalties > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          // data.name,
           subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );

@@ -26,7 +26,6 @@ use crate::{
   RegistrationSubnetData,
   SubnetRemovalReason,
   MaxSubnetPenaltyCount, 
-  MinSubnetRegistrationBlocks, 
   SubnetActivationEnactmentBlocks,
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
@@ -74,7 +73,7 @@ fn test_validate() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -132,7 +131,7 @@ fn test_validate_peer_with_0_score() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -191,7 +190,7 @@ fn test_validate_invalid_validator() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -236,7 +235,7 @@ fn test_attest() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -316,7 +315,7 @@ fn test_attest_remove_exiting_attester() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -420,7 +419,7 @@ fn test_attest_no_submission_err() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -457,7 +456,7 @@ fn test_attest_already_attested_err() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -552,7 +551,7 @@ fn test_reward_subnets() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -606,7 +605,7 @@ fn test_reward_subnets_v2() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -662,7 +661,7 @@ fn test_reward_subnets_v2() {
 
 // let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-// build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+// build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
 //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -787,7 +786,7 @@ fn test_reward_subnets_v2() {
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, amount);
+// //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, amount);
 
 // //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -873,7 +872,7 @@ fn test_reward_subnets_v2() {
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, amount);
+//     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, amount);
 
 //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -966,7 +965,7 @@ fn test_reward_subnets_validator_slash() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1015,7 +1014,7 @@ fn test_reward_subnets_v2_validator_slash() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1064,7 +1063,7 @@ fn test_reward_subnets_subnet_penalty_count() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1124,7 +1123,7 @@ fn test_reward_subnets_v2_subnet_penalty_count() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1182,7 +1181,7 @@ fn test_reward_subnets_account_penalty_count() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1227,7 +1226,7 @@ fn test_reward_subnets_v2_account_penalty_count() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1353,7 +1352,7 @@ fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1395,7 +1394,7 @@ fn test_do_epoch_preliminaries_deactivate_max_penalties() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1430,7 +1429,7 @@ fn test_do_epoch_preliminaries_choose_validator() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);

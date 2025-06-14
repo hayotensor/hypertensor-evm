@@ -13,10 +13,6 @@ use crate::{
   Error,
   SubnetPaths, 
   TotalSubnetNodes,
-  AccountSubnetDelegateStakeShares, 
-  TotalSubnetDelegateStakeShares, 
-  TotalSubnetDelegateStakeBalance,
-  SubnetRemovalReason,
   StakeUnbondingLedger,
   SubnetRewardsValidator,
   SubnetRewardsSubmission,
@@ -32,7 +28,6 @@ use crate::{
   AccountNodeDelegateStakeShares,
   TotalNodeDelegateStakeBalance,
   MinStakeBalance,
-  SubnetOwnerPercentage,
 };
 
 //
@@ -494,7 +489,7 @@ fn test_transfer_node_delegate_stake() {
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     let subnet_name: Vec<u8> = "subnet-name".into();
-    build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
     let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
     let subnet_node_id = 1;
 

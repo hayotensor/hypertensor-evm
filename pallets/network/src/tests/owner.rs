@@ -10,17 +10,7 @@ use sp_std::collections::btree_set::BTreeSet;
 use crate::{
   Error,
   SubnetPaths, 
-  MinSubnetNodes, 
   TotalSubnetNodes,
-  SubnetsData,
-  RegistrationSubnetData,
-  SubnetRemovalReason,
-  MinSubnetRegistrationBlocks, 
-  MaxSubnetRegistrationBlocks, 
-  SubnetActivationEnactmentBlocks,
-  HotkeySubnetNodeId,
-  SubnetRegistrationEpochs,
-  SubnetState,
   SubnetOwner,
 };
 use sp_runtime::traits::TrailingZeroInput;

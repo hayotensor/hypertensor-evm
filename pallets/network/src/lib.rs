@@ -294,6 +294,12 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Errors should have helpful documentation associated with them.
 
+		InvalidChurnLimit,
+		InvalidRegistrationQueueEpochs,
+		InvalidActivationGraceEpochs,
+		InvalidQueueClassificationEpochs,
+		InvalidIncludedClassificationEpochs,
+
 		/// Subnet must be registering or activated, this error usually occurs during the enactment period
 		SubnetMustBeRegisteringOrActivated,
 		/// Subnet must be registering to perform this action
@@ -357,6 +363,8 @@ pub mod pallet {
 		InvalidSubnetId,
 		/// Coldkey not whitelisted to register
 		ColdkeyRegistrationWhitelist,
+		/// Wallet doesn't have enough balance to register subnet
+		NotEnoughBalanceToRegisterSubnet,
 
 		/// Cannot deactivate node if current epochs validator
 		IsValidatorCannotDeactivate,
@@ -709,41 +717,7 @@ pub mod pallet {
 		pub max_node_penalties: u32,
 		pub initial_coldkeys: BTreeSet<AccountId>,
 	}
-
-	// / Subnet data used before activation
-	// /
-	// / # Arguments
-	// /
-	// / * `name` - Path to download the model, this can be HuggingFace, IPFS, anything.
-	// / * `max_node_registration_epochs` - Maximum epochs a node can be registered for. After they are removed on the 
-	// /																		 next successfully validated epoch.
-	// / * `node_registration_interval` - Registration blocks the subnet registerer wants to use
-	// /																 - Blocks between each node registration
-	// / * `node_activation_interval` - Activation blocks the subnet registerer wants to use
-	// /															 - Blocks between each node acivation
-	// / * `node_queue_period` - Epochs a node stays in the Queue class before being Included in consensus.
-	// / * `max_node_penalties` - Maximum penalties a node can accrue before being removed.
-	// / * `initial_coldkeys` - Whitelist of coldkeys for registration while subnets are registering. This is removed on activation.
-	// pub struct RegistrationSubnetData<AccountId> {
-	// 	pub name: Vec<u8>,
-	// 	pub repo: Vec<u8>,
-	// 	pub description: Vec<u8>,
-	// 	pub misc: Vec<u8>,
-	// 	pub max_node_registration_epochs: u32,
-	// 	pub node_registration_interval: u32,
-	// 	pub node_activation_interval: u32,
-	// 	pub node_queue_period: u32,
-	// 	pub max_node_penalties: u32,
-	// 	pub initial_coldkeys: BTreeSet<AccountId>,
-	// }
 	
-	// /// Subnet data used before activation
-	// #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	// pub struct RegisteredSubnetNodesData<AccountId> {
-	// 	pub subnet_id: u32,
-	// 	pub subnet_node: SubnetNode<AccountId>,
-	// }
-
 	/// Subnet node deactivation parameters
 	///
 	/// # Arguments
@@ -1106,10 +1080,10 @@ pub mod pallet {
 		500000000000000000
 	}
 
-	#[pallet::type_value]
-	pub fn DefaultDeactivationLedger<T: Config>() -> BTreeSet<SubnetNodeDeactivation> {
-		BTreeSet::new()
-	}
+	// #[pallet::type_value]
+	// pub fn DefaultDeactivationLedger<T: Config>() -> BTreeSet<SubnetNodeDeactivation> {
+	// 	BTreeSet::new()
+	// }
 	#[pallet::type_value]
 	pub fn DefaultMaxDeactivations() -> u32 {
 		512
@@ -1121,6 +1095,55 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultChurnLimit() -> u32 {
 		4
+	}
+	#[pallet::type_value]
+	pub fn DefaultMinChurnLimit() -> u32 {
+		// Must allow at least one node activation per epoch
+		1
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxChurnLimit() -> u32 {
+		// Must only enable up to 64 node activations per epoch
+		64
+	}
+	#[pallet::type_value]
+	pub fn DefaultMinRegistrationQueueEpochs() -> u32 {
+		// Require at least one epoch in registration queue
+		1
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxRegistrationQueueEpochs<T: Config>() -> u32 {
+		// Max queue of 1 month
+		T::EpochsPerYear::get() / 12
+	}
+	#[pallet::type_value]
+	pub fn DefaultMinActivationGraceEpochs() -> u32 {
+		0
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxActivationGraceEpochs<T: Config>() -> u32 {
+		// Max grace period of one week
+		T::EpochsPerYear::get() / 52
+	}
+	#[pallet::type_value]
+	pub fn DefaultMinQueueClassificationEpochs() -> u32 {
+		// Require at least one epoch in the queue classification
+		1
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxQueueClassificationEpochs<T: Config>() -> u32 {
+		// Max queue classification of one week
+		T::EpochsPerYear::get() / 52
+	}
+	#[pallet::type_value]
+	pub fn DefaultMinIncludedClassificationEpochs() -> u32 {
+		// Require at least one epoch in the included classification
+		1
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxIncludedClassificationEpochs<T: Config>() -> u32 {
+		// Max queue classification of one week
+		T::EpochsPerYear::get() / 52
 	}
 	#[pallet::type_value]
 	pub fn DefaultActivationGraceEpochs() -> u32 {
@@ -1378,10 +1401,41 @@ pub mod pallet {
 	pub type ChurnDenominator<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultChurnDenominator>;
 
+	#[pallet::storage]
+	pub type MinChurnLimit<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinChurnLimit>;
+	
+	#[pallet::storage]
+	pub type MaxChurnLimit<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxChurnLimit>;
+
+	#[pallet::storage]
+	pub type MinRegistrationQueueEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinRegistrationQueueEpochs>;
+
+	#[pallet::storage]
+	pub type MaxRegistrationQueueEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxRegistrationQueueEpochs<T>>;
+
+	#[pallet::storage]
+	pub type MinActivationGraceEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinActivationGraceEpochs>;
+
+	#[pallet::storage]
+	pub type MaxActivationGraceEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxActivationGraceEpochs<T>>;
+
+	#[pallet::storage]
+	pub type MinQueueClassificationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinQueueClassificationEpochs>;
+
+	#[pallet::storage]
+	pub type MaxQueueClassificationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxQueueClassificationEpochs<T>>;
+
+	#[pallet::storage]
+	pub type MinIncludedClassificationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinIncludedClassificationEpochs>;
+
+	#[pallet::storage]
+	pub type MaxIncludedClassificationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxIncludedClassificationEpochs<T>>;
+
 	/// Max amount of nodes that can activate per epoch
 	#[pallet::storage] // subnet_uid --> u32
 	pub type ChurnLimit<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultChurnLimit>;
+
 
 	/// Length of epochs a node must be in the registration queue before they can activate
 	#[pallet::storage] // subnet_uid --> u32
@@ -1413,9 +1467,9 @@ pub mod pallet {
 	pub type MaxDeactivations<T: Config> = 
 		StorageValue<_, u32, ValueQuery, DefaultMaxDeactivations>;
 
-	#[pallet::storage]
-	pub type DeactivationLedger<T: Config> = 
-		StorageValue<_, BTreeSet<SubnetNodeDeactivation>, ValueQuery, DefaultDeactivationLedger<T>>;
+	// #[pallet::storage]
+	// pub type DeactivationLedger<T: Config> = 
+	// 	StorageValue<_, BTreeSet<SubnetNodeDeactivation>, ValueQuery, DefaultDeactivationLedger<T>>;
 		
 	// /// Total epochs a subnet node can stay in registration phase. If surpassed, they are removed on the first successful
 	// /// consensus epoch
@@ -2409,18 +2463,7 @@ pub mod pallet {
 
 		/// Deactivate a subnet node temporarily
 		///
-		/// A subnet node can deactivate themselves temporarily. This can be to make updates to the node, etc.
-		///
-		/// Deactivation will set the subnet nodes class to `Deactivated`. The subnet node will have up to the
-		/// `SubnetNodeRegistrationEpochs` to re-activate or be removed after this period of time on the first
-		/// successfully attested epoch.
-		///
-		/// * If the subnet node has attested the current epochs consensus data, they will be added to the 
-		///	  `DeactivationLedger` and deactivated on the following epoch to avoid missing out on the emissions.
-		/// * * Otherwise, they are deactivated immediately.
-		///
-		/// The reason why deactivation gets the subnet node added to the deactivation ledger is due to the expectation
-		/// of a subnet being P2P and data may not be in 
+		/// A subnet node can deactivate themselves temporarily up to the MaxDeactivationEpochs
 		///
 		/// # Arguments
 		///
@@ -3931,6 +3974,35 @@ pub mod pallet {
 			);
 	
 			// TODO: Add conditionals for subnet_registration_data
+			ensure!(
+				subnet_registration_data.churn_limit >= MinChurnLimit::<T>::get() &&
+				subnet_registration_data.churn_limit <= MaxChurnLimit::<T>::get(),
+				Error::<T>::InvalidChurnLimit
+			);
+
+			ensure!(
+				subnet_registration_data.registration_queue_epochs >= MinRegistrationQueueEpochs::<T>::get() &&
+				subnet_registration_data.registration_queue_epochs <= MaxRegistrationQueueEpochs::<T>::get(),
+				Error::<T>::InvalidRegistrationQueueEpochs
+			);
+
+			ensure!(
+				subnet_registration_data.activation_grace_epochs >= MinActivationGraceEpochs::<T>::get() &&
+				subnet_registration_data.activation_grace_epochs <= MaxActivationGraceEpochs::<T>::get(),
+				Error::<T>::InvalidActivationGraceEpochs
+			);
+
+			ensure!(
+				subnet_registration_data.queue_classification_epochs >= MinQueueClassificationEpochs::<T>::get() &&
+				subnet_registration_data.queue_classification_epochs <= MaxQueueClassificationEpochs::<T>::get(),
+				Error::<T>::InvalidQueueClassificationEpochs
+			);
+
+			ensure!(
+				subnet_registration_data.included_classification_epochs >= MinIncludedClassificationEpochs::<T>::get() &&
+				subnet_registration_data.included_classification_epochs <= MaxIncludedClassificationEpochs::<T>::get(),
+				Error::<T>::InvalidIncludedClassificationEpochs
+			);
 
 			let subnet_fee: u128 = Self::registration_cost(epoch);
 
@@ -3940,7 +4012,7 @@ pub mod pallet {
 				// Ensure user has the funds, give accurate information on errors
 				ensure!(
 					Self::can_remove_balance_from_coldkey_account(&owner, subnet_fee_as_balance.unwrap()),
-					Error::<T>::NotEnoughBalanceToStake
+					Error::<T>::NotEnoughBalanceToRegisterSubnet
 				);
 				
 				// Send funds to Treasury and revert if failed
@@ -5134,7 +5206,7 @@ pub mod pallet {
 			// let shares: u128 = shares.try_into().unwrap_or(u128::MAX);
 
 			// // =====================================
-			// // increase_account_delegate_stake_shares
+			// // increase_account_delegate_stake
 			// // =====================================
 			// // -- increase total subnet delegate stake balance
 			// TotalSubnetDelegateStakeBalance::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(min_subnet_delegate_stake_balance));

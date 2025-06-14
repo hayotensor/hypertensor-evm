@@ -14,10 +14,8 @@ use crate::{
   SubnetPaths, 
   TotalSubnetNodes,
   TotalSubnetStake,
-  SubnetNode,
   HotkeySubnetNodeId,
   MinStakeBalance,
-  DeactivatedSubnetNodesData
 };
 
 // ///

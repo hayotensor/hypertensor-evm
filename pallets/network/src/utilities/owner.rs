@@ -150,6 +150,11 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      value >= MinChurnLimit::<T>::get() && value <= MaxChurnLimit::<T>::get(),
+      Error::<T>::InvalidChurnLimit
+    );
+
     ChurnLimit::<T>::insert(subnet_id, value);
 
     Self::deposit_event(Event::ChurnLimitUpdate { 

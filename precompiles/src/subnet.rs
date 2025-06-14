@@ -197,19 +197,17 @@ where
     Ok(())
   }
 
-  #[precompile::public("ownerDeactivateSubnet(uint256,string)")]
+  #[precompile::public("ownerDeactivateSubnet(uint256)")]
   #[precompile::payable]
   fn owner_deactivate_subnet(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
-    name: BoundedString<ConstU32<256>>,
   ) -> EvmResult<()> {
     let subnet_id = try_u256_to_u32(subnet_id)?;
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
     let call = pallet_network::Call::<R>::owner_deactivate_subnet {
       subnet_id,
-      name: name.into()
     };
 
     RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;

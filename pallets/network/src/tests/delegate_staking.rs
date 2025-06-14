@@ -57,7 +57,7 @@ fn test_delegate_math() {
     let total_subnet_delegate_stake_shares = match TotalSubnetDelegateStakeShares::<Test>::get(subnet_id) {
       0 => {
         // --- Mitigate inflation attack
-        // Network::increase_account_delegate_stake_shares(
+        // Network::increase_account_delegate_stake(
         //   &<Test as frame_system::Config>::AccountId::decode(&mut TrailingZeroInput::zeroes()).unwrap(),
         //   subnet_id, 
         //   0,
@@ -79,7 +79,7 @@ fn test_delegate_math() {
     );
     log::error!("delegate_stake_to_be_added_as_shares  {:?}", delegate_stake_to_be_added_as_shares);
 
-    Network::increase_account_delegate_stake_shares(
+    Network::increase_account_delegate_stake(
       &account_id,
       subnet_id, 
       delegate_stake_to_be_added,
@@ -215,7 +215,7 @@ fn test_delegate_math_with_storage_deposit() {
     let amount: u128 = 1000000000000000000000; // 1000
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -298,7 +298,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -388,7 +388,7 @@ fn test_add_to_delegate_stake() {
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -463,7 +463,7 @@ fn test_add_to_delegate_stake_increase_pool_check_balance() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -561,7 +561,7 @@ fn test_claim_removal_of_delegate_stake() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -679,7 +679,7 @@ fn test_claim_removal_of_delegate_stake() {
 
 // //     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-// //     build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+// //     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
 // //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -747,7 +747,7 @@ fn test_remove_to_delegate_stake_max_unlockings_reached_err() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -818,11 +818,11 @@ fn test_switch_delegate_stake() {
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     let from_subnet_path: Vec<u8> = "subnet-name".into();
-    build_activated_subnet(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let from_subnet_id = SubnetPaths::<Test>::get(from_subnet_path.clone()).unwrap();
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
-    build_activated_subnet(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let to_subnet_id = SubnetPaths::<Test>::get(to_subnet_path.clone()).unwrap();
 
     let n_account = 255;
@@ -913,11 +913,11 @@ fn test_switch_delegate_stake_not_enough_stake_err() {
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     let from_subnet_path: Vec<u8> = "subnet-name".into();
-    build_activated_subnet(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let from_subnet_id = SubnetPaths::<Test>::get(from_subnet_path.clone()).unwrap();
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
-    build_activated_subnet(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let to_subnet_id = SubnetPaths::<Test>::get(to_subnet_path.clone()).unwrap();
 
     // let n_account = 255;
@@ -1021,7 +1021,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -1259,11 +1259,11 @@ fn test_switch_delegate_stake_subnet_to_node() {
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     let from_subnet_path: Vec<u8> = "subnet-name".into();
-    build_activated_subnet(from_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
+    build_activated_subnet_new(from_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
     let from_subnet_id = SubnetPaths::<Test>::get(from_subnet_path.clone()).unwrap();
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
-    build_activated_subnet(to_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
+    build_activated_subnet_new(to_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
     let to_subnet_id = SubnetPaths::<Test>::get(to_subnet_path.clone()).unwrap();
 
     let n_account = 255;
@@ -1617,7 +1617,7 @@ fn test_transfer_delegate_stake() {
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
     let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
 
     let n_account = 255;

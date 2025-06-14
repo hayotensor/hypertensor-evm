@@ -161,8 +161,9 @@ impl<T: Config> Pallet<T> {
     let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
     let total_balance = U256::from(total_balance) + U256::from(1);
   
-    let shares = balance * total_shares / total_balance;
-    shares.try_into().unwrap_or(u128::MAX)
+    Self::checked_mul_div(balance, total_shares, total_balance)
+      .and_then(|res| res.try_into().ok())
+      .unwrap_or(u128::MAX)
   }
   
   /// Convert vault shares to TENSOR balance
@@ -186,7 +187,8 @@ impl<T: Config> Pallet<T> {
     let total_balance = U256::from(total_balance) + U256::from(1);
     let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
   
-    let balance = shares * total_balance / total_shares;
-    balance.try_into().unwrap_or(u128::MAX)
+    Self::checked_mul_div(shares, total_balance, total_shares)
+      .and_then(|res| res.try_into().ok())
+      .unwrap_or(u128::MAX)
   }
 }
