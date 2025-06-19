@@ -149,15 +149,19 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn get_classified_subnet_node_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
+  pub fn get_classified_subnet_nodes_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
       .filter(|(subnet_node_id, subnet_node)| subnet_node.has_classification(classification, epoch))
       .map(|(subnet_node_id, subnet_node)| {
+        let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
         SubnetNodeInfo {
           subnet_node_id: subnet_node_id,
-          coldkey: HotkeyOwner::<T>::get(&subnet_node.hotkey),
+          coldkey: coldkey.clone(),
           hotkey: subnet_node.hotkey.clone(),
           peer_id: subnet_node.peer_id,
+          bootstrap_peer_id: subnet_node.bootstrap_peer_id,
+          client_peer_id: subnet_node.client_peer_id,
+          identity: ColdkeyIdentity::<T>::get(&coldkey),
           classification: subnet_node.classification,
           a: subnet_node.a,
           b: subnet_node.b,
@@ -253,8 +257,12 @@ impl<T: Config> Pallet<T> {
     );
   }
 
+  /// Check if subnet node is owner of a peer ID
+  /// Main, bootstrap, and client peer IDs must be unique so we check all of them to ensure
+  /// that no one else owns them
+  /// Returns True is no owner or the peer ID is ownerless and available
   pub fn is_owner_of_peer_or_ownerless(subnet_id: u32, subnet_node_id: u32, peer_id: &PeerId) -> bool {
-    let is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    let mut is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(peer_subnet_node_id) => {
         if peer_subnet_node_id == subnet_node_id {
           return true
@@ -264,9 +272,19 @@ impl<T: Config> Pallet<T> {
       Err(()) => true,
     };
 
-    is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(bootstrap_subnet_node_id) => {
         if bootstrap_subnet_node_id == subnet_node_id {
+          return true
+        }
+        false
+      },
+      Err(()) => true,
+    };
+
+    is_peer_owner_or_ownerless && match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+      Ok(client_subnet_node_id) => {
+        if client_subnet_node_id == subnet_node_id {
           return true
         }
         false
@@ -307,5 +325,13 @@ impl<T: Config> Pallet<T> {
     let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
     let churn_denominator = ChurnDenominator::<T>::get(subnet_id);
     min_churn.max(active_nodes.saturating_div(churn_denominator))
+  }
+
+  pub fn is_identity_owner(coldkey: T::AccountId, identity: Vec<u8>) -> bool {
+    true    
+  }
+
+  pub fn is_identity_taken(identity: Vec<u8>) -> bool {
+    true    
   }
 }

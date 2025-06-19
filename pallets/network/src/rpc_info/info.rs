@@ -46,24 +46,44 @@ impl<T: Config> Pallet<T> {
     Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Validator, epoch)
   }
 
-  pub fn get_subnet_node_info(
+  pub fn get_subnet_nodes_info(
     subnet_id: u32,
   ) -> Vec<SubnetNodeInfo<T::AccountId>> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return Vec::new();
     }
     let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_node_info(subnet_id, &SubnetNodeClass::Validator, epoch)
+    Self::get_classified_subnet_nodes_info(subnet_id, &SubnetNodeClass::Validator, epoch)
   }
 
-  pub fn get_subnet_nodes_subnet_unconfirmed_count(
-    subnet_id: u32,
-  ) -> u32 {
-    if !SubnetsData::<T>::contains_key(subnet_id) {
-      return 0;
-    }
+  pub fn get_subnet_node_info(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
+    let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      DeactivatedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else {
+      return None
+    };
 
-    0
+    let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
+    let info = SubnetNodeInfo {
+      subnet_node_id: subnet_node_id,
+      coldkey: coldkey.clone(),
+      hotkey: subnet_node.hotkey.clone(),
+      peer_id: subnet_node.peer_id,
+      bootstrap_peer_id: subnet_node.bootstrap_peer_id,
+      client_peer_id: subnet_node.client_peer_id,
+      identity: ColdkeyIdentity::<T>::get(&coldkey),
+      classification: subnet_node.classification,
+      a: subnet_node.a,
+      b: subnet_node.b,
+      c: subnet_node.c,
+      stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id)
+    };
+
+    return Some(info)
   }
 
   pub fn get_subnet_node_by_params(
@@ -175,16 +195,19 @@ impl<T: Config> Pallet<T> {
   /// * `subnet_id` - Subnet ID.
   /// * `subnet_node_id` - Subnet node ID
   /// * `peer_id` - Subnet node peer ID
+  /// * `require_active` - Require that the subnet node is currently active (not registered or deactivated)
   ///
   pub fn proof_of_stake(
     subnet_id: u32, 
     subnet_node_id: u32,
-    peer_id: Vec<u8>
+    peer_id: Vec<u8>,
+    require_active: bool
   ) -> bool {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return false
     }
 
+    // --- Use subnet node ID
     if subnet_node_id > 0 {
       let is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
         Ok(_) => true,
@@ -194,6 +217,7 @@ impl<T: Config> Pallet<T> {
       return is_staked
     }
 
+    // --- Use peer ID
     let mut is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
       Ok(_) => true,
       Err(()) => false,
@@ -208,4 +232,44 @@ impl<T: Config> Pallet<T> {
       Err(()) => false,
     }
   }
+
+  /// Client Proof-of-stake
+  ///
+  /// Checks if the client peer ID is staked
+  ///
+  /// - Returns if the node has a proof of stake
+  ///
+  /// # Options
+  ///
+  /// - Can use either a subnet node ID or peer ID, or bootstrap peer ID
+  ///
+  /// The most secure way to call this function is by peer ID with signatures
+  ///
+  /// # Arguments
+  ///
+  /// * `subnet_id` - Subnet ID.
+  /// * `peer_id` - Subnet node client peer ID
+  /// * `require_active` - Require that the subnet node is currently active (not registered or deactivated)
+  ///
+  pub fn client_proof_of_stake(
+    subnet_id: u32, 
+    peer_id: Vec<u8>,
+    require_active: bool
+  ) -> bool {
+    if !SubnetsData::<T>::contains_key(subnet_id) {
+      return false
+    }
+
+    match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id)) {
+      Ok(_) => {
+        if require_active {
+          true
+        } else {
+          true
+        }
+      },
+      Err(()) => false,
+    }
+  }
+
 }

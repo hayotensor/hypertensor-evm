@@ -574,7 +574,8 @@ parameter_types! {
 }
 
 impl pallet_network::Config for Runtime {
-	type WeightInfo = ();
+	// type WeightInfo = ();
+	type WeightInfo = pallet_network::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type MajorityCollectiveOrigin = pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
@@ -1346,10 +1347,6 @@ impl_runtime_apis! {
 	// 		let result = Network::get_subnet_nodes_submittable(subnet_id);
 	// 		result.encode()
 	// 	}
-	// 	fn get_subnet_nodes_subnet_unconfirmed_count(subnet_id: u32) -> u32 {
-	// 		let result = Network::get_subnet_nodes_subnet_unconfirmed_count(subnet_id);
-	// 		result
-	// 	}
 	// 	fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8> {
 	// 		let result = Network::get_consensus_data(subnet_id, epoch);
 	// 		result.encode()
@@ -1362,8 +1359,8 @@ impl_runtime_apis! {
 	// 		let result = Network::get_minimum_delegate_stake(memory_mb);
 	// 		result
 	// 	}
-	// 	fn get_subnet_node_info(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_node_info(subnet_id);
+	// 	fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8> {
+	// 		let result = Network::get_subnet_nodes_info(subnet_id);
 	// 		result.encode()
 	// 	}
 	// 	fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {

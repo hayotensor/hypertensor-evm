@@ -58,8 +58,10 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    let mut prev_name: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
+        prev_name = data.name.clone();
         data.name = value.clone();
       }
     });
@@ -67,6 +69,7 @@ impl<T: Config> Pallet<T> {
     Self::deposit_event(Event::SubnetNameUpdate { 
       subnet_id: subnet_id,
       owner: coldkey, 
+      prev_value: prev_name,
       value: value 
     });
 
@@ -81,8 +84,10 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    let mut prev_repo: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
+        prev_repo = data.repo.clone();
         data.repo = value.clone();
       }
     });
@@ -90,6 +95,7 @@ impl<T: Config> Pallet<T> {
     Self::deposit_event(Event::SubnetRepoUpdate { 
       subnet_id: subnet_id,
       owner: coldkey, 
+      prev_value: prev_repo,
       value: value 
     });
 
@@ -104,8 +110,10 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    let mut prev_description: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
+        prev_description = data.description.clone();
         data.description = value.clone();
       }
     });
@@ -113,6 +121,7 @@ impl<T: Config> Pallet<T> {
     Self::deposit_event(Event::SubnetDescriptionUpdate { 
       subnet_id: subnet_id,
       owner: coldkey, 
+      prev_value: prev_description,
       value: value 
     });
 
@@ -127,8 +136,10 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    let mut prev_misc: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
+        prev_misc = data.misc.clone();
         data.misc = value.clone();
       }
     });
@@ -136,6 +147,7 @@ impl<T: Config> Pallet<T> {
     Self::deposit_event(Event::SubnetMiscUpdate { 
       subnet_id: subnet_id,
       owner: coldkey, 
+      prev_value: prev_misc,
       value: value 
     });
 

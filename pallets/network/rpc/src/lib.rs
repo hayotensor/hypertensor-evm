@@ -22,16 +22,14 @@ pub trait NetworkCustomApi<BlockHash> {
 	fn get_subnet_nodes_included(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getSubnetNodesSubmittable")]
 	fn get_subnet_nodes_submittable(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
-	#[method(name = "network_getSubnetNodesUnconfirmedCount")]
-	fn get_subnet_nodes_subnet_unconfirmed_count(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<u32>;
 	#[method(name = "network_getConsensusData")]
 	fn get_consensus_data(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getMinimumSubnetNodes")]
 	fn get_minimum_subnet_nodes(&self, memory_mb: u128, at: Option<BlockHash>) -> RpcResult<u32>;
 	#[method(name = "network_getMinimumDelegateStake")]
 	fn get_minimum_delegate_stake(&self, memory_mb: u128, at: Option<BlockHash>) -> RpcResult<u128>;
-	#[method(name = "network_getSubnetNodeInfo")]
-	fn get_subnet_node_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
+	#[method(name = "network_getSubnetNodesInfo")]
+	fn get_subnet_nodes_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_isSubnetNodeByPeerId")]
 	fn is_subnet_node_by_peer_id(&self, subnet_id: u32, peer_id: Vec<u8>, at: Option<BlockHash>) -> RpcResult<bool>;
 	#[method(name = "network_areSubnetNodesByPeerId")]
@@ -107,13 +105,6 @@ where
 			Error::RuntimeError(format!("Unable to get subnet nodes submittable: {:?}", e)).into()
 		})
 	}
-	fn get_subnet_nodes_subnet_unconfirmed_count(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<u32> {
-		let api = self.client.runtime_api();
-		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_subnet_nodes_subnet_unconfirmed_count(at, subnet_id).map_err(|e| {
-			Error::RuntimeError(format!("Unable to get subnet nodes unconfirmed: {:?}", e)).into()
-		})
-	}
 	fn get_consensus_data(&self, subnet_id: u32, epoch: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
@@ -135,10 +126,10 @@ where
 			Error::RuntimeError(format!("Unable to minimuum delegate stake: {:?}", e)).into()
 		})
 	}
-	fn get_subnet_node_info(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
+	fn get_subnet_nodes_info(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_subnet_node_info(at, subnet_id).map_err(|e| {
+		api.get_subnet_nodes_info(at, subnet_id).map_err(|e| {
 			Error::RuntimeError(format!("Unable to get subnet node info: {:?}", e)).into()
 		})
 	}
