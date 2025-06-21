@@ -51,10 +51,11 @@ impl<T: Config> Pallet<T> {
     }
 
     let mut stake_weights_normalized: BTreeMap<&u32, u128> = BTreeMap::new();
+    let percentage_factor = Self::percentage_factor_as_u128();
 
     // --- Normalize delegate stake weights from `sqrt`
     for (subnet_id, weight) in stake_weights {
-      let weight_normalized: u128 = (weight / stake_weight_sum * Self::percentage_factor_as_u128() as f64) as u128;
+      let weight_normalized: u128 = (weight / stake_weight_sum * percentage_factor as f64) as u128;
       stake_weights_normalized.insert(subnet_id, weight_normalized);
     }
 
@@ -65,6 +66,8 @@ impl<T: Config> Pallet<T> {
     let min_subnet_nodes = MinSubnetNodes::<T>::get();
     let node_attestation_removal_threshold = NodeAttestationRemovalThreshold::<T>::get();
     let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
+    let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
+    let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
 
     for (subnet_id, data) in &subnets {
       let mut attestation_percentage: u128 = 0;
@@ -115,8 +118,8 @@ impl<T: Config> Pallet<T> {
 
         // Redundant
         // When subnet nodes exit, the consensus data is updated to remove them from it
-        if attestation_percentage > Self::percentage_factor_as_u128() {
-          attestation_percentage = Self::percentage_factor_as_u128();
+        if attestation_percentage > percentage_factor {
+          attestation_percentage = percentage_factor;
         }
         
         let validator_subnet_node_id: u32 = submission.validator_id;

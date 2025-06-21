@@ -17,3 +17,4 @@ mod subnet_node_new;
 mod unbonding;
 mod keys;
 mod staking_utils;
+mod reputation;

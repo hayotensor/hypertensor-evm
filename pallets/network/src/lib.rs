@@ -66,8 +66,8 @@ use sp_runtime::Saturating;
 
 // FRAME pallets require their own "mock runtimes" to be able to run unit tests. This module
 // contains a mock runtime specific for testing this pallet's functionality.
-#[cfg(test)]
-mod mock;
+// #[cfg(test)]
+// mod mock;
 
 // This module contains the unit tests for this pallet.
 // Learn about pallet unit testing here: https://docs.substrate.io/test/unit-testing/
@@ -797,6 +797,27 @@ pub mod pallet {
 		pub complete: bool,
 	}
 
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct Reputation {
+    /// Epoch when the node first elected subnet validator node to submit consensus.
+    pub start_epoch: u32,
+
+    /// Current reputation weight.
+    pub weight: u128,
+
+    /// Number of times the node's weight increased (i.e., successful validation).
+    pub total_increases: u32,
+
+    /// Number of times the node's weight decreased (i.e., failed validation).
+    pub total_decreases: u32,
+
+    /// Average attestation rate.
+    pub average_attestation: u128,
+
+    /// Last epoch the node was selected as validator.
+    pub last_validator_epoch: u32,
+	}
+
 	#[pallet::type_value]
 	pub fn DefaultZeroU32() -> u32 {
 		0
@@ -1268,6 +1289,27 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultProposalBidAmount() -> u128 {
 		1e+18 as u128
+	}
+	#[pallet::type_value]
+	pub fn DefaultReputationIncreaseFactor() -> u128 {
+		// 0.5
+		500000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultReputationDecreaseFactor() -> u128 {
+		// 0.5
+		500000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultColdkeyReputation() -> Reputation {
+		return Reputation {
+			start_epoch: 0,
+			weight: 500_000_000_000_000, // 0.5 / 50%
+			total_increases: 0,
+			total_decreases: 0,
+			average_attestation: 0,
+			last_validator_epoch: 0,
+		}
 	}
 
 	
@@ -1786,6 +1828,21 @@ pub mod pallet {
 		ValueQuery,
 		DefaultZeroU32,
 	>;
+
+	// Tracking subnet node reputation based on their validator activity
+	// This is used for the gateway to become a validator node to ensure they
+	// are trustworthy
+
+	/// Weight used to increase a subnet validator nodes reputation
+	#[pallet::storage]
+	pub type ReputationIncreaseFactor<T> = StorageValue<_, u128, ValueQuery, DefaultReputationIncreaseFactor>;	
+
+	/// Weight used to decrease a subnet validator nodes reputation
+	#[pallet::storage]
+	pub type ReputationDecreaseFactor<T> = StorageValue<_, u128, ValueQuery, DefaultReputationDecreaseFactor>;	
+
+	#[pallet::storage]
+	pub type ColdkeyReputation<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Reputation, ValueQuery, DefaultColdkeyReputation>;
 
 	// Attestion percentage required to increment a nodes penalty count up
 	#[pallet::storage]
@@ -2649,11 +2706,10 @@ pub mod pallet {
 				Error::<T>::NotKeyOwner
 			);
 
-			// TODO: is this required?
-			// ensure!(
-			// 	identity != Vec::new(),
-			// 	Error::<T>::InvalidIdentity
-			// );
+			ensure!(
+				!identity.is_empty(),
+				Error::<T>::InvalidIdentity
+			);
 
 			// --- Ensure identity isn't owned by a coldkey
 			// or is already owned by this coldkey
@@ -2695,7 +2751,6 @@ pub mod pallet {
 		#[pallet::weight({0})]
 		pub fn accept_identity(origin: OriginFor<T>, identity: Vec<u8>) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin)?;
-
 
 			let pending_owner: T::AccountId = match PendingIdentityOwner::<T>::try_get(&identity) {
 				Ok(pending_owner) => pending_owner,
