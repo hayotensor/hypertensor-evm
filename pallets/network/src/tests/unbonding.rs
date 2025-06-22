@@ -11,7 +11,7 @@ use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error, 
-  SubnetPaths, 
+  SubnetName, 
   TotalSubnetNodes,
   AccountSubnetStake,
   StakeUnbondingLedger, 
@@ -47,7 +47,7 @@ fn test_register_remove_claim_stake_unbondings() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
@@ -144,7 +144,7 @@ fn test_register_activate_remove_claim_stake_unbondings() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
@@ -256,7 +256,7 @@ fn test_remove_stake_twice_in_epoch() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
@@ -388,7 +388,7 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
@@ -437,7 +437,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);

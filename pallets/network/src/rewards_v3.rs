@@ -20,25 +20,54 @@ use frame_support::pallet_prelude::Pays;
 use libm::sqrt;
 
 impl<T: Config> Pallet<T> {
-  pub fn reward_subnets_v2(block: u32, epoch: u32) -> DispatchResultWithPostInfo {
-    // --- Get total rewards for this epoch
-    // 1. Epoch emissions
-    // 2. Epoch burn
-    // 3. Foundation emissions
-    let rewards: u128 = Self::get_epoch_emissions(epoch);
-    log::error!("v2 rewards              {:?}", rewards);
+  // TODO: Fix this one to use this one instead of below
+  // pub fn calculate_stake_weights(
+  //   subnet_ids: &[u32],
+  //   percentage_factor: u128,
+  //   total_delegate_stake: u128,
+  // ) -> BTreeMap<u32, u128> {
+  //   let mut raw_weights: BTreeMap<u32, f64> = BTreeMap::new();
+  //   let mut weight_sum: f64 = 0.0;
+  //   let exponent: f64 = 0.5;
 
-    let subnets: Vec<_> = SubnetsData::<T>::iter()
-      .filter(|(_, subnet)| subnet.state == SubnetState::Active)
-      .collect();
+  //   if total_delegate_stake == 0 || subnet_ids.is_empty() {
+  //       return BTreeMap::new();
+  //   }
 
-    let total_subnets: u32 = subnets.len() as u32;
-    let total_delegate_stake = TotalDelegateStake::<T>::get();
+  //   for subnet_id in subnet_ids {
+  //     let stake = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+  //     if stake == 0 {
+  //       continue
+  //     }
 
+  //     let ratio = stake as f64 / total_delegate_stake as f64;
+  //     // let adjusted_weight = Self::pow(ratio, exponent);
+  //     let adjusted_weight: f64 = sqrt(ratio);
+
+  //     raw_weights.insert(*subnet_id, adjusted_weight);
+  //     weight_sum += adjusted_weight;
+  //   }
+
+  //   let mut normalized: BTreeMap<u32, u128> = BTreeMap::new();
+  //   let percentage_factor_f64 = percentage_factor as f64;
+
+  //   for (subnet_id, weight) in raw_weights {
+  //     let norm = ((weight / weight_sum) * percentage_factor_f64) as u128;
+  //     normalized.insert(subnet_id, norm);
+  //   }
+
+  //   normalized
+  // }
+
+  pub fn calculate_stake_weights(
+    subnet_ids: &[u32],
+    percentage_factor: u128,
+    total_delegate_stake: u128,
+  ) -> BTreeMap<u32, u128> {
     let mut stake_weights: BTreeMap<&u32, f64> = BTreeMap::new();
     let mut stake_weight_sum: f64 = 0.0;
 
-    for (subnet_id, _) in &subnets {
+    for subnet_id in subnet_ids {
       let total_subnet_delegate_stake = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
       // 1. Get all weights in f64
       // *We later use sqrt that uses floats
@@ -50,14 +79,41 @@ impl<T: Config> Pallet<T> {
       stake_weight_sum += weight_sqrt;
     }
 
-    let mut stake_weights_normalized: BTreeMap<&u32, u128> = BTreeMap::new();
+    let mut stake_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
     let percentage_factor = Self::percentage_factor_as_u128();
 
     // --- Normalize delegate stake weights from `sqrt`
     for (subnet_id, weight) in stake_weights {
       let weight_normalized: u128 = (weight / stake_weight_sum * percentage_factor as f64) as u128;
-      stake_weights_normalized.insert(subnet_id, weight_normalized);
+      stake_weights_normalized.insert(*subnet_id, weight_normalized);
     }
+    return stake_weights_normalized
+  }
+
+  pub fn reward_subnets_v2(block: u32, epoch: u32) -> DispatchResultWithPostInfo {
+    // --- Get total rewards for this epoch
+    // 1. Epoch emissions
+    // 2. Epoch burn
+    // 3. Foundation emissions
+    let rewards: u128 = Self::get_epoch_emissions(epoch);
+    log::error!("reward_subnets rewards              {:?}", rewards);
+
+    let subnets: Vec<_> = SubnetsData::<T>::iter()
+      .filter(|(_, subnet)| subnet.state == SubnetState::Active)
+      .collect();
+
+    let total_subnets: u32 = subnets.len() as u32;
+    let total_delegate_stake = TotalDelegateStake::<T>::get();
+
+    let subnet_ids: Vec<u32> = subnets.iter().map(|(id, _)| *id).collect();
+
+    let percentage_factor = Self::percentage_factor_as_u128();
+
+    let stake_weights_normalized: BTreeMap<u32, u128> = Self::calculate_stake_weights(
+      &subnet_ids,
+      percentage_factor,
+      total_delegate_stake,
+    );
 
     let subnet_owner_percentage = SubnetOwnerPercentage::<T>::get();
     let delegate_stake_rewards_percentage: u128 = DelegateStakeRewardsPercentage::<T>::get();
@@ -368,7 +424,7 @@ impl<T: Config> Pallet<T> {
       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
       if subnet_penalty_count > max_subnet_penalty_count {
         Self::do_remove_subnet(
-          subnet_id,
+          *subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
       }

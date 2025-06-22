@@ -67,6 +67,16 @@ impl<T: Config> Pallet<T> {
 
       TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
 
+      // Update reputation of coldkey
+      match HotkeyOwner::<T>::try_get(&hotkey) {
+				Ok(coldkey) => {
+          ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+          });
+        },
+				Err(()) => (),
+			};
+
 			Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
     }
   }

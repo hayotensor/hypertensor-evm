@@ -140,7 +140,7 @@ fn build_activated_subnet<T: Config>(
     )
   );
 
-  let subnet_id = SubnetPaths::<T>::get(name.clone()).unwrap();
+  let subnet_id = SubnetName::<T>::get(name.clone()).unwrap();
   let subnet = SubnetsData::<T>::get(subnet_id).unwrap();
 
   if end == 0 {
@@ -388,7 +388,7 @@ mod benchmarks {
 			)
 		);
 
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 		let subnet = SubnetsData::<T>::get(subnet_id).unwrap();
 
 		assert_eq!(subnet.id, subnet_id);
@@ -514,7 +514,7 @@ mod benchmarks {
 			)
 		);
 
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", 1);
 
@@ -591,7 +591,7 @@ mod benchmarks {
 			)
 		);
 
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 		let subnet_node_account = funded_account::<T>("subnet_node_account", 1);
 
@@ -623,7 +623,7 @@ mod benchmarks {
 		build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 		let subnet_node_account = funded_account::<T>("subnet_node_account", end);
 
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 		assert_ok!(
 			Network::<T>::register_subnet_node(
 				RawOrigin::Signed(subnet_node_account.clone()).into(), 
@@ -661,7 +661,7 @@ mod benchmarks {
 	// // // 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 	// // // 	let subnet_node_account = funded_account::<T>("subnet_node_account", end+1);
 
-	// // // 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// // // 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// // // 	assert_ok!(
 	// // // 		Network::<T>::register_subnet_node(
 	// // // 			RawOrigin::Signed(subnet_node_account.clone()).into(), 
@@ -691,7 +691,7 @@ mod benchmarks {
 	fn remove_subnet_node() {
 		let end = 12;
 		build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", 1);
 
@@ -713,7 +713,7 @@ mod benchmarks {
 	fn add_to_stake() {
 		let end = 12;
 		build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", end+1);
 		assert_ok!(
@@ -752,7 +752,7 @@ mod benchmarks {
 	fn remove_stake() {
 		let end = 12;
 		build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", end+1);
 		assert_ok!(
@@ -796,7 +796,7 @@ mod benchmarks {
 	// fn add_to_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 
@@ -829,10 +829,10 @@ mod benchmarks {
 	// fn swap_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let from_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let from_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH_2.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let to_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
+	// 	let to_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 
@@ -890,7 +890,7 @@ mod benchmarks {
 	// fn remove_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 	// 	assert_ok!(
@@ -933,7 +933,7 @@ mod benchmarks {
 	// fn claim_unbondings() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 	// 	assert_ok!(
@@ -989,7 +989,7 @@ mod benchmarks {
 	// fn increase_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 	// 	assert_ok!(
@@ -1034,7 +1034,7 @@ mod benchmarks {
 	// fn add_to_node_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let subnet_node_id = end;
 
 	// 	let delegate_node_account: T::AccountId = funded_account::<T>("delegate_node_account", 0);
@@ -1062,11 +1062,11 @@ mod benchmarks {
 	// fn swap_node_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let from_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let from_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let from_subnet_node_id = end;
 
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH_2.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let to_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
+	// 	let to_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
 	// 	let to_subnet_node_id = end;
 
 	// 	let delegate_node_account: T::AccountId = funded_account::<T>("delegate_node_account", 0);
@@ -1149,7 +1149,7 @@ mod benchmarks {
 	// fn remove_node_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let subnet_node_id = end;
 
 	// 	let delegate_node_account: T::AccountId = funded_account::<T>("delegate_node_account", 0);
@@ -1211,7 +1211,7 @@ mod benchmarks {
 	// fn increase_node_delegate_stake() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let subnet_node_id = end;
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
@@ -1230,11 +1230,11 @@ mod benchmarks {
 	// fn transfer_from_node_to_subnet() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let from_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let from_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let from_subnet_node_id = end;
 
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH_2.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let to_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
+	// 	let to_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 
@@ -1294,10 +1294,10 @@ mod benchmarks {
 	// fn transfer_from_subnet_to_node() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let from_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let from_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH_2.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let to_subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
+	// 	let to_subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH_2.into()).unwrap();
 	// 	let to_subnet_node_id = end;
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
@@ -1353,7 +1353,7 @@ mod benchmarks {
 	// fn validate() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let subnet = SubnetsData::<T>::get(subnet_id).unwrap();
 
 	// 	let n_nodes: u32 = TotalSubnetNodes::<T>::get(subnet_id);
@@ -1389,7 +1389,7 @@ mod benchmarks {
 	// fn attest() {
 	// 	let end = 12;
 	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_PATH.into(), 0, end, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_PATH.into()).unwrap();
 	// 	let subnet = SubnetsData::<T>::get(subnet_id).unwrap();
 	// 	let n_nodes: u32 = TotalSubnetNodes::<T>::get(subnet_id);
 
@@ -1456,7 +1456,7 @@ mod benchmarks {
 	// 	// Insert validator and validate
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		let validator_id: u32 = 1;
 	// 		let validator_hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, validator_id).unwrap();
@@ -1479,7 +1479,7 @@ mod benchmarks {
 	// 	// Attest
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 1..p+1 {
 	// 			if n == 1 {
@@ -1515,7 +1515,7 @@ mod benchmarks {
 
 	// 	let path: Vec<u8> = DEFAULT_SUBNET_PATH.into();
 	// 	build_activated_subnet::<T>(path.clone(), 0, n_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path.clone()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path.clone()).unwrap();
 
 	// 	let epoch_length = T::EpochLength::get();
 	// 	let block_number = get_current_block_as_u32::<T>();
@@ -1589,7 +1589,7 @@ mod benchmarks {
 	// 	// Insert validator and validate
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", 0);
 	// 		SubnetRewardsValidator::<T>::insert(subnet_id, epoch as u32, subnet_node_account.clone());
@@ -1609,7 +1609,7 @@ mod benchmarks {
 	// 	// Attest so node can be in the deactivate ledger
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..n_nodes {
 	// 			if n == 0 {
@@ -1626,12 +1626,12 @@ mod benchmarks {
 	// 	}
 
 	// 	// let path: Vec<u8> = "subnet-name-{0}".into(); 
-	// 	// let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 	// let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 	// 	let mut i = 0;
 
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..d {
 	// 			if i == 128 {
@@ -1655,7 +1655,7 @@ mod benchmarks {
 
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..n_nodes {
 	// 			let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", n);
@@ -1682,7 +1682,7 @@ mod benchmarks {
 	// 	// Insert validator and validate
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", 0);
 	// 		SubnetRewardsValidator::<T>::insert(subnet_id, epoch as u32, subnet_node_account.clone());
@@ -1702,7 +1702,7 @@ mod benchmarks {
 	// 	// Attest so node can be in the deactivate ledger
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..p {
 	// 			if n == 0 {
@@ -1719,12 +1719,12 @@ mod benchmarks {
 	// 	}
 
 	// 	// let path: Vec<u8> = "subnet-name-{0}".into(); 
-	// 	// let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 	// let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 	// 	let mut i = 0;
 
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..d {
 	// 			if i == 128 {
@@ -1748,7 +1748,7 @@ mod benchmarks {
 
 	// 	for s in 0..x {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..p {
 	// 			let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", n);
@@ -1775,7 +1775,7 @@ mod benchmarks {
 	// 	// Insert validator and validate
 	// 	for s in 0..max_subnets {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", 0);
 	// 		SubnetRewardsValidator::<T>::insert(subnet_id, epoch as u32, subnet_node_account.clone());
@@ -1795,7 +1795,7 @@ mod benchmarks {
 	// 	// Attest so node can be in the deactivate ledger
 	// 	for s in 0..max_subnets {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..n_nodes {
 	// 			if n == 0 {
@@ -1813,7 +1813,7 @@ mod benchmarks {
 
 	// 	for s in 0..max_subnets {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..n_nodes {
 	// 			let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", n);
@@ -1833,7 +1833,7 @@ mod benchmarks {
 
 	// 	for s in 0..max_subnets {
 	// 		let path: Vec<u8> = format!("subnet-name-{s}").into(); 
-	// 		let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path).unwrap();
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path).unwrap();
 
 	// 		for n in 0..n_nodes {
 	// 			let subnet_node_account: T::AccountId = get_account::<T>("subnet_node_account", n);
@@ -1849,7 +1849,7 @@ mod benchmarks {
 
 	// 	let path: Vec<u8> = DEFAULT_SUBNET_PATH.into();
 	// 	build_activated_subnet::<T>(path.clone(), 0, n_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-	// 	let subnet_id = SubnetPaths::<T>::get::<Vec<u8>>(path.clone()).unwrap();
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(path.clone()).unwrap();
 
 	// 	let epoch_length = T::EpochLength::get();
 	// 	let block_number = get_current_block_as_u32::<T>();

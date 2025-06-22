@@ -11,7 +11,7 @@ use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error, 
-  SubnetPaths, 
+  SubnetName, 
   TotalSubnetNodes,
   AccountSubnetStake,
   StakeUnbondingLedger, 
@@ -35,7 +35,7 @@ fn test_update_coldkey() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
@@ -242,7 +242,7 @@ fn test_update_coldkey_key_taken_err() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     assert_err!(
@@ -268,7 +268,7 @@ fn test_update_hotkey() {
 
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();

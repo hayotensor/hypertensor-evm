@@ -9,7 +9,7 @@ use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use crate::{
   Error,
-  SubnetPaths, 
+  SubnetName, 
   TotalSubnetNodes,
   SubnetOwner,
 };
@@ -44,7 +44,7 @@ use codec::{Decode, Encode};
 
 //     build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let n_account = total_subnet_nodes + 1;

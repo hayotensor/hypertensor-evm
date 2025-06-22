@@ -392,6 +392,17 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  pub fn do_owner_update_min_stake(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    Ok(())
+  }
+
   /// Initiates the transfer of a subnet's ownership to a new account using a 2-step model.
   ///
   /// This function can only be called by the current owner of the subnet.  

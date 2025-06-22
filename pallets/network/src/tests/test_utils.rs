@@ -7,7 +7,7 @@ use crate::{
   SubnetNodeData, 
   TotalStake, 
   SubnetRewardsValidator,
-  SubnetPaths, 
+  SubnetName, 
   SubnetNodeClass,
   SubnetsData,
   AccountSubnetStake, 
@@ -113,7 +113,7 @@ pub const DEFAULT_DELEGATE_REWARD_RATE: u128 = 100000000000000000; // 10%
 //     )
 //   );
 
-//   let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//   let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 //   let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 //   let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
 //   assert_eq!(owner, account(0));
@@ -260,7 +260,7 @@ pub fn build_activated_subnet_new(subnet_path: Vec<u8>, start: u32, mut end: u32
     )
   );
 
-  let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+  let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
   let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
   assert_eq!(owner, account(0));
@@ -413,7 +413,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     )
   );
 
-  let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+  let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
   let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
   assert_eq!(owner, account(0));
@@ -569,7 +569,7 @@ pub fn default_registration_subnet_data(
 
 pub fn post_subnet_removal_ensures(subnet_id: u32, name: Vec<u8>, start: u32, end: u32) {
   assert_eq!(SubnetsData::<Test>::try_get(subnet_id), Err(()));
-  assert_eq!(SubnetPaths::<Test>::try_get(name), Err(()));
+  assert_eq!(SubnetName::<Test>::try_get(name), Err(()));
   assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationInitialColdkeys::<Test>::try_get(subnet_id), Err(()));

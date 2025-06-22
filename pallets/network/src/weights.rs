@@ -48,8 +48,8 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: `Network::TxPause` (r:1 w:0)
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetPaths` (r:1 w:1)
-	/// Proof: `Network::SubnetPaths` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetName` (r:1 w:1)
+	/// Proof: `Network::SubnetName` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastSubnetRegistrationEpoch` (r:1 w:1)
@@ -468,8 +468,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	/// Storage: `Network::TxPause` (r:1 w:0)
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetPaths` (r:1 w:1)
-	/// Proof: `Network::SubnetPaths` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetName` (r:1 w:1)
+	/// Proof: `Network::SubnetName` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastSubnetRegistrationEpoch` (r:1 w:1)

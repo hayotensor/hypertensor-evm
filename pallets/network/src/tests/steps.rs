@@ -11,7 +11,7 @@ use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error,
-  SubnetPaths,
+  SubnetName,
   HotkeySubnetNodeId,
   SubnetRewardsValidator,
   SubnetNodeIdHotkey,
@@ -30,7 +30,7 @@ use crate::{
 //     let n_peers = 8;
 //     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, amount);
 
-//     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;

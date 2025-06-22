@@ -98,7 +98,7 @@ impl<T: Config> Pallet<T> {
     let mut coldkey_reputation = ColdkeyReputation::<T>::get(&coldkey);
     let current_weight = coldkey_reputation.weight;
 
-    // Avoid division by zero
+    // Remove node / Avoid division by zero
     if current_weight == 0 {
       return
     }
@@ -129,7 +129,7 @@ impl<T: Config> Pallet<T> {
     coldkey_reputation.last_validator_epoch = epoch;
 
     if coldkey_reputation.start_epoch == 0 {
-        coldkey_reputation.start_epoch = epoch;
+      coldkey_reputation.start_epoch = epoch;
     }
 
     let prev_total = coldkey_reputation

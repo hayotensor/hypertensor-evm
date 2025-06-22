@@ -11,7 +11,7 @@ use sp_core::{H256, U256};
 use frame_support::traits::{OnInitialize, Currency};
 use crate::{
   Error,   
-  SubnetPaths, 
+  SubnetName, 
   SubnetNodeClass,
   VotingPeriod, 
   Proposals, 
@@ -54,7 +54,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -113,7 +113,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -147,7 +147,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -181,7 +181,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -225,7 +225,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -259,7 +259,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -317,7 +317,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -370,7 +370,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -415,7 +415,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -469,7 +469,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -513,7 +513,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -566,7 +566,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -627,7 +627,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -678,7 +678,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -721,7 +721,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -766,7 +766,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -829,7 +829,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -877,7 +877,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -932,7 +932,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -988,7 +988,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1046,7 +1046,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1100,7 +1100,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1154,7 +1154,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1200,7 +1200,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1245,7 +1245,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1303,7 +1303,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let n_peers: u32 = 12;
 // //     let deposit_amount: u128 = 10000000000000000000000;
@@ -1364,7 +1364,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1437,7 +1437,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1548,7 +1548,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1656,7 +1656,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1706,7 +1706,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1826,7 +1826,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {

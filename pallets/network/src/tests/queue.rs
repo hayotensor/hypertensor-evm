@@ -10,7 +10,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
-  SubnetPaths, 
+  SubnetName, 
   MinStakeBalance,
   RegistrationQueue,
   ChurnLimit,
@@ -46,7 +46,7 @@ fn test_single_node_entry() {
 
     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
     ChurnLimit::<Test>::insert(subnet_id, 2);
     RegistrationQueueEpochs::<Test>::insert(subnet_id, 5);

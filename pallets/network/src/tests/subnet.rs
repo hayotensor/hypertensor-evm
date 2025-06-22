@@ -9,7 +9,7 @@ use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use crate::{
   Error,
-  SubnetPaths, 
+  SubnetName, 
   MinSubnetNodes, 
   TotalSubnetNodes,
   SubnetsData,
@@ -90,7 +90,7 @@ fn test_register_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     // Check treasury pot
@@ -140,7 +140,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
@@ -243,7 +243,7 @@ fn test_register_subnet_exists_error() {
         RuntimeOrigin::signed(account(0)),
         add_subnet_data.clone(),
       ),
-      Error::<Test>::SubnetExist
+      Error::<Test>::SubnetNameExist
     );
 
   })
@@ -320,7 +320,7 @@ fn test_activate_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -370,7 +370,7 @@ fn test_activate_subnet() {
       )
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
     assert_eq!(subnet.id, subnet_id);
 
@@ -419,7 +419,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -495,7 +495,7 @@ fn test_activate_subnet_already_activated_err() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -593,7 +593,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     let id = subnet.id;
@@ -653,7 +653,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
@@ -701,7 +701,7 @@ fn test_activate_subnet_initializing_error() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -787,7 +787,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -813,7 +813,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
@@ -858,7 +858,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -905,7 +905,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));

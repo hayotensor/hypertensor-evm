@@ -11,7 +11,7 @@ use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error,
-  SubnetPaths, 
+  SubnetName, 
   TotalSubnetNodes,
   StakeUnbondingLedger,
   SubnetRewardsValidator,
@@ -63,7 +63,7 @@ fn test_add_to_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -112,7 +112,7 @@ fn test_remove_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -205,7 +205,7 @@ fn test_swap_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let from_subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+    let from_subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_from_subnet_nodes = TotalSubnetNodes::<Test>::get(from_subnet_id);
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
@@ -219,7 +219,7 @@ fn test_swap_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let to_subnet_id = SubnetPaths::<Test>::get(to_subnet_path.clone()).unwrap();
+    let to_subnet_id = SubnetName::<Test>::get(to_subnet_path.clone()).unwrap();
 
     let _ = Balances::deposit_creating(&account(total_from_subnet_nodes+1), amount+500);
 
@@ -361,7 +361,7 @@ fn test_swap_node_delegate_stake() {
 //       DEFAULT_DELEGATE_REWARD_RATE,
 //     );
 
-//     let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -490,7 +490,7 @@ fn test_transfer_node_delegate_stake() {
 
     let subnet_name: Vec<u8> = "subnet-name".into();
     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
-    let subnet_id = SubnetPaths::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet_node_id = 1;
 
     let n_account = 1000;

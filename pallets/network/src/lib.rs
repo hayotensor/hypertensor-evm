@@ -98,7 +98,7 @@ pub mod consensus;
 pub use consensus::*;
 
 mod rewards;
-mod rewards_v2;
+mod rewards_v3;
 
 // All pallet logic is defined in its own module and must be annotated by the `pallet` attribute.
 #[frame_support::pallet]
@@ -342,6 +342,10 @@ pub mod pallet {
 		SubnetNodeNotExist,
 		/// Subnet already exists
 		SubnetExist,
+		/// Subnet name already exists
+		SubnetNameExist,
+		/// Subnet repository already exists
+		SubnetRepoExist,
 		/// Subnet registration cooldown period not met
 		SubnetRegistrationCooldown,
 		/// Invalid registration block
@@ -805,6 +809,9 @@ pub mod pallet {
     /// Current reputation weight.
     pub weight: u128,
 
+		/// Track total nodes under a coldkey.
+    pub total_active_nodes: u128,
+
     /// Number of times the node's weight increased (i.e., successful validation).
     pub total_increases: u32,
 
@@ -913,10 +920,13 @@ pub mod pallet {
 	pub fn DefaultMinStakeBalance() -> u128 {
 		1000e+18 as u128
 	}
+	// #[pallet::type_value]
+	// pub fn DefaultMaxStakeBalance() -> u128 {
+	// 	1000e+18 as u128
+	// }
 	#[pallet::type_value]
 	pub fn DefaultMinSubnetDelegateStakeFactor() -> u128 {
 		// 0.1%
-		// 1_000_000 // 1e9
 
 		1_000_000_000_000_000 // 1e18
 	}
@@ -1305,6 +1315,7 @@ pub mod pallet {
 		return Reputation {
 			start_epoch: 0,
 			weight: 500_000_000_000_000, // 0.5 / 50%
+			total_active_nodes: 0,
 			total_increases: 0,
 			total_decreases: 0,
 			average_attestation: 0,
@@ -1330,7 +1341,7 @@ pub mod pallet {
 	#[pallet::getter(fn max_subnets)]
 	pub type MaxSubnets<T> = StorageValue<_, u32, ValueQuery, DefaultMaxSubnets>;
 
-	// Mapping of each subnet stored by ID, uniqued by `SubnetPaths`
+	// Mapping of each subnet stored by ID, uniqued by `SubnetName`
 	// Stores subnet data by a unique id
 	#[pallet::storage] // subnet_id => data struct
 	pub type SubnetsData<T> = StorageMap<_, Identity, u32, SubnetData>;
@@ -1340,8 +1351,12 @@ pub mod pallet {
 	// stakes attached to the subnet_id won't impact the re-initialization
 	// of the subnet name.
 	#[pallet::storage]
-	#[pallet::getter(fn subnet_paths)]
-	pub type SubnetPaths<T> = StorageMap<_, Blake2_128Concat, Vec<u8>, u32>;
+	#[pallet::getter(fn subnet_name)]
+	pub type SubnetName<T> = StorageMap<_, Blake2_128Concat, Vec<u8>, u32>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn subnet_repo)]
+	pub type SubnetRepo<T> = StorageMap<_, Blake2_128Concat, Vec<u8>, u32>;
 
 	#[pallet::storage] // subnet_id => blocks
 	pub type SubnetRegistrationEpoch<T> = StorageMap<_, Identity, u32, u32>;
@@ -1522,6 +1537,9 @@ pub mod pallet {
 	pub type QueueClassificationEpochs<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultQueueClassificationEpochs>;
 
+	#[pallet::storage]
+	pub type SubnetMinStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultMinStakeBalance>;
+		
 	/// Length of epochs an Included classified node must be in that class for
 	/// This can be used in tandem with SubnetNodePenalties to ensure a node is included
 	/// in consensus data before they are activated instead of automatically being upgraded
@@ -1541,15 +1559,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type MaxDeactivations<T: Config> = 
 		StorageValue<_, u32, ValueQuery, DefaultMaxDeactivations>;
-
-	// #[pallet::storage]
-	// pub type DeactivationLedger<T: Config> = 
-	// 	StorageValue<_, BTreeSet<SubnetNodeDeactivation>, ValueQuery, DefaultDeactivationLedger<T>>;
-		
-	// /// Total epochs a subnet node can stay in registration phase. If surpassed, they are removed on the first successful
-	// /// consensus epoch
-	// #[pallet::storage]
-	// pub type MaxSubnetNodeRegistrationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxSubnetNodeRegistrationEpochs<T>>;
 	
 	/// Max epochs a subnet node can be in the registration phase before being removed
 	#[pallet::storage]
@@ -1702,7 +1711,7 @@ pub mod pallet {
 		DefaultZeroU32,
 	>;
 
-		#[pallet::storage] // subnet_id --> client_peer_id --> subnet_node_id
+	#[pallet::storage] // subnet_id --> client_peer_id --> subnet_node_id
 	pub type ClientPeerIdSubnetNode<T: Config> = StorageDoubleMap<
 		_,
 		Identity,
@@ -1894,9 +1903,13 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type MaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMaxStakeBalance>;
 
-	// Minimum required subnet peer stake balance per subnet
+	// Minimum required subnet node stake balance per subnet
 	#[pallet::storage]
 	pub type MinStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMinStakeBalance>;
+
+	// The maximum balance a subnet can require a node to stake to become a node in Hypertensor
+	// #[pallet::storage]
+	// pub type MaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMaxStakeBalance>;
 
 	//
 	// Delegate Staking
@@ -1935,6 +1948,10 @@ pub mod pallet {
 	#[pallet::storage] // subnet_uid --> u128
 	pub type TotalSubnetDelegateStakeBalance<T> =
 		StorageMap<_, Identity, u32, u128, ValueQuery>;
+
+	// Exponent used to get subnet emissions based on overall network delegate stake weight 
+	#[pallet::storage]
+	pub type DelegateStakeWeightExponent<T> = StorageValue<_, u128, ValueQuery>;
 
 	// An accounts delegate stake per subnet
 	#[pallet::storage] // account --> subnet_id --> u128
@@ -2841,7 +2858,7 @@ pub mod pallet {
 		/// # Requirements
 		///
 		/// * Caller must be coldkey owner of subnet node ID.
-		/// * If decreasing rate, new rate must not be more than a 1% decrease nominally (10_000_000 using 1e9)
+		/// * If decreasing rate, new rate must not be more than a 1% decrease nominally
 		///
 		#[pallet::call_index(31)]
 		#[pallet::weight({0})]
@@ -4054,8 +4071,14 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Ensure name is unique
 			ensure!(
-				!SubnetPaths::<T>::contains_key(&subnet_registration_data.name),
-				Error::<T>::SubnetExist
+				!SubnetName::<T>::contains_key(&subnet_registration_data.name),
+				Error::<T>::SubnetNameExist
+			);
+
+			// Ensure name is unique
+			ensure!(
+				!SubnetRepo::<T>::contains_key(&subnet_registration_data.repo),
+				Error::<T>::SubnetRepoExist
 			);
 
 			let epoch = Self::get_current_epoch_as_u32();
@@ -4145,7 +4168,7 @@ pub mod pallet {
 			);
 
 			// Store unique name
-			SubnetPaths::<T>::insert(&subnet_data.name, subnet_id);
+			SubnetName::<T>::insert(&subnet_data.name, subnet_id);
 			// Store subnet data
 			SubnetsData::<T>::insert(subnet_id, &subnet_data);
 			// Increase total subnets. This is used for unique Subnet IDs
@@ -4260,7 +4283,7 @@ pub mod pallet {
 			};
 
 			// Remove unique name
-			SubnetPaths::<T>::remove(&subnet.name);
+			SubnetName::<T>::remove(&subnet.name);
 			// Remove subnet data
 			SubnetsData::<T>::remove(subnet_id);
 			// Remove subnet entry ledger
@@ -4600,6 +4623,11 @@ pub mod pallet {
         Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
 			};
 
+			let coldkey = match HotkeyOwner::<T>::try_get(&hotkey) {
+				Ok(coldkey) => coldkey,
+				Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+			};
+
 			ensure!(
 				HotkeySubnetNodeId::<T>::get(subnet_id, &hotkey) == Some(subnet_node_id),
 				Error::<T>::NotUidOwner
@@ -4648,7 +4676,10 @@ pub mod pallet {
 			// Increase total subnet nodes
 			TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 
-	
+			ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+				rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
+			});
+
 			Self::deposit_event(
 				Event::SubnetNodeActivated { 
 					subnet_id: subnet_id, 
@@ -5234,7 +5265,7 @@ pub mod pallet {
 			
 			// SubnetRegistrationEpoch::<T>::insert(subnet_id, 1);
 			// // Store unique name
-			// SubnetPaths::<T>::insert(self.subnet_name.clone(), subnet_id);
+			// SubnetName::<T>::insert(self.subnet_name.clone(), subnet_id);
 			// // Store subnet data
 			// SubnetsData::<T>::insert(subnet_id, subnet_data.clone());
 			// // Increase total subnets count
