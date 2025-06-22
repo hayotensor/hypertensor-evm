@@ -59,6 +59,29 @@ impl<T: Config> Pallet<T> {
   //   normalized
   // }
 
+  // fn slash_and_penalize(
+  //   subnet_id: u32,
+  //   validator_subnet_node_id: u32,
+  //   hotkey: &T::AccountId,
+  //   attestation_percentage: u128,
+  //   min_attestation_percentage: u128,
+  //   reputation_decrease_factor: u128,
+  //   epoch: u32,
+  //   block: u32,
+  // ) {
+  //   Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage, block);
+
+  //   if let Ok(coldkey) = HotkeyOwner::<T>::try_get(hotkey) {
+  //     Self::decrease_coldkey_reputation(
+  //       coldkey,
+  //       attestation_percentage,
+  //       min_attestation_percentage,
+  //       reputation_decrease_factor,
+  //       epoch,
+  //     );
+  //   }
+  // }
+
   pub fn calculate_stake_weights(
     subnet_ids: &[u32],
     percentage_factor: u128,
@@ -179,44 +202,62 @@ impl<T: Config> Pallet<T> {
         }
         
         let validator_subnet_node_id: u32 = submission.validator_id;
-
         let data_len = submission.data.len();
+        // let is_submission_empty = (data_len as u32) < min_subnet_nodes;
+        // let not_enough_attestations = attestation_percentage < min_attestation_percentage;
 
-        /* 
-          - Ensures the subnet has enough nodes.
-            * If validator submits under the minimum nodes we assume the subnet is in an unusable state
-          - If the subnet agrees in the validators logic we don't skip rewards
-            * This is to not incentivize subnets from falsely attesting any epochs that have under the required nodes.
-          - Slashes the validator if attestation is below the required minimum.
-        */
-        // If the number of data points (data_len) is less than the required minimum subnet nodes
+
+        // ────────────────────────────────
+        // Case 1: Empty submission
+        // ────────────────────────────────
         if (data_len as u32) < min_subnet_nodes {
           // --- Subnet no longer submitting consensus
           //     Increase the penalty count
           SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
           
           // Check if the attestation percentage is below the "vast majority" threshold
+          // If validator submits nothing, we require that vast majority to agree with this
+          // It can reference the subnet possibly being in a broken stat, requiring maintenance
+          // If so, consensus is skipped
           if attestation_percentage < min_vast_majority_attestation_percentage {
             // If the attestation percentage is also below the minimum required threshold, slash the validator
             if attestation_percentage < min_attestation_percentage {
-              Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage, block);
+              Self::slash_validator(
+                *subnet_id, 
+                validator_subnet_node_id, 
+                attestation_percentage,
+                min_attestation_percentage,
+                reputation_decrease_factor,
+                block,
+                epoch
+              );
             }
             // Skip further execution and continue to the next iteration
             continue;
           }
-          // Subnet agrees with validators submission, continue unless results are None
-          if data_len == 0 {
-            continue
-          }
         }
 
-        // --- If the minimum required attestation not reached, assume validator is dishonest, slash, and continue
-        // We don't increase subnet penalty count here because this is likely the validators fault
+        // ───────────────────────────────────────────────────────
+        // Case 2: Submission present, but not enough attestations
+        // ───────────────────────────────────────────────────────
         if attestation_percentage < min_attestation_percentage {
           // --- Slash validator and increase penalty score
-          Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage, block);
-          
+          Self::slash_validator(
+            *subnet_id, 
+            validator_subnet_node_id, 
+            attestation_percentage,
+            min_attestation_percentage,
+            reputation_decrease_factor,
+            block,
+            epoch
+          );
+
           // --- Attestation not successful, move on to next subnet
+          continue
+        }
+
+        // Data is None, nothing to do
+        if data_len == 0 {
           continue
         }
 
@@ -356,7 +397,19 @@ impl<T: Config> Pallet<T> {
 
           // --- Increase reward if validator
           if subnet_node_id == validator_subnet_node_id {
-            account_reward += Self::get_validator_reward(attestation_percentage);    
+            account_reward += Self::get_validator_reward(attestation_percentage);
+            match HotkeyOwner::<T>::try_get(&hotkey) {
+              Ok(coldkey) => {
+                Self::increase_coldkey_reputation(
+                  coldkey,
+                  attestation_percentage, 
+                  min_attestation_percentage, 
+                  reputation_increase_factor,
+                  epoch
+                );
+              },
+              Err(()) => continue,
+            };
           }
           
           // --- Skip if no rewards to give
@@ -409,7 +462,15 @@ impl<T: Config> Pallet<T> {
 
         // If validator didn't submit anything, then slash
         // Even if a subnet is in a broken state, the chosen validator must submit blank data
-        Self::slash_validator(*subnet_id, validator_id, 0, block);
+        Self::slash_validator(
+          *subnet_id, 
+          validator_id, 
+          0,
+          min_attestation_percentage,
+          reputation_decrease_factor,
+          block,
+          epoch
+        );
       }
       // TODO: Get benchmark for removing max subnets in one epoch to ensure does not surpass max weights
 

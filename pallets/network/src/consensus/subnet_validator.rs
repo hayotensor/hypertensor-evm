@@ -201,12 +201,28 @@ impl<T: Config> Pallet<T> {
   pub fn slash_validator(
     subnet_id: u32, 
     subnet_node_id: u32,
-    attestation_percentage: u128, 
-    block: u32
+    attestation_percentage: u128,
+    min_attestation_percentage: u128,
+    reputation_decrease_factor: u128,
+    block: u32,
+    epoch: u32,
   ) {
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
     let hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node_id).unwrap();
+
+    match HotkeyOwner::<T>::try_get(&hotkey) {
+      Ok(coldkey) => {
+        Self::decrease_coldkey_reputation(
+          coldkey,
+          attestation_percentage, 
+          min_attestation_percentage, 
+          reputation_decrease_factor,
+          epoch
+        );
+      },
+      Err(()) => (),
+    };
 
     // --- Get stake balance
     // This could be greater than the target stake balance
