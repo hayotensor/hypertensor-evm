@@ -21,7 +21,6 @@ use crate::{
   RegistrationSubnetData,
   StakeUnbondingLedger, 
   TotalSubnetStake, 
-  MinSubnetRegistrationBlocks,
   DefaultMaxVectorLength,
   HotkeyOwner, 
   TotalSubnetNodeUids, 
@@ -35,8 +34,6 @@ use crate::{
   RewardRateUpdatePeriod,
   SubnetRegistrationEpochs,
   MinStakeBalance,
-  RegisteredStakeCooldownEpochs,
-  RegistrationQueue,
   ChurnLimit,
   RegistrationQueueEpochs,
 };

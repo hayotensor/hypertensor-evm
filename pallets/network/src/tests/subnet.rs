@@ -15,7 +15,7 @@ use crate::{
   SubnetsData,
   RegistrationSubnetData,
   SubnetRemovalReason,
-  SubnetActivationEnactmentBlocks,
+  SubnetActivationEnactmentEpochs,
   SubnetRegistrationEpochs,
   SubnetState,
   TotalActiveSubnets,
@@ -686,7 +686,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
 
     // --- Increase blocks to max registration block
     let registration_epochs = SubnetRegistrationEpochs::<Test>::get();
-    let enactment_epochs = SubnetActivationEnactmentBlocks::<Test>::get();
+    let enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
     increase_epochs(registration_epochs + enactment_epochs + 1);
 
     assert_ok!(

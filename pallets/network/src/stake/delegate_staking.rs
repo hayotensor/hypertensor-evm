@@ -68,7 +68,7 @@ impl<T: Config> Pallet<T> {
       return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
     }
 
-    if delegate_stake_to_be_added < MinDelegateStakeBalance::<T>::get() {
+    if delegate_stake_to_be_added < MinDelegateStakeDeposit::<T>::get() {
       return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
     }
 
@@ -318,7 +318,7 @@ impl<T: Config> Pallet<T> {
 
     // --- Ensure transfer balance is greater than the min
     ensure!(
-      delegate_stake_to_be_transferred >= MinDelegateStakeBalance::<T>::get(),
+      delegate_stake_to_be_transferred >= MinDelegateStakeDeposit::<T>::get(),
       Error::<T>::CouldNotConvertToBalance
     );
 

@@ -337,61 +337,6 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_set_max_subnet_registration_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    ensure!(
-      !Self::is_subnet_active(subnet_id),
-      Error::<T>::SubnetMustBeRegistering
-    );
-
-    SubnetNodeRegistrationEpochs::<T>::insert(subnet_id, value);
-
-    Ok(())
-  }
-
-  pub fn do_owner_update_queue_period(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    SubnetNodeQueuePeriod::<T>::insert(subnet_id, value);
-
-    Ok(())
-  }
-
-  pub fn do_owner_update_included_period(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    Ok(())
-  }
-
-  /// Gives owner the ability to rearrange the queue, for instance, the owner can order the queue based on
-  /// a validators performance
-  pub fn do_owner_rearrange_queue(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
-      Error::<T>::NotSubnetOwner
-    );
-
-    Ok(())
-  }
-
   pub fn do_owner_update_min_stake(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -399,6 +344,37 @@ impl<T: Config> Pallet<T> {
       Self::is_subnet_owner(&coldkey, subnet_id),
       Error::<T>::NotSubnetOwner
     );
+
+    ensure!(
+    	value >= MinSubnetMinStake::<T>::get() &&
+    	value <= MaxSubnetMinStake::<T>::get(),
+    	Error::<T>::InvalidSubnetMinStake
+    );
+
+    SubnetMinStakeBalance::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_delegate_stake_reward_percentage(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    value: u128
+  ) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+    	value >= MinDelegateStakePercentage::<T>::get() &&
+    	value <= MaxDelegateStakePercentage::<T>::get(),
+    	Error::<T>::InvalidDelegateStakeRewardsPercentage
+    );
+
+    SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, value);
 
     Ok(())
   }

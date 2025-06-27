@@ -158,7 +158,6 @@ impl<T: Config> Pallet<T> {
     );
 
     let subnet_owner_percentage = SubnetOwnerPercentage::<T>::get();
-    let delegate_stake_rewards_percentage: u128 = DelegateStakeRewardsPercentage::<T>::get();
     let min_attestation_percentage = MinAttestationPercentage::<T>::get();
     let min_vast_majority_attestation_percentage = MinVastMajorityAttestationPercentage::<T>::get();
     let min_subnet_nodes = MinSubnetNodes::<T>::get();
@@ -185,6 +184,8 @@ impl<T: Config> Pallet<T> {
           },
           None => continue,
         };
+
+        let delegate_stake_rewards_percentage = SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id);
 
         let overall_subnet_reward: u128 = Self::percent_mul(rewards, weight);
 

@@ -17,7 +17,6 @@ use crate::{
   SubnetRewardsValidator,
   SubnetRewardsSubmission,
   SubnetNodePenalties,
-  DelegateStakeRewardsPercentage,
   BaseValidatorReward,
   SubnetNodesData,
   TotalNodeDelegateStakeShares,

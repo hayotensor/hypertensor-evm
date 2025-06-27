@@ -27,7 +27,6 @@ use crate::{
   MaxRewardRateDecrease,
   RewardRateUpdatePeriod,
   MinStakeBalance,
-  RegistrationQueue,
   ActivationGraceEpochs,
   RegisteredSubnetNodesData,
   DeactivatedSubnetNodesData,

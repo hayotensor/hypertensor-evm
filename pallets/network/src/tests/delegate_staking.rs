@@ -137,7 +137,7 @@ fn check_balances() {
     // Balances::make_free_balance_be(&user, USER_INITIAL_BALANCE);
 
     // // ---- Step 1: uSER deposits minimal amount ----
-    // // The MinDelegateStakeBalance (deposit min) is 1000, otherwise reverts with CouldNotConvertToBalance
+    // // The MinDelegateStakeDeposit (deposit min) is 1000, otherwise reverts with CouldNotConvertToBalance
     // assert_ok!(
     //   Network::do_add_delegate_stake(
     //     RuntimeOrigin::signed(user.clone()),
@@ -1532,7 +1532,7 @@ fn test_donation_attack_simulation() {
 
 
     // ---- Step 1: Attacker deposits minimal amount ----
-    // The MinDelegateStakeBalance (deposit min) is 1000, otherwise reverts with CouldNotConvertToBalance
+    // The MinDelegateStakeDeposit (deposit min) is 1000, otherwise reverts with CouldNotConvertToBalance
     assert_ok!(
       Network::do_add_delegate_stake(
         RuntimeOrigin::signed(attacker.clone()),

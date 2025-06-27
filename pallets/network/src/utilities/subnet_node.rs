@@ -16,73 +16,10 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
-  /// Remove subnet peer from subnet
-  // to-do: Add slashing to subnet peers stake balance
-  pub fn perform_remove_subnet_node_old(block: u32, subnet_id: u32, subnet_node_id: u32) {
-    if let Ok(subnet_node) = SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-      let hotkey = subnet_node.hotkey;
-      let peer_id = subnet_node.peer_id;
-
-      // Remove from attestations
-      let epoch_length: u32 = T::EpochLength::get();
-			let epoch: u32 = block / epoch_length;
-
-      SubnetRewardsSubmission::<T>::try_mutate_exists(
-        subnet_id,
-        epoch as u32,
-        |params| -> DispatchResult {
-          let params = if let Some(params) = params {
-            // --- Remove from consensus
-            let mut data = &mut params.data;
-            data.retain(|x| x.peer_id != peer_id);
-            params.data = data.clone();
-            
-            // --- Remove from attestations
-            let mut attests = &mut params.attests;
-            if attests.remove(&subnet_node_id).is_some() {
-              params.attests = attests.clone();
-            }
-          };
-          Ok(())
-        }
-      );
-    
-      let subnet_node = SubnetNodesData::<T>::take(subnet_id, subnet_node_id);
-
-      if subnet_node.a.is_some() {
-        SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
-      }
-
-      // Remove all subnet node elements
-      PeerIdSubnetNode::<T>::remove(subnet_id, &peer_id);
-      BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
-      HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
-      SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
-
-      // Update total subnet peers by subtracting  1
-      TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-
-      // Reset sequential absent subnet node count
-      SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
-
-      TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-
-      // Update reputation of coldkey
-      match HotkeyOwner::<T>::try_get(&hotkey) {
-				Ok(coldkey) => {
-          ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-          });
-        },
-				Err(()) => (),
-			};
-
-			Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
-    }
-  }
-
   pub fn perform_remove_subnet_node(block: u32, subnet_id: u32, subnet_node_id: u32) {
+    let mut is_active = false;
     let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      is_active = true;
       SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
     } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
       RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
@@ -134,11 +71,23 @@ impl<T: Config> Pallet<T> {
 
     // Update total subnet peers by subtracting  1
     TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+    TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+
+    if is_active {
+      TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+      TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+      match HotkeyOwner::<T>::try_get(&hotkey) {
+        Ok(coldkey) => {
+          ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+          });
+        },
+        Err(()) => ()
+      }
+    }
 
     // Reset sequential absent subnet node count
     SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
-
-    TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
 
     Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
   }
@@ -333,13 +282,6 @@ impl<T: Config> Pallet<T> {
   pub fn calculate_max_activation_epoch(subnet_id: u32) -> u32 {
     let prev_registration_epoch = 10;
     0
-  }
-
-  pub fn get_subnet_churn_limit(subnet_id: u32) -> u32 {
-    let min_churn = 4;
-    let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-    let churn_denominator = ChurnDenominator::<T>::get(subnet_id);
-    min_churn.max(active_nodes.saturating_div(churn_denominator))
   }
 
   pub fn is_identity_owner(coldkey: T::AccountId, identity: Vec<u8>) -> bool {

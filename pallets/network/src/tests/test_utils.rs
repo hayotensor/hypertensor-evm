@@ -24,7 +24,6 @@ use crate::{
   HotkeyOwner,
   MaxSubnetNodes,
   MinSubnetNodes,
-  LastSubnetRegistration,
   TotalSubnetNodes,
   TotalSubnetNodeUids,
   BootstrapPeerIdSubnetNode,
@@ -395,6 +394,7 @@ pub fn default_registration_subnet_data(
     misc: Vec::new(),
     churn_limit: 4,
     min_stake: 100e+18 as u128,
+    delegate_stake_percentage: 100000000000000000, // 10%
     registration_queue_epochs: 4,
     activation_grace_epochs: 4,
     queue_classification_epochs: 4,
@@ -440,7 +440,7 @@ pub fn post_subnet_removal_ensures(
 ) {
   assert_eq!(SubnetsData::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetName::<Test>::try_get(name), Err(()));
-  assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
+  // assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationInitialColdkeys::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetNodesData::<Test>::iter_prefix(subnet_id).count(), 0);

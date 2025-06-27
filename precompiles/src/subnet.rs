@@ -86,7 +86,7 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")]
+  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[])")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
@@ -96,6 +96,7 @@ where
     misc: BoundedString<ConstU32<1024>>,
 		churn_limit: U256,
     min_stake: U256,
+    delegate_stake_percentage: U256,
 		registration_queue_epochs: U256,
 		activation_grace_epochs: U256,
 		queue_classification_epochs: U256,
@@ -107,6 +108,7 @@ where
 
     let churn_limit = try_u256_to_u32(churn_limit)?;
     let min_stake: u128 = min_stake.unique_saturated_into();
+    let delegate_stake_percentage: u128 = delegate_stake_percentage.unique_saturated_into();
     let registration_queue_epochs = try_u256_to_u32(registration_queue_epochs)?;
     let activation_grace_epochs = try_u256_to_u32(activation_grace_epochs)?;
     let queue_classification_epochs = try_u256_to_u32(queue_classification_epochs)?;
@@ -123,6 +125,7 @@ where
 			description: description.into(),
 			misc: misc.into(),
       min_stake,
+      delegate_stake_percentage,
       churn_limit,
       registration_queue_epochs,
       activation_grace_epochs,

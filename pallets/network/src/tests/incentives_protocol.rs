@@ -19,14 +19,12 @@ use crate::{
   AccountSubnetDelegateStakeShares, 
   SubnetRewardsSubmission, 
   BaseValidatorReward,
-  DelegateStakeRewardsPercentage,
   SubnetPenaltyCount, 
   MaxSubnetNodePenalties, 
   SubnetNodePenalties, 
   RegistrationSubnetData,
   SubnetRemovalReason,
   MaxSubnetPenaltyCount, 
-  SubnetActivationEnactmentBlocks,
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
   PeerIdSubnetNode,
@@ -35,6 +33,7 @@ use crate::{
   SubnetNodesData,
   TotalNodeDelegateStakeShares,
   TotalActiveSubnets,
+  SubnetDelegateStakeRewardsPercentage,
   MaxSubnetNodes,
 };
 use frame_support::BoundedVec;
@@ -1667,7 +1666,7 @@ fn test_reward_subnets_check_balances() {
     let total_issuance: u128 = Network::get_total_network_issuance();
 
     let subnet_owner_percentage = SubnetOwnerPercentage::<Test>::get();
-    let delegate_stake_rewards_percentage: u128 = DelegateStakeRewardsPercentage::<Test>::get();
+    let delegate_stake_rewards_percentage = SubnetDelegateStakeRewardsPercentage::<Test>::get(subnet_id);
 
     // test weight
     let weight = 1e+18 as u128;
@@ -1804,7 +1803,7 @@ fn test_reward_subnets_with_delegate_node_staking_check_balances() {
     let total_issuance: u128 = Network::get_total_network_issuance();
 
     let subnet_owner_percentage = SubnetOwnerPercentage::<Test>::get();
-    let delegate_stake_rewards_percentage: u128 = DelegateStakeRewardsPercentage::<Test>::get();
+    let delegate_stake_rewards_percentage = SubnetDelegateStakeRewardsPercentage::<Test>::get(subnet_id);
 
     // 100% in this example, only one subnet in this test case
     let weight = 1e+18 as u128;

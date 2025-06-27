@@ -143,23 +143,6 @@ impl<T: Config> Pallet<T> {
       ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
     }
 
-    // if is_active {
-    //   Self::add_balance_to_unbonding_ledger(
-    //     &coldkey, 
-    //     stake_to_be_removed, 
-    //     T::StakeCooldownEpochs::get(),
-    //     block
-    //   ).map_err(|e| e)?;
-    // } else {
-    //   // Unstaking cooldown for nodes that never activated
-    //   Self::add_balance_to_unbonding_ledger(
-    //     &coldkey, 
-    //     stake_to_be_removed, 
-    //     RegisteredStakeCooldownEpochs::<T>::get(),
-    //     block
-    //   ).map_err(|e| e)?;  
-    // }
-
     // Set last block for rate limiting
     Self::set_last_tx_block(&coldkey, block);
 

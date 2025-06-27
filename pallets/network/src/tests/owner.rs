@@ -10,7 +10,6 @@ use sp_std::collections::btree_set::BTreeSet;
 use crate::{
   Error,
   SubnetName, 
-  TotalSubnetNodes,
   SubnetOwner,
 };
 use sp_runtime::traits::TrailingZeroInput;
@@ -31,26 +30,6 @@ use codec::{Decode, Encode};
 //
 //
 //
-
-// #[test]
-// fn test_register_subnet() {
-//   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
-    
-//     let deposit_amount: u128 = 10000000000000000000000;
-//     let amount: u128 = 1000000000000000000000;
-
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
-
-//     build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
-
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
-//     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-
-//     let n_account = total_subnet_nodes + 1;
-
-//   })
-// }
 
 #[test]
 fn test_transfer_and_accept_ownership_works() {
