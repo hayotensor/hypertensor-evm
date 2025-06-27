@@ -18,6 +18,8 @@ use crate::{
   SubnetActivationEnactmentBlocks,
   SubnetRegistrationEpochs,
   SubnetState,
+  TotalActiveSubnets,
+  MaxSubnetNodes,
 };
 
 //
@@ -54,12 +56,16 @@ fn test_register_subnet() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
-
+  
     // let whitelist = get_initial_coldkeys(0, min_nodes+1);
   
     // let add_subnet_data = RegistrationSubnetData {
@@ -120,11 +126,16 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -143,13 +154,18 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let subnet_path: Vec<u8> = "subnet-name-2".into();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
 
     assert_err!(
       Network::register_subnet(
@@ -182,13 +198,18 @@ fn test_register_subnet_subnet_registration_cooldown() {
     );
 
     // --- Cooldown expected after registering again
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga4".into();
+    let subnet_path: Vec<u8> = "subnet-name-3".into();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
 
     assert_err!(
       Network::register_subnet(
@@ -218,11 +239,16 @@ fn test_register_subnet_exists_error() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -260,11 +286,16 @@ fn test_register_subnet_not_enough_balance_err() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -300,12 +331,16 @@ fn test_activate_subnet() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
-  
+    
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
@@ -331,14 +366,14 @@ fn test_activate_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -348,7 +383,8 @@ fn test_activate_subnet() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -399,12 +435,16 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
-  
+
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
@@ -430,14 +470,14 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -475,7 +515,11 @@ fn test_activate_subnet_already_activated_err() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
@@ -506,14 +550,14 @@ fn test_activate_subnet_already_activated_err() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -523,7 +567,8 @@ fn test_activate_subnet_already_activated_err() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -573,11 +618,16 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -604,14 +654,14 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -623,7 +673,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
   
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -659,7 +710,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     assert_eq!(subnet, Err(()));
 
     // --- Ensure nodes can be removed and unstake
-    post_subnet_removal_ensures(subnet_id, subnet_path, 0, total_subnet_nodes);
+    post_subnet_removal_ensures(subnet_id, subnets, max_subnet_nodes, subnet_path, 0, total_subnet_nodes);
   })
 }
 
@@ -681,11 +732,16 @@ fn test_activate_subnet_initializing_error() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
     );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -712,14 +768,14 @@ fn test_activate_subnet_initializing_error() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -729,7 +785,8 @@ fn test_activate_subnet_initializing_error() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -767,7 +824,11 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
@@ -838,7 +899,11 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let start = 0;
     let end = min_nodes + 1;
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
       subnet_path.clone().into(),
       start, 
       end
@@ -869,14 +934,14 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,

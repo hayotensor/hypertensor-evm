@@ -82,6 +82,12 @@ impl<T: Config> Pallet<T> {
       .saturating_add(total_delegate_staked)
       .saturating_add(total_node_delegate_staked)
   }
+
+  pub fn get_avg_nodes_per_subnet() -> u128 {
+    let subnets = TotalActiveSubnets::<T>::get();
+    let nodes = TotalActiveNodes::<T>::get();
+    Self::percent_div(nodes as u128, subnets as u128)
+  }
   
   pub fn send_to_treasury(
     who: &T::AccountId, 

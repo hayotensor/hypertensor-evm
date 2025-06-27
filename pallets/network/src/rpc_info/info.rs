@@ -58,11 +58,11 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_subnet_node_info(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
     let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+      SubnetNodesData::<T>::get(subnet_id, subnet_node_id)
     } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+      RegisteredSubnetNodesData::<T>::get(subnet_id, subnet_node_id)
     } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      DeactivatedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+      DeactivatedSubnetNodesData::<T>::get(subnet_id, subnet_node_id)
     } else {
       return None
     };
@@ -84,6 +84,29 @@ impl<T: Config> Pallet<T> {
     };
 
     return Some(info)
+  }
+
+  pub fn get_rewards_validator_info(subnet_id: u32, epoch: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
+    match SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+      Ok(subnet_node_id) => {
+        Self::get_subnet_node_info(subnet_id, subnet_node_id)
+      },
+      Err(()) => None,
+    }
+  }
+
+  pub fn get_rewards_validator_node(subnet_id: u32, epoch: u32) -> Option<SubnetNode<T::AccountId>> {
+    match SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+      Ok(subnet_node_id) => {
+        match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+          Ok(data) => {
+            Some(data)
+          },
+          Err(()) => None,
+        }
+      },
+      Err(()) => None,
+    }
   }
 
   pub fn get_subnet_node_by_params(

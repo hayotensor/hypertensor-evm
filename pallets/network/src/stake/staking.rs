@@ -84,7 +84,6 @@ impl<T: Config> Pallet<T> {
     subnet_id: u32,
     hotkey: T::AccountId,
     is_subnet_node: bool,
-    // is_active: bool,
     stake_to_be_removed: u128,
   ) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
@@ -134,6 +133,15 @@ impl<T: Config> Pallet<T> {
       T::StakeCooldownEpochs::get(),
       block
     ).map_err(|e| e)?;
+
+    // TODO: Test this feature works in all test cases
+    if stake_to_be_removed == account_stake_balance {
+      HotkeyOwner::<T>::remove(&hotkey);
+
+      let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+      hotkeys.remove(&hotkey);
+      ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+    }
 
     // if is_active {
     //   Self::add_balance_to_unbonding_ledger(

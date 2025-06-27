@@ -31,6 +31,8 @@ use crate::{
   ActivationGraceEpochs,
   RegisteredSubnetNodesData,
   DeactivatedSubnetNodesData,
+  MaxSubnetNodes,
+  TotalActiveSubnets,
 };
 
 ///
@@ -69,11 +71,11 @@ fn test_register_subnet_node_post_subnet_activation() {
 
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
         0,
         amount,
         None,
@@ -259,6 +261,11 @@ fn test_register_after_deactivate_with_same_keys() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
@@ -266,7 +273,7 @@ fn test_register_after_deactivate_with_same_keys() {
 
     assert_ok!(
       Network::deactivate_subnet_node(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         1
       )
@@ -274,11 +281,11 @@ fn test_register_after_deactivate_with_same_keys() {
 
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
-        account(1),
-        peer(1),
-        peer(1),
+        account(account_n),
+        peer(account_n),
+        peer(account_n),
         0,
         amount,
         None,
@@ -301,20 +308,23 @@ fn test_activate_subnet_node_not_start_epoch() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
-
+    let _ = Balances::deposit_creating(&account(max_subnet_nodes+(total_subnet_nodes+1)*subnets), deposit_amount);
+    
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(max_subnet_nodes+(total_subnet_nodes+1)*subnets)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(max_subnet_nodes+(total_subnet_nodes+1)*subnets),
+        peer(max_subnet_nodes+(total_subnet_nodes+1)*subnets),
+        peer(max_subnet_nodes+(total_subnet_nodes+1)*subnets),
         0,
         amount,
         None,
@@ -323,14 +333,14 @@ fn test_activate_subnet_node_not_start_epoch() {
       )
     );
 
-    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(max_subnet_nodes+(total_subnet_nodes+1)*subnets)).unwrap();
 
     let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     let start_epoch = subnet_node.classification.start_epoch;
 
     assert_err!(
       Network::activate_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(max_subnet_nodes+(total_subnet_nodes+1)*subnets)),
         subnet_id,
         hotkey_subnet_node_id
       ),
@@ -342,7 +352,7 @@ fn test_activate_subnet_node_not_start_epoch() {
 
     assert_err!(
       Network::activate_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(max_subnet_nodes+(total_subnet_nodes+1)*subnets)),
         subnet_id,
         hotkey_subnet_node_id
       ),
@@ -483,19 +493,24 @@ fn test_add_subnet_node_not_exists_err() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let end = 16;
+
+    build_activated_subnet_new(subnet_path.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    // add new peer_id under same account error
+    // try reregistering again
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(max_subnet_nodes+1*subnets)),
         subnet_id,
-        account(1),
-        peer(1),
-        peer(1),
+        account(max_subnet_nodes+1*subnets),
+        peer(max_subnet_nodes+1*subnets),
+        peer(max_subnet_nodes+1*subnets),
         0,
         amount,
         None,
@@ -507,14 +522,13 @@ fn test_add_subnet_node_not_exists_err() {
 
     assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
 
-    // add same peer_id under new account error
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(max_subnet_nodes+end+1*subnets)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(1),
-        peer(1),
+        account(max_subnet_nodes+end+1*subnets),
+        peer(max_subnet_nodes+1*subnets),
+        peer(max_subnet_nodes+1*subnets),
         0,
         amount,
         None,
@@ -523,27 +537,6 @@ fn test_add_subnet_node_not_exists_err() {
       ),
       Error::<Test>::PeerIdExist
     );
-
-    assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
-
-    // add new peer_id under same account error
-    assert_err!(
-      Network::register_subnet_node(
-        RuntimeOrigin::signed(account(1)),
-        subnet_id,
-        account(1),
-        peer(1),
-        peer(1),
-        0,
-        amount,
-        None,
-        None,
-        None,
-      ),
-      Error::<Test>::SubnetNodeExist
-    );
-
-    assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
   })
 }
 
@@ -675,15 +668,15 @@ fn test_add_subnet_node_remove_readd() {
 
     let deposit_amount: u128 = 1000000000000000000000000;
 
-    let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
+    let _ = Balances::deposit_creating(&account(subnet_id*total_subnet_nodes+1), deposit_amount);
 
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
         0,
         amount,
         None,
@@ -692,34 +685,34 @@ fn test_add_subnet_node_remove_readd() {
       )
     );
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(subnet_id*total_subnet_nodes+1)).unwrap();
 
     assert_ok!(
       Network::remove_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
         subnet_node_id,
       )
     );
 
-    let account_subnet_stake = AccountSubnetStake::<Test>::get(&account(total_subnet_nodes+1), subnet_id);
+    let account_subnet_stake = AccountSubnetStake::<Test>::get(&account(subnet_id*total_subnet_nodes+1), subnet_id);
 
     assert_ok!(
       Network::remove_stake(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
         account_subnet_stake,
       )
     );
 
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
         0,
         amount,
         None,
@@ -793,15 +786,15 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
 
     let deposit_amount: u128 = 1000000000000000000000000;
 
-    let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
+    let _ = Balances::deposit_creating(&account(subnet_id*total_subnet_nodes+1), deposit_amount);
 
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
         0,
         amount,
         None,
@@ -810,11 +803,11 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
       )
     );
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(subnet_id*total_subnet_nodes+1)).unwrap();
 
     assert_ok!(
       Network::remove_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
         subnet_node_id,
       )
@@ -822,11 +815,11 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
 
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        account(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
         0,
         amount,
         None,
@@ -908,11 +901,16 @@ fn test_update_delegate_reward_rate() {
     let n_peers = 8;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.delegate_reward_rate, 0);
@@ -930,7 +928,7 @@ fn test_update_delegate_reward_rate() {
     // Increase reward rate to 5% then test decreasing
     assert_ok!(
       Network::update_delegate_reward_rate(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         new_delegate_reward_rate
@@ -948,7 +946,7 @@ fn test_update_delegate_reward_rate() {
     // allow decreasing by 1%
     assert_ok!(
       Network::update_delegate_reward_rate(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         new_delegate_reward_rate
@@ -958,7 +956,7 @@ fn test_update_delegate_reward_rate() {
     // Higher than 100%
     assert_err!(
       Network::update_delegate_reward_rate(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         1000000000000000001
@@ -969,7 +967,7 @@ fn test_update_delegate_reward_rate() {
     // Update rewards rate as an increase too soon
     assert_err!(
       Network::update_delegate_reward_rate(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         new_delegate_reward_rate+1
@@ -982,7 +980,7 @@ fn test_update_delegate_reward_rate() {
     // Update rewards rate with no changes, don't allow
     assert_err!(
       Network::update_delegate_reward_rate(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         new_delegate_reward_rate
@@ -1003,11 +1001,16 @@ fn test_update_delegate_reward_rate_not_key_owner() {
     let n_peers = 8;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.delegate_reward_rate, 0);
@@ -1045,12 +1048,17 @@ fn test_deactivate_subnet_node_reactivate() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);    
@@ -1059,7 +1067,7 @@ fn test_deactivate_subnet_node_reactivate() {
 
     assert_ok!(
       Network::deactivate_subnet_node(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
       )
@@ -1078,7 +1086,7 @@ fn test_deactivate_subnet_node_reactivate() {
 
     assert_ok!(
       Network::reactivate_subnet_node(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
       )
@@ -1103,12 +1111,17 @@ fn test_update_peer_id() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
@@ -1116,7 +1129,7 @@ fn test_update_peer_id() {
 
     assert_ok!(
       Network::update_peer_id(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
         peer(500)
@@ -1145,12 +1158,19 @@ fn test_update_peer_id_exists() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 5, deposit_amount, stake_amount);
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let end = 5;
+
+    let account_n = max_subnet_nodes+1*subnets;
+
+    build_activated_subnet_new(subnet_path.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
@@ -1158,10 +1178,10 @@ fn test_update_peer_id_exists() {
 
     assert_err!(
       Network::update_peer_id(
-        RuntimeOrigin::signed(account(1)),
+        RuntimeOrigin::signed(account(account_n)),
         subnet_id,
         subnet_node_id,
-        peer(2)
+        peer(max_subnet_nodes+end*subnets)
       ),
       Error::<Test>::PeerIdExist
     );
@@ -1178,12 +1198,17 @@ fn test_update_peer_id_not_key_owner() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_new(subnet_path.clone(), 0, 5, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 

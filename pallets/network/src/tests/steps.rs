@@ -42,7 +42,7 @@ use crate::{
 //       let epoch = System::block_number() / epoch_length;
 //       log::error!("test_epoch_steps epoch: {:?}", epoch);
 
-//       Network::do_epoch_preliminaries(System::block_number(), epoch, epoch_length);
+//       Network::do_epoch_preliminaries(System::block_number(), epoch);
       
 //       let included_nodes: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Included, epoch);
 //       let included_nodes_count = included_nodes.len() as u128;

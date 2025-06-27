@@ -2350,6 +2350,8 @@ fn test_deactivation_ledger_as_attestor() {
 
     let n_peers = 8;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
 
@@ -2364,7 +2366,7 @@ fn test_deactivation_ledger_as_attestor() {
     let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
 
-    let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+    let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     assert_ok!(
       Network::validate(

@@ -116,7 +116,7 @@ fn build_activated_subnet<T: Config>(
 	let registration_blocks = MinSubnetRegistrationBlocks::<T>::get();
 
 	let min_nodes = MinSubnetNodes::<T>::get();
-	let whitelist = get_initial_coldkeys::<T>(start, end + 1);
+	let whitelist = get_initial_coldkeys::<T>(1, start, end + 1);
 
   let register_subnet_data = RegistrationSubnetData {
     name: name.clone(),
@@ -129,7 +129,7 @@ fn build_activated_subnet<T: Config>(
     queue_classification_epochs: 4,
     included_classification_epochs: 4,
     max_node_penalties: 3,
-    initial_coldkeys: get_initial_coldkeys::<T>(start, end),
+    initial_coldkeys: get_initial_coldkeys::<T>(1, start, end),
   };
 
 		// --- Register subnet for activation
@@ -1366,7 +1366,7 @@ mod benchmarks {
 
 	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
 
-  //   Network::<T>::do_epoch_preliminaries(get_current_block_as_u32::<T>(), epoch as u32, epoch_length);
+  //   Network::<T>::do_epoch_preliminaries(get_current_block_as_u32::<T>(), epoch as u32);
 
 	// 	let validator_id = SubnetRewardsValidator::<T>::get(subnet_id, epoch as u32);
   //   assert!(validator_id != None, "Validator is None");
@@ -1401,7 +1401,7 @@ mod benchmarks {
 
 	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
 
-  //   Network::<T>::do_epoch_preliminaries(get_current_block_as_u32::<T>(), epoch as u32, epoch_length);
+  //   Network::<T>::do_epoch_preliminaries(get_current_block_as_u32::<T>(), epoch as u32);
 
 	// 	let validator_id = SubnetRewardsValidator::<T>::get(subnet_id, epoch as u32);
   //   assert!(validator_id != None, "Validator is None");
@@ -1928,7 +1928,6 @@ mod benchmarks {
 	// 		Network::<T>::do_epoch_preliminaries(
 	// 			block, 
 	// 			epoch as u32, 
-	// 			epoch_length
 	// 		);
 	// 	}
 

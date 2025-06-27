@@ -500,6 +500,10 @@ pub mod pallet {
 		SubnetNodeNonUniqueParamUpdateIntervalNotReached,
 		/// Key owner taken
 		KeyOwnerTaken,
+		// Hotkey already registered to coldkey
+		HotkeyAlreadyRegisteredToColdkey,
+		// Hotkey not registered to coldkey
+		OldHotkeyNotRegistered,
 		/// Invalid identity, this error occurs if the vector is empty
 		InvalidIdentity,
 		/// Identity is taken by another coldkey
@@ -538,6 +542,7 @@ pub mod pallet {
 		pub description: Vec<u8>,
 		pub misc: Vec<u8>,
 		pub state: SubnetState,
+		pub start_epoch: u32,
 	}
 
 	#[derive(Default, EnumIter, FromRepr, Copy, Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
@@ -585,7 +590,7 @@ pub mod pallet {
 		pub peer_id: PeerId,
 		pub bootstrap_peer_id: PeerId,
 		pub client_peer_id: PeerId,
-		pub identity: Vec<u8>,
+		pub identity: ColdkeyIdentityData,
 		pub classification: SubnetNodeClassification,
 		pub a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
 		pub b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
@@ -658,6 +663,20 @@ pub mod pallet {
 		pub score: u128,
 	}
 
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	pub struct ColdkeyIdentityData {
+		pub name: Vec<u8>,
+		pub url: Vec<u8>,
+		pub image: Vec<u8>,
+		pub discord: Vec<u8>,
+		pub x: Vec<u8>,
+		pub telegram: Vec<u8>,
+		pub github: Vec<u8>,
+		pub hugging_face: Vec<u8>,
+		pub description: Vec<u8>,
+		pub misc: Vec<u8>,
+	}
+
 	/// Reasons for a subnets removal
 	///
 	/// # Enums
@@ -722,6 +741,7 @@ pub mod pallet {
 	/// * description: Description of subnet
 	/// * misc: Miscillanous information 
 	/// * churn_limit: Number of subnet activations per epoch
+	/// * min_stake: Minimum stake balance to register a subnet node in the subnet
 	/// * registration_queue_epochs: Number of epochs for registered nodes to be in queue before activation
 	/// * activation_grace_epochs: Grace period following `registration_queue_epochs` to activate
 	/// * queue_classification_epochs: Number of epochs in "Queue" classification (See SubnetNodeClass)
@@ -737,6 +757,7 @@ pub mod pallet {
 		pub description: Vec<u8>,
 		pub misc: Vec<u8>,
 		pub churn_limit: u32,
+		pub min_stake: u128,
 		pub registration_queue_epochs: u32,
 		pub activation_grace_epochs: u32,
 		pub queue_classification_epochs: u32,
@@ -1322,8 +1343,21 @@ pub mod pallet {
 			last_validator_epoch: 0,
 		}
 	}
-
-	
+	#[pallet::type_value]
+	pub fn DefaultColdkeyIdentity() -> ColdkeyIdentityData {
+		return ColdkeyIdentityData {
+			name: Vec::new(),
+			url: Vec::new(),
+			image: Vec::new(),
+			discord: Vec::new(),
+			x: Vec::new(),
+			telegram: Vec::new(),
+			github: Vec::new(),
+			hugging_face: Vec::new(),
+			description: Vec::new(),
+			misc: Vec::new(),
+		}
+	}	
 	
 	// 
 	// Subnet elements
@@ -1480,10 +1514,12 @@ pub mod pallet {
 	pub type TotalSubnetNodes<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery>;
 
+	// Count of active nodes in a subnet
 	#[pallet::storage] // subnet_uid --> u32
 	pub type TotalActiveSubnetNodes<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery>;
 	
+	// Count of active nodes in the network
 	#[pallet::storage]
 	pub type TotalActiveNodes<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 
@@ -1585,9 +1621,6 @@ pub mod pallet {
 	#[pallet::storage] // subnet_id --> u32
 	pub type TotalSubnetNodeUids<T: Config> = StorageMap<_, Identity, u32, u32, ValueQuery>;
 
-	#[pallet::storage]
-	pub type ColdkeyScore<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Vec<u8>, ValueQuery, DefaultEmptyVec>;
-
 	/// Coldkey identities
 
 	/// Fee to register an identity
@@ -1600,7 +1633,7 @@ pub mod pallet {
 
 	/// Coldkey => Public Identity
 	#[pallet::storage] 
-	pub type ColdkeyIdentity<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Vec<u8>, ValueQuery, DefaultEmptyVec>;
+	pub type ColdkeyIdentity<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ColdkeyIdentityData, ValueQuery, DefaultColdkeyIdentity>;
 
 	/// Public Identity => Pending Owner
 	#[pallet::storage] 
@@ -1609,6 +1642,10 @@ pub mod pallet {
 	// Hotkey => Coldkey
 	#[pallet::storage]
 	pub type HotkeyOwner<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::AccountId, ValueQuery, DefaultAccountId<T>>;
+
+	// Coldkey => {Hotkeys}
+	#[pallet::storage]
+	pub type ColdkeyHotkeys<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<T::AccountId>, ValueQuery>;
 
 	// Subnet ID => Hotkey => Subnet Node ID
 	#[pallet::storage]
@@ -2706,51 +2743,35 @@ pub mod pallet {
 		pub fn register_identity(
 			origin: OriginFor<T>, 
 			hotkey: T::AccountId,
-			identity: Vec<u8>
+			name: Vec<u8>,
+			url: Vec<u8>,
+			image: Vec<u8>,
+			discord: Vec<u8>,
+			x: Vec<u8>,
+			telegram: Vec<u8>,
+			github: Vec<u8>,
+			hugging_face: Vec<u8>,
+			description: Vec<u8>,
+			misc: Vec<u8>,
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin)?;
 
 			Self::is_paused()?;
 
-			// --- Ensure coldkey owns the hotkey
-			// Here, we are making sure the register is a subnet node at the 
-			// identity registration phase.
-			//
-			// An identity can live on if they remove themselves.
-			// This is merely a deterent for non-nodes to hoard identities en masse
-			ensure!(
-				HotkeyOwner::<T>::get(&hotkey) == coldkey,
-				Error::<T>::NotKeyOwner
-			);
-
-			ensure!(
-				!identity.is_empty(),
-				Error::<T>::InvalidIdentity
-			);
-
-			// --- Ensure identity isn't owned by a coldkey
-			// or is already owned by this coldkey
-			match IdentityColdkey::<T>::try_get(&identity) {
-				Ok(identity_coldkey) => {
-					ensure!(
-						identity_coldkey == coldkey,
-						Error::<T>::IdentityTaken
-					)
-				},
-				// Has no owner, pass
-				Err(()) => (),
-			};
-
-			let fee = IdentityFee::<T>::get();
-
-			// Get tokens -> treasury
-
-			// --- Update coldkeys identity
-			ColdkeyIdentity::<T>::insert(&coldkey, &identity);
-			// --- Update identities coldkey
-			IdentityColdkey::<T>::insert(&identity, &coldkey);
-
-			Ok(())
+			Self::do_register_identity(
+				coldkey,
+				hotkey,
+				name,
+				url,
+				image,
+				discord,
+				x,
+				telegram,
+				github,
+				hugging_face,
+				description,
+				misc,
+			)
 		}
 
 		#[pallet::call_index(27)]
@@ -2759,7 +2780,7 @@ pub mod pallet {
 			let coldkey: T::AccountId = ensure_signed(origin)?;
 
 			let coldkey_identity = ColdkeyIdentity::<T>::get(&coldkey);
-			PendingIdentityOwner::<T>::insert(coldkey_identity, new_owner);
+			// PendingIdentityOwner::<T>::insert(coldkey_identity, new_owner);
 
 			Ok(())
 		}
@@ -2780,11 +2801,11 @@ pub mod pallet {
 			);
 
 			// --- Update coldkeys identity
-			ColdkeyIdentity::<T>::insert(&coldkey, &identity);
-			// --- Update identities coldkey
-			IdentityColdkey::<T>::insert(&identity, &coldkey);
-			// --- Remove pending state
-			PendingIdentityOwner::<T>::remove(identity);
+			// ColdkeyIdentity::<T>::insert(&coldkey, &identity);
+			// // --- Update identities coldkey
+			// IdentityColdkey::<T>::insert(&identity, &coldkey);
+			// // --- Remove pending state
+			// PendingIdentityOwner::<T>::remove(identity);
 
 			Ok(())
 		}
@@ -3741,12 +3762,14 @@ pub mod pallet {
 						// Update StakeUnbondingLedger
 						StakeUnbondingLedger::<T>::swap(&curr_coldkey, &new_coldkey);
 
+						ColdkeyHotkeys::<T>::swap(&curr_coldkey, &new_coldkey);
+
 						match ColdkeyIdentity::<T>::try_get(&curr_coldkey) {
 							Ok(identity) => {
 								ColdkeyIdentity::<T>::swap(&curr_coldkey, &new_coldkey);
-								IdentityColdkey::<T>::insert(identity, &new_coldkey);
+								// IdentityColdkey::<T>::insert(identity, &new_coldkey);
 							},
-							// Has no owner, pass
+							// Has no identity, pass
 							Err(()) => (),
 						};
 
@@ -3782,17 +3805,36 @@ pub mod pallet {
 			// TODO: Make this function unique to subnet_id's
 			Self::is_paused()?;
 
-			// --- Ensure hotkey not taken
+			// --- Ensure new_hotkey not taken
 			ensure!(
 				!HotkeyOwner::<T>::contains_key(&new_hotkey),
 				Error::<T>::KeyOwnerTaken
 			);
 
-			// Each subnet node hotkey is unique across the entire network
+			// Each subnet node old_hotkey is unique across the entire network
 			ensure!(
 				HotkeyOwner::<T>::get(&old_hotkey) == coldkey,
 				Error::<T>::NotKeyOwner
 			);
+
+			let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+			// Redundant
+			ensure!(
+				!hotkeys.contains(&new_hotkey),
+				Error::<T>::HotkeyAlreadyRegisteredToColdkey
+			);
+
+			// Redundant
+			ensure!(
+				hotkeys.contains(&old_hotkey),
+				Error::<T>::OldHotkeyNotRegistered
+			);
+
+			// Replace
+			hotkeys.remove(&old_hotkey);
+			hotkeys.insert(new_hotkey.clone());
+
+			ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
 
 			HotkeyOwner::<T>::remove(&old_hotkey);
 			HotkeyOwner::<T>::insert(&new_hotkey, &coldkey);
@@ -4119,6 +4161,12 @@ pub mod pallet {
 				Error::<T>::InvalidIncludedClassificationEpochs
 			);
 
+			// ensure!(
+			// 	subnet_registration_data.min_stake >= MinSubnetMinStake::<T>::get() &&
+			// 	subnet_registration_data.min_stake <= MaxSubnetMinStake::<T>::get(),
+			// 	Error::<T>::InvalidSubnetMinStake
+			// );
+
 			let subnet_fee: u128 = Self::registration_cost(epoch);
 
 			if subnet_fee > 0 {
@@ -4147,9 +4195,11 @@ pub mod pallet {
 				description: subnet_registration_data.description,
 				misc: subnet_registration_data.misc,
 				state: SubnetState::Registered,
+				start_epoch: u32::MAX,
 			};
 
 			ChurnLimit::<T>::insert(subnet_id, subnet_registration_data.churn_limit);
+			SubnetMinStakeBalance::<T>::insert(subnet_id, subnet_registration_data.min_stake);
 			RegistrationQueueEpochs::<T>::insert(subnet_id, subnet_registration_data.registration_queue_epochs);
 			ActivationGraceEpochs::<T>::insert(subnet_id, subnet_registration_data.activation_grace_epochs);
 			QueueClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.queue_classification_epochs);
@@ -4249,7 +4299,9 @@ pub mod pallet {
 				)
 			}
 
-			// --- Gauntlet passed
+			// ===============
+			// Gauntlet passed
+			// ===============
 
 			// --- Activate subnet
 			SubnetsData::<T>::try_mutate(
@@ -4257,6 +4309,9 @@ pub mod pallet {
 				|maybe_params| -> DispatchResult {
 					let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
 					params.state = SubnetState::Active;
+					// Start consensus after 1 fresh epoch.
+					// Consensus starts once epoch > start_epoch
+					params.start_epoch = epoch + 1;
 					Ok(())
 				}
 			)?;
@@ -4453,7 +4508,7 @@ pub mod pallet {
 				// Has no owner, pass
 				Err(()) => (),
 			};
-			
+
 			// If in enactment period, no registering until activated
 			// Nodes must enter in the registration period or activation period
 			// Once we are in the enactment period, only delegate staking is enabled to reach the qualifications
@@ -4503,11 +4558,6 @@ pub mod pallet {
 				Error::<T>::InvalidBootstrapPeerId
 			);	
 
-			// ensure!(
-			// 	&peer_id != &bootstrap_peer_id,
-			// 	Error::<T>::UniquePeerIdsRequired
-			// );	
-
 			// Ensure peer and boostrap peer ID doesn't already exist within subnet regardless of coldkey
 
 			// Unique subnet_id -> PeerId
@@ -4529,6 +4579,12 @@ pub mod pallet {
 				Error::<T>::MustUnstakeToRegister
 			);
 
+			let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+			ensure!(
+				!hotkeys.contains(&hotkey),
+				Error::<T>::HotkeyAlreadyRegisteredToColdkey
+			);
+			
 			// ====================
 			// Initiate stake logic
 			// ====================
@@ -4561,6 +4617,10 @@ pub mod pallet {
 			// Insert hotkey -> coldkey
 			HotkeyOwner::<T>::insert(&hotkey, &coldkey);
 			
+			// Insert coldkey -> hotkeys
+			hotkeys.insert(hotkey.clone());
+			ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+
 			// Insert subnet peer and bootstrap peer to keep peer_ids unique within subnets
 			PeerIdSubnetNode::<T>::insert(subnet_id, &peer_id, current_uid);
 			BootstrapPeerIdSubnetNode::<T>::insert(subnet_id, &bootstrap_peer_id, current_uid);
@@ -4672,7 +4732,7 @@ pub mod pallet {
 			// --- Enter node into the Queue class
 			SubnetNodesData::<T>::insert(subnet_id, subnet_node.id, subnet_node);
 
-			// TotalActiveNodes::<T>::mutate(|n: &mut u32| *n += 1);
+			TotalActiveNodes::<T>::mutate(|n: &mut u32| *n += 1);
 			// Increase total subnet nodes
 			TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 
@@ -5192,7 +5252,7 @@ pub mod pallet {
 			// 	let epoch: u32 = block / epoch_length;
 
 			// 	// Choose validators for the current epoch
-			// 	Self::do_epoch_preliminaries(block, epoch, epoch_length);
+			// 	Self::do_epoch_preliminaries(block, epoch);
 
 			// 	return Weight::from_parts(207_283_478_000, 22166406)
 			// 		.saturating_add(T::DbWeight::get().reads(18250_u64))

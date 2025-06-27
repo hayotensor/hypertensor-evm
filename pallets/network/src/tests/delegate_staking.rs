@@ -22,6 +22,7 @@ use crate::{
   TotalNodeDelegateStakeBalance,
   TotalNodeDelegateStakeShares,
   MinStakeBalance,
+  TotalActiveSubnets,
 };
 use codec::Decode;
 use sp_runtime::traits::TrailingZeroInput;
@@ -821,7 +822,7 @@ fn test_switch_delegate_stake() {
     build_activated_subnet_new(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let from_subnet_id = SubnetName::<Test>::get(from_subnet_path.clone()).unwrap();
 
-    let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let to_subnet_path: Vec<u8> = "subnet-name-2".into();
     build_activated_subnet_new(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let to_subnet_id = SubnetName::<Test>::get(to_subnet_path.clone()).unwrap();
 
@@ -916,7 +917,7 @@ fn test_switch_delegate_stake_not_enough_stake_err() {
     build_activated_subnet_new(from_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let from_subnet_id = SubnetName::<Test>::get(from_subnet_path.clone()).unwrap();
 
-    let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let to_subnet_path: Vec<u8> = "subnet-name-2".into();
     build_activated_subnet_new(to_subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let to_subnet_id = SubnetName::<Test>::get(to_subnet_path.clone()).unwrap();
 
@@ -1146,6 +1147,8 @@ fn test_switch_delegate_stake_node_to_subnet() {
 
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    log::error!("subnets count {:?}", subnets);
     build_activated_subnet_with_delegator_rewards(
       subnet_path.clone(), 
       0, 
@@ -1158,7 +1161,10 @@ fn test_switch_delegate_stake_node_to_subnet() {
     let from_subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let total_from_subnet_nodes = TotalSubnetNodes::<Test>::get(from_subnet_id);
 
-    let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let to_subnet_path: Vec<u8> = "subnet-name-2".into();
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    log::error!("subnets count {:?}", subnets);
 
     build_activated_subnet_with_delegator_rewards(
       to_subnet_path.clone(), 
@@ -1262,7 +1268,7 @@ fn test_switch_delegate_stake_subnet_to_node() {
     build_activated_subnet_new(from_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
     let from_subnet_id = SubnetName::<Test>::get(from_subnet_path.clone()).unwrap();
 
-    let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let to_subnet_path: Vec<u8> = "subnet-name-2".into();
     build_activated_subnet_new(to_subnet_path.clone(), 0, 16, deposit_amount, stake_amount);
     let to_subnet_id = SubnetName::<Test>::get(to_subnet_path.clone()).unwrap();
 
@@ -1616,7 +1622,7 @@ fn test_transfer_delegate_stake() {
     let amount: u128 = 1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 

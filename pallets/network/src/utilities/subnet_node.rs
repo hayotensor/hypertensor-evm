@@ -127,6 +127,11 @@ impl<T: Config> Pallet<T> {
 
     // We don't remove the HotkeyOwner so the user can remove stake with coldkey
 
+    // We DO remove the hotkey from the coldkeys hotkey set
+    // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+    // hotkeys.remove(&hotkey);
+    // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+
     // Update total subnet peers by subtracting  1
     TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
 

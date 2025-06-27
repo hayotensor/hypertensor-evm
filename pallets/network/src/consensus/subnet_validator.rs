@@ -101,7 +101,7 @@ impl<T: Config> Pallet<T> {
     Ok(Pays::No.into())
   }
 
-    /// Attest validator subnet rewards data
+  /// Attest validator subnet rewards data
   // Nodes must attest data to receive rewards
   pub fn do_attest(
     subnet_id: u32, 

@@ -28,6 +28,8 @@ use crate::{
   AccountNodeDelegateStakeShares,
   TotalNodeDelegateStakeBalance,
   MinStakeBalance,
+  TotalActiveSubnets,
+  MaxSubnetNodes,
 };
 
 //
@@ -196,6 +198,11 @@ fn test_swap_node_delegate_stake() {
     let amount: u128 =         1000000000000000000000;
     let stake_amount: u128 = MinStakeBalance::<Test>::get();
 
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let from_account_n = max_subnet_nodes+1*subnets;
+
     build_activated_subnet_with_delegator_rewards(
       subnet_name.clone(), 
       0, 
@@ -209,6 +216,10 @@ fn test_swap_node_delegate_stake() {
     let total_from_subnet_nodes = TotalSubnetNodes::<Test>::get(from_subnet_id);
 
     let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+
+    let to_account_n = max_subnet_nodes+1*subnets;
 
     build_activated_subnet_with_delegator_rewards(
       to_subnet_path.clone(), 
@@ -497,21 +508,6 @@ fn test_transfer_node_delegate_stake() {
     let to_n_account = 1001;
 
     let _ = Balances::deposit_creating(&account(n_account), amount+500);
-
-    // let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
-    // let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
-
-    // let mut delegate_stake_to_be_added_as_shares = Network::convert_to_shares(
-    //   amount,
-    //   total_node_delegate_stake_shares,
-    //   total_node_delegate_stake_balance
-    // );
-
-    // if total_node_delegate_stake_shares == 0 {
-    //   delegate_stake_to_be_added_as_shares = delegate_stake_to_be_added_as_shares.saturating_sub(1000);
-    // }
-
-    // let starting_delegator_balance = Balances::free_balance(&account(n_account));
 
     assert_ok!(
       Network::add_to_node_delegate_stake(

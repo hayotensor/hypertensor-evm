@@ -162,7 +162,7 @@ impl<T: Config> Pallet<T> {
     yearly_rate / epochs_per_year
   }
 
-    fn get_subnet_utilization() -> f64 {
+  fn get_subnet_utilization() -> f64 {
     let max_subnets: u32 = MaxSubnets::<T>::get();
     let mut total_activate_subnets: u32 = TotalActiveSubnets::<T>::get();
     // There can be n+1 subnets at this time before 1 is removed in the epoch steps

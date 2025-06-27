@@ -59,28 +59,47 @@ impl<T: Config> Pallet<T> {
   //   normalized
   // }
 
-  // fn slash_and_penalize(
-  //   subnet_id: u32,
-  //   validator_subnet_node_id: u32,
-  //   hotkey: &T::AccountId,
-  //   attestation_percentage: u128,
-  //   min_attestation_percentage: u128,
-  //   reputation_decrease_factor: u128,
-  //   epoch: u32,
-  //   block: u32,
-  // ) {
-  //   Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage, block);
+  pub fn calculate_emission_weights(
+    subnet_ids: &[u32],
+    percentage_factor: u128,
+    total_delegate_stake: u128,
+    alpha: u128,
+  ) -> BTreeMap<u32, u128> {
+    let mut weights: BTreeMap<u32, f64> = BTreeMap::new();
+    let mut weight_sum: f64 = 0.0;
+    let alpha: f64 = Self::get_percent_as_f64(alpha);
 
-  //   if let Ok(coldkey) = HotkeyOwner::<T>::try_get(hotkey) {
-  //     Self::decrease_coldkey_reputation(
-  //       coldkey,
-  //       attestation_percentage,
-  //       min_attestation_percentage,
-  //       reputation_decrease_factor,
-  //       epoch,
-  //     );
-  //   }
-  // }
+    // We avoid division by Zero
+    // Subnets must always have at least 1 node to be live in the first place to generate incentives
+    // because they are iterated later
+    let total_active_nodes = TotalActiveNodes::<T>::get().max(1);
+
+    for subnet_id in subnet_ids {
+      let stake = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id) as f64;
+      let nodes = TotalActiveSubnetNodes::<T>::get(subnet_id) as f64;
+
+      let stake_ratio = stake / total_delegate_stake as f64;
+      let node_ratio = nodes / total_active_nodes.max(1) as f64;
+
+      let weight = Self::pow(stake_ratio + node_ratio, alpha);
+
+      let combined_weight = weight;
+
+      weights.insert(*subnet_id, combined_weight);
+
+      weight_sum += combined_weight;
+    }
+
+    let mut stake_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
+
+    for (subnet_id, weight) in weights {
+      let normalized_test = weight / weight_sum;
+      let normalized = (weight / weight_sum * percentage_factor as f64) as u128;
+      stake_weights_normalized.insert(subnet_id, normalized);
+    }
+
+    stake_weights_normalized
+  }
 
   pub fn calculate_stake_weights(
     subnet_ids: &[u32],
@@ -148,7 +167,7 @@ impl<T: Config> Pallet<T> {
     let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
     let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
 
-    for (subnet_id, data) in &subnets {
+    for (subnet_id, _) in &subnets {
       let mut attestation_percentage: u128 = 0;
 
       // --- Get subnet validator submission
@@ -287,12 +306,21 @@ impl<T: Config> Pallet<T> {
         let queue_epochs = QueueClassificationEpochs::<T>::get(subnet_id);
         let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
 
+        let min_stake = SubnetMinStakeBalance::<T>::get(subnet_id);
+
         for (subnet_node_id, subnet_node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
           // Redundant
           let hotkey: T::AccountId = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
             Ok(hotkey) => hotkey,
             Err(()) => continue,
           };
+
+          // --- If subnet is below the minimum required subnet stake balance, remoe
+          // This is only possible if the owner increases the stake balance
+          let stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+          if stake_balance < min_stake {
+            Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+          }
 
           // Note: Only ``Included`` or above nodes can get emissions
           if subnet_node.classification.class == SubnetNodeClass::Queue {
@@ -363,11 +391,16 @@ impl<T: Config> Pallet<T> {
           //
           // TODO: Vote on removal of feature
           //
+
+          // Didn't attest?
           if !submission.attests.contains_key(&subnet_node_id) {
+            // Vast majority attested, and it did not
             if attestation_percentage > min_vast_majority_attestation_percentage {
               // --- Penalize on vast majority only
               SubnetNodePenalties::<T>::insert(subnet_id, subnet_node_id, penalties + 1);
-              continue
+
+              // Skip?
+              // continue
             }
           }
 
@@ -379,6 +412,11 @@ impl<T: Config> Pallet<T> {
           // This is useful if a subnet wants to keep a node around but not give them rewards
           // This can be used in scenarios when the max subnet nodes are reached and they don't
           // want to kick them out as a way to have a waitlist.
+          //
+          // Or
+          //
+          // If a node is scored on latter epochs, such as if a subnet uses a commit-reveal
+          // over multiple epochs and must score them based on the reveal
           if score == 0 {
             continue
           }
