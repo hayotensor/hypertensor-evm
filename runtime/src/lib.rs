@@ -571,6 +571,8 @@ parameter_types! {
 	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
 	pub const MaxDelegateStakeUnlockings: u32 = 32;
 	pub const MaxStakeUnlockings: u32 = 32;
+	// pub const MaxUrlLength: u32 = 1024;
+	// pub const MaxSocialIdLength: u32 = 255;
 }
 
 impl pallet_network::Config for Runtime {
@@ -590,6 +592,8 @@ impl pallet_network::Config for Runtime {
 	type DelegateStakeEpochsRemovalWindow = DelegateStakeEpochsRemovalWindow;
 	type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
 	type MaxStakeUnlockings = MaxStakeUnlockings;
+	// type MaxSocialIdLength = MaxSocialIdLength;
+	// type MaxUrlLength = MaxUrlLength;
 	type StakeCooldownEpochs = StakeCooldownEpochs;
 	type Randomness = InsecureRandomnessCollectiveFlip;
 	type MinProposalStake = MinProposalStake;
@@ -1371,7 +1375,7 @@ impl_runtime_apis! {
 	// 		let result = Network::are_subnet_nodes_by_peer_id(subnet_id, peer_ids);
 	// 		result.encode()
 	// 	}
-	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>) -> bool {
+	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
 	// 		let result = Network::is_subnet_node_by_a(subnet_id, a);
 	// 		result
 	// 	}

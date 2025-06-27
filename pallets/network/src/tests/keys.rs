@@ -22,6 +22,7 @@ use crate::{
   MinStakeBalance,
   TotalActiveSubnets,
   MaxSubnetNodes,
+  ColdkeyHotkeys,
 };
 
 
@@ -111,6 +112,10 @@ fn test_update_coldkey() {
     assert_eq!(unbondings.len() as u32, 0);  
     assert_eq!(ledger_balance, 0);  
 
+    // old coldkey shouldn't have the hotkeys any longer
+    let hotkeys = ColdkeyHotkeys::<Test>::get(&account(account_n));
+    assert_eq!(hotkeys.len(), 0);  
+
     // check new coldkey balance matches original
     let new_unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(account_n+1));
     let new_ledger_balance: u128 = new_unbondings.values().copied().sum();
@@ -125,6 +130,9 @@ fn test_update_coldkey() {
 
     let key_owner = HotkeyOwner::<Test>::get(account(account_n));
     assert_eq!(key_owner, account(account_n+1));
+
+    let hotkeys = ColdkeyHotkeys::<Test>::get(&account(account_n + 1));
+    assert_eq!(hotkeys.len(), 1);  
 
     // Cold key is updated, shouldn't be able to make changes anywhere using coldkey
 
@@ -305,6 +313,10 @@ fn test_update_hotkey() {
         account(account_n+1000),
       )
     );
+
+    let hotkeys = ColdkeyHotkeys::<Test>::get(&account(account_n));
+    assert_eq!(hotkeys.contains(&account(account_n)), false);  
+    assert_eq!(hotkeys.contains(&account(account_n+1000)), true);  
 
     let subnet_node_id_hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, hotkey_subnet_node_id).unwrap();
     assert_eq!(subnet_node_id_hotkey, account(account_n+1000));

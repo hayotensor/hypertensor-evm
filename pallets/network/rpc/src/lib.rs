@@ -12,7 +12,7 @@ use sp_api::ProvideRuntimeApi;
 
 pub use network_custom_rpc_runtime_api::NetworkRuntimeApi;
 use frame_support::storage::bounded_vec::BoundedVec;
-use pallet_network::DefaultSubnetNodeUniqueParamLimit;
+use pallet_network::DefaultMaxVectorLength;
 
 #[rpc(client, server)]
 pub trait NetworkCustomApi<BlockHash> {
@@ -35,7 +35,7 @@ pub trait NetworkCustomApi<BlockHash> {
 	#[method(name = "network_areSubnetNodesByPeerId")]
 	fn are_subnet_nodes_by_peer_id(&self, subnet_id: u32, peer_ids: Vec<Vec<u8>>, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_isSubnetNodeByA")]
-	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>, at: Option<BlockHash>) -> RpcResult<bool>;
+	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>, at: Option<BlockHash>) -> RpcResult<bool>;
 }
 
 /// A struct that implements the `NetworkCustomApi`.
@@ -147,7 +147,7 @@ where
 			Error::RuntimeError(format!("Unable to get subnet nodes by peer IDs: {:?}", e)).into()
 		})
 	}
-	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>, at: Option<<Block as BlockT>::Hash>) -> RpcResult<bool> {
+	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>, at: Option<<Block as BlockT>::Hash>) -> RpcResult<bool> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 		api.is_subnet_node_by_a(at, subnet_id, a).map_err(|e| {

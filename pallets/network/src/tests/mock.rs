@@ -208,6 +208,8 @@ parameter_types! {
 	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
   pub const MaxDelegateStakeUnlockings: u32 = 32;
   pub const MaxStakeUnlockings: u32 = 32;
+	// pub const MaxUrlLength: u32 = 1024;
+	// pub const MaxSocialIdLength: u32 = 255;
 }
 
 impl Config for Test {
@@ -228,6 +230,8 @@ impl Config for Test {
 	type DelegateStakeEpochsRemovalWindow = DelegateStakeEpochsRemovalWindow;
   type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
   type MaxStakeUnlockings = MaxStakeUnlockings;
+	// type MaxSocialIdLength = MaxSocialIdLength;
+	// type MaxUrlLength = MaxUrlLength;
   type MinProposalStake = MinProposalStake;
   type TreasuryAccount = TreasuryAccount;
 }

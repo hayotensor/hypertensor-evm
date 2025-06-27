@@ -111,7 +111,7 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_subnet_node_by_params(
     subnet_id: u32,
-    a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
+    a: BoundedVec<u8, DefaultMaxVectorLength>,
   ) -> Option<SubnetNode<T::AccountId>> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return None
@@ -191,7 +191,7 @@ impl<T: Config> Pallet<T> {
   /// If subnet node exists under unique subnet node parameter ``a``
   pub fn is_subnet_node_by_a(
     subnet_id: u32, 
-    a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>
+    a: BoundedVec<u8, DefaultMaxVectorLength>
   ) -> bool {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return false

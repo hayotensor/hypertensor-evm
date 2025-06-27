@@ -22,7 +22,7 @@ use crate::{
   StakeUnbondingLedger, 
   TotalSubnetStake, 
   MinSubnetRegistrationBlocks,
-  DefaultSubnetNodeUniqueParamLimit,
+  DefaultMaxVectorLength,
   HotkeyOwner, 
   TotalSubnetNodeUids, 
   HotkeySubnetNodeId, 
@@ -1445,7 +1445,7 @@ fn test_register_subnet_node_with_a_param() {
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
 
     let a: Vec<u8> = "a".into();
-    let bounded_a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = a.try_into().expect("String too long");
+    let bounded_a: BoundedVec<u8, DefaultMaxVectorLength> = a.try_into().expect("String too long");
 
     assert_ok!(
       Network::register_subnet_node(
@@ -1508,7 +1508,7 @@ fn test_register_subnet_node_and_then_update_a_param() {
 
     
     let a: Vec<u8> = "a".into();
-    let bounded_a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = a.try_into().expect("String too long");
+    let bounded_a: BoundedVec<u8, DefaultMaxVectorLength> = a.try_into().expect("String too long");
 
     assert_ok!(
       Network::register_subnet_node_a_parameter(
@@ -1536,7 +1536,7 @@ fn test_register_subnet_node_and_then_update_a_param() {
     assert_eq!(subnet_node.a, Some(bounded_a.clone()));
 
     let a_v2: Vec<u8> = "a_v2".into();
-    let bounded_a_v2: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = a_v2.try_into().expect("String too long");
+    let bounded_a_v2: BoundedVec<u8, DefaultMaxVectorLength> = a_v2.try_into().expect("String too long");
 
     assert_err!(
       Network::register_subnet_node_a_parameter(
@@ -1572,10 +1572,10 @@ fn test_register_subnet_node_with_non_unique_param() {
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
 
     let b: Vec<u8> = "b".into();
-    let bounded_b: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = b.try_into().expect("String too long");
+    let bounded_b: BoundedVec<u8, DefaultMaxVectorLength> = b.try_into().expect("String too long");
 
     let c: Vec<u8> = "c".into();
-    let bounded_c: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = c.try_into().expect("String too long");
+    let bounded_c: BoundedVec<u8, DefaultMaxVectorLength> = c.try_into().expect("String too long");
 
     assert_ok!(
       Network::register_subnet_node(
@@ -1618,10 +1618,10 @@ fn test_update_subnet_node_with_non_unique_param() {
     let _ = Balances::deposit_creating(&account(1), deposit_amount);
 
     let b: Vec<u8> = "b".into();
-    let bounded_b: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = b.try_into().expect("String too long");
+    let bounded_b: BoundedVec<u8, DefaultMaxVectorLength> = b.try_into().expect("String too long");
 
     let c: Vec<u8> = "c".into();
-    let bounded_c: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = c.try_into().expect("String too long");
+    let bounded_c: BoundedVec<u8, DefaultMaxVectorLength> = c.try_into().expect("String too long");
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     increase_epochs(1);
@@ -1667,10 +1667,10 @@ fn test_update_subnet_node_with_non_unique_param() {
     );
 
     let b2: Vec<u8> = "b".into();
-    let bounded_b2: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = b2.try_into().expect("String too long");
+    let bounded_b2: BoundedVec<u8, DefaultMaxVectorLength> = b2.try_into().expect("String too long");
 
     let c2: Vec<u8> = "c".into();
-    let bounded_c2: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = c2.try_into().expect("String too long");
+    let bounded_c2: BoundedVec<u8, DefaultMaxVectorLength> = c2.try_into().expect("String too long");
 
     assert_ok!(
       Network::set_subnet_node_non_unique_parameter(

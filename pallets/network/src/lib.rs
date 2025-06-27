@@ -169,6 +169,12 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxStakeUnlockings: Get<u32>;
 
+		// #[pallet::constant]
+    // type MaxUrlLength: Get<u32>;
+
+		// #[pallet::constant]
+    // type MaxSocialIdLength: Get<u32>;
+
 		type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
 
 		#[pallet::constant]
@@ -577,9 +583,9 @@ pub mod pallet {
 		pub classification: SubnetNodeClassification,
 		pub delegate_reward_rate: u128,
 		pub last_delegate_reward_rate_update: u32,
-		pub a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-		pub b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-		pub c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+		pub a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 	}
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
@@ -592,9 +598,9 @@ pub mod pallet {
 		pub client_peer_id: PeerId,
 		pub identity: ColdkeyIdentityData,
 		pub classification: SubnetNodeClassification,
-		pub a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-		pub b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-		pub c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+		pub a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		pub stake_balance: u128,
 	}
 
@@ -665,16 +671,16 @@ pub mod pallet {
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
 	pub struct ColdkeyIdentityData {
-		pub name: Vec<u8>,
-		pub url: Vec<u8>,
-		pub image: Vec<u8>,
-		pub discord: Vec<u8>,
-		pub x: Vec<u8>,
-		pub telegram: Vec<u8>,
-		pub github: Vec<u8>,
-		pub hugging_face: Vec<u8>,
-		pub description: Vec<u8>,
-		pub misc: Vec<u8>,
+		pub name: BoundedVec<u8, DefaultMaxUrlLength>,
+		pub url: BoundedVec<u8, DefaultMaxUrlLength>,
+		pub image: BoundedVec<u8, DefaultMaxUrlLength>,
+		pub discord: BoundedVec<u8, DefaultMaxSocialIdLength>,
+		pub x: BoundedVec<u8, DefaultMaxSocialIdLength>,
+		pub telegram: BoundedVec<u8, DefaultMaxSocialIdLength>,
+		pub github: BoundedVec<u8, DefaultMaxUrlLength>,
+		pub hugging_face: BoundedVec<u8, DefaultMaxUrlLength>,
+		pub description: BoundedVec<u8, DefaultMaxVectorLength>,
+		pub misc: BoundedVec<u8, DefaultMaxVectorLength>,
 	}
 
 	/// Reasons for a subnets removal
@@ -1064,28 +1070,20 @@ pub mod pallet {
 	
 	
 	#[pallet::type_value]
-	pub fn DefaultMinNodesCurveParameters() -> CurveParametersSet {
-		// math.rs PERCENT_FACTOR format
-		return CurveParametersSet {
-			// x_curve_start: 15 * 1000000000 / 100, // 0.15
-			// y_end: 10 * 1000000000 / 100, // 0.10
-			// y_start: 75 * 1000000000 / 100, // 0.75
-			// x_rise: 1000000000 / 100, // 0.01
-			// max_x: 56 * 1000000000 / 100, // 0.56
-			x_curve_start: 15 * 1000000000000000000 / 100, // 0.15
-			y_end: 10 * 1000000000000000000 / 100, // 0.10
-			y_start: 75 * 1000000000000000000 / 100, // 0.75
-			x_rise: 1000000000000000000 / 100, // 0.01
-			max_x: 56 * 1000000000000000000 / 100, // 0.56
-		}
-	}
-	#[pallet::type_value]
 	pub fn DefaultMaxSubnets() -> u32 {
 		64
 	}
 	#[pallet::type_value]
-	pub fn DefaultSubnetNodeUniqueParamLimit() -> u32 {
+	pub fn DefaultMaxVectorLength() -> u32 {
 		1024
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxUrlLength() -> u32 {
+		1024
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxSocialIdLength() -> u32 {
+		255
 	}
 	#[pallet::type_value]
 	pub fn DefaultValidatorArgsLimit() -> u32 {
@@ -1346,16 +1344,16 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultColdkeyIdentity() -> ColdkeyIdentityData {
 		return ColdkeyIdentityData {
-			name: Vec::new(),
-			url: Vec::new(),
-			image: Vec::new(),
-			discord: Vec::new(),
-			x: Vec::new(),
-			telegram: Vec::new(),
-			github: Vec::new(),
-			hugging_face: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
+			name: BoundedVec::new(),
+			url: BoundedVec::new(),
+			image: BoundedVec::new(),
+			discord: BoundedVec::new(),
+			x: BoundedVec::new(),
+			telegram: BoundedVec::new(),
+			github: BoundedVec::new(),
+			hugging_face: BoundedVec::new(),
+			description: BoundedVec::new(),
+			misc: BoundedVec::new(),
 		}
 	}	
 	
@@ -1767,7 +1765,7 @@ pub mod pallet {
 		Identity,
 		u32,
 		Blake2_128Concat,
-		BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
+		BoundedVec<u8, DefaultMaxVectorLength>,
 		PeerId,
 		ValueQuery,
 		DefaultPeerId,
@@ -2528,9 +2526,9 @@ pub mod pallet {
 			bootstrap_peer_id: PeerId,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -2593,9 +2591,9 @@ pub mod pallet {
 			bootstrap_peer_id: PeerId,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -2743,16 +2741,16 @@ pub mod pallet {
 		pub fn register_identity(
 			origin: OriginFor<T>, 
 			hotkey: T::AccountId,
-			name: Vec<u8>,
-			url: Vec<u8>,
-			image: Vec<u8>,
-			discord: Vec<u8>,
-			x: Vec<u8>,
-			telegram: Vec<u8>,
-			github: Vec<u8>,
-			hugging_face: Vec<u8>,
-			description: Vec<u8>,
-			misc: Vec<u8>,
+			name: BoundedVec<u8, DefaultMaxUrlLength>,
+			url: BoundedVec<u8, DefaultMaxUrlLength>,
+			image: BoundedVec<u8, DefaultMaxUrlLength>,
+			discord: BoundedVec<u8, DefaultMaxSocialIdLength>,
+			x: BoundedVec<u8, DefaultMaxSocialIdLength>,
+			telegram: BoundedVec<u8, DefaultMaxSocialIdLength>,
+			github: BoundedVec<u8, DefaultMaxUrlLength>,
+			hugging_face: BoundedVec<u8, DefaultMaxUrlLength>,
+			description: BoundedVec<u8, DefaultMaxVectorLength>,
+			misc: BoundedVec<u8, DefaultMaxVectorLength>,
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -3633,7 +3631,7 @@ pub mod pallet {
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			subnet_node_id: u32,
-			a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
+			a: BoundedVec<u8, DefaultMaxVectorLength>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -3684,8 +3682,8 @@ pub mod pallet {
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			subnet_node_id: u32,
-			b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			let key: T::AccountId = ensure_signed(origin)?;
 
@@ -4470,9 +4468,9 @@ pub mod pallet {
 			bootstrap_peer_id: PeerId,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin.clone())?;
 
@@ -4758,9 +4756,9 @@ pub mod pallet {
 			bootstrap_peer_id: PeerId,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-			c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin.clone())?;
 
@@ -5451,7 +5449,7 @@ pub mod pallet {
 			// 		start_epoch: 0,
 			// 	};
 
-			// 	let bounded_peer_id: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit> = BoundedVec::try_from(peer_id.clone().0)
+			// 	let bounded_peer_id: BoundedVec<u8, DefaultMaxVectorLength> = BoundedVec::try_from(peer_id.clone().0)
 			// 		.expect("Vec is within bounds");
 
 			// 	TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);

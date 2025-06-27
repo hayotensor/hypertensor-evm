@@ -287,9 +287,9 @@ where
     bootstrap_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
-    // a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
-    // b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-    // c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+    // a: BoundedVec<u8, DefaultMaxVectorLength>,
+    // b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    // c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
   ) -> EvmResult<()> {
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
@@ -327,9 +327,9 @@ where
     bootstrap_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
-    // a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>,
-    // b: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
-    // c: Option<BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>>,
+    // a: BoundedVec<u8, DefaultMaxVectorLength>,
+    // b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    // c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
   ) -> EvmResult<()> {
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
