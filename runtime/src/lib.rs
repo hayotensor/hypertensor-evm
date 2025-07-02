@@ -71,9 +71,6 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::Multiplier;
 
-// mod precompiles;
-// use precompiles::FrontierPrecompiles;
-
 use hypertensor_precompiles::FrontierPrecompiles;
 
 /// Type of block number.
@@ -1347,8 +1344,8 @@ impl_runtime_apis! {
 	// 		let result = Network::get_subnet_nodes_included(subnet_id);
 	// 		result.encode()
 	// 	}
-	// 	fn get_subnet_nodes_submittable(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes_submittable(subnet_id);
+	// 	fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8> {
+	// 		let result = Network::get_subnet_nodes_validator(subnet_id);
 	// 		result.encode()
 	// 	}
 	// 	fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8> {
@@ -1378,6 +1375,10 @@ impl_runtime_apis! {
 	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
 	// 		let result = Network::is_subnet_node_by_a(subnet_id, a);
 	// 		result
+	// 	}
+	// 	fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Vec<u8> {
+	// 		let result = Network::get_elected_validator_node(subnet_id, epoch);
+	// 		result.encode()
 	// 	}
 	// }
 

@@ -20,8 +20,8 @@ pub trait NetworkCustomApi<BlockHash> {
 	fn get_subnet_nodes(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getSubnetNodesIncluded")]
 	fn get_subnet_nodes_included(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
-	#[method(name = "network_getSubnetNodesSubmittable")]
-	fn get_subnet_nodes_submittable(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
+	#[method(name = "network_getSubnetNodesValidator")]
+	fn get_subnet_nodes_validator(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getConsensusData")]
 	fn get_consensus_data(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getMinimumSubnetNodes")]
@@ -36,6 +36,8 @@ pub trait NetworkCustomApi<BlockHash> {
 	fn are_subnet_nodes_by_peer_id(&self, subnet_id: u32, peer_ids: Vec<Vec<u8>>, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_isSubnetNodeByA")]
 	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>, at: Option<BlockHash>) -> RpcResult<bool>;
+	#[method(name = "network_getElectedValidatorNode")]
+	fn get_elected_validator_node(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<bool>;
 }
 
 /// A struct that implements the `NetworkCustomApi`.
@@ -98,10 +100,10 @@ where
 			Error::RuntimeError(format!("Unable to get subnet nodes included: {:?}", e)).into()
 		})
 	}
-	fn get_subnet_nodes_submittable(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
+	fn get_subnet_nodes_validator(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_subnet_nodes_submittable(at, subnet_id).map_err(|e| {
+		api.get_subnet_nodes_validator(at, subnet_id).map_err(|e| {
 			Error::RuntimeError(format!("Unable to get subnet nodes submittable: {:?}", e)).into()
 		})
 	}
@@ -151,6 +153,13 @@ where
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 		api.is_subnet_node_by_a(at, subnet_id, a).map_err(|e| {
+			Error::RuntimeError(format!("Unable to get subnet nodes by a parameter: {:?}", e)).into()
+		})
+	}
+	fn get_elected_validator_node(&self, subnet_id: u32, epoch: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
+		let api = self.client.runtime_api();
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
+		api.get_elected_validator_node(at, subnet_id, a).map_err(|e| {
 			Error::RuntimeError(format!("Unable to get subnet nodes by a parameter: {:?}", e)).into()
 		})
 	}

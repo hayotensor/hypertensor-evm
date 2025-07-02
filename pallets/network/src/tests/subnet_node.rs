@@ -12,7 +12,7 @@ use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error, 
   TotalStake, 
-  SubnetRewardsValidator,
+  SubnetElectedValidator,
   SubnetName, 
   TotalSubnetNodes,
   SubnetNodeClass,
@@ -97,7 +97,7 @@ fn test_register_subnet_node() {
     // assert_eq!(subnet_node.coldkey, account(total_subnet_nodes+1));
     assert_eq!(subnet_node.hotkey, account(total_subnet_nodes+1));
     assert_eq!(subnet_node.peer_id, peer(total_subnet_nodes+1));
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Registered);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Registered);
 
     let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node_account, hotkey_subnet_node_id);
@@ -714,7 +714,7 @@ fn test_register_subnet_node_activate_subnet_node() {
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.hotkey, account(total_subnet_nodes+1));
     assert_eq!(subnet_node.peer_id, peer(total_subnet_nodes+1));
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Registered);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Registered);
 
     let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node_account, subnet_node_id);
@@ -736,7 +736,7 @@ fn test_register_subnet_node_activate_subnet_node() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Queue);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Queue);
     assert_eq!(subnet_node.classification.start_epoch, epoch + 1);
   })
 }
@@ -759,7 +759,7 @@ fn test_deactivate_subnet_node_reactivate() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);    
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
 
     let epoch_length = EpochLength::get();
     let epoch = System::block_number() / epoch_length;
@@ -773,7 +773,7 @@ fn test_deactivate_subnet_node_reactivate() {
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Deactivated);    
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);    
     assert_eq!(subnet_node.classification.start_epoch, epoch);    
 
     let epoch_length = EpochLength::get();
@@ -788,7 +788,7 @@ fn test_deactivate_subnet_node_reactivate() {
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);    
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
     assert_eq!(subnet_node.classification.start_epoch, epoch + 1);    
   })
 }
@@ -2304,7 +2304,7 @@ fn test_deactivate_subnet_node_and_reactivate() {
     );
   
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Deactivated);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);
   });
 }
 
@@ -2333,7 +2333,7 @@ fn test_deactivate_subnet_node() {
     );
   
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Deactivated);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);
   });
 }
 
@@ -2359,8 +2359,8 @@ fn test_deactivation_ledger_as_attestor() {
     let epoch = System::block_number() / epoch_length;
 
     // insert node as validator to place them into the ledger
-    SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
 
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -2398,7 +2398,7 @@ fn test_deactivation_ledger_as_attestor() {
     );
   
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);
 
     let subnet_node_deactivation_validator = SubnetNodeDeactivation {
       subnet_id: subnet_id,
@@ -2410,7 +2410,7 @@ fn test_deactivation_ledger_as_attestor() {
     Network::do_deactivation_ledger();
     
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Deactivated);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);
 
     let subnet_node_deactivation_deactivated = SubnetNodeDeactivation {
       subnet_id: subnet_id,
@@ -2444,7 +2444,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
     //   hotkey: account(1),
     //   peer_id: peer(1),
     //   classification: SubnetNodeClassification {
-    //     class: SubnetNodeClass::Validator,
+    //     node_class: SubnetNodeClass::Validator,
     //     start_epoch: 1,
     //   },
     //   a: Vec::new(),
@@ -2456,7 +2456,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
     let epoch = System::block_number() / epoch_length;
 
     // insert node as validator to place them into the ledger
-    SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+    SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
 
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
@@ -2470,7 +2470,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
   
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);
     let subnet_node_deactivation_validator = SubnetNodeDeactivation {
       subnet_id: subnet_id,
       subnet_node_id: subnet_node_id,
@@ -2481,7 +2481,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
     Network::do_deactivation_ledger();
     
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.classification.class, SubnetNodeClass::Deactivated);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);
 
     let subnet_node_deactivation_deactivated = SubnetNodeDeactivation {
       subnet_id: subnet_id,

@@ -14,8 +14,37 @@
 // limitations under the License.
 
 use super::*;
+use frame_support::pallet_prelude::DispatchError;
 
 impl<T: Config> Pallet<T> {
+  pub fn assign_slot_to_subnet(subnet_id: u32) -> Result<u32, DispatchError> {
+    let max_slots = T::EpochLength::get();
+
+    // Get currently assigned slots
+    let mut assigned_slots = AssignedSlots::<T>::get();
+
+    ensure!(
+      (assigned_slots.len() as u32) < max_slots,
+      Error::<T>::NoAvailableSlots
+    );
+
+    // Find first free slot [0..max_slots)
+    // TODO: Make it 1..max_slots
+    let free_slot = (0..max_slots)
+        .find(|slot| true)
+        .ok_or(Error::<T>::NoAvailableSlots)?;
+
+    // Update assigned slots set
+    assigned_slots.insert(free_slot);
+    AssignedSlots::<T>::put(assigned_slots);
+
+    // Assign
+    SubnetRewardSlot::<T>::insert(subnet_id, free_slot);
+    SlotAssignment::<T>::insert(free_slot, subnet_id);
+
+    Ok(free_slot)
+  }
+
   pub fn get_min_subnet_nodes(base_node_memory: u128, memory_mb: u128) -> u32 {
     0
   }
@@ -149,11 +178,6 @@ impl<T: Config> Pallet<T> {
       },
       Err(()) => false,
     }
-
-
-
-
-
     // let registered_epoch: u32 = subnet_data.registered;
     // let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
     // let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_activation_enactment_epochs);

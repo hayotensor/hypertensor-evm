@@ -19,7 +19,7 @@ fn test_increase_coldkey_reputation_with_weight_factor() {
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
       start_epoch: 0,
       weight: 500_000_000_000_000_000,
-      total_nodes: 0,
+      lifetime_node_count: 0,
       total_active_nodes: 0,
       total_increases: 0,
       total_decreases: 0,
@@ -56,7 +56,7 @@ fn test_average_attestation_over_multiple_increases() {
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
       start_epoch: 0,
       weight: 500_000_000_000_000_000,
-      total_nodes: 0,
+      lifetime_node_count: 0,
       total_active_nodes: 0,
       total_increases: 0,
       total_decreases: 0,
@@ -109,7 +109,7 @@ fn test_single_decrease_updates_average_and_weight() {
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
         start_epoch: 0,
         weight: start_weight,
-        total_nodes: 0,
+        lifetime_node_count: 0,
         total_active_nodes: 0,
         total_increases: 0,
         total_decreases: 0,
@@ -145,7 +145,7 @@ fn test_average_attestation_over_multiple_decreases() {
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
         start_epoch: 0,
         weight: start_weight,
-        total_nodes: 0,
+        lifetime_node_count: 0,
         total_active_nodes: 0,
         total_increases: 0,
         total_decreases: 0,

@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use super::*;
+use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
   pub fn perform_remove_subnet_node(block: u32, subnet_id: u32, subnet_node_id: u32) {
@@ -35,7 +36,7 @@ impl<T: Config> Pallet<T> {
     // Remove from attestations
     let epoch: u32 = Self::get_current_epoch_as_u32();
 
-    if let Err(e) = SubnetRewardsSubmission::<T>::try_mutate_exists(
+    if let Err(e) = SubnetConsensusSubmission::<T>::try_mutate_exists(
       subnet_id,
       epoch,
       |maybe_params| -> DispatchResult {
@@ -49,7 +50,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
       },
     ) {
-      log::warn!("Failed to mutate SubnetRewardsSubmission: {:?}", e);
+      log::debug!("Failed to mutate SubnetConsensusSubmission: {:?}", e);
     }
 
     if subnet_node.a.is_some() {
@@ -127,6 +128,8 @@ impl<T: Config> Pallet<T> {
           client_peer_id: subnet_node.client_peer_id,
           identity: ColdkeyIdentity::<T>::get(&coldkey),
           classification: subnet_node.classification,
+          delegate_reward_rate: subnet_node.delegate_reward_rate,
+          last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
           a: subnet_node.a,
           b: subnet_node.b,
           c: subnet_node.c,
@@ -134,6 +137,25 @@ impl<T: Config> Pallet<T> {
         }
       })
       .collect()
+  }
+
+  pub fn get_lowest_stake_balance_node(subnet_id: u32) -> Option<u32> {
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+        let hotkey = node.hotkey.clone();
+        let stake = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+        let start_epoch = node.classification.start_epoch;
+
+        candidates.push((uid, stake, start_epoch));
+    }
+
+    candidates.sort_by(|a, b| {
+        // Sort by stake ascending, then start_epoch descending
+        a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
   }
 
   // Get subnet node ``hotkeys`` by classification
@@ -214,7 +236,7 @@ impl<T: Config> Pallet<T> {
       subnet_node_id,
       |params: &mut SubnetNode<T::AccountId>| {
         params.classification = SubnetNodeClassification {
-          class: params.classification.class.next(),
+          node_class: params.classification.node_class.next(),
           start_epoch: start_epoch,
         };
       },
@@ -290,5 +312,28 @@ impl<T: Config> Pallet<T> {
 
   pub fn is_identity_taken(identity: Vec<u8>) -> bool {
     true    
+  }
+
+  // fn node_multiplier(ema_nodes: u32) -> FixedU128 {
+  //   let divisor = FixedU128::saturating_from_integer(20);
+  //   let ema = FixedU128::saturating_from_integer(ema_nodes);
+  //   FixedU128::one() + ema.saturating_div_int(divisor) // e.g. 1.0 + (ema / 20)
+  // }
+
+  // pub fn node_multiplier(ema_nodes: u64) -> U256 {
+  //   let one = U256::from(ONE_E18);
+  //   let ema = U256::from(ema_nodes);
+  //   let divisor = U256::from(20u64); // scale: 1 multiplier per 20 nodes
+
+  //   let scaled_add = one * ema / divisor; // (1e18 * ema) / 20
+  //   one + scaled_add // final multiplier in 1e18 scale
+  // }
+
+  pub fn node_multiplier_ema(ema_nodes: u64) -> U256 {
+    let ema = U256::from(ema_nodes);
+    let divisor = U256::from(20u64); // 20 nodes → +1.0x
+
+    // 1e18 + (1e18 * ema / 20)
+    Self::PERCENTAGE_FACTOR + (Self::PERCENTAGE_FACTOR * ema / divisor) 
   }
 }

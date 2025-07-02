@@ -16,6 +16,39 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
+  pub fn get_subnet_info(subnet_id: u32) -> Option<SubnetInfo<T::AccountId>> {
+    if !SubnetsData::<T>::contains_key(subnet_id) {
+      return None
+    }
+
+    let subnet_data = SubnetsData::<T>::get(subnet_id).unwrap();
+
+    let subnet_info = SubnetInfo {
+      id: subnet_data.id,
+      name: subnet_data.name,
+      repo: subnet_data.repo,
+      description: subnet_data.description,
+      misc: subnet_data.misc,
+      state: subnet_data.state,
+      start_epoch: subnet_data.start_epoch,
+      churn_limit: ChurnLimit::<T>::get(subnet_id),
+      min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
+      max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
+      delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
+      registration_queue_epochs: RegistrationQueueEpochs::<T>::get(subnet_id),
+      activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
+      queue_classification_epochs: QueueClassificationEpochs::<T>::get(subnet_id),
+      included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
+      max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
+      initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
+      max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
+      owner: SubnetOwner::<T>::get(subnet_id)?,
+      registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id)?,
+    };
+
+    Some(subnet_info)
+  }
+
   pub fn get_subnet_nodes(
     subnet_id: u32,
   ) -> Vec<SubnetNode<T::AccountId>> {
@@ -36,7 +69,7 @@ impl<T: Config> Pallet<T> {
     Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch)
   }
 
-  pub fn get_subnet_nodes_submittable(
+  pub fn get_subnet_nodes_validator(
     subnet_id: u32,
   ) -> Vec<SubnetNode<T::AccountId>> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
@@ -77,6 +110,8 @@ impl<T: Config> Pallet<T> {
       client_peer_id: subnet_node.client_peer_id,
       identity: ColdkeyIdentity::<T>::get(&coldkey),
       classification: subnet_node.classification,
+      delegate_reward_rate: subnet_node.delegate_reward_rate,
+      last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
       a: subnet_node.a,
       b: subnet_node.b,
       c: subnet_node.c,
@@ -86,8 +121,8 @@ impl<T: Config> Pallet<T> {
     return Some(info)
   }
 
-  pub fn get_rewards_validator_info(subnet_id: u32, epoch: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
-    match SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+  pub fn get_elected_validator_info(subnet_id: u32, epoch: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
+    match SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
       Ok(subnet_node_id) => {
         Self::get_subnet_node_info(subnet_id, subnet_node_id)
       },
@@ -95,8 +130,8 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  pub fn get_rewards_validator_node(subnet_id: u32, epoch: u32) -> Option<SubnetNode<T::AccountId>> {
-    match SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+  pub fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Option<SubnetNode<T::AccountId>> {
+    match SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
       Ok(subnet_node_id) => {
         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
           Ok(data) => {
@@ -128,16 +163,16 @@ impl<T: Config> Pallet<T> {
   pub fn get_consensus_data(
     subnet_id: u32,
     epoch: u32
-  ) -> Option<RewardsData> {
-    let data = SubnetRewardsSubmission::<T>::get(subnet_id, epoch);
+  ) -> Option<ConsensusData> {
+    let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
     Some(data?)
   }
 
   // pub fn get_incentives_data(
   //   subnet_id: u32,
   //   epoch: u32
-  // ) -> Option<RewardsData> {
-  //   let data = SubnetRewardsSubmission::<T>::get(subnet_id, epoch);
+  // ) -> Option<ConsensusData> {
+  //   let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
   //   Some(data?)
   // }
 
@@ -213,6 +248,11 @@ impl<T: Config> Pallet<T> {
   ///
   /// The most secure way to call this function is by peer ID with signatures
   ///
+  /// # Requirements
+  ///
+  /// To use `peer_id` effectively, ensure all communications between nodes in the subnets
+  /// are signed and validated.
+  ///
   /// # Arguments
   ///
   /// * `subnet_id` - Subnet ID.
@@ -230,19 +270,37 @@ impl<T: Config> Pallet<T> {
       return false
     }
 
+    let mut is_staked = false;
+
     // --- Use subnet node ID
     if subnet_node_id > 0 {
-      let is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
-        Ok(_) => true,
-        Err(()) => false
-      };
+      if require_active {
+        is_staked = match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+          Ok(_) => true,
+          Err(()) => false
+        };
+      } else {
+        is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
+          Ok(_) => true,
+          Err(()) => false
+        };
+      }
 
       return is_staked
     }
 
     // --- Use peer ID
-    let mut is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-      Ok(_) => true,
+    is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      Ok(subnet_node_id) => {
+        if require_active {
+          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+            Ok(_) => true,
+            Err(()) => false
+          }
+        } else {
+          true
+        }
+      },
       Err(()) => false,
     };
 
@@ -250,8 +308,37 @@ impl<T: Config> Pallet<T> {
       return true
     }
 
-    match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id)) {
-      Ok(_) => true,
+    // --- Use peer ID, check bootstrap peer ID
+    is_staked = match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      Ok(subnet_node_id) => {
+        if require_active {
+          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+            Ok(_) => true,
+            Err(()) => false
+          }
+        } else {
+          true
+        }
+      },
+      Err(()) => false,
+    };
+
+    if is_staked {
+      return true
+    }
+
+    // --- Use peer ID, check client peer ID
+    match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      Ok(subnet_node_id) => {
+        if require_active {
+          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+            Ok(_) => true,
+            Err(()) => false
+          }
+        } else {
+          true
+        }
+      },
       Err(()) => false,
     }
   }

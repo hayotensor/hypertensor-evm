@@ -26,7 +26,7 @@ sp_api::decl_runtime_apis! {
   pub trait NetworkRuntimeApi {
     fn get_subnet_nodes(subnet_id: u32) -> Vec<u8>;
     fn get_subnet_nodes_included(subnet_id: u32) -> Vec<u8>;
-    fn get_subnet_nodes_submittable(subnet_id: u32) -> Vec<u8>;
+    fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8>;
     fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8>;
     fn get_minimum_subnet_nodes(memory_mb: u128) -> u32;
     fn get_minimum_delegate_stake(memory_mb: u128) -> u128;

@@ -191,7 +191,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             expect(wallet1.address).to.be.equal(subnetNodeDataHuman.hotkey);
             expect(peer1).to.be.equal(subnetNodeDataHuman.peerId);
             expect(peer1).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
-            expect("Validator").to.be.equal(subnetNodeDataHuman.classification.class);
+            expect("Validator").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);
 
             if (delegateRewardRate == "0") {
@@ -238,7 +238,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             expect(wallet2.address).to.be.equal(subnetNodeDataHuman.hotkey);
             expect(peer2).to.be.equal(subnetNodeDataHuman.peerId);
             expect(peer2).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
-            expect("Registered").to.be.equal(subnetNodeDataHuman.classification.class);
+            expect("Registered").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);
 
             if (delegateRewardRate == "0") {
@@ -295,7 +295,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             expect(peer3).to.be.equal(subnetNodeDataHuman.peerId);
             expect(peer3).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
             // Will be "Validator" since subnet is still registering
-            expect("Validator").to.be.equal(subnetNodeDataHuman.classification.class);
+            expect("Validator").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);
 
             if (delegateRewardRate == "0") {

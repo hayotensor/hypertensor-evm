@@ -15,6 +15,7 @@
 
 use super::*;
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
   pub fn get_current_block_as_u64() -> u64 {
@@ -47,17 +48,24 @@ impl<T: Config> Pallet<T> {
     current_block.saturating_div(epoch_length)
   }
 
-  pub fn do_epoch_preliminaries(block: u32, epoch: u32) {
+  pub fn do_epoch_preliminaries(block: u32, epoch: u32) -> Weight {
+    let mut weight = Weight::zero();
+
     let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
     let subnet_activation_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
+    let min_subnet_nodes = MinSubnetNodes::<T>::get();
+    let max_subnets = MaxSubnets::<T>::get();
+
+    weight = weight.saturating_add(T::DbWeight::get().reads(5));
+
     let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance();
 
     let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
     let total_subnets: u32 = subnets.len() as u32;
-    let excess_subnets: bool = total_subnets > MaxSubnets::<T>::get();
+    weight = weight.saturating_add(T::DbWeight::get().reads(total_subnets.into()));
+    let excess_subnets: bool = total_subnets > max_subnets;
     let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
-    let min_subnet_nodes = MinSubnetNodes::<T>::get();
 
     for (subnet_id, data) in subnets {
       // ==========================
@@ -124,6 +132,7 @@ impl<T: Config> Pallet<T> {
       //  - Minimum nodes (increases penalties if less than - later removed if over max penalties)
       //  - Minimum delegate stake balance (remove subnet if less than)
 			let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+      weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
       // --- Ensure min delegate stake balance is met
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
@@ -137,7 +146,7 @@ impl<T: Config> Pallet<T> {
       // --- Get all possible validators
       let subnet_node_ids: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Validator, epoch);
       let subnet_nodes_count = subnet_node_ids.len();
-      
+
       // --- Ensure min nodes are active
       // Only choose validator if min nodes are present
       // The ``SubnetPenaltyCount`` when surpassed doesn't penalize anyone, only removes the subnet from the chain
@@ -145,15 +154,18 @@ impl<T: Config> Pallet<T> {
         // Nodes may be deactivated so we don't remove the subnet here, but increase penalties instead
         // Note: Subnets decrease its number of penalties for each successful epoch
         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+        weight = weight.saturating_add(T::DbWeight::get().writes(1));
       }
 
       // --- Check penalties and remove subnet is threshold is breached
       let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
+      weight = weight.saturating_add(T::DbWeight::get().reads(1));
       if penalties > max_subnet_penalty_count {
         Self::do_remove_subnet(
           subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
+        // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
         continue
       }
 
@@ -161,13 +173,14 @@ impl<T: Config> Pallet<T> {
         subnet_delegate_stake.push((subnet_id, subnet_delegate_stake_balance));
       }
 
-      Self::choose_validator(
+      Self::elect_validator(
         block,
         subnet_id,
         subnet_node_ids,
         min_subnet_nodes,
         epoch,
       );
+      weight = weight.saturating_add(T::WeightInfo::elect_validator());
     }
 
     // --- If over max subnets, remove the subnet with the lowest delegate stake
@@ -177,10 +190,15 @@ impl<T: Config> Pallet<T> {
         subnet_delegate_stake[0].0.clone(),
         SubnetRemovalReason::MaxSubnets,
       );
+      // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
     }
 
     // --- TODO: Push subnet_ids and subnet_nodes into mapping and choose validator after possible removal of subnet
     // Avoid randomization if there are max subnets
+
+
+
+    weight
   }
 
   // pub fn do_epoch_preliminaries(block: u32, epoch: u32, epoch_length: u32) {
@@ -291,7 +309,7 @@ impl<T: Config> Pallet<T> {
   //       subnet_delegate_stake.push((subnet_id, subnet_delegate_stake_balance));
   //     }
 
-  //     Self::choose_validator(
+  //     Self::elect_validator(
   //       block,
   //       subnet_id,
   //       subnet_node_ids,

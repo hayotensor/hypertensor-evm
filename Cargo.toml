@@ -52,6 +52,7 @@ tokio = "1.43.0"
 bs58 = { version = "0.4.0" }
 libm = "0.2.8"
 docify = { version = "0.2.7" }
+sp-arithmetic = { version = "0.30", default-features = false }
 
 solochain-template-runtime = { path = "./runtime", default-features = false }
 pallet-template = { path = "./pallets/template", default-features = false }

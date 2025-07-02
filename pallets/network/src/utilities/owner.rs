@@ -351,7 +351,36 @@ impl<T: Config> Pallet<T> {
     	Error::<T>::InvalidSubnetMinStake
     );
 
+    ensure!(
+      SubnetMaxStakeBalance::<T>::get(subnet_id) >= value,
+      Error::<T>::InvalidSubnetStakeParameters
+    );
+
     SubnetMinStakeBalance::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
+  pub fn do_owner_update_max_stake(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+    	value >= MinSubnetMaxStake::<T>::get() &&
+    	value <= MaxSubnetMaxStake::<T>::get(),
+    	Error::<T>::InvalidSubnetMinStake
+    );
+
+    ensure!(
+      SubnetMinStakeBalance::<T>::get(subnet_id) <= value,
+      Error::<T>::InvalidSubnetStakeParameters
+    );
+
+    SubnetMaxStakeBalance::<T>::insert(subnet_id, value);
 
     Ok(())
   }
@@ -378,6 +407,29 @@ impl<T: Config> Pallet<T> {
 
     Ok(())
   }
+
+  pub fn do_owner_update_max_registered_nodes(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    value: u32
+  ) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+    	value >= MinMaxRegisteredNodes::<T>::get(),
+    	Error::<T>::InvalidMaxRegisteredNodes
+    );
+
+    MaxRegisteredNodes::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
 
   /// Initiates the transfer of a subnet's ownership to a new account using a 2-step model.
   ///

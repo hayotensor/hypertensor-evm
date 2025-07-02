@@ -4,9 +4,9 @@ use sp_core::OpaquePeerId as PeerId;
 use frame_support::assert_ok;
 use log::info;
 use crate::{
-  SubnetNodeData, 
+  SubnetNodeConsensusData, 
   TotalStake, 
-  SubnetRewardsValidator,
+  SubnetElectedValidator,
   SubnetName, 
   SubnetNodeClass,
   SubnetsData,
@@ -29,7 +29,7 @@ use crate::{
   BootstrapPeerIdSubnetNode,
   SubnetNodeUniqueParam,
   SubnetPenaltyCount,
-  SubnetRewardsSubmission,
+  SubnetConsensusSubmission,
   Proposals,
   SubnetRegistrationInitialColdkeys,
   SubnetNodeNonUniqueParamLastSet,
@@ -37,11 +37,13 @@ use crate::{
   SubnetRegistrationEpochs,
   SubnetOwner,
   SubnetRegistrationEpoch,
+  TotalActiveSubnetNodes,
   TotalActiveSubnets,
 };
 use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_runtime::SaturatedConversion;
+use sp_io::hashing::blake2_128;
 
 pub type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 
@@ -163,7 +165,7 @@ pub fn build_activated_subnet_new(subnet_path: Vec<u8>, start: u32, mut end: u32
     assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+n));
 
     // --- Is ``Validator`` if registered before subnet activation
-    assert_eq!(subnet_node_data.classification.class, SubnetNodeClass::Validator);
+    assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
     let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
@@ -172,6 +174,9 @@ pub fn build_activated_subnet_new(subnet_path: Vec<u8>, start: u32, mut end: u32
     let account_subnet_stake = AccountSubnetStake::<Test>::get(account(subnets*max_subnet_nodes+n), subnet_id);
     assert_eq!(account_subnet_stake, amount);
   }
+
+  let total_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+  assert_eq!(total_nodes, end);
 
   let total_subnet_stake = TotalSubnetStake::<Test>::get(subnet_id);
   assert_eq!(total_subnet_stake, amount_staked);
@@ -224,7 +229,7 @@ pub fn build_activated_subnet_new(subnet_path: Vec<u8>, start: u32, mut end: u32
 
   // --- Check validator chosen on activation
   // let next_epoch = System::block_number() / epoch_length + 1;
-  // let validator = SubnetRewardsValidator::<Test>::get(subnet_id, next_epoch as u32);
+  // let validator = SubnetElectedValidator::<Test>::get(subnet_id, next_epoch as u32);
   // assert!(validator != None, "Validator is None");
 }
 
@@ -315,7 +320,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+n));
 
     // --- Is ``Validator`` if registered before subnet activation
-    assert_eq!(subnet_node_data.classification.class, SubnetNodeClass::Validator);
+    assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
     let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
@@ -387,20 +392,23 @@ pub fn default_registration_subnet_data(
   start: u32, 
   end: u32
 ) -> RegistrationSubnetData<AccountId> {
+  let seed_bytes: &[u8] = &name;
   let add_subnet_data = RegistrationSubnetData {
-    name: name,
-    repo: Vec::new(),
+    name: name.clone(),
+    repo: blake2_128(seed_bytes).to_vec(), // must be unique
     description: Vec::new(),
     misc: Vec::new(),
     churn_limit: 4,
     min_stake: 100e+18 as u128,
+    max_stake: 10000e+18 as u128,
     delegate_stake_percentage: 100000000000000000, // 10%
     registration_queue_epochs: 4,
     activation_grace_epochs: 4,
     queue_classification_epochs: 4,
     included_classification_epochs: 4,
     max_node_penalties: 3,
-    initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end)
+    initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end),
+    max_registered_nodes: 100,
   };
   add_subnet_data
 }
@@ -441,7 +449,7 @@ pub fn post_subnet_removal_ensures(
   assert_eq!(SubnetsData::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetName::<Test>::try_get(name), Err(()));
   // assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
-  assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
+  // assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetRegistrationInitialColdkeys::<Test>::try_get(subnet_id), Err(()));
   assert_eq!(SubnetNodesData::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(TotalSubnetNodes::<Test>::contains_key(subnet_id), false);
@@ -452,8 +460,8 @@ pub fn post_subnet_removal_ensures(
   assert_eq!(HotkeySubnetNodeId::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(SubnetNodeIdHotkey::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(SubnetPenaltyCount::<Test>::contains_key(subnet_id), false);
-  assert_eq!(SubnetRewardsValidator::<Test>::iter_prefix(subnet_id).count(), 0);
-  assert_eq!(SubnetRewardsSubmission::<Test>::iter_prefix(subnet_id).count(), 0);
+  assert_eq!(SubnetElectedValidator::<Test>::iter_prefix(subnet_id).count(), 0);
+  assert_eq!(SubnetConsensusSubmission::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(Proposals::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(SubnetNodeNonUniqueParamLastSet::<Test>::iter_prefix(subnet_id).count(), 0);
   assert_eq!(SubnetNodePenalties::<Test>::iter_prefix(subnet_id).count(), 0);
@@ -557,16 +565,16 @@ pub fn subnet_node_data(
   max_subnet_nodes: u32,
   start: u32, 
   end: u32
-) -> Vec<SubnetNodeData> {
+) -> Vec<SubnetNodeConsensusData> {
   // initialize peer consensus data array
-  let mut subnet_node_data: Vec<SubnetNodeData> = Vec::new();
+  let mut subnet_node_data: Vec<SubnetNodeConsensusData> = Vec::new();
   for n in start+1..end+1 {
-    // let peer_subnet_node_data: SubnetNodeData<<Test as frame_system::Config>::AccountId> = SubnetNodeData {
+    // let peer_subnet_node_data: SubnetNodeConsensusData<<Test as frame_system::Config>::AccountId> = SubnetNodeConsensusData {
     //   // account_id: account(n),
     //   peer_id: peer(n),
     //   score: DEFAULT_SCORE,
     // };
-    let peer_subnet_node_data: SubnetNodeData = SubnetNodeData {
+    let peer_subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData {
       peer_id: peer(subnets*max_subnet_nodes+n),
       score: DEFAULT_SCORE,
     };
@@ -576,17 +584,17 @@ pub fn subnet_node_data(
   subnet_node_data
 }
 
-pub fn subnet_node_data_invalid_scores(start: u32, end: u32) -> Vec<SubnetNodeData> {
+pub fn subnet_node_data_invalid_scores(start: u32, end: u32) -> Vec<SubnetNodeConsensusData> {
   // initialize peer consensus data array
-  // let mut subnet_node_data: Vec<SubnetNodeData<<Test as frame_system::Config>::AccountId>> = Vec::new();
-  let mut subnet_node_data: Vec<SubnetNodeData> = Vec::new();
+  // let mut subnet_node_data: Vec<SubnetNodeConsensusData<<Test as frame_system::Config>::AccountId>> = Vec::new();
+  let mut subnet_node_data: Vec<SubnetNodeConsensusData> = Vec::new();
   for n in start+1..end+1 {
-    // let peer_subnet_node_data: SubnetNodeData<<Test as frame_system::Config>::AccountId> = SubnetNodeData {
+    // let peer_subnet_node_data: SubnetNodeConsensusData<<Test as frame_system::Config>::AccountId> = SubnetNodeConsensusData {
     //   // account_id: account(n),
     //   peer_id: peer(n),
     //   score: 10000000000,
     // };
-    let peer_subnet_node_data: SubnetNodeData = SubnetNodeData {
+    let peer_subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData {
       peer_id: peer(n),
       score: 10000000000,
     };

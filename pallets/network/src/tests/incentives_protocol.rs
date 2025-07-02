@@ -9,20 +9,19 @@ use log::info;
 use frame_support::traits::{OnInitialize, Currency};
 use crate::{
   Error, 
-  SubnetRewardsValidator,
+  SubnetElectedValidator,
   SubnetName, 
   TotalSubnetNodes,
   SubnetNodeClass,
-  SubnetNodeData,
+  SubnetNodeConsensusData,
   SubnetsData,
   AccountSubnetStake,
   AccountSubnetDelegateStakeShares, 
-  SubnetRewardsSubmission, 
+  SubnetConsensusSubmission, 
   BaseValidatorReward,
   SubnetPenaltyCount, 
   MaxSubnetNodePenalties, 
   SubnetNodePenalties, 
-  RegistrationSubnetData,
   SubnetRemovalReason,
   MaxSubnetPenaltyCount, 
   HotkeySubnetNodeId, 
@@ -89,7 +88,7 @@ fn test_validate() {
 
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
 
     let hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -104,7 +103,7 @@ fn test_validate() {
       )
     );
 
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     assert_eq!(submission.validator_id, validator_id.unwrap(), "Err: validator");
     assert_eq!(submission.data.len(), subnet_node_data_vec.len(), "Err: data len");
@@ -143,9 +142,9 @@ fn test_validate_peer_with_0_score() {
 
     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-    let mut subnet_node_data_vec: Vec<SubnetNodeData> = Vec::new();
+    let mut subnet_node_data_vec: Vec<SubnetNodeConsensusData> = Vec::new();
     for n in 0..total_subnet_nodes {
-      let mut peer_subnet_node_data: SubnetNodeData = SubnetNodeData {
+      let mut peer_subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData {
         peer_id: peer(n),
         score: DEFAULT_SCORE,
       };
@@ -157,7 +156,7 @@ fn test_validate_peer_with_0_score() {
       subnet_node_data_vec.push(peer_subnet_node_data);
     }
   
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
 
     let hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -171,7 +170,7 @@ fn test_validate_peer_with_0_score() {
       )
     );
 
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
     let data = submission.data;
 
     // peer should be removed due to 0 score
@@ -207,7 +206,7 @@ fn test_validate_invalid_validator() {
 
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
 
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -254,7 +253,7 @@ fn test_attest() {
 
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -269,7 +268,7 @@ fn test_attest() {
       )
     );
 
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     log::error!("submission.data      {:?}", submission.data);
     log::error!("subnet_node_data_vec {:?}", subnet_node_data_vec.len());
@@ -291,7 +290,7 @@ fn test_attest() {
       );
     }
     
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
     assert_eq!(submission.attests.len(), total_subnet_nodes as usize);
     
     // for n in 1..total_subnet_nodes+1 {
@@ -340,7 +339,7 @@ fn test_attest_remove_exiting_attester() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Get validator
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_ok!(
@@ -378,7 +377,7 @@ fn test_attest_remove_exiting_attester() {
     //   );
     // }
     
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     assert_eq!(submission.validator_id, validator_id);
     assert_eq!(submission.data.len(), subnet_node_data_vec.len());
@@ -414,7 +413,7 @@ fn test_attest_remove_exiting_attester() {
 
     post_remove_subnet_node_ensures(1, subnet_id);
 
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
     assert_eq!(submission.attests.len(), (total_subnet_nodes - 1) as usize);
     assert_eq!(submission.attests.get(&subnet_node_id), None);
   });
@@ -446,7 +445,7 @@ fn test_attest_no_submission_err() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Get validator
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_err!(
@@ -454,7 +453,7 @@ fn test_attest_no_submission_err() {
         RuntimeOrigin::signed(validator), 
         subnet_id,
       ),
-      Error::<Test>::InvalidSubnetRewardsSubmission
+      Error::<Test>::InvalidSubnetConsensusSubmission
     );
   });
 }
@@ -484,7 +483,7 @@ fn test_attest_already_attested_err() {
 
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_ok!(
@@ -509,7 +508,7 @@ fn test_attest_already_attested_err() {
       );
     }
     
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     assert_eq!(submission.validator_id, validator_id);
     assert_eq!(submission.data.len(), subnet_node_data_vec.len());
@@ -581,7 +580,7 @@ fn test_attest_already_attested_err() {
 //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
 
 //     // --- Get validator
-//     let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
 //     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
 //     assert_ok!(
@@ -636,7 +635,7 @@ fn test_reward_subnets_v2() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Get validator
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_ok!(
@@ -695,7 +694,7 @@ fn test_reward_subnets_v2() {
 //       let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes-1);
     
 //       // --- Insert validator
-//       SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+//       SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
 //       let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
 //       // validate without n-1
@@ -725,7 +724,7 @@ fn test_reward_subnets_v2() {
 //       // --- Get submission data and count before node is removed
 //       // Check rewards
 //       // Ensure only attestors, validators, and validated get rewards
-//       let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+//       let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
 //       // --- Any removals impact the following epochs attestation data unless removed ahead of rewards
 //       let submission_nodes: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(
@@ -816,7 +815,7 @@ fn test_reward_subnets_v2() {
 // //       let epoch = System::block_number() / epoch_length;
 
 // //       // --- Insert validator
-// //       SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, account(1));
+// //       SubnetElectedValidator::<Test>::insert(subnet_id, epoch, account(1));
     
 // //       if num % 2 == 0 {
 // //         // increment on even epochs
@@ -900,7 +899,7 @@ fn test_reward_subnets_v2() {
 //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
   
 //     // --- Insert validator
-//     SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+//     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
 //     let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
 //     // validate without n-1
@@ -930,7 +929,7 @@ fn test_reward_subnets_v2() {
 //     // --- Get submission data and count before node is removed
 //     // Check rewards
 //     // Ensure only attestors, validators, and validated get rewards
-//     let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+//     let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
 //     // --- Any removals impact the following epochs attestation data unless removed ahead of rewards
 //     let submission_nodes: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Validator, epoch);
@@ -995,7 +994,7 @@ fn test_reward_subnets_v2() {
 //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
 
 //     // --- Get validator
-//     let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
 //     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
 //     assert_ok!(
@@ -1046,7 +1045,7 @@ fn test_reward_subnets_v2_validator_slash() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Get validator
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_ok!(
@@ -1093,7 +1092,7 @@ fn test_reward_subnets_v2_validator_slash() {
 //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
 
 //     // --- Insert validator
-//     SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+//     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
 //     let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
 //     assert_ok!(
@@ -1155,7 +1154,7 @@ fn test_reward_subnets_v2_subnet_penalty_count() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Insert validator
-    SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+    SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
     let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
     assert_ok!(
@@ -1213,7 +1212,7 @@ fn test_reward_subnets_v2_subnet_penalty_count() {
 //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
 
 //     // --- Insert validator
-//     SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+//     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
 
 //     assert_ok!(
 //       Network::validate(
@@ -1263,7 +1262,7 @@ fn test_reward_subnets_v2_account_penalty_count() {
     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
     // --- Get validator
-    let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
     assert_ok!(
@@ -1466,7 +1465,7 @@ fn test_do_epoch_preliminaries_choose_validator() {
     let epoch = System::block_number() / epoch_length;
 
     Network::do_epoch_preliminaries(block_number, epoch);
-    let validator = SubnetRewardsValidator::<Test>::get(subnet_id, epoch);
+    let validator = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert_ne!(validator, None);
   });
 }
@@ -1624,7 +1623,7 @@ fn test_reward_subnets_check_balances() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
   
     // --- Insert validator
-    SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+    SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
     let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
     // validate without n-1
@@ -1654,7 +1653,7 @@ fn test_reward_subnets_check_balances() {
     // --- Get submission data and count before node is removed
     // Check rewards
     // Ensure only attestors, validators, and validated get rewards
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     assert_ok!(Network::reward_subnets_v2(System::block_number(), epoch));
 
@@ -1761,7 +1760,7 @@ fn test_reward_subnets_with_delegate_node_staking_check_balances() {
     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
   
     // --- Insert validator
-    SubnetRewardsValidator::<Test>::insert(subnet_id, epoch, 1);
+    SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
     let validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, 1).unwrap();
 
     // validate without n-1
@@ -1791,7 +1790,7 @@ fn test_reward_subnets_with_delegate_node_staking_check_balances() {
     // --- Get submission data and count before node is removed
     // Check rewards
     // Ensure only attestors, validators, and validated get rewards
-    let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+    let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
 
     assert_ok!(Network::reward_subnets_v2(System::block_number(), epoch));
 
@@ -1878,5 +1877,30 @@ fn test_reward_subnets_with_delegate_node_staking_check_balances() {
         assert_eq!(stake_balance, amount + node_reward);
       }
     }
+  });
+}
+
+#[test]
+fn test_calculate_stake_weights_v2() {
+  new_test_ext().execute_with(|| {
+    let _ = env_logger::builder().is_test(true).try_init();
+
+    let subnet_path: Vec<u8> = "subnet-name".into();
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    build_activated_subnet_new(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+
+    increase_epochs(2);
+		let epoch = get_epoch();
+
+    let stake_weights = Network::calculate_stake_weights_v2(epoch);
+
+    assert!(stake_weights.iter().len() > 0);
   });
 }

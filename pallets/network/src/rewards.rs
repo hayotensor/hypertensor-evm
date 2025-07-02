@@ -46,7 +46,7 @@
 //       // --- We don't check for minimum nodes because nodes cannot validate or attest if they are not met
 //       //     as they the validator will not be chosen in ``do_epoch_preliminaries`` if the 
 //       //     min nodes are not met on that epoch.
-//       if let Ok(mut submission) = SubnetRewardsSubmission::<T>::try_get(subnet_id, epoch) {
+//       if let Ok(mut submission) = SubnetConsensusSubmission::<T>::try_get(subnet_id, epoch) {
 //         // --- Get memory of the subnet
 //         let memory_mb = data.memory_mb;
 
@@ -150,12 +150,12 @@
 //           // --- (else if) Check if past Queue and can be included in validation data
 //           // Always continue if any of these are true
 //           // Note: Only ``included`` or above nodes can get emissions
-//           if subnet_node.classification.class <= SubnetNodeClass::Registered {
+//           if subnet_node.classification.node_class <= SubnetNodeClass::Registered {
 //             if epoch as u64 > subnet_node.classification.start_epoch.saturating_add(max_subnet_node_registration_epochs) {
 //               Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
 //             }
 //             continue
-//           } else if subnet_node.classification.class == SubnetNodeClass::Queue {
+//           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
 //             // If not, upgrade classification and continue
 //             // --- Upgrade to included
 //             SubnetNodesData::<T>::mutate(
@@ -163,7 +163,7 @@
 //               subnet_node_id,
 //               |params: &mut SubnetNode<T::AccountId>| {
 //                 params.classification = SubnetNodeClassification {
-//                   class: SubnetNodeClass::Included,
+//                   node_class: SubnetNodeClass::Included,
 //                   start_epoch: (epoch) as u64,
 //                 };
 //               },
@@ -175,10 +175,10 @@
 
 //           let peer_id: PeerId = subnet_node.peer_id;
 
-//           let mut subnet_node_data: SubnetNodeData = SubnetNodeData::default();
+//           let mut subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData::default();
 
 //           // --- Confirm if ``peer_id`` is present in validator data
-//           let subnet_node_data_find: Option<(usize, &SubnetNodeData)> = submission.data.iter().enumerate().find(
+//           let subnet_node_data_find: Option<(usize, &SubnetNodeConsensusData)> = submission.data.iter().enumerate().find(
 //             |&x| x.1.peer_id == peer_id
 //           );
           
@@ -223,7 +223,7 @@
 
 //           // --- Check if can be included in validation data
 //           // By this point, node is validated, update to submittable if they have no penalties
-//           let is_included = subnet_node.classification.class == SubnetNodeClass::Included;
+//           let is_included = subnet_node.classification.node_class == SubnetNodeClass::Included;
 //           if is_included && penalties == 0 {
 //             // --- Upgrade to Validator
 //             SubnetNodesData::<T>::mutate(
@@ -231,7 +231,7 @@
 //               subnet_node_id,
 //               |params: &mut SubnetNode<T::AccountId>| {
 //                 params.classification = SubnetNodeClassification {
-//                   class: SubnetNodeClass::Validator,
+//                   node_class: SubnetNodeClass::Validator,
 //                   start_epoch: (epoch) as u64, // in case rewards are called late, we add them to the next epoch, 2 from the consensus data
 //                 };
 //               },
@@ -317,7 +317,7 @@
 
 //         // --- Increment down subnet penalty score on successful epochs
 //         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-//       } else if let Ok(validator_id) = SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+//       } else if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
 //         // --- If a validator has been chosen that means they are supposed to be submitting consensus data
 //         // --- If there is no submission but validator chosen, increase penalty on subnet and validator
 //         // --- Increase the penalty count for the subnet

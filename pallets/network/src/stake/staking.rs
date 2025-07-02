@@ -33,7 +33,7 @@ impl<T: Config> Pallet<T> {
     );
 
     let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
-
+    
     ensure!(
       account_stake_balance.saturating_add(stake_to_be_added) >= MinStakeBalance::<T>::get(),
       Error::<T>::MinStakeNotReached
@@ -43,6 +43,16 @@ impl<T: Config> Pallet<T> {
       account_stake_balance.saturating_add(stake_to_be_added) <= MaxStakeBalance::<T>::get(),
       Error::<T>::MaxStakeReached
     );
+
+    // ensure!(
+    //   account_stake_balance.saturating_add(stake_to_be_added) >= SubnetMinStakeBalance::<T>::get(subnet_id),
+    //   Error::<T>::MinStakeNotReached
+    // );
+
+    // ensure!(
+    //   account_stake_balance.saturating_add(stake_to_be_added) <= SubnetMinStakeBalance::<T>::get(subnet_id),
+    //   Error::<T>::MaxStakeReached
+    // );
 
     // --- Ensure the callers coldkey has enough stake to perform the transaction.
     ensure!(
