@@ -331,13 +331,15 @@ pub fn get_initial_coldkeys<T: Config>(subnets: u32, max_subnet_nodes: u32, star
 pub fn get_subnet_node_consensus_data<T: Config>(
 	subnet_id: u32,
 	node_count: u32,
-) -> ConsensusData {
+) -> ConsensusData<T::AccountId> {
 	let mut attests = BTreeMap::new();
 	let mut data = Vec::new();
 
 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 
 	let block_number = get_current_block_as_u32::<T>();
+	let epoch_length = T::EpochLength::get();
+	let epoch = get_current_block_as_u32::<T>() / epoch_length;
 
 	for n in 0..node_count {
 		let node_id = subnet_id*max_subnet_nodes+n;
@@ -348,16 +350,19 @@ pub fn get_subnet_node_consensus_data<T: Config>(
 
 		attests.insert(node_id, block_number);
 		data.push(SubnetNodeConsensusData {
-				peer_id,
-				score,
+			peer_id,
+			score,
 		});
 	}
 
+	let included_subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+
 	ConsensusData {
-			validator_id: 1,
-			attests,
-			data,
-			args: None
+		validator_id: subnet_id*max_subnet_nodes,
+		attests,
+		data,
+		included_subnet_nodes,
+		args: None
 	}
 }
 
@@ -365,167 +370,542 @@ pub fn get_subnet_node_consensus_data<T: Config>(
 mod benchmarks {
 	use super::*;
 
-	#[benchmark]
-	fn register_subnet() {
-		let epoch_length = T::EpochLength::get();
-    let block_number = get_current_block_as_u32::<T>();
-    let epoch = block_number.saturating_div(epoch_length);
+	// #[benchmark]
+	// fn register_subnet() {
+	// 	let epoch_length = T::EpochLength::get();
+  //   let block_number = get_current_block_as_u32::<T>();
+  //   let epoch = block_number.saturating_div(epoch_length);
 
-		let cost = Network::<T>::registration_cost(epoch);
+	// 	let cost = Network::<T>::registration_cost(epoch);
 
-		let funded_initializer = funded_initializer::<T>("funded_initializer", 0);
+	// 	let funded_initializer = funded_initializer::<T>("funded_initializer", 0);
 
-		let min_nodes = MinSubnetNodes::<T>::get();
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		let subnets = TotalActiveSubnets::<T>::get() + 1;
-		let register_subnet_data: RegistrationSubnetData<T::AccountId> = default_registration_subnet_data::<T>(
-			subnets,
-			max_subnet_nodes,
-			DEFAULT_SUBNET_NAME.into(),
-			0, 
-			min_nodes + 1
-		);
+	// 	let min_nodes = MinSubnetNodes::<T>::get();
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	let subnets = TotalActiveSubnets::<T>::get() + 1;
+	// 	let register_subnet_data: RegistrationSubnetData<T::AccountId> = default_registration_subnet_data::<T>(
+	// 		subnets,
+	// 		max_subnet_nodes,
+	// 		DEFAULT_SUBNET_NAME.into(),
+	// 		0, 
+	// 		min_nodes + 1
+	// 	);
 	
-		let current_block_number = get_current_block_as_u32::<T>();
+	// 	let current_block_number = get_current_block_as_u32::<T>();
 	
-		#[extrinsic_call]
-		register_subnet(RawOrigin::Signed(funded_initializer.clone()), register_subnet_data);
+	// 	#[extrinsic_call]
+	// 	register_subnet(RawOrigin::Signed(funded_initializer.clone()), register_subnet_data);
 
-		let owner = SubnetOwner::<T>::get(1).unwrap();
-		assert_eq!(owner, funded_initializer.clone());
+	// 	let owner = SubnetOwner::<T>::get(1).unwrap();
+	// 	assert_eq!(owner, funded_initializer.clone());
 	
-		let subnet = SubnetsData::<T>::get(1).unwrap();
-		assert_eq!(subnet.id, 1);
-		let path: Vec<u8> = DEFAULT_SUBNET_NAME.into();
-		assert_eq!(subnet.name, path);
+	// 	let subnet = SubnetsData::<T>::get(1).unwrap();
+	// 	assert_eq!(subnet.id, 1);
+	// 	let path: Vec<u8> = DEFAULT_SUBNET_NAME.into();
+	// 	assert_eq!(subnet.name, path);
 		
-    // let minimum_balance = T::Currency::minimum_balance();
-		// let pot = Treasury::pot();
-		// // let pot = <T as Config>::Treasury::pot();
-    // assert_eq!(cost, pot + minimum_balance);
-	}
+  //   // let minimum_balance = T::Currency::minimum_balance();
+	// 	// let pot = Treasury::pot();
+	// 	// // let pot = <T as Config>::Treasury::pot();
+  //   // assert_eq!(cost, pot + minimum_balance);
+	// }
+
+	// #[benchmark]
+	// fn get_lowest_stake_balance_node_benchmark() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+	// 	#[block]
+	// 	{
+	// 		let _ = Network::<T>::get_lowest_stake_balance_node(subnet_id);
+	// 	}
+	// }
+
+	// #[benchmark]
+	// fn get_classified_hotkeys() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+	// 	#[block]
+	// 	{
+	// 		let _: Vec<T::AccountId> = Network::<T>::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Validator, 0);
+	// 	}
+	// }
+
+	// #[benchmark]
+	// fn get_classified_subnet_nodes() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+	// 	assert_eq!(max_subnet_nodes, active_nodes);
+
+	// 	#[block]
+	// 	{
+	// 		let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Queue, 0);
+	// 	}
+	// }
+
+	// #[benchmark]
+	// fn perform_remove_subnet_node() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let block = get_current_block_as_u32::<T>();
+	// 	let epoch = block / epoch_length as u32;
+
+	// 	let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", 1*max_subnet_nodes+1);
+
+	// 	let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, subnet_node_account.clone()).unwrap();
+
+	// 	let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::perform_remove_subnet_node(
+	// 			block,
+	// 			subnet_id,
+	// 			hotkey_subnet_node_id, 
+	// 		);
+	// 	}
+
+	// 	// let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
+	// 	let subnet_node_id = HotkeySubnetNodeId::<T>::try_get(subnet_id, subnet_node_account.clone());
+	// 	assert_eq!(subnet_node_id, Err(()));
+	// }
+
+	// #[benchmark]
+	// fn do_increase_delegate_stake() {
+	// 	let subnet_id = 1;
+
+	// 	let old_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+	// 	let old_total_balance = TotalDelegateStake::<T>::get();
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::do_increase_delegate_stake(
+	// 			subnet_id,
+	// 			100000000000000000000,
+	// 		);
+	// 	}
+
+	// 	let balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+	// 	let total_balance = TotalDelegateStake::<T>::get();
+
+	// 	assert!(balance > old_balance);
+	// 	assert!(total_balance > old_total_balance);
+	// }
+
+	// #[benchmark]
+	// fn elect_validator() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+	// 	assert_eq!(max_subnet_nodes, active_nodes);
+
+	// 	let current_block_number = get_current_block_as_u32::<T>();
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let block = get_current_block_as_u32::<T>();
+	// 	let epoch = block / epoch_length as u32;
+
+	// 	let subnet_node_ids: Vec<u32> = Network::<T>::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
+	// 	let subnet_nodes_count = subnet_node_ids.len();
+	// 	assert_eq!(subnet_nodes_count as u32, active_nodes);
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::elect_validator(
+	// 			current_block_number,
+	// 			subnet_id,
+	// 			subnet_node_ids,
+	// 			3,
+	// 			100,
+	// 		);
+	// 	}
+	// }
+
+	// // #[benchmark]
+	// // fn calculate_stake_weights_v22(s: Linear<1, 64>) {
+	// // 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+	// // 	for s in 0..s {
+	// // 		let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+	// // 		build_activated_subnet::<T>(
+	// // 			subnet_name.clone().into(), 
+	// // 			0, 
+	// // 			max_subnet_nodes, 
+	// // 			DEFAULT_DEPOSIT_AMOUNT, 
+	// // 			DEFAULT_SUBNET_NODE_STAKE
+	// // 		);
+	// // 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
+	// // 	}
+
+	// // 	let epoch_length = T::EpochLength::get();
+	// // 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+	// // 	#[block]
+	// // 	{
+	// // 		let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
+	// // 		assert!(stake_weights_normalized.iter().len() > 0);
+	// // 	}
+		
+	// // }
+
+	// #[benchmark]
+	// fn calculate_stake_weights_sqrt_block() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+
+	// 	let mut stake_weights: BTreeMap<u32, f64> = BTreeMap::new();
+  //   let mut stake_weight_sum: f64 = 0.0;
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+	// 	#[block]
+	// 	{
+  //     let weight: f64 = 100000000000000000000_u128 as f64 / 100000000000000000000000000_u128 as f64;
+  //     let weight_sqrt: f64 = Network::<T>::pow(weight, 0.5);
+
+  //     stake_weights.insert(1, weight_sqrt);
+  //     stake_weight_sum += weight_sqrt;
+	// 	}
+		
+	// }
+
+	// #[benchmark]
+	// fn calculate_stake_weights_normalize_block() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+
+	// 	let mut stake_weights: BTreeMap<u32, f64> = BTreeMap::new();
+  //   let mut stake_weight_sum: f64 = 0.0;
+
+	// 	let weight: f64 = 100000000000000000000_u128 as f64 / 100000000000000000000000000_u128 as f64;
+	// 	let weight_sqrt: f64 = Network::<T>::pow(weight, 0.5);
+
+	// 	stake_weights.insert(1, weight_sqrt);
+	// 	stake_weight_sum += weight_sqrt;
+
+	// 	let mut stake_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
+  //   let percentage_factor = Network::<T>::percentage_factor_as_u128();
+
+	// 	#[block]
+	// 	{
+	// 		let weight_normalized: u128 = (weight / stake_weight_sum * percentage_factor as f64) as u128;
+  //     stake_weights_normalized.insert(1, weight_normalized);
+	// 	}
+		
+	// }
+
+	// #[benchmark]
+	// fn calculate_stake_weights_v2() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	let max_subnets = MaxSubnets::<T>::get();
+
+	// 	for s in 0..max_subnets {
+	// 		let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+	// 		build_activated_subnet::<T>(
+	// 			subnet_name.clone().into(), 
+	// 			0, 
+	// 			max_subnet_nodes, 
+	// 			DEFAULT_DEPOSIT_AMOUNT, 
+	// 			DEFAULT_SUBNET_NODE_STAKE
+	// 		);
+	// 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
+	// 	}
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+	// 	#[block]
+	// 	{
+	// 		// let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
+	// 		let (stake_weights_normalized, stake_weights_normalized_weight) = Network::<T>::calculate_stake_weights_v2(epoch);
+			
+	// 		assert!(stake_weights_normalized.iter().len() > 0);
+	// 	}
+	// }
+
+	// // #[benchmark]
+	// // fn handle_subnet_emission_weights() {
+	// // 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// // 	let max_subnets = MaxSubnets::<T>::get();
+
+	// // 	for s in 0..max_subnets {
+	// // 		let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+	// // 		build_activated_subnet::<T>(
+	// // 			subnet_name.clone().into(), 
+	// // 			0, 
+	// // 			max_subnet_nodes, 
+	// // 			DEFAULT_DEPOSIT_AMOUNT, 
+	// // 			DEFAULT_SUBNET_NODE_STAKE
+	// // 		);
+	// // 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
+	// // 	}
+
+	// // 	let epoch_length = T::EpochLength::get();
+	// // 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// // 	for s in 0..max_subnets {
+	// // 		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+	// // 		let subnet_node_count = subnet_nodes.len() as u128;
+
+	// // 		let consensus_data = get_subnet_node_consensus_data::<T>(
+	// // 			subnet_id,
+	// // 			subnet_node_count as u32,
+	// // 		);
+
+	// // 		SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
+	// // 	}
+
+
+	// // 	#[block]
+	// // 	{
+	// // 		let _ = Network::<T>::handle_subnet_emission_weights(epoch);
+	// // 	}
+	// // }
+
+	// #[benchmark]
+	// fn precheck_consensus_submission() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+  //   let subnet_node_count = subnet_nodes.len() as u128;
+
+	// 	let consensus_data = get_subnet_node_consensus_data::<T>(
+	// 		subnet_id,
+	// 		subnet_node_count as u32,
+	// 	);
+
+	// 	SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
+
+	// 	#[block]
+	// 	{
+	// 		let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch)
+	// 			.ok_or(DispatchError::Other("Precheck consensus failed"));
+
+	// 		assert!(result.is_ok(), "Precheck consensus failed");
+
+	// 		let (consensus_submission_data, consensus_submission_data_weight) = result.unwrap();
+	// 	}
+	// }
+
+	// #[benchmark]
+	// fn calculate_rewards() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+  //   let subnet_node_count = subnet_nodes.len() as u128;
+
+	// 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
+
+	// 	// let result = Network::<T>::calculate_stake_weights_v2(epoch)
+	// 	// 	.ok_or(DispatchError::Other("Calculate weights failed"));
+
+	// 	// let (stake_weights_normalized, stake_weights_normalized_weight) = result.unwrap();
+		
+	// 	// assert!(stake_weights_normalized.iter().len() > 0);
+	// 	let (stake_weights_normalized, stake_weights_normalized_weight) = Network::<T>::calculate_stake_weights_v2(epoch);
+
+	// 	#[block]
+	// 	{
+	// 		let result = Network::<T>::calculate_rewards(subnet_id, overall_rewards, stake_weights_normalized)
+	// 			.ok_or(DispatchError::Other("Rewards calculation failed"));
+
+	// 		assert!(result.is_ok(), "Rewards calculation failed");
+
+	// 		let (rewards_data, rewards_weight) = result.unwrap();
+	// 	}
+	// }
+
+	// // #[benchmark]
+	// // fn distribute_rewards() {
+	// // 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// // 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// // 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// // 	let block = get_current_block_as_u32::<T>();
+	// // 	let epoch_length = T::EpochLength::get();
+	// // 	let epoch = block / epoch_length as u32;
+
+	// // 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+  // //   let subnet_node_count = subnet_nodes.len() as u128;
+
+	// // 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
+
+	// // 	let consensus_data = get_subnet_node_consensus_data::<T>(
+	// // 		subnet_id,
+	// // 		subnet_node_count as u32,
+	// // 	);
+
+	// // 	SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
+
+	// // 	// let consensus_submission_data = Network::<T>::precheck_consensus_submission(subnet_id, epoch);
+	// // 	// assert!(consensus_submission_data.is_some());
+
+	// // 	let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch)
+	// // 		.ok_or(DispatchError::Other("Precheck consensus failed"));
+
+	// // 	assert!(result.is_ok(), "Precheck consensus failed");
+
+	// // 	let (consensus_submission_data, consensus_submission_data_weight) = result.unwrap();
+
+	// // 	let result = Network::<T>::calculate_stake_weights_v2(epoch)
+	// // 		.ok_or(DispatchError::Other("Calculate weights failed"));
+
+	// // 	let (stake_weights_normalized, stake_weights_normalized_weight) = result.unwrap();
+		
+	// // 	assert!(stake_weights_normalized.iter().len() > 0);
+
+	// // 	// let Some((rewards_data, rewards_weight)) = Network::<T>::calculate_rewards(
+	// // 	// 	subnet_id,
+	// // 	// 	overall_rewards,
+	// // 	// 	stake_weights_normalized
+	// // 	// );
+
+	// // 	let result = Network::<T>::calculate_rewards(subnet_id, overall_rewards, stake_weights_normalized)
+	// // 		.ok_or(DispatchError::Other("Rewards calculation failed"));
+
+	// // 	assert!(result.is_ok(), "Rewards calculation failed");
+
+	// // 	let (rewards_data, rewards_weight) = result.unwrap();
+
+	// // 	// assert!(rewards_data.is_some());
+
+	// // 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+	// // 	let mut stake_snapshot: BTreeMap<T::AccountId, u128> = BTreeMap::new();
+	// // 	for n in 0..max_subnet_nodes {
+	// // 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+
+	// // 		let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+	// // 		stake_snapshot.insert(subnet_node_account.clone(), stake);
+	// // 	}
+
+	// // 	#[block]
+	// // 	{
+	// // 		let _ = Network::<T>::distribute_rewards(
+	// // 			subnet_id,
+	// // 			block,
+	// // 			epoch,
+	// // 			consensus_submission_data, 
+	// // 			rewards_data, 
+	// // 			subnet_nodes,
+	// // 		);
+	// // 	}
+
+	// // 	for n in 0..max_subnet_nodes {
+	// // 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+
+	// // 		let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+
+	// // 		if let Some(old_stake) = stake_snapshot.get(&subnet_node_account) {
+	// // 			assert!(stake > *old_stake);
+	// // 		} else {
+	// // 			assert!(false); // auto-fail
+	// // 		}
+	// // 	}
+
+	// // }
+
+	// #[benchmark]
+	// fn distribute_rewards_v2() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let block = get_current_block_as_u32::<T>();
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = block / epoch_length as u32;
+
+	// 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+  //   let subnet_node_count = subnet_nodes.len() as u128;
+
+	// 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
+
+	// 	let consensus_data = get_subnet_node_consensus_data::<T>(
+	// 		subnet_id,
+	// 		subnet_node_count as u32,
+	// 	);
+
+	// 	SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
+
+	// 	let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch)
+	// 		.ok_or(DispatchError::Other("Precheck consensus failed"));
+
+	// 	assert!(result.is_ok(), "Precheck consensus failed");
+
+	// 	let (consensus_submission_data, consensus_submission_data_weight) = result.unwrap();
+
+	// 	let (stake_weights_normalized, stake_weights_normalized_weight) = Network::<T>::calculate_stake_weights_v2(epoch);
+
+	// 	let result = Network::<T>::calculate_rewards(subnet_id, overall_rewards, stake_weights_normalized)
+	// 		.ok_or(DispatchError::Other("Rewards calculation failed"));
+
+	// 	assert!(result.is_ok(), "Rewards calculation failed");
+
+	// 	let (rewards_data, rewards_weight) = result.unwrap();
+
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+	// 	let mut stake_snapshot: BTreeMap<T::AccountId, u128> = BTreeMap::new();
+	// 	for n in 0..max_subnet_nodes {
+	// 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+
+	// 		let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+	// 		stake_snapshot.insert(subnet_node_account.clone(), stake);
+	// 	}
+
+	// 	let min_attestation_percentage = MinAttestationPercentage::<T>::get();
+  //   let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
+  //   let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
+  //   let min_vast_majority_attestation_percentage = MinVastMajorityAttestationPercentage::<T>::get();
+
+	// 	#[block]
+	// 	{
+	// 		let _ = Network::<T>::distribute_rewards_v2(
+	// 			subnet_id,
+	// 			block,
+	// 			epoch,
+	// 			consensus_submission_data,
+	// 			rewards_data,
+	// 			min_attestation_percentage,
+	// 			reputation_increase_factor,
+	// 			reputation_decrease_factor,
+	// 			min_vast_majority_attestation_percentage
+	// 		);
+	// 	}
+
+	// 	for n in 0..max_subnet_nodes {
+	// 		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+
+	// 		let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+
+	// 		if let Some(old_stake) = stake_snapshot.get(&subnet_node_account) {
+	// 			assert!(stake > *old_stake);
+	// 		} else {
+	// 			assert!(false); // auto-fail
+	// 		}
+	// 	}
+	// }
 
 	#[benchmark]
-	fn get_lowest_stake_balance_node_benchmark() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-		#[block]
-		{
-			let _ = Network::<T>::get_lowest_stake_balance_node(subnet_id);
-		}
-	}
-
-	#[benchmark]
-	fn get_classified_hotkeys() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-		#[block]
-		{
-			let _: Vec<T::AccountId> = Network::<T>::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Validator, 0);
-		}
-	}
-
-	#[benchmark]
-	fn get_classified_subnet_nodes() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-		assert_eq!(max_subnet_nodes, active_nodes);
-
-		#[block]
-		{
-			let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Queue, 0);
-		}
-	}
-
-	#[benchmark]
-	fn perform_remove_subnet_node() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let block = get_current_block_as_u32::<T>();
-		let epoch = block / epoch_length as u32;
-
-		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", 1*max_subnet_nodes+1);
-
-		let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, subnet_node_account.clone()).unwrap();
-
-		let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-
-		#[block]
-		{
-			Network::<T>::perform_remove_subnet_node(
-				block,
-				subnet_id,
-				hotkey_subnet_node_id, 
-			);
-		}
-
-		// let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-		let subnet_node_id = HotkeySubnetNodeId::<T>::try_get(subnet_id, subnet_node_account.clone());
-		assert_eq!(subnet_node_id, Err(()));
-	}
-
-	#[benchmark]
-	fn do_increase_delegate_stake() {
-		let subnet_id = 1;
-
-		let old_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-		let old_total_balance = TotalDelegateStake::<T>::get();
-
-		#[block]
-		{
-			Network::<T>::do_increase_delegate_stake(
-				subnet_id,
-				100000000000000000000,
-			);
-		}
-
-		let balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-		let total_balance = TotalDelegateStake::<T>::get();
-
-		assert!(balance > old_balance);
-		assert!(total_balance > old_total_balance);
-	}
-
-	#[benchmark]
-	fn elect_validator() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-		assert_eq!(max_subnet_nodes, active_nodes);
-
-		let current_block_number = get_current_block_as_u32::<T>();
-
-		let subnet_node_ids: Vec<u32> = Network::<T>::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, 0);
-		let subnet_nodes_count = subnet_node_ids.len();
-		assert_eq!(subnet_nodes_count as u32, active_nodes);
-
-		#[block]
-		{
-			Network::<T>::elect_validator(
-				current_block_number,
-				subnet_id,
-				subnet_node_ids,
-				3,
-				100,
-			);
-		}
-	}
-
-	#[benchmark]
-	fn calculate_stake_weights_v2() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	fn emission_step() {
 		let max_subnets = MaxSubnets::<T>::get();
-
+		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 		for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
 			build_activated_subnet::<T>(
@@ -535,331 +915,272 @@ mod benchmarks {
 				DEFAULT_DEPOSIT_AMOUNT, 
 				DEFAULT_SUBNET_NODE_STAKE
 			);
-			let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
 		}
 
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-		#[block]
-		{
-			let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
-			assert!(stake_weights_normalized.iter().len() > 0);
-		}
-		
-	}
-
-	#[benchmark]
-	fn precheck_consensus_submission() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
-    let subnet_node_count = subnet_nodes.len() as u128;
-
-		let consensus_data = get_subnet_node_consensus_data::<T>(
-			subnet_id,
-			subnet_node_count as u32,
-		);
-
-		SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
-
-		#[block]
-		{
-			// let consensus_submission_data = Network::<T>::precheck_consensus_submission(subnet_id, subnet_node_count, epoch);
-			// assert!(consensus_submission_data.is_some());
-			let result = Network::<T>::precheck_consensus_submission(subnet_id, subnet_node_count, epoch)
-				.ok_or(DispatchError::Other("Precheck consensus failed"));
-
-			assert!(result.is_ok(), "Precheck consensus failed");
-
-			let (consensus_submission_data, consensus_submission_data_weight) = result.unwrap();
-		}
-	}
-
-	#[benchmark]
-	fn calculate_rewards() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
-    let subnet_node_count = subnet_nodes.len() as u128;
-
-		let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
-
-		let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
-
-		#[block]
-		{
-			let result = Network::<T>::calculate_rewards(subnet_id, overall_rewards, stake_weights_normalized)
-				.ok_or(DispatchError::Other("Rewards calculation failed"));
-
-			assert!(result.is_ok(), "Rewards calculation failed");
-
-			let (rewards_data, rewards_weight) = result.unwrap();
-		}
-	}
-
-	#[benchmark]
-	fn distribute_rewards() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
 
 		let block = get_current_block_as_u32::<T>();
 		let epoch_length = T::EpochLength::get();
 		let epoch = block / epoch_length as u32;
 
-		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
-    let subnet_node_count = subnet_nodes.len() as u128;
-
 		let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
 
-		let consensus_data = get_subnet_node_consensus_data::<T>(
-			subnet_id,
-			subnet_node_count as u32,
-		);
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+			let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
 
-		SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
+			let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+			let subnet_node_count = subnet_nodes.len() as u128;
 
-		// let consensus_submission_data = Network::<T>::precheck_consensus_submission(subnet_id, subnet_node_count, epoch);
-		// assert!(consensus_submission_data.is_some());
-
-		let result = Network::<T>::precheck_consensus_submission(subnet_id, subnet_node_count, epoch)
-			.ok_or(DispatchError::Other("Precheck consensus failed"));
-
-		assert!(result.is_ok(), "Precheck consensus failed");
-
-		let (consensus_submission_data, consensus_submission_data_weight) = result.unwrap();
-
-		let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
-		assert!(stake_weights_normalized.iter().len() > 0);
-
-		// let Some((rewards_data, rewards_weight)) = Network::<T>::calculate_rewards(
-		// 	subnet_id,
-		// 	overall_rewards,
-		// 	stake_weights_normalized
-		// );
-
-		let result = Network::<T>::calculate_rewards(subnet_id, overall_rewards, stake_weights_normalized)
-			.ok_or(DispatchError::Other("Rewards calculation failed"));
-
-		assert!(result.is_ok(), "Rewards calculation failed");
-
-		let (rewards_data, rewards_weight) = result.unwrap();
-
-		// assert!(rewards_data.is_some());
-
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-
-		let mut stake_snapshot: BTreeMap<T::AccountId, u128> = BTreeMap::new();
-		for n in 0..max_subnet_nodes {
-			let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
-
-			let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
-			stake_snapshot.insert(subnet_node_account.clone(), stake);
-		}
-
-		#[block]
-		{
-			let _ = Network::<T>::distribute_rewards(
+			let consensus_data = get_subnet_node_consensus_data::<T>(
 				subnet_id,
-				block,
-				epoch,
-				consensus_submission_data, 
-				rewards_data, 
-				subnet_nodes,
+				subnet_node_count as u32,
 			);
+
+			SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);		
 		}
 
-		for n in 0..max_subnet_nodes {
-			let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+		let _ = Network::<T>::handle_subnet_emission_weights(epoch);
 
-			let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+		let final_weights = FinalSubnetEmissionWeights::<T>::try_get(epoch);
+		assert!(final_weights.is_ok());
+		assert!(final_weights.clone().unwrap().len() > 0);
+		assert!(!final_weights.clone().unwrap().is_empty());
 
-			if let Some(old_stake) = stake_snapshot.get(&subnet_node_account) {
-				assert!(stake > *old_stake);
-			} else {
-				assert!(false); // auto-fail
+		let mut santity_check = false;
+		let mut stake_snapshot: BTreeMap<u32, BTreeMap<T::AccountId, u128>> = BTreeMap::new();
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+			let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
+			for n in 0..max_subnet_nodes {
+				let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", subnet_id*max_subnet_nodes+n);
+
+				let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+				assert!(stake > 0);
+				stake_snapshot
+					.entry(subnet_id)
+					.or_default()
+					.insert(subnet_node_account.clone(), stake);
+				santity_check = true;
 			}
 		}
+		assert!(santity_check);
 
-	}
-
-	#[benchmark]
-	fn increase_coldkey_reputation() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+1);
-
-		let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
-
-		let old_reputation = ColdkeyReputation::<T>::get(&subnet_node_account.clone());
 		#[block]
 		{
-			Network::<T>::increase_coldkey_reputation(
-				subnet_node_account.clone(),
-				100000000000000000000, 
-				660000000000000000, 
-				reputation_increase_factor,
-				epoch
+			let _ = Network::<T>::emission_step(
+				block,
+				epoch,
 			);
 		}
 
-		let reputation = ColdkeyReputation::<T>::get(&subnet_node_account.clone());
-		assert!(reputation.weight > old_reputation.weight);
-	}
+		for (subnet_id, node_map) in &stake_snapshot {
+			for (account, old_stake) in node_map {
+				let current_stake = AccountSubnetStake::<T>::get(account.clone(), *subnet_id);
+				log::error!("bm subnet_id     {:?}", *subnet_id);
+				log::error!("bm current_stake {:?}", current_stake);
+				log::error!("bm old_stake     {:?}", *old_stake);
 
-	#[benchmark]
-	fn increase_class() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes-1, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+max_subnet_nodes);
-		T::Currency::deposit_creating(&subnet_node_account, (DEFAULT_DEPOSIT_AMOUNT + 500).try_into().ok().expect("REASON"));
-
-    assert_ok!(
-      Network::<T>::register_subnet_node(
-        RawOrigin::Signed(subnet_node_account.clone()).into(),
-        subnet_id,
-				subnet_node_account.clone(),
-        peer(max_subnet_nodes+max_subnet_nodes),
-				peer(max_subnet_nodes+max_subnet_nodes),
-				0,
-        DEFAULT_DEPOSIT_AMOUNT,
-        None,
-        None,
-        None,
-      ) 
-    );
-
-		let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, subnet_node_account.clone()).unwrap();
-
-		let subnet_node = RegisteredSubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-    let start_epoch = subnet_node.classification.start_epoch;
-
-		increase_epochs::<T>(start_epoch - epoch);
-
-		assert_ok!(
-			Network::<T>::activate_subnet_node(
-				RawOrigin::Signed(subnet_node_account.clone()).into(), 
-				subnet_id, 
-				hotkey_subnet_node_id
-			)
-    );
-
-		let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-		let old_node_class = subnet_node.classification.node_class;
-
-		#[block]
-		{
-			Network::<T>::increase_class(
-				subnet_id,
-				hotkey_subnet_node_id, 
-				epoch
-			);
-		}
-
-		let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-		let node_class = subnet_node.classification.node_class;
-
-		assert!(node_class > old_node_class);
-	}
-
-	#[benchmark]
-	fn do_increase_node_delegate_stake() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-    // -- increase total subnet delegate stake 
-    let old_node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
-
-    let old_total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
-
-		#[block]
-		{
-			Network::<T>::do_increase_node_delegate_stake(
-				subnet_id,
-				1, 
-				100000000000000000000000000
-			);
-		}
-
-    let node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
-
-    let total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
-
-		assert!(old_node_stake_balance < node_stake_balance);
-		assert!(old_total_node_stake_balance < total_node_stake_balance);
-	}
-
-	#[benchmark]
-	fn increase_account_stake() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let epoch_length = T::EpochLength::get();
-		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
-
-		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+max_subnet_nodes);
-
-		let old_account_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
-		let old_subnet_stake = TotalSubnetStake::<T>::get(subnet_id);
-		let old_total_stake = TotalStake::<T>::get();
-
-		#[block]
-		{
-			Network::<T>::increase_account_stake(
-				&subnet_node_account.clone(),
-				subnet_id, 
-				100000000000000000000000000
-			);
-		}
-
-		let account_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
-		let subnet_stake = TotalSubnetStake::<T>::get(subnet_id);
-		let total_stake = TotalStake::<T>::get();
-
-		assert!(old_account_stake < account_stake);
-		assert!(old_subnet_stake < subnet_stake);
-		assert!(old_total_stake < total_stake);
-	}
-
-	#[benchmark]
-	fn do_remove_subnet() {
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
-		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-		let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-		assert_eq!(max_subnet_nodes, active_nodes);
-
-		#[block]
-		{
-			Network::<T>::do_remove_subnet(subnet_id, SubnetRemovalReason::MaxPenalties);
+				assert!(current_stake > *old_stake);
+			}
 		}
 	}
+
+	// #[benchmark]
+	// fn increase_coldkey_reputation() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+1);
+
+	// 	let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
+
+	// 	let old_reputation = ColdkeyReputation::<T>::get(&subnet_node_account.clone());
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::increase_coldkey_reputation(
+	// 			subnet_node_account.clone(),
+	// 			100000000000000000000, 
+	// 			660000000000000000, 
+	// 			reputation_increase_factor,
+	// 			epoch
+	// 		);
+	// 	}
+
+	// 	let reputation = ColdkeyReputation::<T>::get(&subnet_node_account.clone());
+	// 	assert!(reputation.weight > old_reputation.weight);
+	// }
+
+	// #[benchmark]
+	// fn increase_class() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes-1, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+max_subnet_nodes);
+	// 	T::Currency::deposit_creating(&subnet_node_account, (DEFAULT_DEPOSIT_AMOUNT + 500).try_into().ok().expect("REASON"));
+
+  //   assert_ok!(
+  //     Network::<T>::register_subnet_node(
+  //       RawOrigin::Signed(subnet_node_account.clone()).into(),
+  //       subnet_id,
+	// 			subnet_node_account.clone(),
+  //       peer(max_subnet_nodes+max_subnet_nodes),
+	// 			peer(max_subnet_nodes+max_subnet_nodes),
+	// 			0,
+  //       DEFAULT_DEPOSIT_AMOUNT,
+  //       None,
+  //       None,
+  //       None,
+  //     ) 
+  //   );
+
+	// 	let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, subnet_node_account.clone()).unwrap();
+
+	// 	let subnet_node = RegisteredSubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
+  //   let start_epoch = subnet_node.classification.start_epoch;
+
+	// 	increase_epochs::<T>(start_epoch - epoch);
+
+	// 	assert_ok!(
+	// 		Network::<T>::activate_subnet_node(
+	// 			RawOrigin::Signed(subnet_node_account.clone()).into(), 
+	// 			subnet_id, 
+	// 			hotkey_subnet_node_id
+	// 		)
+  //   );
+
+	// 	let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
+	// 	let old_node_class = subnet_node.classification.node_class;
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::increase_class(
+	// 			subnet_id,
+	// 			hotkey_subnet_node_id, 
+	// 			epoch
+	// 		);
+	// 	}
+
+	// 	let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
+	// 	let node_class = subnet_node.classification.node_class;
+
+	// 	assert!(node_class > old_node_class);
+	// }
+
+	// #[benchmark]
+	// fn do_increase_node_delegate_stake() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+  //   // -- increase total subnet delegate stake 
+  //   let old_node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
+
+  //   let old_total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::do_increase_node_delegate_stake(
+	// 			subnet_id,
+	// 			1, 
+	// 			100000000000000000000000000
+	// 		);
+	// 	}
+
+  //   let node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
+
+  //   let total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
+
+	// 	assert!(old_node_stake_balance < node_stake_balance);
+	// 	assert!(old_total_node_stake_balance < total_node_stake_balance);
+	// }
+
+	// #[benchmark]
+	// fn increase_account_stake() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+max_subnet_nodes);
+
+	// 	let old_account_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+	// 	let old_subnet_stake = TotalSubnetStake::<T>::get(subnet_id);
+	// 	let old_total_stake = TotalStake::<T>::get();
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::increase_account_stake(
+	// 			&subnet_node_account.clone(),
+	// 			subnet_id, 
+	// 			100000000000000000000000000
+	// 		);
+	// 	}
+
+	// 	let account_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+	// 	let subnet_stake = TotalSubnetStake::<T>::get(subnet_id);
+	// 	let total_stake = TotalStake::<T>::get();
+
+	// 	assert!(old_account_stake < account_stake);
+	// 	assert!(old_subnet_stake < subnet_stake);
+	// 	assert!(old_total_stake < total_stake);
+	// }
+
+	// #[benchmark]
+	// fn do_remove_subnet() {
+	// 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+	// 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
+	// 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+	// 	let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+	// 	assert_eq!(max_subnet_nodes, active_nodes);
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::do_remove_subnet(subnet_id, SubnetRemovalReason::MaxPenalties);
+	// 	}
+	// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// #[benchmark]
 	// fn generate_rewards_for_subnet() {

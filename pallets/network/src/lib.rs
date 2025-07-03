@@ -715,12 +715,13 @@ pub mod pallet {
 	}
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct ConsensusSubmissionData {
+	pub struct ConsensusSubmissionData<AccountId> {
     pub validator_subnet_node_id: u32,
     pub attestation_ratio: u128,
     pub weight_sum: u128,
     pub data_length: u32,
 		pub data: Vec<SubnetNodeConsensusData>,
+		pub included_subnet_nodes: Vec<SubnetNode<AccountId>>,
   }
 
 
@@ -751,9 +752,10 @@ pub mod pallet {
 	// pub type Attests<AccountId> = BTreeMap<AccountId, u64>;
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct ConsensusData {
+	pub struct ConsensusData<AccountId> {
 		pub validator_id: u32, // Chosen validator of the epoch
 		pub attests: BTreeMap<u32, u32>, // Count of attestations of the submitted data
+		pub included_subnet_nodes: Vec<SubnetNode<AccountId>>,
 		pub data: Vec<SubnetNodeConsensusData>, // Data submitted by chosen validator
 		pub args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>, // Optional arguements to pass for subnet to validate
 	}
@@ -1905,13 +1907,13 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage] // subnet ID => epoch  => data
-	pub type SubnetConsensusSubmission<T> = StorageDoubleMap<
+	pub type SubnetConsensusSubmission<T: Config> = StorageDoubleMap<
 		_,
 		Identity,
 		u32,
 		Identity,
 		u32,
-		ConsensusData,
+		ConsensusData<T::AccountId>,
 	>;
 
 	#[pallet::storage]
@@ -1919,6 +1921,16 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type MinVastMajorityAttestationPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultMinVastMajorityAttestationPercentage>;
+
+	// Epoch -> {(subnet_id, weight)}
+	#[pallet::storage]
+	pub type FinalSubnetEmissionWeights<T> = StorageMap<
+		_,
+		Identity,
+		u32,
+		BTreeMap<u32, u128>,
+		ValueQuery,
+	>;
 
 	//
 	// Rewards (validator, incentives)
@@ -4526,6 +4538,23 @@ pub mod pallet {
 			let total_nodes = TotalActiveSubnetNodes::<T>::take(subnet_id);
 			TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_reduce(total_nodes));
 
+			// We have removed all of the data required to assist in blockchain logic
+			// `clean_subnet_nodes` cleans up non-required data
+			Self::clean_subnet_nodes(subnet_id);
+	
+			Self::deposit_event(Event::SubnetDeactivated { subnet_id: subnet_id, reason: reason });
+
+			Ok(())
+		}
+
+		pub fn clean_subnet_nodes(
+			subnet_id: u32,
+		) -> DispatchResult {
+			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
+        Ok(subnet) => subnet,
+        Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+			};
+
 			let _ = TotalSubnetNodes::<T>::remove(subnet_id);
 			let _ = TotalSubnetNodeUids::<T>::remove(subnet_id);
 			let _ = PeerIdSubnetNode::<T>::clear_prefix(subnet_id, u32::MAX, None);
@@ -4542,8 +4571,6 @@ pub mod pallet {
 			// Remove consensus data
 			let _ = SubnetElectedValidator::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetConsensusSubmission::<T>::clear_prefix(subnet_id, u32::MAX, None);
-	
-			Self::deposit_event(Event::SubnetDeactivated { subnet_id: subnet_id, reason: reason });
 
 			Ok(())
 		}
@@ -4781,6 +4808,7 @@ pub mod pallet {
 			}
 
 			// --- Start the UIDs at 1
+			// TODO: Make one UID element for all subnets
 			TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 			let current_uid = TotalSubnetNodeUids::<T>::get(subnet_id);
 
@@ -5256,7 +5284,6 @@ pub mod pallet {
 		// 	// for EVM tests (Weights in on_initialize change the block weight/gas)
 		// 	return Weight::from_parts(0, 0)
 		// }
-
 		fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
 			if Self::is_paused().is_err() {
 				return Weight::from_parts(0, 0)
@@ -5265,23 +5292,27 @@ pub mod pallet {
 			let block: u32 = Self::convert_block_as_u32(block_number);
 			let epoch_length: u32 = T::EpochLength::get();
 			let epoch_slot = block % epoch_length;
+			let epoch = block.saturating_div(epoch_length);
 
-			// Get current epochs rewards and subnet weights
-			if epoch_slot == 0 {
+			if block >= epoch_length && block % epoch_length == 0 {
+			// Elect
+			// Elect validator in each subnet
+				return Self::do_epoch_preliminaries(block, epoch);
+			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
+			// Calculate rewards
+			// Calculate emissions based on subnet weights (delegate stake based)
+			// We calculate based on delegate stake weights on all subnets, and not only
+			// those that submitted consensus on this epoch to mitigate possible exploits
+			// on subnets to get more rewards.
+				return Self::handle_subnet_emission_weights(epoch);
+			} else if (block - 2) >= epoch_length && (block - 2) % epoch_length == 0 {
+			// Reward
+			// Reward each active subnet
+				return Self::emission_step(block, epoch)
+			};
 
-			}
-
-			// Reward subnets
-			if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
-        // Reward logic here for that subnet
-        // Self::generate_rewards_for_subnet(subnet_id)
-			}
-
-			// Reward subnet delegaters
-
-			// Reward subnet node delegaters
-
-			return Weight::from_parts(0, 0)
+			// for EVM tests (Weights in on_initialize change the block weight/gas)
+			Weight::from_parts(0, 0)
 		}
 
 		fn on_finalize(block_number: BlockNumberFor<T>) {

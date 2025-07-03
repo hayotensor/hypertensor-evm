@@ -65,8 +65,9 @@ impl<T: Config> Pallet<T> {
 
     // --- Get count of eligible nodes that can be submitted for consensus rewards
     // This is the maximum amount of nodes that can be entered
-    let included_nodes: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
-    let included_nodes_count = included_nodes.len();
+    // let included_nodes: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
+    let included_subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    let included_nodes_count = included_subnet_nodes.len();
 
     // --- Ensure data isn't greater than current registered subnet peers
     // Redundant because of ``retain``
@@ -84,14 +85,15 @@ impl<T: Config> Pallet<T> {
     let mut attests: BTreeMap<u32, u32> = BTreeMap::new();
     attests.insert(validator_id, block);
 
-    let rewards_data: ConsensusData = ConsensusData {
+    let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
       validator_id: validator_id,
       attests: attests,
+      included_subnet_nodes: included_subnet_nodes,
       data: data,
       args: args,
     };
 
-    SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, rewards_data);
+    SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
   
     Self::deposit_event(
       Event::ValidatorSubmission { 

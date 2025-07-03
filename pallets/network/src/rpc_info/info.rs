@@ -163,7 +163,7 @@ impl<T: Config> Pallet<T> {
   pub fn get_consensus_data(
     subnet_id: u32,
     epoch: u32
-  ) -> Option<ConsensusData> {
+  ) -> Option<ConsensusData<T::AccountId>> {
     let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
     Some(data?)
   }
@@ -171,7 +171,7 @@ impl<T: Config> Pallet<T> {
   // pub fn get_incentives_data(
   //   subnet_id: u32,
   //   epoch: u32
-  // ) -> Option<ConsensusData> {
+  // ) -> Option<ConsensusData<T::AccountId>> {
   //   let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
   //   Some(data?)
   // }

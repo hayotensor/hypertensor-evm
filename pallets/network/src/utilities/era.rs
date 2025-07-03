@@ -100,9 +100,9 @@ impl<T: Config> Pallet<T> {
             } else if is_registering && epoch <= max_enactment_epoch {
               // --- Enactment Period
               // If in enactment period, ensure min nodes
-              let subnet_node_ids: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Validator, epoch);
-              let subnet_nodes_count = subnet_node_ids.len();  
-              if (subnet_nodes_count as u32) < min_subnet_nodes {
+              let active_subnet_nodes_count = TotalActiveSubnetNodes::<T>::get(subnet_id);
+              weight = weight.saturating_add(T::DbWeight::get().reads(1));
+              if active_subnet_nodes_count < min_subnet_nodes {
                 Self::do_remove_subnet(
                   subnet_id,
                   SubnetRemovalReason::MinSubnetNodes,
@@ -143,14 +143,13 @@ impl<T: Config> Pallet<T> {
         continue
       }
 
-      // --- Get all possible validators
-      let subnet_node_ids: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Validator, epoch);
-      let subnet_nodes_count = subnet_node_ids.len();
+      let active_subnet_nodes_count = TotalActiveSubnetNodes::<T>::get(subnet_id);
+      weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
       // --- Ensure min nodes are active
       // Only choose validator if min nodes are present
       // The ``SubnetPenaltyCount`` when surpassed doesn't penalize anyone, only removes the subnet from the chain
-      if (subnet_nodes_count as u32) < min_subnet_nodes {
+      if active_subnet_nodes_count < min_subnet_nodes {
         // Nodes may be deactivated so we don't remove the subnet here, but increase penalties instead
         // Note: Subnets decrease its number of penalties for each successful epoch
         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
@@ -173,6 +172,9 @@ impl<T: Config> Pallet<T> {
         subnet_delegate_stake.push((subnet_id, subnet_delegate_stake_balance));
       }
 
+      // --- Get all possible validators
+      let subnet_node_ids: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Validator, epoch);
+
       Self::elect_validator(
         block,
         subnet_id,
@@ -180,7 +182,7 @@ impl<T: Config> Pallet<T> {
         min_subnet_nodes,
         epoch,
       );
-      weight = weight.saturating_add(T::WeightInfo::elect_validator());
+      // weight = weight.saturating_add(T::WeightInfo::elect_validator());
     }
 
     // --- If over max subnets, remove the subnet with the lowest delegate stake
@@ -195,9 +197,6 @@ impl<T: Config> Pallet<T> {
 
     // --- TODO: Push subnet_ids and subnet_nodes into mapping and choose validator after possible removal of subnet
     // Avoid randomization if there are max subnets
-
-
-
     weight
   }
 
