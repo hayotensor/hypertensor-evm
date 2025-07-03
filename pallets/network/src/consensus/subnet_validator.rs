@@ -26,13 +26,11 @@ impl<T: Config> Pallet<T> {
     block: u32, 
     epoch_length: u32,
     epoch: u32,
-    mut data: Vec<SubnetNodeData>,
+    mut data: Vec<SubnetNodeConsensusData>,
     args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
   ) -> DispatchResultWithPostInfo {
-    // TODO: Add max sum to avoid overflow
-
     // --- Ensure current subnet validator by its hotkey
-    let validator_id = SubnetRewardsValidator::<T>::get(subnet_id, epoch).ok_or(Error::<T>::InvalidValidator)?;
+    let validator_id = SubnetElectedValidator::<T>::get(subnet_id, epoch).ok_or(Error::<T>::InvalidValidator)?;
 
     // --- If hotkey is hotkey, ensure it matches validator, otherwise if coldkey -> get hotkey
     ensure!(
@@ -42,7 +40,7 @@ impl<T: Config> Pallet<T> {
 
     // --- Ensure not submitted already
     ensure!(
-      !SubnetRewardsSubmission::<T>::contains_key(subnet_id, epoch),
+      !SubnetConsensusSubmission::<T>::contains_key(subnet_id, epoch),
       Error::<T>::SubnetRewardsAlreadySubmitted
     );
 
@@ -67,8 +65,9 @@ impl<T: Config> Pallet<T> {
 
     // --- Get count of eligible nodes that can be submitted for consensus rewards
     // This is the maximum amount of nodes that can be entered
-    let included_nodes: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
-    let included_nodes_count = included_nodes.len();
+    // let included_nodes: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
+    let included_subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    let included_nodes_count = included_subnet_nodes.len();
 
     // --- Ensure data isn't greater than current registered subnet peers
     // Redundant because of ``retain``
@@ -76,19 +75,25 @@ impl<T: Config> Pallet<T> {
       data.len() as u32 <= included_nodes_count as u32,
       Error::<T>::InvalidRewardsDataLength
     );
+
+    // --- Ensure overflow sum fails
+    data.iter().try_fold(0u128, |acc, node| {
+      acc.checked_add(node.score).ok_or(Error::<T>::ScoreOverflow)
+    })?;
     
     // --- Validator auto-attests the epoch
     let mut attests: BTreeMap<u32, u32> = BTreeMap::new();
     attests.insert(validator_id, block);
 
-    let rewards_data: RewardsData = RewardsData {
+    let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
       validator_id: validator_id,
       attests: attests,
+      included_subnet_nodes: included_subnet_nodes,
       data: data,
       args: args,
     };
 
-    SubnetRewardsSubmission::<T>::insert(subnet_id, epoch, rewards_data);
+    SubnetConsensusSubmission::<T>::insert(subnet_id, epoch, consensus_data);
   
     Self::deposit_event(
       Event::ValidatorSubmission { 
@@ -101,7 +106,7 @@ impl<T: Config> Pallet<T> {
     Ok(Pays::No.into())
   }
 
-    /// Attest validator subnet rewards data
+  /// Attest validator subnet rewards data
   // Nodes must attest data to receive rewards
   pub fn do_attest(
     subnet_id: u32, 
@@ -128,11 +133,11 @@ impl<T: Config> Pallet<T> {
       Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
     };
 
-    SubnetRewardsSubmission::<T>::try_mutate_exists(
+    SubnetConsensusSubmission::<T>::try_mutate_exists(
       subnet_id,
       epoch,
       |maybe_params| -> DispatchResult {
-        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetRewardsSubmission)?;
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetConsensusSubmission)?;
         let mut attests = &mut params.attests;
 
         ensure!(attests.insert(subnet_node_id, block) == None, Error::<T>::AlreadyAttested);
@@ -153,7 +158,7 @@ impl<T: Config> Pallet<T> {
     Ok(Pays::No.into())
   }
 
-  pub fn choose_validator(
+  pub fn elect_validator(
     block: u32,
     subnet_id: u32,
     subnet_node_ids: Vec<u32>,
@@ -164,7 +169,7 @@ impl<T: Config> Pallet<T> {
     
     // Redundant
     // If validator already chosen, then return
-    if let Ok(validator_id) = SubnetRewardsValidator::<T>::try_get(subnet_id, epoch) {
+    if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
       return
     }
 
@@ -184,7 +189,7 @@ impl<T: Config> Pallet<T> {
     let validator: &u32 = &subnet_node_ids[rand_index as usize];
 
     // --- Insert validator for next epoch
-    SubnetRewardsValidator::<T>::insert(subnet_id, epoch, validator);
+    SubnetElectedValidator::<T>::insert(subnet_id, epoch, validator);
   }
 
   /// Return the validators reward that submitted data on the previous epoch
@@ -201,12 +206,28 @@ impl<T: Config> Pallet<T> {
   pub fn slash_validator(
     subnet_id: u32, 
     subnet_node_id: u32,
-    attestation_percentage: u128, 
-    block: u32
+    attestation_percentage: u128,
+    min_attestation_percentage: u128,
+    reputation_decrease_factor: u128,
+    block: u32,
+    epoch: u32,
   ) {
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
     let hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node_id).unwrap();
+
+    match HotkeyOwner::<T>::try_get(&hotkey) {
+      Ok(coldkey) => {
+        Self::decrease_coldkey_reputation(
+          coldkey,
+          attestation_percentage, 
+          min_attestation_percentage, 
+          reputation_decrease_factor,
+          epoch
+        );
+      },
+      Err(()) => (),
+    };
 
     // --- Get stake balance
     // This could be greater than the target stake balance

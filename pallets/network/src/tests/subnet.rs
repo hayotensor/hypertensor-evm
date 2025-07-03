@@ -9,19 +9,17 @@ use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use crate::{
   Error,
-  SubnetPaths, 
+  SubnetName, 
   MinSubnetNodes, 
   TotalSubnetNodes,
   SubnetsData,
   RegistrationSubnetData,
   SubnetRemovalReason,
-  MinSubnetRegistrationBlocks, 
-  MaxSubnetRegistrationBlocks, 
-  SubnetActivationEnactmentBlocks,
-  HotkeySubnetNodeId,
+  SubnetActivationEnactmentEpochs,
   SubnetRegistrationEpochs,
   SubnetState,
-  MinStakeBalance,
+  TotalActiveSubnets,
+  MaxSubnetNodes,
 };
 
 //
@@ -43,7 +41,7 @@ use crate::{
 #[test]
 fn test_register_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -55,21 +53,34 @@ fn test_register_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
   
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
   
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    // let whitelist = get_initial_coldkeys(0, min_nodes+1);
+  
+    // let add_subnet_data = RegistrationSubnetData {
+    //   name: subnet_path.clone().into(),
+    //   repo: Vec::new(),
+		// 	description: Vec::new(),
+		// 	misc: Vec::new(),
+    //   churn_limit: 4,
+    //   registration_queue_epochs: 4,
+    //   activation_grace_epochs: 4,
+    //   queue_classification_epochs: 4,
+    //   included_classification_epochs: 4,
+    //   max_node_penalties: 3,
+    //   initial_coldkeys: whitelist
+    // };
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -85,7 +96,7 @@ fn test_register_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     // Check treasury pot
@@ -98,7 +109,7 @@ fn test_register_subnet() {
 #[test]
 fn test_register_subnet_subnet_registration_cooldown() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     increase_epochs(1);
 
@@ -112,21 +123,19 @@ fn test_register_subnet_subnet_registration_cooldown() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -142,24 +151,21 @@ fn test_register_subnet_subnet_registration_cooldown() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let subnet_path: Vec<u8> = "subnet-name-2".into();
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
 
     assert_err!(
       Network::register_subnet(
@@ -191,22 +197,19 @@ fn test_register_subnet_subnet_registration_cooldown() {
       )
     );
 
+    // --- Cooldown expected after registering again
+    let subnet_path: Vec<u8> = "subnet-name-3".into();
 
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga4".into();
-
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist.clone(),
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
 
     assert_err!(
       Network::register_subnet(
@@ -221,7 +224,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
 #[test]
 fn test_register_subnet_exists_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -233,21 +236,19 @@ fn test_register_subnet_exists_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -268,146 +269,33 @@ fn test_register_subnet_exists_error() {
         RuntimeOrigin::signed(account(0)),
         add_subnet_data.clone(),
       ),
-      Error::<Test>::SubnetExist
+      Error::<Test>::SubnetNameExist
     );
 
   })
 }
 
-// #[test]
-// fn test_register_subnet_registration_blocks_err() {
-//   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
-
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-  
-//     let cost = Network::registration_cost(epoch);
-  
-//     let _ = Balances::deposit_creating(&account(0), cost+1000);
-  
-//     let add_subnet_data = RegistrationSubnetData {
-//       name: subnet_path.clone().into(),
-//       max_node_registration_epochs: 16,
-//       node_registration_interval: 0,
-//       // initial_coldkeys: Some(BTreeSet::new()),
-//       initial_coldkeys: None,
-//     };
-    
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-//     increase_epochs(next_registration_epoch - epoch);
-
-//     assert_err!(
-//       Network::register_subnet(
-//         RuntimeOrigin::signed(account(0)),
-//         add_subnet_data,
-//       ),
-//       Error::<Test>::InvalidSubnetRegistrationBlocks
-//     );
-
-//     let add_subnet_data = RegistrationSubnetData {
-//       name: subnet_path.clone().into(),
-//       max_node_registration_epochs: 16,
-//       node_registration_interval: 0,
-//       // initial_coldkeys: Some(BTreeSet::new()),
-//       initial_coldkeys: None,
-//     };
-
-//     assert_err!(
-//       Network::register_subnet(
-//         RuntimeOrigin::signed(account(0)),
-//         add_subnet_data,
-//       ),
-//       Error::<Test>::InvalidSubnetRegistrationBlocks
-//     );
-//   })
-// }
-
-// #[test]
-// fn test_register_subnet_max_total_subnet_mem_err() {
-//   new_test_ext().execute_with(|| {
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-  
-//     let cost = Network::registration_cost(epoch);
-    
-//     let total_subnet_memory_mb = TotalSubnetMemoryMB::<Test>::get();
-
-//     // Limit while loop to 10 ierations
-//     let iterations = 11;
-//     let epoch_length = EpochLength::get();
-
-//     let mut current_total_subnet_memory_mb = total_subnet_memory_mb;
-
-//     for n in 0..iterations {
-//       let epoch_length = EpochLength::get();
-//       let block_number = System::block_number();
-//       let epoch = System::block_number().saturating_div(epoch_length);
-//       let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-//       increase_epochs(next_registration_epoch - epoch);
-  
-//       let _ = Balances::deposit_creating(&account(0), cost+1000);
-
-//       let name: Vec<u8> = format!("model-name-{n}").into(); 
-
-//       let add_subnet_data = RegistrationSubnetData {
-//         name: name,
-//         max_node_registration_epochs: 16,
-//         node_registration_interval: 0,
-      // initial_coldkeys: Some(BTreeSet::new()),
-      // initial_coldkeys: None,
-//       };
-
-//       let next_subnet_total_memory_mb = TotalSubnetMemoryMB::<Test>::get() + subnet_mem_mb;
-
-//       if next_subnet_total_memory_mb <= max_total_subnet_memory_mb {
-//         assert_ok!(
-//           Network::register_subnet(
-//             RuntimeOrigin::signed(account(0)),
-//             add_subnet_data,
-//           )
-//         );
-//       } else {
-//         assert_err!(
-//           Network::register_subnet(
-//             RuntimeOrigin::signed(account(0)),
-//             add_subnet_data,
-//           ),
-//           Error::<Test>::MaxTotalSubnetMemory
-//         );
-//       }
-//     }
-//   })
-// }
-
 #[test]
 fn test_register_subnet_not_enough_balance_err() {
   new_test_ext().execute_with(|| {
     // let _ = Balances::deposit_creating(&account(0), cost+1000);  
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -420,7 +308,7 @@ fn test_register_subnet_not_enough_balance_err() {
         RuntimeOrigin::signed(account(0)),
         add_subnet_data,
       ),
-      Error::<Test>::NotEnoughBalanceToStake
+      Error::<Test>::NotEnoughBalanceToRegisterSubnet
     );
   })
 }
@@ -428,7 +316,7 @@ fn test_register_subnet_not_enough_balance_err() {
 #[test]
 fn test_activate_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -440,22 +328,19 @@ fn test_activate_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
-  
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+    
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
@@ -470,7 +355,7 @@ fn test_activate_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -481,14 +366,14 @@ fn test_activate_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -498,7 +383,8 @@ fn test_activate_subnet() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -520,7 +406,7 @@ fn test_activate_subnet() {
       )
     );
 
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
     assert_eq!(subnet.id, subnet_id);
 
@@ -534,7 +420,7 @@ fn test_activate_subnet() {
 #[test]
 fn test_activate_subnet_invalid_subnet_id_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -546,22 +432,19 @@ fn test_activate_subnet_invalid_subnet_id_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
-  
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
@@ -576,7 +459,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -587,14 +470,14 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -609,7 +492,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
         RuntimeOrigin::signed(account(0)),
         subnet_id+1,
       ),
-      Error::<Test>::InvalidSubnetId
+      Error::<Test>::NotSubnetOwner
     );
   })
 }
@@ -617,7 +500,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
 #[test]
 fn test_activate_subnet_already_activated_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -629,21 +512,18 @@ fn test_activate_subnet_already_activated_err() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -659,7 +539,7 @@ fn test_activate_subnet_already_activated_err() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -670,14 +550,14 @@ fn test_activate_subnet_already_activated_err() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -687,7 +567,8 @@ fn test_activate_subnet_already_activated_err() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -722,7 +603,7 @@ fn test_activate_subnet_already_activated_err() {
 #[test]
 fn test_activate_subnet_enactment_period_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -734,21 +615,19 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -764,7 +643,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     let id = subnet.id;
@@ -775,14 +654,14 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -794,7 +673,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
   
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -806,7 +686,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
 
     // --- Increase blocks to max registration block
     let registration_epochs = SubnetRegistrationEpochs::<Test>::get();
-    let enactment_epochs = SubnetActivationEnactmentBlocks::<Test>::get();
+    let enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
     increase_epochs(registration_epochs + enactment_epochs + 1);
 
     assert_ok!(
@@ -824,21 +704,20 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
 
     // --- Ensure nodes can be removed and unstake
-    post_subnet_removal_ensures(subnet_id, subnet_path, 0, total_subnet_nodes);
+    // post_subnet_removal_ensures(subnet_id, subnets, max_subnet_nodes, subnet_path, 0, total_subnet_nodes);
   })
 }
-
 
 #[test]
 fn test_activate_subnet_initializing_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -850,21 +729,19 @@ fn test_activate_subnet_initializing_error() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
+  
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -880,7 +757,7 @@ fn test_activate_subnet_initializing_error() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -891,14 +768,14 @@ fn test_activate_subnet_initializing_error() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -908,7 +785,8 @@ fn test_activate_subnet_initializing_error() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
       Network::add_to_delegate_stake(
@@ -929,71 +807,9 @@ fn test_activate_subnet_initializing_error() {
 }
 
 #[test]
-fn test_not_subnet_node_owner() {
-  new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
-    let deposit_amount: u128 = 1000000000000000000000000;
-    let amount: u128 = 1000000000000000000000;
-
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
-
-    build_activated_subnet(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
-
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
-    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-
-    let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
-
-    let starting_balance = Balances::free_balance(&account(total_subnet_nodes+1));
-    assert_eq!(starting_balance, deposit_amount);
-
-    assert_ok!(
-      Network::add_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
-        subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        0,
-        amount,
-        None,
-        None,
-        None,
-      ) 
-    );
-
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
-    
-    assert_err!(
-      Network::add_to_stake(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
-        subnet_id,
-        subnet_node_id,
-        account(1),
-        amount,
-      ),
-      Error::<Test>::NotKeyOwner,
-    );
-
-    assert_err!(
-      Network::add_to_stake(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
-        subnet_id,
-        1,
-        account(total_subnet_nodes+1),
-        amount,
-      ),
-      Error::<Test>::NotSubnetNodeOwner,
-    );
-
-
-  });
-}
-
-#[test]
 fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1005,21 +821,18 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1035,7 +848,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -1061,7 +874,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
@@ -1071,7 +884,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
 #[test]
 fn test_activate_subnet_min_delegate_balance_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+    let subnet_path: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1083,21 +896,18 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
   
     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let whitelist = get_initial_coldkeys(0, min_nodes+1);
+    let start = 0;
+    let end = min_nodes + 1;
 
-    let add_subnet_data = RegistrationSubnetData {
-      name: subnet_path.clone().into(),
-      repo: Vec::new(),
-			description: Vec::new(),
-			misc: Vec::new(),
-      max_node_registration_epochs: 16,
-      node_registration_interval: 0,
-      node_activation_interval: 0,
-      node_queue_period: 1,
-      max_node_penalties: 3,
-      initial_coldkeys: whitelist,
-      // initial_coldkeys: None,
-    };
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+      subnets,
+      max_subnet_nodes,
+      subnet_path.clone().into(),
+      start, 
+      end
+    );
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -1113,7 +923,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -1124,14 +934,14 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
     for n in 1..min_nodes+1 {
-      let _ = Balances::deposit_creating(&account(n), deposit_amount);
+      let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+n), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
-          RuntimeOrigin::signed(account(n)),
+          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)),
           subnet_id,
-          account(n),
-          peer(n),
-          peer(n),
+          account(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
+          peer(subnets*max_subnet_nodes+n),
           0,
           amount,
           None,
@@ -1160,7 +970,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetPaths::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));

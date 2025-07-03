@@ -18,17 +18,6 @@ pub(crate) struct StakingPrecompile<R>(PhantomData<R>);
 
 impl<R> StakingPrecompile<R> 
 where
-  // R: frame_system::Config
-  //   + pallet_evm::Config
-  //   + pallet_network::Config
-  //   + pallet_balances::Config,
-  // <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
-  //   + From<pallet_balances::Call<R>>
-  //   + GetDispatchInfo
-  //   + Dispatchable<PostInfo = PostDispatchInfo>,
-  // <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
-  // <R as pallet_balances::Config>::Balance: TryFrom<U256>,
-  // <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
@@ -45,17 +34,6 @@ where
 #[precompile_utils::precompile]
 impl<R> StakingPrecompile<R> 
 where 
-  // R: frame_system::Config
-  //   + pallet_evm::Config
-  //   + pallet_network::Config
-  //   + pallet_balances::Config,
-  // <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
-  //   + From<pallet_balances::Call<R>>
-  //   + GetDispatchInfo
-  //   + Dispatchable<PostInfo = PostDispatchInfo>,
-  // <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
-  // <R as pallet_balances::Config>::Balance: TryFrom<U256>,
-  // <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
   R: frame_system::Config
       + pallet_evm::Config
       + pallet_network::Config,
@@ -187,6 +165,30 @@ where
     Ok(())
   }
 
+  #[precompile::public("transferDelegateStake(uint256,address,uint256)")]
+  #[precompile::payable]
+  fn transfer_delegate_stake(
+    handle: &mut impl PrecompileHandle,
+    subnet_id: U256,
+    to_account_id: Address,
+    delegate_stake_shares_to_transfer: U256,
+  ) -> EvmResult<()> {
+    let delegate_stake_shares_to_transfer = delegate_stake_shares_to_transfer.unique_saturated_into();
+    let subnet_id = try_u256_to_u32(subnet_id)?;
+    let to_account_id = R::AddressMapping::into_account_id(to_account_id.into());
+
+    let origin = R::AddressMapping::into_account_id(handle.context().caller);
+    let call = pallet_network::Call::<R>::transfer_delegate_stake {
+      subnet_id,
+      to_account_id,
+      delegate_stake_shares_to_transfer,
+    };
+
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+
+    Ok(())
+  }
+
   #[precompile::public("removeDelegateStake(uint256,uint256)")]
   #[precompile::payable]
   fn remove_delegate_stake(
@@ -256,7 +258,7 @@ where
     Ok(())
   }
 
-  #[precompile::public("transferNodeDelegateStake(uint256,uint256,uint256,uint256,uint256)")]
+  #[precompile::public("swapNodeDelegateStake(uint256,uint256,uint256,uint256,uint256)")]
   #[precompile::payable]
   fn swap_node_delegate_stake(
     handle: &mut impl PrecompileHandle,
@@ -280,6 +282,34 @@ where
       to_subnet_id,
       to_subnet_node_id,
       node_delegate_stake_shares_to_swap,    
+    };
+
+    RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
+
+    Ok(())
+  }
+
+  #[precompile::public("transferNodeDelegateStake(uint256,uint256,address,uint256)")]
+  #[precompile::payable]
+  fn transfer_node_delegate_stake(
+    handle: &mut impl PrecompileHandle,
+    subnet_id: U256,
+    subnet_node_id: U256,
+    to_account_id: Address,
+    node_delegate_stake_shares_to_transfer: U256,
+  ) -> EvmResult<()> {
+    handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+    let node_delegate_stake_shares_to_transfer = node_delegate_stake_shares_to_transfer.unique_saturated_into();
+    let subnet_id = try_u256_to_u32(subnet_id)?;
+    let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
+    let to_account_id = R::AddressMapping::into_account_id(to_account_id.into());
+
+    let origin = R::AddressMapping::into_account_id(handle.context().caller);
+    let call = pallet_network::Call::<R>::transfer_node_delegate_stake {
+      subnet_id,
+      subnet_node_id,
+      to_account_id,
+      node_delegate_stake_shares_to_transfer,    
     };
 
     RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
@@ -476,74 +506,68 @@ where
     subnet_id: U256,
   ) -> EvmResult<u128> {
 		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-    // log::trace!(
-    //   target: "precompile", 
-    //   "account_subnet_delegate_stake_balance", 
-    // );
-    log::trace!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::info!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::error!(
-      "account_subnet_delegate_stake_balance", 
-    );
-    log::debug!(
-      "account_subnet_delegate_stake_balance", 
-    );
 
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
 
     let subnet_id = try_u256_to_u32(subnet_id)?;
 
     let account_delegate_stake_shares: u128 = pallet_network::AccountSubnetDelegateStakeShares::<R>::get(&hotkey, subnet_id);
-    log::error!(
-      "account_subnet_delegate_stake_balance: {:?}", 
-      account_delegate_stake_shares
-    );
-
-    if account_delegate_stake_shares == 0 {
-      return Ok(0)
-    }
     let total_subnet_delegated_stake_shares = pallet_network::TotalSubnetDelegateStakeShares::<R>::get(subnet_id);
     let total_subnet_delegated_stake_balance = pallet_network::TotalSubnetDelegateStakeBalance::<R>::get(subnet_id);
 
-    log::error!(
-      "total_subnet_delegated_stake_shares: {:?}", 
-      total_subnet_delegated_stake_shares
-    );
-    log::error!(
-      "total_subnet_delegated_stake_balance: {:?}", 
+    let balance: u128 = pallet_network::Pallet::<R>::convert_to_balance(
+      account_delegate_stake_shares,
+      total_subnet_delegated_stake_shares,
       total_subnet_delegated_stake_balance
     );
 
-    let shares = U256::from(account_delegate_stake_shares);
-    log::error!(
-      "shares: {:?}", 
-      shares
+    Ok(balance)
+	}
+
+  #[precompile::public("accountNodeDelegateStakeShares(address,uint256,uint256)")]
+	#[precompile::view]
+	fn account_node_delegate_stake_shares(
+    handle: &mut impl PrecompileHandle,
+    hotkey: Address,
+    subnet_id: U256,
+    subnet_node_id: U256,
+  ) -> EvmResult<u128> {
+		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+    let hotkey = R::AddressMapping::into_account_id(hotkey.into());
+    let subnet_id = try_u256_to_u32(subnet_id)?;
+    let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
+
+    let account_node_delegate_stake_shares: u128 = pallet_network::AccountNodeDelegateStakeShares::<R>::get((&hotkey, subnet_id, subnet_node_id));
+    Ok(account_node_delegate_stake_shares)
+	}
+
+  #[precompile::public("accountNodeDelegateStakeBalance(address,uint256,uint256)")]
+	#[precompile::view]
+  fn account_node_delegate_stake_balance(
+    handle: &mut impl PrecompileHandle,
+    hotkey: Address,
+    subnet_id: U256,
+    subnet_node_id: U256
+  ) -> EvmResult<u128> {
+		handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+    let hotkey = R::AddressMapping::into_account_id(hotkey.into());
+
+    let subnet_id = try_u256_to_u32(subnet_id)?;
+    let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
+
+    let account_node_delegate_stake_shares: u128 = pallet_network::AccountNodeDelegateStakeShares::<R>::get((&hotkey, subnet_id, subnet_node_id));
+    let total_node_delegated_stake_shares = pallet_network::TotalNodeDelegateStakeShares::<R>::get(subnet_id, subnet_node_id);
+    let total_node_delegated_stake_balance = pallet_network::TotalNodeDelegateStakeBalance::<R>::get(subnet_id, subnet_node_id);
+
+    let balance: u128 = pallet_network::Pallet::<R>::convert_to_balance(
+      account_node_delegate_stake_shares,
+      total_node_delegated_stake_shares,
+      total_node_delegated_stake_balance
     );
 
-    let total_balance = U256::from(total_subnet_delegated_stake_balance) + U256::from(1);
-    log::error!(
-      "total_balance: {:?}", 
-      total_balance
-    );
-
-    let total_shares = U256::from(total_subnet_delegated_stake_shares) + U256::from(10_u128.pow(1));
-    log::error!(
-      "total_shares: {:?}", 
-      total_shares
-    );
-
-  
-    let balance = shares * total_balance / total_shares;
-    log::error!(
-      "balance: {:?}", 
-      balance
-    );
-
-    Ok(balance.try_into().unwrap_or(u128::MAX))
+    Ok(balance)
 	}
 
 }

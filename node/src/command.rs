@@ -12,7 +12,8 @@ use crate::{
 };
 
 #[cfg(feature = "runtime-benchmarks")]
-use crate::chain_spec::get_account_id_from_seed;
+use solochain_template_runtime::genesis_config_presets::get_account_id_from_seed;
+// use crate::chain_spec::get_account_id_from_seed;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {

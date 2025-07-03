@@ -83,7 +83,8 @@ impl Inflation {
 
   /// inflation rate at year
   pub fn total(&self, year: f64) -> f64 {
-    let tapered = self.initial * pow(1.0 - self.taper, year);
+    // let tapered = self.initial * pow(1.0 - self.taper, year);
+    let tapered = self.initial * pow(1.0, year);
 
     if tapered > self.terminal {
       tapered
@@ -112,25 +113,6 @@ impl<T: Config> Pallet<T> {
   ///   - Subnet utilization
   ///   - Subnet node utilization
   ///
-  fn get_subnet_utilization() -> f64 {
-    let max_subnets: u32 = MaxSubnets::<T>::get();
-    let mut total_activate_subnets: u32 = TotalActiveSubnets::<T>::get();
-    // There can be n+1 subnets at this time before 1 is removed in the epoch steps
-    if total_activate_subnets > max_subnets {
-      total_activate_subnets = max_subnets;
-    }
-
-    (total_activate_subnets as f64 / max_subnets as f64).clamp(0.0, 1.0)
-  }
-
-  fn get_subnet_node_utilization() -> f64 {
-    let max_subnets: u32 = MaxSubnets::<T>::get();
-    let max_nodes: u32 = max_subnets.saturating_mul(MaxSubnetNodes::<T>::get());
-    let total_active_nodes: u32 = TotalActiveNodes::<T>::get();
-
-    (total_active_nodes as f64 / max_nodes as f64).clamp(0.0, 1.0)
-  }
-
   pub fn get_inflation_rate(
     epoch: u32, 
     subnet_utilization: f64,
@@ -178,6 +160,25 @@ impl<T: Config> Pallet<T> {
     let epochs_per_year: f64 = T::EpochsPerYear::get() as f64;
 
     yearly_rate / epochs_per_year
+  }
+
+  fn get_subnet_utilization() -> f64 {
+    let max_subnets: u32 = MaxSubnets::<T>::get();
+    let mut total_activate_subnets: u32 = TotalActiveSubnets::<T>::get();
+    // There can be n+1 subnets at this time before 1 is removed in the epoch steps
+    if total_activate_subnets > max_subnets {
+      total_activate_subnets = max_subnets;
+    }
+
+    (total_activate_subnets as f64 / max_subnets as f64).clamp(0.0, 1.0)
+  }
+
+  fn get_subnet_node_utilization() -> f64 {
+    let max_subnets: u32 = MaxSubnets::<T>::get();
+    let max_nodes: u32 = max_subnets.saturating_mul(MaxSubnetNodes::<T>::get());
+    let total_active_nodes: u32 = TotalActiveNodes::<T>::get();
+
+    (total_active_nodes as f64 / max_nodes as f64).clamp(0.0, 1.0)
   }
 
   pub fn get_epoch_emissions(_epoch: u32) -> u128 {

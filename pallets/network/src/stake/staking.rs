@@ -33,7 +33,7 @@ impl<T: Config> Pallet<T> {
     );
 
     let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
-
+    
     ensure!(
       account_stake_balance.saturating_add(stake_to_be_added) >= MinStakeBalance::<T>::get(),
       Error::<T>::MinStakeNotReached
@@ -43,6 +43,16 @@ impl<T: Config> Pallet<T> {
       account_stake_balance.saturating_add(stake_to_be_added) <= MaxStakeBalance::<T>::get(),
       Error::<T>::MaxStakeReached
     );
+
+    // ensure!(
+    //   account_stake_balance.saturating_add(stake_to_be_added) >= SubnetMinStakeBalance::<T>::get(subnet_id),
+    //   Error::<T>::MinStakeNotReached
+    // );
+
+    // ensure!(
+    //   account_stake_balance.saturating_add(stake_to_be_added) <= SubnetMinStakeBalance::<T>::get(subnet_id),
+    //   Error::<T>::MaxStakeReached
+    // );
 
     // --- Ensure the callers coldkey has enough stake to perform the transaction.
     ensure!(
@@ -84,7 +94,6 @@ impl<T: Config> Pallet<T> {
     subnet_id: u32,
     hotkey: T::AccountId,
     is_subnet_node: bool,
-    is_active: bool,
     stake_to_be_removed: u128,
   ) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
@@ -128,21 +137,20 @@ impl<T: Config> Pallet<T> {
     Self::decrease_account_stake(&hotkey, subnet_id, stake_to_be_removed);
 
     // --- 9. We add the balancer to the coldkey.  If the above fails we will not credit this coldkey.
-    if is_active {
-      Self::add_balance_to_unbonding_ledger(
-        &coldkey, 
-        stake_to_be_removed, 
-        T::StakeCooldownEpochs::get(),
-        block
-      ).map_err(|e| e)?;
-    } else {
-      // Unstaking cooldown for nodes that never activated
-      Self::add_balance_to_unbonding_ledger(
-        &coldkey, 
-        stake_to_be_removed, 
-        RegisteredStakeCooldownEpochs::<T>::get(),
-        block
-      ).map_err(|e| e)?;  
+    Self::add_balance_to_unbonding_ledger(
+      &coldkey, 
+      stake_to_be_removed, 
+      T::StakeCooldownEpochs::get(),
+      block
+    ).map_err(|e| e)?;
+
+    // TODO: Test this feature works in all test cases
+    if stake_to_be_removed == account_stake_balance {
+      HotkeyOwner::<T>::remove(&hotkey);
+
+      let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+      hotkeys.remove(&hotkey);
+      ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
     }
 
     // Set last block for rate limiting

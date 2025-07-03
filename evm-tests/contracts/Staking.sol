@@ -12,7 +12,6 @@ interface Staking  {
 
   function removeStake(
     uint256 subnetId,
-    uint256 subnetNodeId,
     address hotkey,
     uint256 stakeToBeRemoved
   ) external;

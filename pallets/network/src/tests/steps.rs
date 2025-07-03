@@ -11,11 +11,11 @@ use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
 use crate::{
   Error,
-  SubnetPaths,
+  SubnetName,
   HotkeySubnetNodeId,
-  SubnetRewardsValidator,
+  SubnetElectedValidator,
   SubnetNodeIdHotkey,
-  SubnetRewardsSubmission,
+  SubnetConsensusSubmission,
   SubnetNodesData,
   SubnetNodeClass,
 };
@@ -23,14 +23,14 @@ use crate::{
 // #[test]
 // fn test_epoch_steps() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+//     let subnet_path: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
 //     let n_peers = 8;
 //     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, amount);
 
-//     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;
@@ -42,7 +42,7 @@ use crate::{
 //       let epoch = System::block_number() / epoch_length;
 //       log::error!("test_epoch_steps epoch: {:?}", epoch);
 
-//       Network::do_epoch_preliminaries(System::block_number(), epoch, epoch_length);
+//       Network::do_epoch_preliminaries(System::block_number(), epoch);
       
 //       let included_nodes: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Included, epoch);
 //       let included_nodes_count = included_nodes.len() as u128;
@@ -53,7 +53,7 @@ use crate::{
 //       let submittable_nodes_count = submittable_nodes.len() as u128;
 
 //       // --- Get validator
-//       let validator_id = SubnetRewardsValidator::<Test>::get(subnet_id, epoch).unwrap();
+//       let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
 //       let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
 //       let subnet_node_data_vec = subnet_node_data(0, (included_nodes_count) as u32);
@@ -90,7 +90,7 @@ use crate::{
 //         );
 //       }
       
-//       let submission = SubnetRewardsSubmission::<Test>::get(subnet_id, epoch).unwrap();
+//       let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
   
 //       assert_eq!(submission.validator_id, validator_id);
 //       assert_eq!(submission.data.len(), subnet_node_data_vec.len());
@@ -117,21 +117,21 @@ use crate::{
 //         // activated as Queue
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-//         assert_eq!(subnet_node.classification.class, SubnetNodeClass::Queue);    
+//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Queue);    
 //       } else if n == 1 {
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         // automatically upgraded to Included after first next epoch
 //         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-//         assert_eq!(subnet_node.classification.class, SubnetNodeClass::Included);    
+//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Included);    
 //       } else if n == 2 {
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         // automatically upgraded to Validator after first next epoch
 //         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-//         assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);    
+//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
 //       } else {
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-//         assert_eq!(subnet_node.classification.class, SubnetNodeClass::Validator);    
+//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
 //       }
   
 //       increase_epochs(1);

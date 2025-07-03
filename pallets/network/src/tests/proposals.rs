@@ -11,7 +11,7 @@ use sp_core::{H256, U256};
 use frame_support::traits::{OnInitialize, Currency};
 use crate::{
   Error,   
-  SubnetPaths, 
+  SubnetName, 
   SubnetNodeClass,
   VotingPeriod, 
   Proposals, 
@@ -50,11 +50,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -109,11 +109,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_subnet_not_exist() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -143,11 +143,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_subnet_node_not_exist() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -177,11 +177,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_not_accountant() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -221,11 +221,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_peer_id_not_exist() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -255,11 +255,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_min_subnet_nodes_accountants_error() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes() - 1;
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -313,11 +313,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_peer_has_active_proposal() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -366,11 +366,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_propose_not_enough_balance_to_bid() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -411,11 +411,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_cancel_proposal() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -465,11 +465,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_cancel_proposal_not_plaintiff() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -509,11 +509,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_cancel_proposal_already_challenged() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -562,11 +562,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_cancel_proposal_already_complete() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -623,11 +623,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -674,11 +674,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_invalid_proposal_id() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -717,11 +717,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_not_defendant() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -762,11 +762,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_complete() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -825,11 +825,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_challenge_period_passed() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -873,11 +873,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_already_challenged() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -928,11 +928,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_challenge_proposal_not_enough_balance_to_bid() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -984,11 +984,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1042,11 +1042,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_invalid_proposal_id() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1096,11 +1096,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_subnet_node_not_exist() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1150,11 +1150,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_proposal_unchallenged() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1196,11 +1196,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_proposal_complete() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1241,11 +1241,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_invalid_voting_period() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1299,11 +1299,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_not_eligible() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let n_peers: u32 = 12;
 // //     let deposit_amount: u128 = 10000000000000000000000;
@@ -1360,11 +1360,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_voting_already_voted() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1433,11 +1433,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_finalize_proposal_plaintiff_winner() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1544,11 +1544,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_finalize_proposal_defendant_winner() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1652,11 +1652,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_finalize_proposal_unchallenged() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1702,11 +1702,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_finalize_proposal_complete() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {
@@ -1822,11 +1822,11 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // // #[test]
 // // fn test_proposal_finalize_proposal_voting_period_invalid() {
 // // 	new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "petals-team/StableBeluga2".into();
+// //     let subnet_path: Vec<u8> = "subnet-name".into();
 
 // //     build_subnet(subnet_path.clone());
 
-// //     let subnet_id = SubnetPaths::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
 
 // //     let mut n_peers: u32 = Network::max_subnet_nodes();
 // //     if n_peers > MAX_SUBNET_NODES {

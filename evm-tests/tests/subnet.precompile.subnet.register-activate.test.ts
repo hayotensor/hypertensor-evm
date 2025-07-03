@@ -1,28 +1,22 @@
 import * as assert from "assert";
-import { getDevnetApi, getRandomSubstrateKeypair, waitForFinalizedBlock } from "../src/substrate"
+import { getDevnetApi, getRandomSubstrateKeypair } from "../src/substrate"
 import { dev } from "@polkadot-api/descriptors"
 import { PolkadotSigner, TypedApi } from "polkadot-api";
-import { convertPublicKeyToSs58, convertH160ToSS58, convertSs58ToAccountId20, ss58ToAccountId20 } from "../src/address-utils"
 import { ethers } from "ethers"
 import { generateRandomEthersWallet, generateRandomString, getPublicClient, hash, SEED_PATH, STAKING_CONTRACT_ABI, STAKING_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS, TEST_PATH } from "../src/utils"
 import { Option } from '@polkadot/types';
 import {
-    addToDelegateStake,
-    forceSetBalanceToEthAddress, forceSetBalanceToSs58Address,
     getCurrentRegistrationCost,
     registerSubnet,
-    removeDelegateStake,
-    swapDelegateStake,
     transferBalanceFromSudo
 } from "../src/network"
 import { ETH_LOCAL_URL, SUB_LOCAL_URL } from "../src/config";
-import { AbiItem, PublicClient } from "viem";
-import { forceSetBalance } from "../src/test";
+import { PublicClient } from "viem";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 
-// npm test -- -g "Test subnet register activate"
-describe("Test subnet register activate", () => {
+// npm test -- -g "Test subnet register activate-0xuhnrfvok"
+describe("Test subnet register activate-0xuhnrfvok", () => {
     // init eth part
     const wallet1 = generateRandomEthersWallet();
     const wallet2 = generateRandomEthersWallet();
@@ -75,9 +69,9 @@ describe("Test subnet register activate", () => {
         )
     })
 
-    // npm test -- -g "testing register subnet"
     // Status: passing
-    it("testing register subnet", async () => {
+    // npm test -- -g "testing register subnet-0xzmghoq5702"
+    it("testing register subnet-0xzmghoq5702", async () => {
         const subnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet1);
 
         const subnetName = generateRandomString(30)
@@ -131,7 +125,7 @@ describe("Test subnet register activate", () => {
 
 
     // TODO
-    it("testing activate subnet", async () => {
+    it("testing activate subnet-0xe8nggr4", async () => {
         const subnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet1);
     })
 });

@@ -68,20 +68,9 @@ impl<T: Config> Pallet<T> {
       return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
     }
 
-    if delegate_stake_to_be_added < MinDelegateStakeBalance::<T>::get() {
+    if delegate_stake_to_be_added < MinDelegateStakeDeposit::<T>::get() {
       return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
     }
-
-    // --- Get accounts current balance
-    // let account_delegate_stake_balance = Self::convert_to_balance(
-    //   account_delegate_stake_shares,
-    //   total_subnet_delegated_stake_shares,
-    //   total_subnet_delegated_stake_balance
-    // );
-
-    // if account_delegate_stake_balance.saturating_add(delegate_stake_to_be_added) > MaxDelegateStakeBalance::<T>::get() {
-    //   return (Err(Error::<T>::MaxDelegatedStakeReached.into()), 0, 0);
-    // }
 
     // --- Ensure the callers account_id has enough delegate_stake to perform the transaction.
     if !swap {
@@ -126,7 +115,7 @@ impl<T: Config> Pallet<T> {
       return (Err(Error::<T>::CouldNotConvertToShares.into()), 0, 0);
     }
 
-    Self::increase_account_delegate_stake_shares(
+    Self::increase_account_delegate_stake(
       &account_id,
       subnet_id, 
       delegate_stake_to_be_added,
@@ -214,7 +203,7 @@ impl<T: Config> Pallet<T> {
     }
 
     // --- We remove the shares from the account and balance from the pool
-    Self::decrease_account_delegate_stake_shares(&account_id, subnet_id, delegate_stake_to_be_removed, delegate_stake_shares_to_be_removed);
+    Self::decrease_account_delegate_stake(&account_id, subnet_id, delegate_stake_to_be_removed, delegate_stake_shares_to_be_removed);
     
     // --- We add the balancer to the account_id.  If the above fails we will not credit this account_id.
     if add_to_ledger {
@@ -329,12 +318,12 @@ impl<T: Config> Pallet<T> {
 
     // --- Ensure transfer balance is greater than the min
     ensure!(
-      delegate_stake_to_be_transferred >= MinDelegateStakeBalance::<T>::get(),
+      delegate_stake_to_be_transferred >= MinDelegateStakeDeposit::<T>::get(),
       Error::<T>::CouldNotConvertToBalance
     );
 
     // --- Remove shares from caller
-    Self::decrease_account_delegate_stake_shares(
+    Self::decrease_account_delegate_stake(
       &account_id,
       subnet_id, 
       0, // Do not mutate balance
@@ -342,7 +331,7 @@ impl<T: Config> Pallet<T> {
     );
 
     // --- Increase shares to `to_account_id`
-    Self::increase_account_delegate_stake_shares(
+    Self::increase_account_delegate_stake(
       &to_account_id,
       subnet_id, 
       0, // Do not mutate balance
@@ -352,7 +341,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn increase_account_delegate_stake_shares(
+  pub fn increase_account_delegate_stake(
     account_id: &T::AccountId,
     subnet_id: u32, 
     amount: u128,
@@ -370,7 +359,7 @@ impl<T: Config> Pallet<T> {
     TotalDelegateStake::<T>::mutate(|mut n| n.saturating_accrue(amount));
   }
   
-  pub fn decrease_account_delegate_stake_shares(
+  pub fn decrease_account_delegate_stake(
     account_id: &T::AccountId,
     subnet_id: u32, 
     amount: u128,

@@ -14,63 +14,83 @@
 // limitations under the License.
 
 use super::*;
+use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  /// Remove subnet peer from subnet
-  // to-do: Add slashing to subnet peers stake balance
   pub fn perform_remove_subnet_node(block: u32, subnet_id: u32, subnet_node_id: u32) {
-    if let Ok(subnet_node) = SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-      let hotkey = subnet_node.hotkey;
-      let peer_id = subnet_node.peer_id;
+    let mut is_active = false;
+    let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      is_active = true;
+      SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      DeactivatedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+    } else {
+      return
+    };
 
-      // Remove from attestations
-      let epoch_length: u32 = T::EpochLength::get();
-			let epoch: u32 = block / epoch_length;
+    let hotkey = subnet_node.hotkey;
+    let peer_id = subnet_node.peer_id;
 
-      let submittable_nodes: BTreeSet<T::AccountId> = Self::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Validator, epoch);
+    // Remove from attestations
+    let epoch: u32 = Self::get_current_epoch_as_u32();
 
-      SubnetRewardsSubmission::<T>::try_mutate_exists(
-        subnet_id,
-        epoch as u32,
-        |params| -> DispatchResult {
-          let params = if let Some(params) = params {
-            // --- Remove from consensus
-            let mut data = &mut params.data;
-            data.retain(|x| x.peer_id != peer_id);
-            params.data = data.clone();
-            
-            // --- Remove from attestations
-            let mut attests = &mut params.attests;
-            if attests.remove(&subnet_node_id).is_some() {
-              params.attests = attests.clone();
-            }
-          };
-          Ok(())
+    if let Err(e) = SubnetConsensusSubmission::<T>::try_mutate_exists(
+      subnet_id,
+      epoch,
+      |maybe_params| -> DispatchResult {
+        if let Some(params) = maybe_params {
+          // Remove from consensus list
+          params.data.retain(|x| x.peer_id != peer_id);
+
+          // Remove from attestations map
+          params.attests.remove(&subnet_node_id);
         }
-      );
-    
-      let subnet_node = SubnetNodesData::<T>::take(subnet_id, subnet_node_id);
-
-      if subnet_node.a.is_some() {
-        SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
-      }
-
-      // Remove all subnet node elements
-      PeerIdSubnetNode::<T>::remove(subnet_id, &peer_id);
-      BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
-      HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
-      SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
-
-      // Update total subnet peers by substracting 1
-      TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-
-      // Reset sequential absent subnet node count
-      SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
-
-      TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-
-			Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
+        Ok(())
+      },
+    ) {
+      log::debug!("Failed to mutate SubnetConsensusSubmission: {:?}", e);
     }
+
+    if subnet_node.a.is_some() {
+      SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
+    }
+
+    // Remove all subnet node elements
+    PeerIdSubnetNode::<T>::remove(subnet_id, &peer_id);
+    BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
+    HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
+    SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
+
+    // We don't remove the HotkeyOwner so the user can remove stake with coldkey
+
+    // We DO remove the hotkey from the coldkeys hotkey set
+    // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+    // hotkeys.remove(&hotkey);
+    // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+
+    // Update total subnet peers by subtracting  1
+    TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+    TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+
+    if is_active {
+      TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+      TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+      match HotkeyOwner::<T>::try_get(&hotkey) {
+        Ok(coldkey) => {
+          ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+          });
+        },
+        Err(()) => ()
+      }
+    }
+
+    // Reset sequential absent subnet node count
+    SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
+
+    Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
   }
 
   pub fn get_classified_subnet_node_ids<C>(
@@ -94,22 +114,48 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn get_classified_subnet_node_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
+  pub fn get_classified_subnet_nodes_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
       .filter(|(subnet_node_id, subnet_node)| subnet_node.has_classification(classification, epoch))
       .map(|(subnet_node_id, subnet_node)| {
+        let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
         SubnetNodeInfo {
           subnet_node_id: subnet_node_id,
-          coldkey: HotkeyOwner::<T>::get(&subnet_node.hotkey),
-          hotkey: subnet_node.hotkey,
+          coldkey: coldkey.clone(),
+          hotkey: subnet_node.hotkey.clone(),
           peer_id: subnet_node.peer_id,
+          bootstrap_peer_id: subnet_node.bootstrap_peer_id,
+          client_peer_id: subnet_node.client_peer_id,
+          identity: ColdkeyIdentity::<T>::get(&coldkey),
           classification: subnet_node.classification,
+          delegate_reward_rate: subnet_node.delegate_reward_rate,
+          last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
           a: subnet_node.a,
           b: subnet_node.b,
           c: subnet_node.c,
+          stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id)
         }
       })
       .collect()
+  }
+
+  pub fn get_lowest_stake_balance_node(subnet_id: u32) -> Option<u32> {
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+        let hotkey = node.hotkey.clone();
+        let stake = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+        let start_epoch = node.classification.start_epoch;
+
+        candidates.push((uid, stake, start_epoch));
+    }
+
+    candidates.sort_by(|a, b| {
+        // Sort by stake ascending, then start_epoch descending
+        a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
   }
 
   // Get subnet node ``hotkeys`` by classification
@@ -127,14 +173,14 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn is_subnet_node_owner(subnet_id: u32, subnet_node_id: u32, hotkey: T::AccountId) -> bool {
-    match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-      Ok(data) => {
-        data.hotkey == hotkey
-      },
-      Err(()) => false,
-    }
-  }
+  // pub fn is_subnet_node_owner(subnet_id: u32, subnet_node_id: u32, hotkey: T::AccountId) -> bool {
+  //   match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //     Ok(data) => {
+  //       data.hotkey == hotkey
+  //     },
+  //     Err(()) => false,
+  //   }
+  // }
 
   /// Is hotkey or coldkey owner for functions that allow both
   pub fn get_hotkey_coldkey(
@@ -190,15 +236,19 @@ impl<T: Config> Pallet<T> {
       subnet_node_id,
       |params: &mut SubnetNode<T::AccountId>| {
         params.classification = SubnetNodeClassification {
-          class: params.classification.class.next(),
+          node_class: params.classification.node_class.next(),
           start_epoch: start_epoch,
         };
       },
     );
   }
 
+  /// Check if subnet node is owner of a peer ID
+  /// Main, bootstrap, and client peer IDs must be unique so we check all of them to ensure
+  /// that no one else owns them
+  /// Returns True is no owner or the peer ID is ownerless and available
   pub fn is_owner_of_peer_or_ownerless(subnet_id: u32, subnet_node_id: u32, peer_id: &PeerId) -> bool {
-    let is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    let mut is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(peer_subnet_node_id) => {
         if peer_subnet_node_id == subnet_node_id {
           return true
@@ -208,9 +258,19 @@ impl<T: Config> Pallet<T> {
       Err(()) => true,
     };
 
-    is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(bootstrap_subnet_node_id) => {
         if bootstrap_subnet_node_id == subnet_node_id {
+          return true
+        }
+        false
+      },
+      Err(()) => true,
+    };
+
+    is_peer_owner_or_ownerless && match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+      Ok(client_subnet_node_id) => {
+        if client_subnet_node_id == subnet_node_id {
           return true
         }
         false
@@ -219,15 +279,61 @@ impl<T: Config> Pallet<T> {
     }
   }
 
+  // pub fn is_owner_of_peer_or_ownerless2(subnet_id: u32, peer_id: &PeerId, hotkey: T::AccountId) -> bool {
+  //   let is_peer_owner_or_ownerless = match PeerIdHotkey::<T>::try_get(subnet_id, peer_id) {
+  //     Ok(peer_hotkey) => {
+  //       if peer_hotkey == hotkey {
+  //         return true
+  //       }
+  //       false
+  //     },
+  //     Err(()) => true,
+  //   };
+
+  //   // is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+  //   //   Ok(bootstrap_subnet_node_id) => {
+  //   //     if bootstrap_subnet_node_id == subnet_node_id {
+  //   //       return true
+  //   //     }
+  //   //     false
+  //   //   },
+  //   //   Err(()) => true,
+  //   // }
+  // }
+
   pub fn calculate_max_activation_epoch(subnet_id: u32) -> u32 {
     let prev_registration_epoch = 10;
     0
   }
 
-  pub fn get_subnet_churn_limit(subnet_id: u32) -> u32 {
-    let min_churn = 4;
-    let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-    let churn_denominator = ChurnDenominator::<T>::get(subnet_id);
-    min_churn.max(active_nodes.saturating_div(churn_denominator))
+  pub fn is_identity_owner(coldkey: T::AccountId, identity: Vec<u8>) -> bool {
+    true    
+  }
+
+  pub fn is_identity_taken(identity: Vec<u8>) -> bool {
+    true    
+  }
+
+  // fn node_multiplier(ema_nodes: u32) -> FixedU128 {
+  //   let divisor = FixedU128::saturating_from_integer(20);
+  //   let ema = FixedU128::saturating_from_integer(ema_nodes);
+  //   FixedU128::one() + ema.saturating_div_int(divisor) // e.g. 1.0 + (ema / 20)
+  // }
+
+  // pub fn node_multiplier(ema_nodes: u64) -> U256 {
+  //   let one = U256::from(ONE_E18);
+  //   let ema = U256::from(ema_nodes);
+  //   let divisor = U256::from(20u64); // scale: 1 multiplier per 20 nodes
+
+  //   let scaled_add = one * ema / divisor; // (1e18 * ema) / 20
+  //   one + scaled_add // final multiplier in 1e18 scale
+  // }
+
+  pub fn node_multiplier_ema(ema_nodes: u64) -> U256 {
+    let ema = U256::from(ema_nodes);
+    let divisor = U256::from(20u64); // 20 nodes → +1.0x
+
+    // 1e18 + (1e18 * ema / 20)
+    Self::PERCENTAGE_FACTOR + (Self::PERCENTAGE_FACTOR * ema / divisor) 
   }
 }

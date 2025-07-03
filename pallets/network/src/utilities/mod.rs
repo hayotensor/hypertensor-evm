@@ -7,3 +7,6 @@ pub mod subnet;
 pub mod delegate_staking;
 pub mod randomness;
 pub mod math;
+pub mod reputation;
+pub mod identity;
+

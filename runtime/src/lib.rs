@@ -71,9 +71,6 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::Multiplier;
 
-// mod precompiles;
-// use precompiles::FrontierPrecompiles;
-
 use hypertensor_precompiles::FrontierPrecompiles;
 
 /// Type of block number.
@@ -571,10 +568,13 @@ parameter_types! {
 	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
 	pub const MaxDelegateStakeUnlockings: u32 = 32;
 	pub const MaxStakeUnlockings: u32 = 32;
+	// pub const MaxUrlLength: u32 = 1024;
+	// pub const MaxSocialIdLength: u32 = 255;
 }
 
 impl pallet_network::Config for Runtime {
-	type WeightInfo = ();
+	// type WeightInfo = ();
+	type WeightInfo = pallet_network::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type MajorityCollectiveOrigin = pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
@@ -589,6 +589,8 @@ impl pallet_network::Config for Runtime {
 	type DelegateStakeEpochsRemovalWindow = DelegateStakeEpochsRemovalWindow;
 	type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
 	type MaxStakeUnlockings = MaxStakeUnlockings;
+	// type MaxSocialIdLength = MaxSocialIdLength;
+	// type MaxUrlLength = MaxUrlLength;
 	type StakeCooldownEpochs = StakeCooldownEpochs;
 	type Randomness = InsecureRandomnessCollectiveFlip;
 	type MinProposalStake = MinProposalStake;
@@ -1342,13 +1344,9 @@ impl_runtime_apis! {
 	// 		let result = Network::get_subnet_nodes_included(subnet_id);
 	// 		result.encode()
 	// 	}
-	// 	fn get_subnet_nodes_submittable(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes_submittable(subnet_id);
+	// 	fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8> {
+	// 		let result = Network::get_subnet_nodes_validator(subnet_id);
 	// 		result.encode()
-	// 	}
-	// 	fn get_subnet_nodes_subnet_unconfirmed_count(subnet_id: u32) -> u32 {
-	// 		let result = Network::get_subnet_nodes_subnet_unconfirmed_count(subnet_id);
-	// 		result
 	// 	}
 	// 	fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8> {
 	// 		let result = Network::get_consensus_data(subnet_id, epoch);
@@ -1362,8 +1360,8 @@ impl_runtime_apis! {
 	// 		let result = Network::get_minimum_delegate_stake(memory_mb);
 	// 		result
 	// 	}
-	// 	fn get_subnet_node_info(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_node_info(subnet_id);
+	// 	fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8> {
+	// 		let result = Network::get_subnet_nodes_info(subnet_id);
 	// 		result.encode()
 	// 	}
 	// 	fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
@@ -1374,9 +1372,13 @@ impl_runtime_apis! {
 	// 		let result = Network::are_subnet_nodes_by_peer_id(subnet_id, peer_ids);
 	// 		result.encode()
 	// 	}
-	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultSubnetNodeUniqueParamLimit>) -> bool {
+	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
 	// 		let result = Network::is_subnet_node_by_a(subnet_id, a);
 	// 		result
+	// 	}
+	// 	fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Vec<u8> {
+	// 		let result = Network::get_elected_validator_node(subnet_id, epoch);
+	// 		result.encode()
 	// 	}
 	// }
 

@@ -23,5 +23,9 @@ impl<T: Config> Pallet<T> {
     Self::percent_mul(total_network_issuance, factor)
   }
 
-  // TODO: Get min delegate stake on any epoch or block
+  pub fn get_estimated_min_subnet_delegate_stake_balance(epoch: u32) -> u128 {
+    let total_network_issuance = Self::get_total_network_issuance();
+    let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
+    Self::percent_mul(total_network_issuance, factor)
+  }
 }

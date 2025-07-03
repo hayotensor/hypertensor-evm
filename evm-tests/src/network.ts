@@ -218,8 +218,61 @@ export async function activateSubnetNode(
   await tx.wait();
 }
 
+export async function removeSubnetNode(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+) {
+  const tx = await contract.removeSubnetNode(
+    subnetId,
+    subnetNodeId,
+  );
 
+  await tx.wait();
+}
 
+// ==============
+// Subnet node stake
+// ==============
+
+export async function addToStake(
+  contract: Contract, 
+  subnetId: string,
+  subnetNodeId: string,
+  hotkey: string,
+  balance: bigint
+) {
+  const tx = await contract.addToStake(
+    subnetId, 
+    subnetNodeId,
+    hotkey,
+    balance, 
+    { value: balance }
+  );
+
+  await tx.wait();
+}
+
+export async function removeStake(
+  contract: Contract, 
+  subnetId: string,
+  hotkey: string,
+  balance: bigint
+) {
+  const tx = await contract.removeStake(
+    subnetId, 
+    hotkey,
+    balance, 
+    { value: balance }
+  );
+
+  await tx.wait();
+}
+
+export async function claimUnbondings(contract: Contract) {
+  const tx = await contract.claimUnbondings();
+  await tx.wait();
+}
 
 // ==============
 // Delegate stake
