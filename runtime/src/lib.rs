@@ -165,7 +165,7 @@ pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 pub const YEAR: BlockNumber = DAYS * 365; // 5256000
 // Blocks per epoch
-pub const BLOCKS_PER_EPOCH: u32 = 10;
+pub const BLOCKS_PER_EPOCH: u32 = 100;
 pub const EPOCHS_PER_YEAR: u32 = YEAR as u32 / BLOCKS_PER_EPOCH;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know

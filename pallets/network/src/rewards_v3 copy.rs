@@ -248,7 +248,6 @@ impl<T: Config> Pallet<T> {
                 attestation_percentage,
                 min_attestation_percentage,
                 reputation_decrease_factor,
-                block,
                 epoch
               );
             }
@@ -268,7 +267,6 @@ impl<T: Config> Pallet<T> {
             attestation_percentage,
             min_attestation_percentage,
             reputation_decrease_factor,
-            block,
             epoch
           );
 
@@ -320,7 +318,7 @@ impl<T: Config> Pallet<T> {
           // This is only possible if the owner increases the stake balance
           let stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
           if stake_balance < min_stake {
-            Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+            Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
           }
 
           // Note: Only ``Included`` or above nodes can get emissions
@@ -360,7 +358,7 @@ impl<T: Config> Pallet<T> {
               // TODO: Check the size of subnet and scale it from there
               if penalties + 1 > max_subnet_node_penalties {
                 // --- Increase account penalty count
-                Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+                Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
               }
             }
 
@@ -507,7 +505,6 @@ impl<T: Config> Pallet<T> {
           0,
           min_attestation_percentage,
           reputation_decrease_factor,
-          block,
           epoch
         );
       }
@@ -624,7 +621,6 @@ impl<T: Config> Pallet<T> {
   //             attestation_percentage,
   //             min_attestation_percentage,
   //             reputation_decrease_factor,
-  //             block,
   //             epoch
   //           );
   //         }
@@ -644,7 +640,6 @@ impl<T: Config> Pallet<T> {
   //         attestation_percentage,
   //         min_attestation_percentage,
   //         reputation_decrease_factor,
-  //         block,
   //         epoch
   //       );
 
@@ -729,7 +724,7 @@ impl<T: Config> Pallet<T> {
   //           // TODO: Check the size of subnet and scale it from there
   //           if penalties + 1 > max_subnet_node_penalties {
   //             // --- Increase account penalty count
-  //             Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
+  //             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
   //           }
   //         }
 
@@ -858,7 +853,6 @@ impl<T: Config> Pallet<T> {
   //       0,
   //       min_attestation_percentage,
   //       reputation_decrease_factor,
-  //       block,
   //       epoch
   //     );
   //   }
@@ -1307,7 +1301,7 @@ impl<T: Config> Pallet<T> {
       weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
       if penalties + 1 > max_subnet_node_penalties {
-        Self::perform_remove_subnet_node(block, subnet_id, subnet_node.id);
+        Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
         // 112_050_000
         weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
         continue
@@ -1431,7 +1425,7 @@ impl<T: Config> Pallet<T> {
       weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
       if penalties + 1 > max_subnet_node_penalties {
-        Self::perform_remove_subnet_node(block, subnet_id, subnet_node.id);
+        Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
         // 112_050_000
         weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
         continue

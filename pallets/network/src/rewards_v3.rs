@@ -247,7 +247,6 @@ impl<T: Config> Pallet<T> {
                 attestation_percentage,
                 min_attestation_percentage,
                 reputation_decrease_factor,
-                block,
                 epoch
               );
             }
@@ -267,7 +266,6 @@ impl<T: Config> Pallet<T> {
             attestation_percentage,
             min_attestation_percentage,
             reputation_decrease_factor,
-            block,
             epoch
           );
 
@@ -319,7 +317,7 @@ impl<T: Config> Pallet<T> {
           // This is only possible if the owner increases the stake balance
           let stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
           if stake_balance < min_stake {
-            Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+            Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
           }
 
           // Note: Only ``Included`` or above nodes can get emissions
@@ -359,7 +357,7 @@ impl<T: Config> Pallet<T> {
               // TODO: Check the size of subnet and scale it from there
               if penalties + 1 > max_subnet_node_penalties {
                 // --- Increase account penalty count
-                Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+                Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
               }
             }
 
@@ -506,7 +504,6 @@ impl<T: Config> Pallet<T> {
           0,
           min_attestation_percentage,
           reputation_decrease_factor,
-          block,
           epoch
         );
       }
@@ -532,64 +529,116 @@ impl<T: Config> Pallet<T> {
     Ok(None.into())
   }
 
-  pub fn emission_step(block: u32, epoch: u32) -> Weight {
+  // pub fn emission_step(block: u32, epoch: u32) -> Weight {
+  //   let mut weight = Weight::zero();
+  //   let subnet_emission_weights = match FinalSubnetEmissionWeights::<T>::try_get(epoch) {
+  //     Ok(subnet_weights) => subnet_weights,
+  //     Err(()) => return weight,
+  //   };
+  //   let min_attestation_percentage = MinAttestationPercentage::<T>::get();
+  //   let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
+  //   let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
+  //   let min_vast_majority_attestation_percentage = MinVastMajorityAttestationPercentage::<T>::get();
+  //   weight = weight.saturating_add(T::DbWeight::get().reads(5));
+
+  //   let overall_rewards: u128 = Self::get_epoch_emissions(epoch);
+  //   // TODO: Add weights for `get_epoch_emissions`
+
+  //   for (subnet_id, subnet_weight) in subnet_emission_weights {
+  //     let maybe_consensus_submission_data = Self::precheck_consensus_submission(
+  //       subnet_id, epoch
+  //     );
+  //     if let Some((consensus_submission_data, consensus_submission_weight)) = maybe_consensus_submission_data {
+  //       if let Some((rewards_data, rewards_weight)) = Self::calculate_rewards_v2(
+  //         subnet_id,
+  //         overall_rewards,
+  //         subnet_weight
+  //       ) {
+  //         weight = weight.saturating_add(rewards_weight);
+  //         let distribute_rewards_weight = Self::distribute_rewards_v2(
+  //           subnet_id,
+  //           block,
+  //           epoch,
+  //           consensus_submission_data,
+  //           rewards_data,
+  //           min_attestation_percentage,
+  //           reputation_increase_factor,
+  //           reputation_decrease_factor,
+  //           min_vast_majority_attestation_percentage,
+  //         );
+  //         weight = weight.saturating_add(distribute_rewards_weight);
+  //       } else {
+  //         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+
+  //         Self::slash_validator(
+  //           subnet_id, 
+  //           consensus_submission_data.validator_subnet_node_id, 
+  //           consensus_submission_data.attestation_ratio,
+  //           min_attestation_percentage,
+  //           reputation_decrease_factor,
+  //           epoch
+  //         );
+
+  //         continue
+  //       }
+  //     } else {
+
+  //     }
+  //   }
+
+  //   weight
+  // }
+
+  pub fn emission_step(block: u32, epoch: u32, subnet_id: u32) -> Weight {
     let mut weight = Weight::zero();
+
     let subnet_emission_weights = match FinalSubnetEmissionWeights::<T>::try_get(epoch) {
       Ok(subnet_weights) => subnet_weights,
-      Err(()) => return weight,
+      Err(()) => return weight.saturating_add(T::DbWeight::get().reads(1)),
     };
+    weight = weight.saturating_add(T::DbWeight::get().reads(1));
+
+    let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+
+    if subnet_weight.is_none() {
+      return weight
+    }
+
+    let maybe_consensus_submission_data = Self::precheck_consensus_submission(
+      subnet_id, epoch
+    );
+
+    if maybe_consensus_submission_data.is_none() {
+      // Penalize subnet
+      return weight
+    }
+
+    let (consensus_submission_data, consensus_submission_weight) = maybe_consensus_submission_data.unwrap();
+
+    let (rewards_data, rewards_weight) = Self::calculate_rewards_v2(
+      subnet_id,
+      subnet_emission_weights.total_issuance,
+      *subnet_weight.unwrap()
+    );
+    weight = weight.saturating_add(rewards_weight);
     let min_attestation_percentage = MinAttestationPercentage::<T>::get();
     let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
     let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
     let min_vast_majority_attestation_percentage = MinVastMajorityAttestationPercentage::<T>::get();
-    weight = weight.saturating_add(T::DbWeight::get().reads(5));
+    weight = weight.saturating_add(T::DbWeight::get().reads(4));
 
-    let overall_rewards: u128 = Self::get_epoch_emissions(epoch);
-    // TODO: Add weights for `get_epoch_emissions`
-
-    for (subnet_id, subnet_weight) in subnet_emission_weights {
-      let maybe_consensus_submission_data = Self::precheck_consensus_submission(
-        subnet_id, epoch
-      );
-      if let Some((consensus_submission_data, consensus_submission_weight)) = maybe_consensus_submission_data {
-        if let Some((rewards_data, rewards_weight)) = Self::calculate_rewards_v2(
-          subnet_id,
-          overall_rewards,
-          subnet_weight
-        ) {
-          weight = weight.saturating_add(rewards_weight);
-          let distribute_rewards_weight = Self::distribute_rewards_v2(
-            subnet_id,
-            block,
-            epoch,
-            consensus_submission_data,
-            rewards_data,
-            min_attestation_percentage,
-            reputation_increase_factor,
-            reputation_decrease_factor,
-            min_vast_majority_attestation_percentage,
-          );
-          weight = weight.saturating_add(distribute_rewards_weight);
-        } else {
-          SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-
-          Self::slash_validator(
-            subnet_id, 
-            consensus_submission_data.validator_subnet_node_id, 
-            consensus_submission_data.attestation_ratio,
-            min_attestation_percentage,
-            reputation_decrease_factor,
-            block,
-            epoch
-          );
-
-          continue
-        }
-      } else {
-
-      }
-    }
-
+    let distribute_rewards_weight = Self::distribute_rewards_v2(
+      subnet_id,
+      block,
+      epoch,
+      consensus_submission_data,
+      rewards_data,
+      min_attestation_percentage,
+      reputation_increase_factor,
+      reputation_decrease_factor,
+      min_vast_majority_attestation_percentage,
+    );
+    weight = weight.saturating_add(distribute_rewards_weight);
     weight
   }
 
@@ -599,7 +648,11 @@ impl<T: Config> Pallet<T> {
 
     // Store weights
     if !subnet_weights.is_empty() {
-      FinalSubnetEmissionWeights::<T>::insert(epoch, subnet_weights);
+      let data = DistributionData {
+        total_issuance: Self::get_epoch_emissions(epoch),
+        weights: subnet_weights
+      };
+      FinalSubnetEmissionWeights::<T>::insert(epoch, data);
       weight = weight.saturating_add(T::DbWeight::get().writes(1));
     }
 
@@ -651,59 +704,6 @@ impl<T: Config> Pallet<T> {
     (stake_weights_normalized, weight)
   }
 
-  // pub fn generate_rewards_for_subnet(
-  //   block: u32, 
-  //   epoch: u32, 
-  //   subnet_id: u32, 
-  //   overall_rewards: u128,
-  //   stake_weights_normalized: BTreeMap<u32, u128>
-  // ) -> Weight {
-  //   let mut weight = Weight::zero();
-  //   let node_attestation_removal_threshold = NodeAttestationRemovalThreshold::<T>::get();
-  //   let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
-  //   let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
-  //   let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
-  //   weight = weight.saturating_add(T::DbWeight::get().reads(4));
-
-  //   let percentage_factor = Self::percentage_factor_as_u128();
-  //   let mut attestation_percentage: u128 = 0;
-
-  //   let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
-  //   // weight = weight.saturating_add(T::WeightInfo::get_classified_subnet_nodes());
-
-  //   let subnet_node_count = subnet_nodes.len() as u128;
-
-  //   let maybe_consensus_submission_data = Self::precheck_consensus_submission(
-  //     subnet_id, epoch
-  //   );
-   
-  //   if let Some((consensus_submission_data, consensus_submission_weight)) = maybe_consensus_submission_data {
-  //     weight = weight.saturating_add(consensus_submission_weight);
-  //     if let Some((rewards_data, rewards_weight)) = Self::calculate_rewards(
-  //       subnet_id,
-  //       overall_rewards,
-  //       stake_weights_normalized
-  //     ) {
-  //       weight = weight.saturating_add(rewards_weight);
-  //       let distribute_rewards_weight = Self::distribute_rewards(
-  //         subnet_id,
-  //         block,
-  //         epoch,
-  //         consensus_submission_data,
-  //         rewards_data,
-  //         subnet_nodes,
-  //       );
-  //       weight = weight.saturating_add(distribute_rewards_weight);
-  //     } else {
-  //       return weight
-  //     }
-  //   } else {
-  //     return weight
-  //   }
-
-  //   weight
-  // }
-
   pub fn precheck_consensus_submission(
     subnet_id: u32,
     epoch: u32
@@ -753,56 +753,11 @@ impl<T: Config> Pallet<T> {
     Some((consensus_data, weight))
   }
 
-  pub fn calculate_rewards(
-    subnet_id: u32,
-    overall_rewards: u128,
-    stake_weights_normalized: BTreeMap<u32, u128>
-  ) -> Option<(RewardsData, Weight)>  {
-    let mut weight = Weight::zero();
-    let stake_weight: u128 = match stake_weights_normalized.get(&subnet_id) {
-      Some(stake_weight) => {
-        if stake_weight == &0 {
-          return None
-        }
-        *stake_weight
-      },
-      None => return None
-    };
-
-    let delegate_stake_rewards_percentage = SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id);
-    let subnet_owner_percentage = SubnetOwnerPercentage::<T>::get();
-    weight = weight.saturating_add(T::DbWeight::get().reads(2));
-
-    let overall_subnet_reward: u128 = Self::percent_mul(overall_rewards, stake_weight);
-
-    // --- Get owner rewards
-    let subnet_owner_reward: u128 = Self::percent_mul(overall_subnet_reward, subnet_owner_percentage);
-
-    // --- Get subnet rewards minus owner cut
-    let subnet_rewards: u128 = overall_subnet_reward.saturating_sub(subnet_owner_reward);
-
-    // --- Get delegators rewards
-    let delegate_stake_rewards: u128 = Self::percent_mul(subnet_rewards, delegate_stake_rewards_percentage);
-
-    // --- Get subnet nodes rewards total
-    let subnet_node_rewards: u128 = subnet_rewards.saturating_sub(delegate_stake_rewards);
-
-    let rewards_data = RewardsData {
-      overall_subnet_reward,
-      subnet_owner_reward,
-      subnet_rewards,
-      delegate_stake_rewards,
-      subnet_node_rewards,
-    };
-
-    Some((rewards_data, weight))
-  }
-
   pub fn calculate_rewards_v2(
     subnet_id: u32,
     overall_rewards: u128,
     emission_weight: u128
-  ) -> Option<(RewardsData, Weight)> {
+  ) -> (RewardsData, Weight) {
     let mut weight = Weight::zero();
 
     let delegate_stake_rewards_percentage = SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id);
@@ -831,132 +786,7 @@ impl<T: Config> Pallet<T> {
       subnet_node_rewards,
     };
 
-    Some((rewards_data, weight))
-  }
-
-  pub fn distribute_rewards(
-    subnet_id: u32,
-    block: u32,
-    epoch: u32,
-    consensus_submission_data: ConsensusSubmissionData<T::AccountId>, 
-    rewards_data: RewardsData, 
-    subnet_nodes: Vec<SubnetNode<T::AccountId>>,
-  ) -> Weight {
-    let mut weight = Weight::zero();
-
-    let min_attestation_percentage = MinAttestationPercentage::<T>::get();
-    let reputation_increase_factor = ReputationIncreaseFactor::<T>::get();
-    let reputation_decrease_factor = ReputationDecreaseFactor::<T>::get();
-    let min_vast_majority_attestation_percentage = MinVastMajorityAttestationPercentage::<T>::get();
-    let queue_epochs = QueueClassificationEpochs::<T>::get(subnet_id);
-    let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
-    weight = weight.saturating_add(T::DbWeight::get().reads(6));
-
-    for subnet_node in &subnet_nodes {
-      if subnet_node.classification.node_class == SubnetNodeClass::Queue {
-        // --- Upgrade to Included if past the queue epochs
-        if subnet_node.classification.start_epoch + queue_epochs > epoch {
-          Self::increase_class(subnet_id, subnet_node.id, epoch);
-          // weight = weight.saturating_add(T::WeightInfo::increase_class());
-        }
-        continue
-      }
-
-      let subnet_node_data_find = consensus_submission_data.data
-        .iter()
-        .find(|data| data.peer_id == subnet_node.peer_id);
-
-      let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
-      weight = weight.saturating_add(T::DbWeight::get().reads(1));
-
-      if penalties + 1 > max_subnet_node_penalties {
-        Self::perform_remove_subnet_node(block, subnet_id, subnet_node.id);
-        // 112_050_000
-        // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
-        continue
-      }
-
-      if subnet_node_data_find.is_none() {
-        // Not included in consensus, increase
-        SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-        weight = weight.saturating_add(T::DbWeight::get().writes(1));
-        continue
-      } else if penalties != 0 {
-        // Included in consensus, decrease
-        SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| n.saturating_dec());
-      }
-
-      // Safely unwrap node_weight, we already confirmed it's not None
-      let node_weight = subnet_node_data_find.unwrap().score;
-
-      if node_weight == 0 {
-        continue
-      }
-
-      // --- Calculate node_weight percentage of peer versus the weighted sum
-      let score_percentage: u128 = Self::percent_div(node_weight, consensus_submission_data.weight_sum);
-
-      // --- Calculate node_weight percentage of total subnet generated epoch rewards
-      let mut account_reward: u128 = Self::percent_mul(score_percentage, rewards_data.subnet_node_rewards);
-
-      // --- Increase reward if validator
-      if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
-        account_reward += Self::get_validator_reward(consensus_submission_data.attestation_ratio);
-        // Add get_validator_reward (At least 1 read, expects 2)
-        weight = weight.saturating_add(T::DbWeight::get().reads(2));
-        match HotkeyOwner::<T>::try_get(&subnet_node.hotkey) {
-          Ok(coldkey) => {
-            Self::increase_coldkey_reputation(
-              coldkey,
-              consensus_submission_data.attestation_ratio, 
-              min_attestation_percentage, 
-              reputation_increase_factor,
-              epoch
-            );
-            // weight = weight.saturating_add(T::WeightInfo::increase_coldkey_reputation());
-          },
-          Err(()) => (),
-        };
-        // Add HotkeyOwner read
-        weight = weight.saturating_add(T::DbWeight::get().reads(1));
-      }
-      
-      // --- Skip if no rewards to give
-      // Unlikely to happen
-      if account_reward == 0 {
-        continue
-      }
-      if subnet_node.delegate_reward_rate != 0 {
-        // --- Ensure users are staked to subnet node
-        let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node.id);
-        weight = weight.saturating_add(T::DbWeight::get().reads(1));
-        if total_node_delegated_stake_shares != 0 {
-          let node_delegate_reward = Self::percent_mul(account_reward, subnet_node.delegate_reward_rate);
-          account_reward = account_reward - node_delegate_reward;
-          Self::do_increase_node_delegate_stake(
-            subnet_id,
-            subnet_node.id,
-            node_delegate_reward,
-          );
-          // weight = weight.saturating_add(T::WeightInfo::do_increase_node_delegate_stake());
-        }
-      }
-
-      // --- Increase account stake and emit event
-      Self::increase_account_stake(
-        &subnet_node.hotkey,
-        subnet_id, 
-        account_reward,
-      );
-      // weight = weight.saturating_add(T::WeightInfo::increase_account_stake());
-    }
-    Self::do_increase_delegate_stake(
-      subnet_id,
-      rewards_data.delegate_stake_rewards,
-    );
-    // weight = weight.saturating_add(T::WeightInfo::do_increase_delegate_stake());
-
-    weight
+    (rewards_data, weight)
   }
 
   pub fn distribute_rewards_v2(
@@ -975,27 +805,33 @@ impl<T: Config> Pallet<T> {
     let queue_epochs = QueueClassificationEpochs::<T>::get(subnet_id);
     let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
     let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
-    weight = weight.saturating_add(T::DbWeight::get().reads(2));
+    weight = weight.saturating_add(T::DbWeight::get().reads(3));
 
     // --- If under minimum attestation ratio, penalize validator, skip rewards
     if consensus_submission_data.attestation_ratio < min_attestation_percentage {
         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 
-        Self::slash_validator(
+        // --- Slash validator
+        // Slashes stake balance
+        // Decreases reputation
+        // Increases penalties
+        // Possibly removes them if above maximum penalties
+        let slash_validator_weight = Self::slash_validator(
           subnet_id, 
           consensus_submission_data.validator_subnet_node_id, 
           consensus_submission_data.attestation_ratio,
           min_attestation_percentage,
           reputation_decrease_factor,
-          block,
           epoch
         );
-        return weight
+        return weight.saturating_add(slash_validator_weight);
     }
 
     // Iterate each node, emit rewards, graduate, or penalize
     for subnet_node in &consensus_submission_data.included_subnet_nodes {
       if subnet_node.classification.node_class == SubnetNodeClass::Queue {
+        // Queue classified nodes can't be included in consensus data and can't have penalties
+        // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
         if subnet_node.classification.start_epoch + queue_epochs > epoch {
           Self::increase_class(subnet_id, subnet_node.id, epoch);
@@ -1004,19 +840,20 @@ impl<T: Config> Pallet<T> {
         continue
       }
 
-      let subnet_node_data_find = consensus_submission_data.data
-        .iter()
-        .find(|data| data.peer_id == subnet_node.peer_id);
-
       let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
       weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
+      // Clean up
       if penalties + 1 > max_subnet_node_penalties {
-        Self::perform_remove_subnet_node(block, subnet_id, subnet_node.id);
+        Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
         // 112_050_000
         // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
         continue
       }
+
+      let subnet_node_data_find = consensus_submission_data.data
+        .iter()
+        .find(|data| data.peer_id == subnet_node.peer_id);
 
       if subnet_node_data_find.is_none() {
         // Not included in consensus, increase
@@ -1025,16 +862,21 @@ impl<T: Config> Pallet<T> {
         continue
       } else if penalties != 0 {
         // Is in consensus data, decrease
+        // If the validator submits themselves in the data and is successfully attested, this also
+        // decreases the validators penalties
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| n.saturating_dec());
         weight = weight.saturating_add(T::DbWeight::get().writes(1));
       }
 
-      let is_included = subnet_node.classification.node_class == SubnetNodeClass::Included;
-      if is_included && penalties == 0 {
-        // --- Upgrade to Validator
-        if subnet_node.classification.start_epoch + included_epochs > epoch {
+      if subnet_node.classification.node_class == SubnetNodeClass::Included {
+        // --- Upgrade to Validator if no penalties
+        if penalties == 0 && subnet_node.classification.start_epoch + included_epochs > epoch {
           Self::increase_class(subnet_id, subnet_node.id, epoch);
           // weight = weight.saturating_add(T::WeightInfo::increase_class());
+
+          // --- Insert into election slot
+          Self::insert_node_into_slot(subnet_id, subnet_node.id);
+          // weight = weight.saturating_add(T::WeightInfo::insert_node_into_slot());
         }
         continue
       }
@@ -1055,7 +897,7 @@ impl<T: Config> Pallet<T> {
       // --- Increase reward if validator
       if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
         account_reward += Self::get_validator_reward(consensus_submission_data.attestation_ratio);
-        // Add get_validator_reward (At least 1 read, expects 2)
+        // Add get_validator_reward (At least 1 read, up to 2)
         weight = weight.saturating_add(T::DbWeight::get().reads(2));
         match HotkeyOwner::<T>::try_get(&subnet_node.hotkey) {
           Ok(coldkey) => {

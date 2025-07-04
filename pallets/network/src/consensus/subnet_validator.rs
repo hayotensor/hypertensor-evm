@@ -16,6 +16,7 @@
 use super::*;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_support::pallet_prelude::Pays;
+use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
   /// Submit subnet scores per subnet node
@@ -63,9 +64,7 @@ impl<T: Config> Pallet<T> {
     // --- Qualify the data
     //
 
-    // --- Get count of eligible nodes that can be submitted for consensus rewards
-    // This is the maximum amount of nodes that can be entered
-    // let included_nodes: Vec<u32> = Self::get_classified_subnet_node_ids(subnet_id, &SubnetNodeClass::Included, epoch);
+    // --- Get all eligible nodes to be in consensus on this epoch
     let included_subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     let included_nodes_count = included_subnet_nodes.len();
 
@@ -183,13 +182,40 @@ impl<T: Config> Pallet<T> {
     }
 
     // --- n-1 to get 0 index in the randomization
-    let rand_index = Self::get_random_number(subnet_nodes_len as u32, block as u32);
+    let rand_index = Self::get_random_number_with_max(subnet_nodes_len as u32, block as u32);
 
     // --- Choose random accountant from eligible accounts
     let validator: &u32 = &subnet_node_ids[rand_index as usize];
 
     // --- Insert validator for next epoch
     SubnetElectedValidator::<T>::insert(subnet_id, epoch, validator);
+  }
+
+  pub fn elect_validator_v2(
+    subnet_id: u32,
+    epoch: u32,
+    random_number: u32
+  ) {
+    // Redundant
+    // If validator already chosen, then return
+    if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
+      return
+    }
+
+    let slot_list = SubnetNodeElectionSlots::<T>::get(subnet_id);
+
+    if slot_list.is_empty() {
+      return
+    }
+
+    let idx = (random_number as usize) % slot_list.len();
+
+    let subnet_node_id = slot_list.get(idx).cloned();
+
+    if subnet_node_id.is_some() {
+      // --- Insert validator for next epoch
+      SubnetElectedValidator::<T>::insert(subnet_id, epoch, subnet_node_id.unwrap());
+    }
   }
 
   /// Return the validators reward that submitted data on the previous epoch
@@ -209,12 +235,18 @@ impl<T: Config> Pallet<T> {
     attestation_percentage: u128,
     min_attestation_percentage: u128,
     reputation_decrease_factor: u128,
-    block: u32,
     epoch: u32,
-  ) {
+  ) -> Weight {
+    let mut weight = Weight::zero();
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
-    let hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node_id).unwrap();
+    let hotkey = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
+      Ok(hotkey) => hotkey,
+      // If they exited, ignore slash and return
+      Err(()) => return weight.saturating_add(T::DbWeight::get().reads(1)),
+    };
+
+    weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
     match HotkeyOwner::<T>::try_get(&hotkey) {
       Ok(coldkey) => {
@@ -229,17 +261,20 @@ impl<T: Config> Pallet<T> {
       Err(()) => (),
     };
 
-    // --- Get stake balance
+    // --- Get stake balance. This is safe, uses Default value
     // This could be greater than the target stake balance
     let account_subnet_stake: u128 = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
 
     // --- Get slash amount up to max slash
     //
     let mut slash_amount: u128 = Self::percent_mul(account_subnet_stake, SlashPercentage::<T>::get());
+
     // --- Update slash amount up to attestation percent
     slash_amount = Self::percent_mul(slash_amount, Self::percentage_factor_as_u128().saturating_sub(attestation_percentage));
     // --- Update slash amount up to max slash
     let max_slash: u128 = MaxSlashAmount::<T>::get();
+    weight = weight.saturating_add(T::DbWeight::get().reads(4));
+
     if slash_amount > max_slash {
       slash_amount = max_slash
     }
@@ -250,17 +285,19 @@ impl<T: Config> Pallet<T> {
       subnet_id, 
       slash_amount,
     );
+    // weight = weight.saturating_add(T::WeightInfo::decrease_account_stake());
 
     // --- Increase validator penalty count
     let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id);
+    weight = weight.saturating_add(T::DbWeight::get().reads(1));
     SubnetNodePenalties::<T>::insert(subnet_id, subnet_node_id, penalties + 1);
+    weight = weight.saturating_add(T::DbWeight::get().writes(1));
 
     // --- Ensure maximum sequential removal consensus threshold is reached
     if penalties + 1 > MaxSubnetNodePenalties::<T>::get(subnet_id) {
       // --- Increase account penalty count
-      Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
-    } else {
-      
+      Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
+      // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
     }
 
     Self::deposit_event(
@@ -271,5 +308,6 @@ impl<T: Config> Pallet<T> {
       }
     );
 
+    weight
   }
 }

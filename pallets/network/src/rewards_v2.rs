@@ -131,7 +131,7 @@
 //           // of each other.
 //           if attestation_percentage < min_vast_majority_attestation_percentage {
 //             // --- Slash validator and increase penalty score
-//             Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage, block);
+//             Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage);
 //           }
 
 //           // --- If the subnet was deemed in a broken stake by the validator, rewards are bypassed
@@ -142,7 +142,7 @@
 //         // We don't increase subnet penalty count here because this is likely the validators fault
 //         if attestation_percentage < min_attestation_percentage {
 //           // --- Slash validator and increase penalty score
-//           Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage, block);
+//           Self::slash_validator(subnet_id, validator_subnet_node_id, attestation_percentage);
           
 //           // --- Attestation not successful, move on to next subnet
 //           continue
@@ -181,7 +181,7 @@
 //           // Note: Only ``included`` or above nodes can get emissions
 //           if subnet_node.classification.node_class <= SubnetNodeClass::Registered {
 //             if epoch > subnet_node.classification.start_epoch.saturating_add(max_subnet_node_registration_epochs) {
-//               Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
+//               Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
 //             }
 //             continue
 //           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
@@ -234,7 +234,7 @@
 //               // TODO: Check the size of subnet and scale it from there
 //               if penalties + 1 > max_subnet_node_penalties {
 //                 // --- Increase account penalty count
-//                 Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
+//                 Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
 //               }
 //             }
 //             // Even if there is a n-1 100% consensus on the node being out of consensus, we don't remove them.
@@ -349,7 +349,7 @@
 
 //         // If validator didn't submit anything, then slash
 //         // Even if a subnet is in a broken state, the chosen validator must submit blank data
-//         Self::slash_validator(subnet_id, validator_id, 0, block);
+//         Self::slash_validator(subnet_id, validator_id, 0);
 //       }
 
 //       // TODO: Get benchmark for removing max subnets in one epoch to ensure does not surpass max weights
@@ -495,7 +495,7 @@
 //           if attestation_percentage < min_vast_majority_attestation_percentage {
 //             // If the attestation percentage is also below the minimum required threshold, slash the validator
 //             if attestation_percentage < min_attestation_percentage {
-//               Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage, block);
+//               Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage);
 //             }
 //             // Skip further execution and continue to the next iteration
 //             continue;
@@ -510,7 +510,7 @@
 //         // We don't increase subnet penalty count here because this is likely the validators fault
 //         if attestation_percentage < min_attestation_percentage {
 //           // --- Slash validator and increase penalty score
-//           Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage, block);
+//           Self::slash_validator(*subnet_id, validator_subnet_node_id, attestation_percentage);
           
 //           // --- Attestation not successful, move on to next subnet
 //           continue
@@ -556,7 +556,7 @@
 //             if epoch > subnet_node.classification.start_epoch.saturating_add(max_subnet_node_registration_epochs) {
 //               // Node is past registration period and has not activated itself
 //               // Applies for nodes that are SubnetNodeClass::Deactivated and SubnetNodeClass::Registered
-//               Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+//               Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
 //             }
 //             continue
 //           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
@@ -594,7 +594,7 @@
 //               // TODO: Check the size of subnet and scale it from there
 //               if penalties + 1 > max_subnet_node_penalties {
 //                 // --- Increase account penalty count
-//                 Self::perform_remove_subnet_node(block, *subnet_id, subnet_node_id);
+//                 Self::perform_remove_subnet_node(*subnet_id, subnet_node_id);
 //               }
 //             }
 
@@ -711,7 +711,7 @@
 
 //         // If validator didn't submit anything, then slash
 //         // Even if a subnet is in a broken state, the chosen validator must submit blank data
-//         Self::slash_validator(*subnet_id, validator_id, 0, block);
+//         Self::slash_validator(*subnet_id, validator_id, 0);
 //       }
 //       // TODO: Get benchmark for removing max subnets in one epoch to ensure does not surpass max weights
 

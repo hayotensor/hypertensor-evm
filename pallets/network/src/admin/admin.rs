@@ -38,8 +38,10 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn do_set_max_subnets(value: u32) -> DispatchResult {
+    // Account for the first 2 block steps in an epoch
+    // Do not go over epoch length - 2 to ensure each subnet has a slot in each epoch
     ensure!(
-      value <= T::EpochLength::get(),
+      value <= T::EpochLength::get() - 2,
       Error::<T>::InvalidMaxSubnets
     );
     

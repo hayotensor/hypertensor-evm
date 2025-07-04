@@ -17,7 +17,41 @@ use super::*;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  pub fn perform_remove_subnet_node(block: u32, subnet_id: u32, subnet_node_id: u32) {
+  pub fn insert_node_into_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
+    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+      if !slot_list.contains(&subnet_node_id) {
+        let idx = slot_list.len() as u32;
+        slot_list.try_push(subnet_node_id).map_err(|_| Error::<T>::MaxSubnetNodes)?;
+        NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
+      }
+      Ok(())
+    })
+  }
+
+  pub fn remove_node_from_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
+    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+      if let Some(pos) = slot_list.iter().position(|id| *id == subnet_node_id) {
+        // Swap-remove node at position
+        let last_idx = slot_list.len() - 1;
+        slot_list.swap_remove(pos);
+
+        // If removed node was not the last one, update moved node index
+        if pos != last_idx {
+          let moved_node_id = slot_list[pos];
+          NodeSlotIndex::<T>::insert(subnet_id, moved_node_id, pos as u32);
+        }
+
+        // Remove the index entry for removed node
+        NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
+
+        Ok(())
+      } else {
+        Err(Error::<T>::SubnetNodeNotExist.into())
+      }
+    })
+  }
+
+  pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
     let mut is_active = false;
     let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
       is_active = true;
@@ -33,26 +67,6 @@ impl<T: Config> Pallet<T> {
     let hotkey = subnet_node.hotkey;
     let peer_id = subnet_node.peer_id;
 
-    // Remove from attestations
-    let epoch: u32 = Self::get_current_epoch_as_u32();
-
-    if let Err(e) = SubnetConsensusSubmission::<T>::try_mutate_exists(
-      subnet_id,
-      epoch,
-      |maybe_params| -> DispatchResult {
-        if let Some(params) = maybe_params {
-          // Remove from consensus list
-          params.data.retain(|x| x.peer_id != peer_id);
-
-          // Remove from attestations map
-          params.attests.remove(&subnet_node_id);
-        }
-        Ok(())
-      },
-    ) {
-      log::debug!("Failed to mutate SubnetConsensusSubmission: {:?}", e);
-    }
-
     if subnet_node.a.is_some() {
       SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
     }
@@ -65,16 +79,13 @@ impl<T: Config> Pallet<T> {
 
     // We don't remove the HotkeyOwner so the user can remove stake with coldkey
 
-    // We DO remove the hotkey from the coldkeys hotkey set
-    // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
-    // hotkeys.remove(&hotkey);
-    // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
-
     // Update total subnet peers by subtracting  1
     TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
     TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
 
     if is_active {
+      // --- Try removing node from election slots (only happens if Validator classification)
+      Self::remove_node_from_slot(subnet_id, subnet_node_id);
       TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
       TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
       match HotkeyOwner::<T>::try_get(&hotkey) {

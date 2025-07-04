@@ -330,6 +330,7 @@ pub mod pallet {
 		SubnetNodeNotActivated,
 		/// Peer ID already in use in subnet
 		PeerIdExist,
+		MaxSubnetNodes,
 		/// Bootstrap peer ID already in use in subnet
 		BootstrapPeerIdExist,
 		/// Client peer ID already in use in subnet
@@ -1553,6 +1554,29 @@ pub mod pallet {
 	// Subnet node elements
 	//
 		
+	// Election slots
+	#[pallet::storage]
+	pub type SubnetNodeElectionSlots<T> = StorageMap<
+		_,
+		Identity,
+		u32,
+		BoundedVec<u32, DefaultMaxSubnetNodes>,
+		ValueQuery,
+	>;
+
+	// Track election slots to avoid iterating
+	#[pallet::storage]
+	#[pallet::getter(fn node_slot_index)]
+	pub type NodeSlotIndex<T: Config> = StorageDoubleMap<
+		_,
+		Identity,
+		u32,         // subnet_id
+		Identity,
+		u32,         // node_id
+		u32,         // index in slot vec
+		OptionQuery,
+	>;
+
 	// Minimum amount of nodes required per subnet
 	// required for subnet activity
 	#[pallet::storage]
@@ -1922,13 +1946,19 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type MinVastMajorityAttestationPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultMinVastMajorityAttestationPercentage>;
 
-	// Epoch -> {(subnet_id, weight)}
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct DistributionData {
+		pub total_issuance: u128,
+		pub weights: BTreeMap<u32, u128>,
+	}
+
+	// Epoch -> {total_issuance, (subnet_id, weight)}
 	#[pallet::storage]
 	pub type FinalSubnetEmissionWeights<T> = StorageMap<
 		_,
 		Identity,
 		u32,
-		BTreeMap<u32, u128>,
+		DistributionData,
 		ValueQuery,
 	>;
 
@@ -2553,13 +2583,13 @@ pub mod pallet {
 
 		#[pallet::call_index(20)]
 		#[pallet::weight({0})]
-		pub fn owner_update_delegate_stake_reward_percentage(
+		pub fn owner_update_delegate_stake_percentage(
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			value: u128
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_owner_update_delegate_stake_reward_percentage(origin, subnet_id, value)
+			Self::do_owner_update_delegate_stake_percentage(origin, subnet_id, value)
 		}
 
 		#[pallet::call_index(21)]
@@ -4336,7 +4366,8 @@ pub mod pallet {
 
 			ensure!(
 				subnet_registration_data.delegate_stake_percentage >= MinDelegateStakePercentage::<T>::get() &&
-				subnet_registration_data.delegate_stake_percentage <= MaxDelegateStakePercentage::<T>::get(),
+				subnet_registration_data.delegate_stake_percentage <= MaxDelegateStakePercentage::<T>::get() &&
+				subnet_registration_data.delegate_stake_percentage <= Self::percentage_factor_as_u128(),
 				Error::<T>::InvalidMinDelegateStakePercentage
 			);
 
@@ -4505,6 +4536,8 @@ pub mod pallet {
 			// --- Remove registration whitelist
 			SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
 
+			Self::assign_subnet_slot(subnet_id)?;
+
       Self::deposit_event(Event::SubnetActivated { subnet_id: subnet_id });
 	
 			Ok(())
@@ -4527,6 +4560,8 @@ pub mod pallet {
 
 			SubnetRegistrationEpoch::<T>::remove(subnet_id);
 			SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
+
+			Self::free_slot_of_subnet(subnet_id);
 
 			if subnet.state == SubnetState::Active {
 				// Dec total active subnets
@@ -4579,11 +4614,10 @@ pub mod pallet {
 			subnet_id: u32,
 			subnet_node_id: u32,
 		) -> DispatchResult {
-			let block: u32 = Self::get_current_block_as_u32();
 
 			// We don't check consensus steps here because a subnet nodes stake isn't included in calculating rewards 
 			// that hasn't reached their consensus submission epoch yet
-			Self::perform_remove_subnet_node(block, subnet_id, subnet_node_id);
+			Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
 			Ok(())
 		}
 
@@ -5025,6 +5059,9 @@ pub mod pallet {
 				subnet_node.classification.node_class = SubnetNodeClass::Validator;
 				// --- Start node on current epoch for the next era
 				subnet_node.classification.start_epoch = epoch;
+
+				// --- Insert into election slot
+				Self::insert_node_into_slot(subnet_id, subnet_node.id)?;
 			}
 
 			// --- Enter node into the Queue class
@@ -5243,50 +5280,10 @@ pub mod pallet {
 		///
 		/// * `block_number` - Current block number.
 		/// 
-		// fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
-		// 	// if Self::is_paused().is_err() {
-		// 	// 	return Weight::from_parts(0, 0)
-		// 	// }
-
-		// 	// let block: u32 = Self::convert_block_as_u32(block_number);
-		// 	// let epoch_length: u32 = T::EpochLength::get();
-
-		// 	// // Reward subnet nodes
-		// 	// if block >= epoch_length && block % epoch_length == 0 {
-		// 	// 	let epoch: u32 = block / epoch_length;
-
-		// 	// 	// Reward subnets for the previous epoch
-		// 	// 	// Reward before shifting
-		// 	// 	Self::reward_subnets_v2(block, epoch - 1);
-
-		// 	// 	// return T::WeightInfo::on_initialize_reward_subnets();
-		// 	// 	return Weight::from_parts(207_283_478_000, 22166406)
-		// 	// 		.saturating_add(T::DbWeight::get().reads(18250_u64))
-		// 	// 		.saturating_add(T::DbWeight::get().writes(12002_u64));
-		// 	// } else if (block - 1) >= epoch_length && (block - 2) % epoch_length == 0 {
-		// 	// 	// We save some weight by waiting one more block to choose validators
-		// 	// 	// Run the block succeeding form consensus
-		// 	// 	let epoch: u32 = block / epoch_length;
-
-		// 	// 	// Choose validators for the current epoch
-		// 	// 	Self::do_epoch_preliminaries(block, epoch);
-
-		// 	// 	return Weight::from_parts(207_283_478_000, 22166406)
-		// 	// 		.saturating_add(T::DbWeight::get().reads(18250_u64))
-		// 	// 		.saturating_add(T::DbWeight::get().writes(12002_u64));
-		// 	// }
-
-		// 	// return T::WeightInfo::on_initialize()
-		// 	// return Weight::from_parts(207_283_478_000, 22166406)
-		// 	// 	.saturating_add(T::DbWeight::get().reads(18250_u64))
-		// 	// 	.saturating_add(T::DbWeight::get().writes(12002_u64))
-
-		// 	// for EVM tests (Weights in on_initialize change the block weight/gas)
-		// 	return Weight::from_parts(0, 0)
-		// }
 		fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
+			let mut weight = Weight::zero();
 			if Self::is_paused().is_err() {
-				return Weight::from_parts(0, 0)
+				return weight
 			}
 
 			let block: u32 = Self::convert_block_as_u32(block_number);
@@ -5297,20 +5294,22 @@ pub mod pallet {
 			if block >= epoch_length && block % epoch_length == 0 {
 			// Elect
 			// Elect validator in each subnet
-				return Self::do_epoch_preliminaries(block, epoch);
+				let step_weight = Self::do_epoch_preliminaries(block, epoch);
+				return weight.saturating_add(step_weight)
 			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
 			// Calculate rewards
 			// Calculate emissions based on subnet weights (delegate stake based)
-			// We calculate based on delegate stake weights on all subnets, and not only
-			// those that submitted consensus on this epoch to mitigate possible exploits
-			// on subnets to get more rewards.
-				return Self::handle_subnet_emission_weights(epoch);
-			} else if (block - 2) >= epoch_length && (block - 2) % epoch_length == 0 {
-			// Reward
-			// Reward each active subnet
-				return Self::emission_step(block, epoch)
-			};
+			// We calculate based on delegate stake weights on all subnets
+				let step_weight = Self::handle_subnet_emission_weights(epoch);
+				return weight.saturating_add(step_weight)
+			} else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
+				weight = weight.saturating_add(T::DbWeight::get().reads(1));
+				let step_weight = Self::emission_step(block, epoch, subnet_id);
+				return weight.saturating_add(step_weight)
+			}
 
+
+			
 			// for EVM tests (Weights in on_initialize change the block weight/gas)
 			Weight::from_parts(0, 0)
 		}

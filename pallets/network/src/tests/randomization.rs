@@ -39,7 +39,7 @@ fn test_randomness() {
   new_test_ext().execute_with(|| {
     setup_blocks(38);
     let gen_rand_num = Network::generate_random_number(1);
-    let rand_num = Network::get_random_number(96, 0);
+    let rand_num = Network::get_random_number_with_max(96, 0);
   });
 }
 
@@ -49,7 +49,7 @@ fn test_random_number_within_range() {
 		let max = 100;
 		let seed = 123;
 
-		let random = Network::get_random_number(max, seed);
+		let random = Network::get_random_number_with_max(max, seed);
 		assert!(random < max);
 	});
 }
@@ -60,7 +60,7 @@ fn test_random_number_zero_max() {
 		let max = 0;
 		let seed = 123;
 
-		let random = Network::get_random_number(max, seed);
+		let random = Network::get_random_number_with_max(max, seed);
 		assert_eq!(random, 0);
 	});
 }

@@ -58,6 +58,11 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      !SubnetName::<T>::contains_key(&value),
+      Error::<T>::SubnetNameExist
+    );
+
     let mut prev_name: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
@@ -65,6 +70,8 @@ impl<T: Config> Pallet<T> {
         data.name = value.clone();
       }
     });
+
+    SubnetName::<T>::insert(&value, subnet_id);
 
     Self::deposit_event(Event::SubnetNameUpdate { 
       subnet_id: subnet_id,
@@ -84,6 +91,11 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      !SubnetRepo::<T>::contains_key(&value),
+      Error::<T>::SubnetRepoExist
+    );
+
     let mut prev_repo: Vec<u8> = Vec::new();
     SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
       if let Some(data) = maybe_data {
@@ -91,6 +103,8 @@ impl<T: Config> Pallet<T> {
         data.repo = value.clone();
       }
     });
+
+    SubnetRepo::<T>::insert(&value, subnet_id);
 
     Self::deposit_event(Event::SubnetRepoUpdate { 
       subnet_id: subnet_id,
@@ -163,7 +177,8 @@ impl<T: Config> Pallet<T> {
     );
 
     ensure!(
-      value >= MinChurnLimit::<T>::get() && value <= MaxChurnLimit::<T>::get(),
+      value >= MinChurnLimit::<T>::get() && 
+      value <= MaxChurnLimit::<T>::get(),
       Error::<T>::InvalidChurnLimit
     );
 
@@ -186,6 +201,12 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      value >= MinRegistrationQueueEpochs::<T>::get() &&
+      value <= MaxRegistrationQueueEpochs::<T>::get(),
+      Error::<T>::InvalidRegistrationQueueEpochs
+    );
+
     RegistrationQueueEpochs::<T>::insert(subnet_id, value);
 
     Self::deposit_event(Event::RegistrationQueueEpochsUpdate { 
@@ -204,6 +225,12 @@ impl<T: Config> Pallet<T> {
     ensure!(
       Self::is_subnet_owner(&coldkey, subnet_id),
       Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      value >= MinActivationGraceEpochs::<T>::get() &&
+      value <= MaxActivationGraceEpochs::<T>::get(),
+      Error::<T>::InvalidActivationGraceEpochs
     );
 
     ActivationGraceEpochs::<T>::insert(subnet_id, value);
@@ -225,6 +252,12 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      value >= MinQueueClassificationEpochs::<T>::get() &&
+      value <= MaxQueueClassificationEpochs::<T>::get(),
+      Error::<T>::InvalidQueueClassificationEpochs
+    );
+
     QueueClassificationEpochs::<T>::insert(subnet_id, value);
 
     Self::deposit_event(Event::QueueClassificationEpochsUpdate { 
@@ -242,6 +275,12 @@ impl<T: Config> Pallet<T> {
     ensure!(
       Self::is_subnet_owner(&coldkey, subnet_id),
       Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      value >= MinIncludedClassificationEpochs::<T>::get() &&
+      value <= MaxIncludedClassificationEpochs::<T>::get(),
+      Error::<T>::InvalidIncludedClassificationEpochs
     );
 
     IncludedClassificationEpochs::<T>::insert(subnet_id, value);
@@ -385,11 +424,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_update_delegate_stake_reward_percentage(
-    origin: T::RuntimeOrigin, 
-    subnet_id: u32, 
-    value: u128
-  ) -> DispatchResult {
+  pub fn do_owner_update_delegate_stake_percentage(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -398,9 +433,10 @@ impl<T: Config> Pallet<T> {
     );
 
     ensure!(
-    	value >= MinDelegateStakePercentage::<T>::get() &&
-    	value <= MaxDelegateStakePercentage::<T>::get(),
-    	Error::<T>::InvalidDelegateStakeRewardsPercentage
+      value >= MinDelegateStakePercentage::<T>::get() &&
+      value <= MaxDelegateStakePercentage::<T>::get() &&
+      value <= Self::percentage_factor_as_u128(),
+      Error::<T>::InvalidMinDelegateStakePercentage
     );
 
     SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, value);

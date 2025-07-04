@@ -95,6 +95,7 @@ impl<T: Config> Pallet<T> {
     }
 
     let percentage_factor = Self::percentage_factor_as_u128();
+    // Safe get, has Default value
     let mut coldkey_reputation = ColdkeyReputation::<T>::get(&coldkey);
     let current_weight = coldkey_reputation.weight;
 

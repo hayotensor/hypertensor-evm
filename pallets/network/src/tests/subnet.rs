@@ -20,6 +20,9 @@ use crate::{
   SubnetState,
   TotalActiveSubnets,
   MaxSubnetNodes,
+  SubnetRewardSlot,
+  SlotAssignment,
+  AssignedSlots,
 };
 
 //
@@ -975,4 +978,82 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
   })
+}
+
+#[test]
+fn test_assign_subnet_slot_success() {
+	new_test_ext().execute_with(|| {
+		let subnet_id = 1;
+
+		let slot = Network::assign_subnet_slot(subnet_id).unwrap();
+		assert_eq!(slot, 2); // Should assign slot 2, since 0-1 is skipped
+
+		assert_eq!(SubnetRewardSlot::<Test>::get(subnet_id), Some(2));
+		assert_eq!(SlotAssignment::<Test>::get(2), Some(subnet_id));
+		assert!(AssignedSlots::<Test>::get().contains(&2));
+	});
+}
+
+#[test]
+fn test_assign_all_slots_and_fail() {
+	new_test_ext().execute_with(|| {
+		let max_slots = EpochLength::get();
+
+		// Fill all slots from 1..max_slots
+		for i in 2..max_slots {
+			let subnet_id = i;
+			assert_ok!(Network::assign_subnet_slot(subnet_id));
+		}
+
+		// Now this call should fail with NoAvailableSlots
+		let result = Network::assign_subnet_slot(999);
+		assert_noop!(result, Error::<Test>::NoAvailableSlots);
+	});
+}
+
+#[test]
+fn test_free_slot_removes_assignment() {
+	new_test_ext().execute_with(|| {
+		let subnet_id = 42;
+		let _ = Network::assign_subnet_slot(subnet_id);
+
+		assert!(SubnetRewardSlot::<Test>::contains_key(subnet_id));
+		assert!(AssignedSlots::<Test>::get().len() > 0);
+
+		Network::free_slot_of_subnet(subnet_id);
+
+		assert!(!SubnetRewardSlot::<Test>::contains_key(subnet_id));
+		assert_eq!(SlotAssignment::<Test>::iter().count(), 0);
+		assert_eq!(AssignedSlots::<Test>::get().len(), 0);
+	});
+}
+
+#[test]
+fn test_free_slot_does_nothing_if_slot_not_found() {
+	new_test_ext().execute_with(|| {
+		// Should be a no-op, no panic
+		Network::free_slot_of_subnet(123);
+
+		// Make sure storage still empty
+		assert_eq!(SubnetRewardSlot::<Test>::iter().count(), 0);
+		assert_eq!(SlotAssignment::<Test>::iter().count(), 0);
+		assert_eq!(AssignedSlots::<Test>::get().len(), 0);
+	});
+}
+
+#[test]
+fn test_assign_and_free_reassigns_correctly() {
+	new_test_ext().execute_with(|| {
+		let subnet1 = 1;
+		let subnet2 = 2;
+
+		let slot1 = Network::assign_subnet_slot(subnet1).unwrap();
+		assert_eq!(slot1, 2);
+
+		Network::free_slot_of_subnet(subnet1);
+
+		// Should now reuse slot 2
+		let slot2 = Network::assign_subnet_slot(subnet2).unwrap();
+		assert_eq!(slot2, 2);
+	});
 }

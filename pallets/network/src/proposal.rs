@@ -511,7 +511,7 @@ impl<T: Config> Pallet<T> {
     if yays_len > nays_len {
       // --- Plaintiff wins, return bond
       // --- Remove defendant
-      // Self::perform_remove_subnet_node(block, subnet_id, proposal.defendant);
+      // Self::perform_remove_subnet_node(subnet_id, proposal.defendant);
       // --- Return bond
       SubnetNodeIdHotkey::<T>::try_get(subnet_id, proposal.plaintiff_id)
         .ok()
