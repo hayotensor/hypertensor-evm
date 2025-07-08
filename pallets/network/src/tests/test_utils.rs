@@ -40,6 +40,7 @@ use crate::{
   TotalActiveSubnetNodes,
   TotalActiveSubnets,
   SubnetRewardSlot,
+  NodeRemovalSystem,
 };
 use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
@@ -410,6 +411,7 @@ pub fn default_registration_subnet_data(
     max_node_penalties: 3,
     initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end),
     max_registered_nodes: 100,
+    node_removal_system: NodeRemovalSystem::Consensus
   };
   add_subnet_data
 }
@@ -566,10 +568,6 @@ pub fn set_block_to_subnet_slot(epoch: u32, subnet_id: u32) {
   let slot = SubnetRewardSlot::<Test>::get(subnet_id)
       .expect("SubnetRewardSlot must be assigned before setting block");
   let block = slot + epoch * epoch_length;
-
-  log::error!("set_block_to_subnet_slot epoch  {:?}", epoch);
-  log::error!("set_block_to_subnet_slot slot   {:?}", slot);
-  log::error!("set_block_to_subnet_slot block  {:?}", block);
 
   System::set_block_number(block);
 }

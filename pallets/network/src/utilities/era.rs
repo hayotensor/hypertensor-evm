@@ -53,7 +53,7 @@ impl<T: Config> Pallet<T> {
     current_block.saturating_div(epoch_length)
   }
 
-  pub fn get_subnet_epoch(subnet_id: u32) -> u32 {
+  pub fn get_current_subnet_epoch_as_u32(subnet_id: u32) -> u32 {
     let epoch_length = T::EpochLength::get();
     let subnet_slot = match SubnetRewardSlot::<T>::try_get(subnet_id) {
       Ok(slot) => slot,
@@ -94,8 +94,6 @@ impl<T: Config> Pallet<T> {
     weight = weight.saturating_add(T::DbWeight::get().reads(total_subnets.into()));
     let excess_subnets: bool = total_subnets > max_subnets;
     let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
-
-    // let random_number = Self::get_random_number(block);
 
     for (subnet_id, data) in &subnets {
       // ==========================
@@ -201,13 +199,6 @@ impl<T: Config> Pallet<T> {
       if excess_subnets {
         subnet_delegate_stake.push((*subnet_id, subnet_delegate_stake_balance));
       }
-
-      // Self::elect_validator_v2(
-      //   *subnet_id,
-      //   epoch,
-      //   random_number
-      // );
-      // weight = weight.saturating_add(T::WeightInfo::elect_validator_v2());
     }
 
     // --- If over max subnets, remove the subnet with the lowest delegate stake

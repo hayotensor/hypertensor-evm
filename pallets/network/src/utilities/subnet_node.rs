@@ -17,40 +17,75 @@ use super::*;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  pub fn insert_node_into_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
-    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+  // pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
+  //   SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+  //     if !slot_list.contains(&subnet_node_id) {
+  //       let idx = slot_list.len() as u32;
+  //       slot_list.try_push(subnet_node_id).map_err(|_| Error::<T>::MaxSubnetNodes)?;
+  //       NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
+  //     }
+  //     Ok(())
+  //   })
+  // }
+
+  pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
+    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
       if !slot_list.contains(&subnet_node_id) {
         let idx = slot_list.len() as u32;
-        slot_list.try_push(subnet_node_id).map_err(|_| Error::<T>::MaxSubnetNodes)?;
+        slot_list.try_push(subnet_node_id).map_err(|_| ())?;
         NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
+        Ok(true)
+      } else {
+        Ok(false)
       }
-      Ok(())
-    })
+    }).unwrap_or(false)
   }
 
-  pub fn remove_node_from_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
-    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+  // pub fn remove_node_from_election_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
+  //   SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
+  //     if let Some(pos) = slot_list.iter().position(|id| *id == subnet_node_id) {
+  //       // Swap-remove node at position
+  //       let last_idx = slot_list.len() - 1;
+  //       slot_list.swap_remove(pos);
+
+  //       // If removed node was not the last one, update moved node index
+  //       if pos != last_idx {
+  //         let moved_node_id = slot_list[pos];
+  //         NodeSlotIndex::<T>::insert(subnet_id, moved_node_id, pos as u32);
+  //       }
+
+  //       // Remove the index entry for removed node
+  //       NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
+
+  //       Ok(())
+  //     } else {
+  //       Err(Error::<T>::SubnetNodeNotExist.into())
+  //     }
+  //   })
+  // }
+
+  pub fn remove_node_from_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
+    SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
       if let Some(pos) = slot_list.iter().position(|id| *id == subnet_node_id) {
-        // Swap-remove node at position
         let last_idx = slot_list.len() - 1;
         slot_list.swap_remove(pos);
 
-        // If removed node was not the last one, update moved node index
         if pos != last_idx {
           let moved_node_id = slot_list[pos];
           NodeSlotIndex::<T>::insert(subnet_id, moved_node_id, pos as u32);
         }
 
-        // Remove the index entry for removed node
         NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
 
-        Ok(())
+        Ok(true)
       } else {
-        Err(Error::<T>::SubnetNodeNotExist.into())
+        Ok(false)
       }
     })
+    .unwrap_or(false)
   }
 
+  /// Removes a subnet node, can be registering, active, or deactive
   pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
     let mut is_active = false;
     let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
@@ -83,9 +118,12 @@ impl<T: Config> Pallet<T> {
     TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
     TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
 
-    if is_active {
+    if subnet_node.classification.node_class == SubnetNodeClass::Validator {
       // --- Try removing node from election slots (only happens if Validator classification)
-      Self::remove_node_from_slot(subnet_id, subnet_node_id);
+      Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
+    }
+
+    if is_active {
       TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
       TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
       match HotkeyOwner::<T>::try_get(&hotkey) {
@@ -98,8 +136,8 @@ impl<T: Config> Pallet<T> {
       }
     }
 
-    // Reset sequential absent subnet node count
-    SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
+    // // Reset sequential absent subnet node count
+    // SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
 
     Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
   }
@@ -122,6 +160,22 @@ impl<T: Config> Pallet<T> {
   pub fn get_classified_subnet_nodes(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNode<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix_values(subnet_id)
       .filter(|subnet_node| subnet_node.has_classification(classification, epoch))
+      .collect()
+  }
+
+  pub fn get_classified_subnet_nodes_map(
+    subnet_id: u32,
+    classification: &SubnetNodeClass,
+    epoch: u32,
+  ) -> BTreeMap<u32, SubnetNode<T::AccountId>> {
+    SubnetNodesData::<T>::iter_prefix(subnet_id)
+      .filter_map(|(subnet_node_id, subnet_node)| {
+        if subnet_node.has_classification(classification, epoch) {
+          Some((subnet_node_id, subnet_node))
+        } else {
+          None
+        }
+      })
       .collect()
   }
 
@@ -272,22 +326,43 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  pub fn increase_class(
+  // pub fn graduate_class(
+  //   subnet_id: u32, 
+  //   subnet_node_id: u32, 
+  //   start_epoch: u32,
+  // ) {
+  //   // TODO: Add querying epoch here
+  //   SubnetNodesData::<T>::mutate(
+  //     subnet_id,
+  //     subnet_node_id,
+  //     |params: &mut SubnetNode<T::AccountId>| {
+  //       params.classification = SubnetNodeClassification {
+  //         node_class: params.classification.node_class.next(),
+  //         start_epoch: start_epoch,
+  //       };
+  //     },
+  //   );
+  // }
+  pub fn graduate_class(
     subnet_id: u32, 
     subnet_node_id: u32, 
     start_epoch: u32,
-  ) {
-    // TODO: Add querying epoch here
-    SubnetNodesData::<T>::mutate(
+  ) -> bool {
+    SubnetNodesData::<T>::try_mutate_exists(
       subnet_id,
       subnet_node_id,
-      |params: &mut SubnetNode<T::AccountId>| {
-        params.classification = SubnetNodeClassification {
-          node_class: params.classification.node_class.next(),
-          start_epoch: start_epoch,
-        };
+      |maybe_node_data| -> Result<bool, ()> {
+        if let Some(node_data) = maybe_node_data {
+          node_data.classification = SubnetNodeClassification {
+            node_class: node_data.classification.node_class.next(),
+            start_epoch,
+          };
+          Ok(true)
+        } else {
+          Ok(false)
+        }
       },
-    );
+    ).unwrap_or(false)
   }
 
   /// Check if subnet node is owner of a peer ID

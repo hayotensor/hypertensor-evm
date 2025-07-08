@@ -24,6 +24,10 @@ impl<T: Config> Pallet<T> {
     increase_weight_factor: u128, // this is the steepness multiplier
     epoch: u32,
   ) {
+    if !ColdkeyReputation::<T>::contains_key(&coldkey) {
+      return
+    }
+
     if attestation_percentage < min_attestation_percentage {
       return
     }
@@ -50,12 +54,12 @@ impl<T: Config> Pallet<T> {
       / percentage_factor;
 
     if nominal_increase == 0 {
-      return;
+      return
     }
 
     let new_weight = current_weight.saturating_add(nominal_increase).min(percentage_factor);
     if new_weight == current_weight {
-      return;
+      return
     }
 
     // Update fields
@@ -90,6 +94,10 @@ impl<T: Config> Pallet<T> {
     decrease_weight_factor: u128, // <- slope/steepness control
     epoch: u32,
   ) {
+    if !ColdkeyReputation::<T>::contains_key(&coldkey) {
+      return
+    }
+
     if attestation_percentage >= min_attestation_percentage {
       return
     }

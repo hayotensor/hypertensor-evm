@@ -192,10 +192,13 @@ impl<T: Config> Pallet<T> {
     let db_weight = T::DbWeight::get();
 
     // Optional: reward distribution path
+    // Get all subnet weights calculated at the start of the blockchains epoch
     if let Ok(subnet_emission_weights) = FinalSubnetEmissionWeights::<T>::try_get(current_epoch) {
       weight = weight.saturating_add(db_weight.reads(1));
 
+      // Get weight of subnet_id
       if let Some(&subnet_weight) = subnet_emission_weights.weights.get(&subnet_id) {
+        // Get elected consensus submission
         if let Some((consensus_submission_data, consensus_submission_weight)) =
           Self::precheck_consensus_submission(subnet_id, current_epoch - 1)
         {
@@ -231,24 +234,26 @@ impl<T: Config> Pallet<T> {
           );
           weight = weight.saturating_add(dist_weight);
         } else {
+          // Validator didn't submit consensus
           weight = weight.saturating_add(T::DbWeight::get().reads(1));
         }
+
+        // --- Elect new validator for the current epoch
+        // The current epoch is the start of the subnets epoch
+        // We only elect if the subnet has weights, otherwise it isn't activate yet
+        // See `calculate_stake_weights_v2`
+        Self::elect_validator_v3(
+          subnet_id,
+          current_epoch,
+          block
+        );
+
+        // weight = weight.saturating_add(T::WeightInfo::elect_validator_v3());
       }
     } else {
-      // Still count DB read even if weights missing
+      // Count DB read even if subnet_emission_weights is missing
       weight = weight.saturating_add(db_weight.reads(1));
     }
-
-    let random_number = Self::get_random_number(block);
-
-    // --- Elect new validator for the current epoch
-    Self::elect_validator_v2(
-      subnet_id,
-      current_epoch,
-      random_number
-    );
-
-    // weight = weight.saturating_add(validator_election_weight);
 
     weight
   }
@@ -263,6 +268,7 @@ impl<T: Config> Pallet<T> {
         total_issuance: Self::get_epoch_emissions(epoch),
         weights: subnet_weights
       };
+      // weight = weight.saturating_add(T::WeightInfo::get_epoch_emissions());
       FinalSubnetEmissionWeights::<T>::insert(epoch, data);
       weight = weight.saturating_add(T::DbWeight::get().writes(1));
     }
@@ -298,7 +304,7 @@ impl<T: Config> Pallet<T> {
 
       stake_weights.insert(subnet_id, subnet_weight_pow);
       stake_weight_sum += subnet_weight_pow;
-      weight = weight.saturating_add(Weight::from_parts(387_000, 0));
+      weight = weight.saturating_add(Weight::from_parts(400_000, 0));
     }
 
     weight = weight.saturating_add(T::DbWeight::get().reads(total_subnet_reads));
@@ -309,7 +315,7 @@ impl<T: Config> Pallet<T> {
     for (subnet_id, subnet_weight) in stake_weights {
       let weight_normalized: u128 = (subnet_weight / stake_weight_sum * percentage_factor as f64) as u128;
       stake_weights_normalized.insert(subnet_id, weight_normalized);
-      weight = weight.saturating_add(Weight::from_parts(383_000, 0));
+      weight = weight.saturating_add(Weight::from_parts(400_000, 0));
     }
     
     (stake_weights_normalized, weight)
@@ -327,12 +333,10 @@ impl<T: Config> Pallet<T> {
     weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
     let attestations: u128 = submission.attests.len() as u128;
-    let included_subnet_nodes = submission.included_subnet_nodes;
-
-    // let included_subnet_nodes = submission.included_subnet_nodes;
+    let subnet_nodes = submission.subnet_nodes;
 
     // --- Get all qualified possible attestors
-    let validators: Vec<SubnetNode<T::AccountId>> = included_subnet_nodes.clone()
+    let validators: Vec<SubnetNode<T::AccountId>> = subnet_nodes.clone()
       .into_iter().filter(
         |subnet_node| subnet_node.has_classification(&SubnetNodeClass::Validator, epoch)
       ).collect();
@@ -358,7 +362,7 @@ impl<T: Config> Pallet<T> {
       weight_sum: weight_sum,
       data_length: data_length,
       data: submission.data,
-      included_subnet_nodes: included_subnet_nodes
+      subnet_nodes: subnet_nodes
     };
 
     Some((consensus_data, weight))
@@ -443,6 +447,8 @@ impl<T: Config> Pallet<T> {
       Ok(coldkey) => {
         let subnet_owner_reward_as_currency = Self::u128_to_balance(rewards_data.subnet_owner_reward);
         if subnet_owner_reward_as_currency.is_some() {
+          // Add balance to coldkey account
+          // An owner may not have a subnet node
           Self::add_balance_to_coldkey_account(
             &coldkey,
             subnet_owner_reward_as_currency.unwrap()
@@ -455,11 +461,12 @@ impl<T: Config> Pallet<T> {
     weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
     // Iterate each node, emit rewards, graduate, or penalize
-    for subnet_node in &consensus_submission_data.included_subnet_nodes {
+    for subnet_node in &consensus_submission_data.subnet_nodes {
       let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
       weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
       if penalties + 1 > max_subnet_node_penalties {
+        // Remove node if they haven't already
         Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
         // 112_050_000
         // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
@@ -471,8 +478,9 @@ impl<T: Config> Pallet<T> {
         // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
         if subnet_node.classification.start_epoch + queue_epochs > current_epoch {
-          Self::increase_class(subnet_id, subnet_node.id, current_epoch);
-          // weight = weight.saturating_add(T::WeightInfo::increase_class());
+          // Increase class if they exist
+          Self::graduate_class(subnet_id, subnet_node.id, current_epoch);
+          // weight = weight.saturating_add(T::WeightInfo::graduate_class());
         }
         continue
       }
@@ -497,12 +505,11 @@ impl<T: Config> Pallet<T> {
       if subnet_node.classification.node_class == SubnetNodeClass::Included {
         // --- Upgrade to Validator if no penalties
         if penalties == 0 && subnet_node.classification.start_epoch + included_epochs > current_epoch {
-          Self::increase_class(subnet_id, subnet_node.id, current_epoch);
-          // weight = weight.saturating_add(T::WeightInfo::increase_class());
-
-          // --- Insert into election slot
-          Self::insert_node_into_slot(subnet_id, subnet_node.id);
-          // weight = weight.saturating_add(T::WeightInfo::insert_node_into_slot());
+          if Self::graduate_class(subnet_id, subnet_node.id, current_epoch) {
+            // --- Insert into election slot
+            Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
+            // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
+          }
         }
         continue
       }

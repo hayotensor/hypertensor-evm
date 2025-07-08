@@ -33,6 +33,7 @@ use core::marker::PhantomData;
 
 /// Weight functions needed for `pallet_network`.
 pub trait WeightInfo {
+	fn get_epoch_emissions() -> Weight;
 	fn precheck_consensus_submission() -> Weight;
 	fn calculate_rewards_v2() -> Weight;
 	fn distribute_rewards_v2() -> Weight;
@@ -43,14 +44,38 @@ pub trait WeightInfo {
 /// Weights for `pallet_network` using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+	/// Storage: `System::Number` (r:1 w:0)
+	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
+	/// Storage: `Network::MaxSubnets` (r:1 w:0)
+	/// Proof: `Network::MaxSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalActiveSubnets` (r:1 w:0)
+	/// Proof: `Network::TotalActiveSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::MaxSubnetNodes` (r:1 w:0)
+	/// Proof: `Network::MaxSubnetNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalActiveNodes` (r:1 w:0)
+	/// Proof: `Network::TotalActiveNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::UtilizationLowerBound` (r:1 w:0)
+	/// Proof: `Network::UtilizationLowerBound` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::UtilizationUpperBound` (r:1 w:0)
+	/// Proof: `Network::UtilizationUpperBound` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetInflationFactor` (r:1 w:0)
+	/// Proof: `Network::SubnetInflationFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn get_epoch_emissions() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1398`
+		//  Estimated: `2883`
+		// Minimum execution time: 29_735_000 picoseconds.
+		Weight::from_parts(32_190_000, 2883)
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn precheck_consensus_submission() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `142057`
 		//  Estimated: `145522`
-		// Minimum execution time: 504_379_000 picoseconds.
-		Weight::from_parts(545_817_000, 145522)
+		// Minimum execution time: 494_041_000 picoseconds.
+		Weight::from_parts(521_470_000, 145522)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
@@ -59,8 +84,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `142057`
 		//  Estimated: `145522`
-		// Minimum execution time: 497_772_000 picoseconds.
-		Weight::from_parts(529_532_000, 145522)
+		// Minimum execution time: 494_486_000 picoseconds.
+		Weight::from_parts(574_832_000, 145522)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Network::QueueClassificationEpochs` (r:1 w:0)
@@ -107,10 +132,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn distribute_rewards_v2() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `66025`
-		//  Estimated: `1334215`
-		// Minimum execution time: 8_535_098_000 picoseconds.
-		Weight::from_parts(8_730_215_000, 1334215)
+		//  Measured:  `66042`
+		//  Estimated: `1334232`
+		// Minimum execution time: 8_795_001_000 picoseconds.
+		Weight::from_parts(9_548_111_000, 1334232)
 			.saturating_add(T::DbWeight::get().reads(1043_u64))
 			.saturating_add(T::DbWeight::get().writes(521_u64))
 	}
@@ -126,8 +151,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `2831`
 		//  Estimated: `6296`
-		// Minimum execution time: 32_897_000 picoseconds.
-		Weight::from_parts(36_005_000, 6296)
+		// Minimum execution time: 37_415_000 picoseconds.
+		Weight::from_parts(39_916_000, 6296)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -139,22 +164,46 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `42`
 		//  Estimated: `4079`
-		// Minimum execution time: 4_422_000 picoseconds.
-		Weight::from_parts(4_715_000, 4079)
+		// Minimum execution time: 4_686_000 picoseconds.
+		Weight::from_parts(5_616_000, 4079)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
 }
 
 // For backwards compatibility and tests.
 impl WeightInfo for () {
+	/// Storage: `System::Number` (r:1 w:0)
+	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
+	/// Storage: `Network::MaxSubnets` (r:1 w:0)
+	/// Proof: `Network::MaxSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalActiveSubnets` (r:1 w:0)
+	/// Proof: `Network::TotalActiveSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::MaxSubnetNodes` (r:1 w:0)
+	/// Proof: `Network::MaxSubnetNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalActiveNodes` (r:1 w:0)
+	/// Proof: `Network::TotalActiveNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::UtilizationLowerBound` (r:1 w:0)
+	/// Proof: `Network::UtilizationLowerBound` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::UtilizationUpperBound` (r:1 w:0)
+	/// Proof: `Network::UtilizationUpperBound` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetInflationFactor` (r:1 w:0)
+	/// Proof: `Network::SubnetInflationFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn get_epoch_emissions() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1398`
+		//  Estimated: `2883`
+		// Minimum execution time: 29_735_000 picoseconds.
+		Weight::from_parts(32_190_000, 2883)
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn precheck_consensus_submission() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `142057`
 		//  Estimated: `145522`
-		// Minimum execution time: 504_379_000 picoseconds.
-		Weight::from_parts(545_817_000, 145522)
+		// Minimum execution time: 494_041_000 picoseconds.
+		Weight::from_parts(521_470_000, 145522)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
@@ -163,8 +212,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `142057`
 		//  Estimated: `145522`
-		// Minimum execution time: 497_772_000 picoseconds.
-		Weight::from_parts(529_532_000, 145522)
+		// Minimum execution time: 494_486_000 picoseconds.
+		Weight::from_parts(574_832_000, 145522)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Network::QueueClassificationEpochs` (r:1 w:0)
@@ -211,10 +260,10 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn distribute_rewards_v2() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `66025`
-		//  Estimated: `1334215`
-		// Minimum execution time: 8_535_098_000 picoseconds.
-		Weight::from_parts(8_730_215_000, 1334215)
+		//  Measured:  `66042`
+		//  Estimated: `1334232`
+		// Minimum execution time: 8_795_001_000 picoseconds.
+		Weight::from_parts(9_548_111_000, 1334232)
 			.saturating_add(RocksDbWeight::get().reads(1043_u64))
 			.saturating_add(RocksDbWeight::get().writes(521_u64))
 	}
@@ -230,8 +279,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `2831`
 		//  Estimated: `6296`
-		// Minimum execution time: 32_897_000 picoseconds.
-		Weight::from_parts(36_005_000, 6296)
+		// Minimum execution time: 37_415_000 picoseconds.
+		Weight::from_parts(39_916_000, 6296)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -243,8 +292,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `42`
 		//  Estimated: `4079`
-		// Minimum execution time: 4_422_000 picoseconds.
-		Weight::from_parts(4_715_000, 4079)
+		// Minimum execution time: 4_686_000 picoseconds.
+		Weight::from_parts(5_616_000, 4079)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
 }

@@ -10,7 +10,7 @@ use frame_support::{
   dispatch::{GetDispatchInfo, PostDispatchInfo},
 	storage::bounded_vec::BoundedVec,
 };
-use pallet_network::RegistrationSubnetData;
+use pallet_network::{RegistrationSubnetData, NodeRemovalSystem};
 use frame_support::traits::ConstU32;
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -86,7 +86,7 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256)")]
+  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256)")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
@@ -105,6 +105,7 @@ where
 		max_node_penalties: U256,
 		initial_coldkeys: Vec<Address>,
     max_registered_nodes: U256,
+    node_removal_system: U256,
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -123,6 +124,9 @@ where
       .collect();
     let max_registered_nodes = try_u256_to_u32(max_registered_nodes)?;
 
+    let node_removal_system = node_removal_from_u256(node_removal_system)
+      .ok_or_else(|| revert("Invalid NodeRemovalSystem value"))?;
+
     let subnet_data = pallet_network::RegistrationSubnetData::<R::AccountId> {
       name: name.into(),
       repo: repo.into(),
@@ -138,7 +142,8 @@ where
       included_classification_epochs,
       max_node_penalties,
       initial_coldkeys,
-      max_registered_nodes
+      max_registered_nodes,
+      node_removal_system
     };
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
@@ -458,4 +463,13 @@ fn try_u256_to_u32(value: U256) -> Result<u32, PrecompileFailure> {
   value.try_into().map_err(|_| PrecompileFailure::Error {
     exit_status: ExitError::Other("u32 out of bounds".into()),
   })
+}
+
+fn node_removal_from_u256(val: U256) -> Option<NodeRemovalSystem> {
+  match val.as_u32() {
+    0 => Some(NodeRemovalSystem::Consensus),
+    1 => Some(NodeRemovalSystem::Stake),
+    2 => Some(NodeRemovalSystem::Reputation),
+    _ => None,
+  }
 }

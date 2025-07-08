@@ -1067,6 +1067,7 @@ fn test_deactivate_subnet_node_reactivate() {
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
 
     let epoch = get_epoch();
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     assert_ok!(
       Network::deactivate_subnet_node(
@@ -1081,11 +1082,12 @@ fn test_deactivate_subnet_node_reactivate() {
 
     let subnet_node = DeactivatedSubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);    
-    assert_eq!(subnet_node.classification.start_epoch, epoch + 1);    
+    assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);    
 
     increase_epochs(1);
 
     let epoch = get_epoch();
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     assert_ok!(
       Network::reactivate_subnet_node(
@@ -1100,7 +1102,7 @@ fn test_deactivate_subnet_node_reactivate() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
-    assert_eq!(subnet_node.classification.start_epoch, epoch + 1);
+    assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
   })
 }
 

@@ -187,7 +187,7 @@
 //           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
 //             // If not, upgrade classification and continue
 //             // --- Upgrade to included
-//             Self::increase_class(
+//             Self::graduate_class(
 //               subnet_id, 
 //               subnet_node_id, 
 //               epoch,
@@ -250,7 +250,7 @@
 //           let is_included = subnet_node.classification.node_class == SubnetNodeClass::Included;
 //           if is_included && penalties == 0 {
 //             // --- Upgrade to Validator
-//             Self::increase_class(
+//             Self::graduate_class(
 //               subnet_id, 
 //               subnet_node_id, 
 //               epoch,
@@ -562,7 +562,7 @@
 //           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
 //             // --- Automatically upgrade to Included if activated into Queue class
 //             // TODO: Add Queue period
-//             Self::increase_class(*subnet_id, subnet_node_id, epoch);
+//             Self::graduate_class(*subnet_id, subnet_node_id, epoch);
 //             continue
 //           }
 
@@ -610,7 +610,7 @@
 //           let is_included = subnet_node.classification.node_class == SubnetNodeClass::Included;
 //           if is_included && penalties == 0 {
 //             // --- Upgrade to Validator
-//             Self::increase_class(*subnet_id, subnet_node_id, epoch);
+//             Self::graduate_class(*subnet_id, subnet_node_id, epoch);
 //             continue
 //           } else if is_included && penalties != 0 {
 //             // --- Decrease subnet node penalty count by one if in consensus and attested consensus

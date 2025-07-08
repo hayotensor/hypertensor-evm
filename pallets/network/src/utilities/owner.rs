@@ -364,6 +364,19 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  pub fn do_owner_update_node_removal_system(origin: T::RuntimeOrigin, subnet_id: u32, value: NodeRemovalSystem) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetNodeRemovalSystem::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
   pub fn do_owner_remove_subnet_node(origin: T::RuntimeOrigin, subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 

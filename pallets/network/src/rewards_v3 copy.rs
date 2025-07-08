@@ -325,7 +325,7 @@ impl<T: Config> Pallet<T> {
           if subnet_node.classification.node_class == SubnetNodeClass::Queue {
             // --- Automatically upgrade to Included if activated into Queue class
             if subnet_node.classification.start_epoch + queue_epochs > epoch {
-              Self::increase_class(*subnet_id, subnet_node_id, epoch);
+              Self::graduate_class(*subnet_id, subnet_node_id, epoch);
             }
             continue
           }
@@ -375,7 +375,7 @@ impl<T: Config> Pallet<T> {
           if is_included && penalties == 0 {
             // --- Upgrade to Validator
             if subnet_node.classification.start_epoch + included_epochs > epoch {
-              Self::increase_class(*subnet_id, subnet_node_id, epoch);
+              Self::graduate_class(*subnet_id, subnet_node_id, epoch);
             }
             continue
           } else if is_included && penalties != 0 {
@@ -691,7 +691,7 @@ impl<T: Config> Pallet<T> {
   //       if subnet_node.classification.node_class == SubnetNodeClass::Queue {
   //         // --- Automatically upgrade to Included if activated into Queue class
   //         if subnet_node.classification.start_epoch + queue_epochs > epoch {
-  //           Self::increase_class(subnet_id, subnet_node_id, epoch);
+  //           Self::graduate_class(subnet_id, subnet_node_id, epoch);
   //         }
   //         continue
   //       }
@@ -1287,8 +1287,8 @@ impl<T: Config> Pallet<T> {
       if subnet_node.classification.node_class == SubnetNodeClass::Queue {
         // --- Upgrade to Included if past the queue epochs
         if subnet_node.classification.start_epoch + queue_epochs > epoch {
-          Self::increase_class(subnet_id, subnet_node.id, epoch);
-          weight = weight.saturating_add(T::WeightInfo::increase_class());
+          Self::graduate_class(subnet_id, subnet_node.id, epoch);
+          weight = weight.saturating_add(T::WeightInfo::graduate_class());
         }
         continue
       }
@@ -1411,8 +1411,8 @@ impl<T: Config> Pallet<T> {
       if subnet_node.classification.node_class == SubnetNodeClass::Queue {
         // --- Upgrade to Included if past the queue epochs
         if subnet_node.classification.start_epoch + queue_epochs > epoch {
-          Self::increase_class(subnet_id, subnet_node.id, epoch);
-          weight = weight.saturating_add(T::WeightInfo::increase_class());
+          Self::graduate_class(subnet_id, subnet_node.id, epoch);
+          weight = weight.saturating_add(T::WeightInfo::graduate_class());
         }
         continue
       }

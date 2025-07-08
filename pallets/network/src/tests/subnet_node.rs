@@ -409,20 +409,6 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
       start, 
       end
     );
-
-    // let add_subnet_data = RegistrationSubnetData {
-    //   name: subnet_path.clone().into(),
-    //   repo: Vec::new(),
-		// 	description: Vec::new(),
-		// 	misc: Vec::new(),
-    //   churn_limit: 4,
-    //   registration_queue_epochs: 4,
-    //   activation_grace_epochs: 4,
-    //   queue_classification_epochs: 4,
-    //   included_classification_epochs: 4,
-    //   max_node_penalties: 4,
-    //   initial_coldkeys: whitelist,
-    // };
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -488,22 +474,6 @@ fn test_register_subnet_node_then_activate() {
       start, 
       end
     );
-
-    // let whitelist = get_initial_coldkeys(0, 1);
-
-    // let add_subnet_data = RegistrationSubnetData {
-    //   name: subnet_path.clone().into(),
-    //   repo: Vec::new(),
-		// 	description: Vec::new(),
-		// 	misc: Vec::new(),
-    //   churn_limit: 4,
-    //   registration_queue_epochs: 4,
-    //   activation_grace_epochs: 4,
-    //   queue_classification_epochs: 4,
-    //   included_classification_epochs: 4,
-    //   max_node_penalties: 3,
-    //   initial_coldkeys: whitelist,
-    // };
   
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();

@@ -68,23 +68,7 @@ fn test_register_subnet() {
       start, 
       end
     );
-  
-    // let whitelist = get_initial_coldkeys(0, min_nodes+1);
-  
-    // let add_subnet_data = RegistrationSubnetData {
-    //   name: subnet_path.clone().into(),
-    //   repo: Vec::new(),
-		// 	description: Vec::new(),
-		// 	misc: Vec::new(),
-    //   churn_limit: 4,
-    //   registration_queue_epochs: 4,
-    //   activation_grace_epochs: 4,
-    //   queue_classification_epochs: 4,
-    //   included_classification_epochs: 4,
-    //   max_node_penalties: 3,
-    //   initial_coldkeys: whitelist
-    // };
-  
+    
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
