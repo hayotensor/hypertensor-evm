@@ -32,8 +32,10 @@ use crate::{
   DeactivatedSubnetNodesData,
   MaxSubnetNodes,
   TotalActiveSubnets,
+  SubnetNodeCountEMA,
+  SubnetNodeCountEMALastUpdated,
 };
-
+use sp_core::U256;
 ///
 ///
 ///
@@ -1226,3 +1228,106 @@ fn test_update_peer_id_not_key_owner() {
     );
   })
 }
+
+// #[test]
+// fn test_node_count_ema_updates_correctly() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 1;
+//     let alpha = Network::EMA_ALPHA_NUMERATOR;
+//     let percentage_factor = Network::percentage_factor_as_u128();
+
+//     // Initial value
+//     let initial_node_count = 10;
+//     let scaled_initial = (initial_node_count as u128) * percentage_factor;
+//     SubnetNodeCountEMA::<Test>::insert(subnet_id, scaled_initial);
+
+//     // Step 1: EMA = 10, new count = 20
+//     Network::update_ema(subnet_id, 20);
+
+//     let ema_after_1 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let expected_ema_1 = (
+//         alpha * 20 * percentage_factor +
+//         (percentage_factor - alpha) * scaled_initial
+//     ) / percentage_factor;
+
+//     assert_eq!(ema_after_1, expected_ema_1);
+//     assert!(ema_after_1 < scaled_initial); // Should be less than actual ndoe count
+//     assert_eq!(Network::ema_as_rounded_up_integer(subnet_id), 11); // should be slightly > 10
+
+//     // Step 2: Update again with node count = 30
+//     Network::update_ema(subnet_id, 30);
+//     let ema_after_2 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let expected_ema_2 = (
+//         alpha * 30 * percentage_factor +
+//         (percentage_factor - alpha) * ema_after_1
+//     ) / percentage_factor;
+
+//     assert_eq!(ema_after_2, expected_ema_2);
+//     let rounded = Network::ema_as_rounded_up_integer(subnet_id);
+//     assert!(rounded >= 12 && rounded <= 13); // expect EMA to slowly approach 30
+
+//     // Step 3: Drop back down to 15
+//     Network::update_ema(subnet_id, 15);
+//     let ema_after_3 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let expected_ema_3 = (
+//         alpha * 15 * percentage_factor +
+//         (percentage_factor - alpha) * ema_after_2
+//     ) / percentage_factor;
+
+//     assert_eq!(ema_after_3, expected_ema_3);
+//     let rounded = Network::ema_as_rounded_up_integer(subnet_id);
+//     assert!(rounded >= 12 && rounded <= 14); // smooth reaction to decrease
+//   });
+// }
+
+// #[test]
+// fn test_ema_update_with_block_delta_and_clamp() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 42;
+//     let percentage_factor = Network::percentage_factor_as_u128();
+//     let pf = U256::from(percentage_factor);
+
+//     // Step 0: Initialize with node count = 10 at block 1
+//     let node_count_1 = 10;
+//     let block_1 = 1;
+//     Network::update_ema(subnet_id, node_count_1, block_1);
+
+//     // Check that EMA is exactly 10 * 1e18
+//     let ema_1 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     assert_eq!(U256::from(ema_1), U256::from(10u128) * pf);
+//     assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block_1);
+
+//     // Step 1: Next block, node count increases slightly to 12
+//     let block_2 = 2;
+//     let node_count_2 = 12u32;
+//     Network::update_ema(subnet_id, node_count_2, block_2);
+
+//     let ema_2 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let expected_max = U256::from(node_count_2) * pf;
+//     assert!(U256::from(ema_2) < expected_max, "EMA should not reach full value in 1 block");
+//     assert!(U256::from(ema_2) > U256::from(10u128) * pf, "EMA should increase");
+//     assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block_2);
+    
+//     // Step 2: Jump ahead 100 blocks, node count = 15
+//     let block_100 = 102;
+//     let node_count_3 = 15u32;
+//     Network::update_ema(subnet_id, node_count_3, block_100);
+
+//     let ema_3 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let max_ema_3 = U256::from(node_count_3) * pf;
+
+//     assert!(ema_3 > ema_2, "EMA should increase due to time decay");
+//     assert!(U256::from(ema_3) <= max_ema_3, "EMA should be clamped to node count");
+//     assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block_100);
+
+//     // Step 3: Drop node count to 13, same block
+//     let node_count_4 = 13u32;
+//     Network::update_ema(subnet_id, node_count_4, block_100);
+
+//     // let ema_4 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     // let max_ema_4 = U256::from(node_count_4) * pf;
+//     // assert!(U256::from(ema_4) <= max_ema_4, "EMA clamped to 13 nodes");
+//     // assert!(ema_4 < ema_3, "EMA should decrease slightly");
+//     // assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block_100);
+//   });
+// }

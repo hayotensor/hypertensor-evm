@@ -150,20 +150,56 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn get_lowest_stake_balance_node(subnet_id: u32) -> Option<u32> {
+  pub fn get_lowest_stake_balance_node(subnet_id: u32, hotkey: &T::AccountId) -> Option<u32> {
+    // Get calling nodes stake balance
+    let stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
 
     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-        let hotkey = node.hotkey.clone();
-        let stake = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
-        let start_epoch = node.classification.start_epoch;
+      let node_hotkey = node.hotkey.clone();
+      let stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
+      if stake >= stake_balance {
+        continue
+      }
+      let start_epoch = node.classification.start_epoch;
+      candidates.push((uid, stake, start_epoch));
+    }
 
-        candidates.push((uid, stake, start_epoch));
+    if candidates.is_empty() {
+      return None
     }
 
     candidates.sort_by(|a, b| {
-        // Sort by stake ascending, then start_epoch descending
-        a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+      // Sort by stake ascending, then start_epoch descending
+      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
+  }
+
+  pub fn get_lowest_reputation_node(subnet_id: u32, coldkey: &T::AccountId) -> Option<u32> {
+    let coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
+    let rep_weight = coldkey_reputation.weight;
+
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, weight, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+      let node_hotkey = node.hotkey.clone();
+      let reputation = ColdkeyReputation::<T>::get(coldkey);
+      if reputation.weight >= rep_weight {
+        continue
+      }
+      let start_epoch = node.classification.start_epoch;
+      candidates.push((uid, reputation.weight, start_epoch));
+    }
+
+    if candidates.is_empty() {
+      return None
+    }
+
+    candidates.sort_by(|a, b| {
+      // Sort by reputation.weight ascending, then start_epoch descending
+      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
     });
 
     candidates.first().map(|(uid, _, _)| *uid)
@@ -290,28 +326,6 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  // pub fn is_owner_of_peer_or_ownerless2(subnet_id: u32, peer_id: &PeerId, hotkey: T::AccountId) -> bool {
-  //   let is_peer_owner_or_ownerless = match PeerIdHotkey::<T>::try_get(subnet_id, peer_id) {
-  //     Ok(peer_hotkey) => {
-  //       if peer_hotkey == hotkey {
-  //         return true
-  //       }
-  //       false
-  //     },
-  //     Err(()) => true,
-  //   };
-
-  //   // is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
-  //   //   Ok(bootstrap_subnet_node_id) => {
-  //   //     if bootstrap_subnet_node_id == subnet_node_id {
-  //   //       return true
-  //   //     }
-  //   //     false
-  //   //   },
-  //   //   Err(()) => true,
-  //   // }
-  // }
-
   pub fn calculate_max_activation_epoch(subnet_id: u32) -> u32 {
     let prev_registration_epoch = 10;
     0
@@ -325,26 +339,87 @@ impl<T: Config> Pallet<T> {
     true    
   }
 
-  // fn node_multiplier(ema_nodes: u32) -> FixedU128 {
-  //   let divisor = FixedU128::saturating_from_integer(20);
-  //   let ema = FixedU128::saturating_from_integer(ema_nodes);
-  //   FixedU128::one() + ema.saturating_div_int(divisor) // e.g. 1.0 + (ema / 20)
-  // }
+  pub const EMA_ALPHA_NUMERATOR: u128 = 95200000000000000;
 
-  // pub fn node_multiplier(ema_nodes: u64) -> U256 {
-  //   let one = U256::from(ONE_E18);
-  //   let ema = U256::from(ema_nodes);
-  //   let divisor = U256::from(20u64); // scale: 1 multiplier per 20 nodes
+  pub fn update_ema(subnet_id: u32, current_node_count: u32, block: u32) {
+    let prev_ema_u128 = SubnetNodeCountEMA::<T>::get(subnet_id);
+    let prev_ema = U256::from(prev_ema_u128);
 
-  //   let scaled_add = one * ema / divisor; // (1e18 * ema) / 20
-  //   one + scaled_add // final multiplier in 1e18 scale
-  // }
+    let current_scaled = U256::from(current_node_count) * Self::PERCENTAGE_FACTOR;
 
-  pub fn node_multiplier_ema(ema_nodes: u64) -> U256 {
-    let ema = U256::from(ema_nodes);
-    let divisor = U256::from(20u64); // 20 nodes → +1.0x
+    let last_updated_block: u32 = SubnetNodeCountEMALastUpdated::<T>::get(subnet_id);
+    let delta_blocks = block.saturating_sub(last_updated_block).max(1);
 
-    // 1e18 + (1e18 * ema / 20)
-    Self::PERCENTAGE_FACTOR + (Self::PERCENTAGE_FACTOR * ema / divisor) 
+    // Compute effective alpha based on how many blocks have passed
+    let alpha_numer = U256::from(Self::EMA_ALPHA_NUMERATOR) * U256::from(delta_blocks);
+
+    let effective_alpha = alpha_numer.min(Self::PERCENTAGE_FACTOR); // cap at 1.0
+
+    let one_minus_alpha = Self::PERCENTAGE_FACTOR - effective_alpha;
+
+    let updated_ema = (
+        effective_alpha * current_scaled +
+        one_minus_alpha * prev_ema
+    ) / Self::PERCENTAGE_FACTOR;
+
+    // Clamp the current EMA
+    // We only want the moving average to lag when nodes are increasing
+    // This will clamp and reset the EMA node count value
+    let clamped_ema = updated_ema.min(current_scaled);
+    let updated_ema_u128 = clamped_ema.try_into().unwrap_or(u128::MAX);
+
+    // let updated_ema_u128 = updated_ema.try_into().unwrap_or(u128::MAX);
+
+    SubnetNodeCountEMA::<T>::insert(subnet_id, updated_ema_u128);
+    SubnetNodeCountEMALastUpdated::<T>::insert(subnet_id, block);
+  }
+
+  /// Converts scaled EMA (u128) to integer node count, rounding UP
+  pub fn ema_as_rounded_up_integer(subnet_id: u32) -> u32 {
+    let current_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+    let ema_scaled = SubnetNodeCountEMA::<T>::get(subnet_id);
+    // Divide by scaling factor, but round up any remainder
+    let percentage_factor: u128 = Self::percentage_factor_as_u128();
+    let integer_part = ema_scaled / percentage_factor;
+    let remainder = ema_scaled % percentage_factor;
+
+    if (integer_part as u32) > current_active_nodes {
+      return current_active_nodes
+    }
+
+    if remainder > 0 {
+      // If there's any fractional part, round up by adding 1
+      (integer_part + 1) as u32
+    } else {
+      integer_part as u32
+    }
+  }
+
+  pub fn get_min_delegate_stake_multiplier(subnet_id: u32) -> u128 {
+    let ema_scaled = SubnetNodeCountEMA::<T>::get(subnet_id); // u128, scaled by 1e18
+    let pf = Self::percentage_factor_as_u128();
+    let base = MinSubnetNodes::<T>::get() as u128 * pf;
+
+    if ema_scaled <= base {
+      return pf
+    }
+
+    // Compute ln(ema / base) ≈ log2(ema / base) * ln(2)
+    let ratio = U256::from(ema_scaled) * U256::from(pf) / U256::from(base);
+
+    let ln_2_scaled = U256::from(693_147_180_559_945_309u128); // ln(2) * 1e18
+    let log2_ratio = ratio.bits().saturating_sub(1) as u128;
+
+    // Apply slope k = 0.6 (scaled)
+    let slope_k = U256::from(600_000_000_000_000_000u128); // 0.6 * 1e18
+
+    let ln_scaled = U256::from(log2_ratio) * ln_2_scaled; // ln(x) in 1e18 scale
+    let multiplier_extra = slope_k * ln_scaled / U256::from(pf);
+
+    let multiplier = U256::from(pf) + multiplier_extra;
+
+    // Clamp to max multiplier = 2.5x
+    let max_multiplier = U256::from(2_500_000_000_000_000_000u128); // 2.5 * 1e18
+    multiplier.min(max_multiplier).as_u128()
   }
 }

@@ -39,6 +39,7 @@ use crate::{
   SubnetRegistrationEpoch,
   TotalActiveSubnetNodes,
   TotalActiveSubnets,
+  SubnetRewardSlot,
 };
 use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
@@ -558,6 +559,19 @@ pub fn get_epoch() -> u32 {
   let current_block = System::block_number();
   let epoch_length: u32 = EpochLength::get();
   current_block.saturating_div(epoch_length)
+}
+
+pub fn set_block_to_subnet_slot(epoch: u32, subnet_id: u32) {
+  let epoch_length = EpochLength::get();
+  let slot = SubnetRewardSlot::<Test>::get(subnet_id)
+      .expect("SubnetRewardSlot must be assigned before setting block");
+  let block = slot + epoch * epoch_length;
+
+  log::error!("set_block_to_subnet_slot epoch  {:?}", epoch);
+  log::error!("set_block_to_subnet_slot slot   {:?}", slot);
+  log::error!("set_block_to_subnet_slot block  {:?}", block);
+
+  System::set_block_number(block);
 }
 
 pub fn subnet_node_data(

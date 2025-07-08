@@ -912,6 +912,9 @@ pub mod pallet {
 
     /// Last epoch the node was selected as validator.
     pub last_validator_epoch: u32,
+
+		/// Current overwatch node reputation weight.
+    pub ow_score: u128,
 	}
 
 	#[pallet::type_value]
@@ -1075,6 +1078,11 @@ pub mod pallet {
 	}
 	#[pallet::type_value]
 	pub fn DefaultMinVastMajorityAttestationPercentage() -> u128 {
+		// 7/8
+		875000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultSuperMajorityAttestationRatio() -> u128 {
 		// 7/8
 		875000000000000000
 	}
@@ -1292,10 +1300,12 @@ pub mod pallet {
 	}
 	#[pallet::type_value]
 	pub fn DefaultMinDelegateStakePercentage() -> u128 {
-		0
+		// 2.0%
+		20000000000000000
 	}
 	#[pallet::type_value]
 	pub fn DefaultMaxDelegateStakePercentage() -> u128 {
+		// 100.0%
 		1000000000000000000
 	}
 	#[pallet::type_value]
@@ -1418,6 +1428,7 @@ pub mod pallet {
 			total_decreases: 0,
 			average_attestation: 0,
 			last_validator_epoch: 0,
+			ow_score: 500_000_000_000_000 // 0.5 / 50%
 		}
 	}
 	#[pallet::type_value]
@@ -1439,7 +1450,14 @@ pub mod pallet {
 	pub fn MaxSlots<T: Config>() -> u32 {
 		T::EpochLength::get()
 	}
-
+	#[pallet::type_value]
+	pub fn DefaultSubnetNodeCountEMA() -> u128 {
+		// Min nodes * 1e18
+		// Mainnet
+		// 3000000000000000000
+		// Local
+		1000000000000000000
+	}
 	
 	// 
 	// Subnet elements
@@ -1607,6 +1625,14 @@ pub mod pallet {
 	pub type TotalActiveSubnetNodes<T: Config> =
 		StorageMap<_, Identity, u32, u32, ValueQuery>;
 	
+	#[pallet::storage]
+	pub type SubnetNodeCountEMA<T: Config> = StorageMap<_, Blake2_128Concat, u32, u128, ValueQuery, DefaultSubnetNodeCountEMA>;
+
+	// subnet_id -> last block updated
+	#[pallet::storage]
+	pub type SubnetNodeCountEMALastUpdated<T: Config> =
+    StorageMap<_, Blake2_128Concat, u32, u32, ValueQuery, DefaultZeroU32>;
+
 	/// Min ChurnLimit
 	#[pallet::storage]
 	pub type MinChurnLimit<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinChurnLimit>;
@@ -1945,6 +1971,9 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type MinVastMajorityAttestationPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultMinVastMajorityAttestationPercentage>;
+
+	#[pallet::storage]
+	pub type SuperMajorityAttestationRatio<T> = StorageValue<_, u128, ValueQuery, DefaultSuperMajorityAttestationRatio>;
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct DistributionData {
@@ -3757,16 +3786,9 @@ pub mod pallet {
 
 			Self::is_paused()?;
 
-			let block: u32 = Self::get_current_block_as_u32();
-			let epoch_length: u32 = T::EpochLength::get();
-			let epoch: u32 = block / epoch_length;
-
 			Self::do_validate(
 				subnet_id, 
 				hotkey,
-				block,
-				epoch_length,
-				epoch,
 				data,
 				args,
 			)
@@ -3788,16 +3810,9 @@ pub mod pallet {
 
 			Self::is_paused()?;
 
-			let block: u32 = Self::get_current_block_as_u32();
-			let epoch_length: u32 = T::EpochLength::get();
-			let epoch: u32 = block / epoch_length;
-
 			Self::do_attest(
 				subnet_id, 
 				hotkey,
-				block, 
-				epoch_length,
-				epoch,
 			)
 		}
 
@@ -5039,11 +5054,16 @@ pub mod pallet {
 				Error::<T>::NotStartEpoch
 			);
 
-			// let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-			// let max_nodes = MaxSubnetNodes::<T>::get();
-			// if total_nodes >= max_nodes {
-			// 	let remove_subnet_node_id: u32 = Self::get_lowest_stake_balance_node(subnet_id);
-			// }
+			let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+			let max_nodes = MaxSubnetNodes::<T>::get();
+			if total_nodes >= max_nodes {
+				match Self::get_lowest_stake_balance_node(subnet_id, &hotkey) {
+					Some(remove_subnet_node_id) => {
+						Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id)
+					},
+					None => return Err(Error::<T>::MaxSubnetNodes.into())
+				};
+			}
 			
 			// Add SubnetNodesData
 			// --- If subnet activated, activate the node starting at `Queue`
@@ -5075,10 +5095,14 @@ pub mod pallet {
 			ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
 				rep.lifetime_node_count = rep.lifetime_node_count.saturating_add(1);
 				rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
-				if rep.start_epoch == 0 {
-					rep.start_epoch = epoch;
-				}
 			});
+
+			let block: u32 = Self::get_current_block_as_u32();
+			Self::update_ema(
+				subnet_id, 
+				TotalActiveSubnetNodes::<T>::get(total_nodes + 1),
+				block
+			);
 
 			Self::deposit_event(
 				Event::SubnetNodeActivated { 
@@ -5289,22 +5313,21 @@ pub mod pallet {
 			let block: u32 = Self::convert_block_as_u32(block_number);
 			let epoch_length: u32 = T::EpochLength::get();
 			let epoch_slot = block % epoch_length;
-			let epoch = block.saturating_div(epoch_length);
+			let current_epoch = block.saturating_div(epoch_length);
 
 			if block >= epoch_length && block % epoch_length == 0 {
-			// Elect
-			// Elect validator in each subnet
-				let step_weight = Self::do_epoch_preliminaries(block, epoch);
+			// Remove unqualified subnets
+				let step_weight = Self::do_epoch_preliminaries(block, current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
 			// Calculate rewards
 			// Calculate emissions based on subnet weights (delegate stake based)
 			// We calculate based on delegate stake weights on all subnets
-				let step_weight = Self::handle_subnet_emission_weights(epoch);
+				let step_weight = Self::handle_subnet_emission_weights(current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
 				weight = weight.saturating_add(T::DbWeight::get().reads(1));
-				let step_weight = Self::emission_step(block, epoch, subnet_id);
+				let step_weight = Self::emission_step_v2(block, current_epoch, subnet_id);
 				return weight.saturating_add(step_weight)
 			}
 

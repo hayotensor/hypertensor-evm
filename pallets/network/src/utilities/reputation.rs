@@ -50,12 +50,12 @@ impl<T: Config> Pallet<T> {
       / percentage_factor;
 
     if nominal_increase == 0 {
-        return;
+      return;
     }
 
     let new_weight = current_weight.saturating_add(nominal_increase).min(percentage_factor);
     if new_weight == current_weight {
-        return;
+      return;
     }
 
     // Update fields

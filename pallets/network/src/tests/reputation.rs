@@ -25,6 +25,7 @@ fn test_increase_coldkey_reputation_with_weight_factor() {
       total_decreases: 0,
       average_attestation: 0,
       last_validator_epoch: 0,
+      ow_score: 500_000_000_000_000_000,
     });
 
     Network::increase_coldkey_reputation(
@@ -62,6 +63,7 @@ fn test_average_attestation_over_multiple_increases() {
       total_decreases: 0,
       average_attestation: 0,
       last_validator_epoch: 0,
+      ow_score: 500_000_000_000_000_000,
     });
 
     // Step 1: 90%
@@ -115,6 +117,7 @@ fn test_single_decrease_updates_average_and_weight() {
         total_decreases: 0,
         average_attestation: 0,
         last_validator_epoch: 0,
+        ow_score: 500_000_000_000_000_000,
     });
 
     Network::decrease_coldkey_reputation(
@@ -151,6 +154,7 @@ fn test_average_attestation_over_multiple_decreases() {
         total_decreases: 0,
         average_attestation: 0,
         last_validator_epoch: 0,
+        ow_score: 500_000_000_000_000_000,
     });
 
     // Step 1: 50%
