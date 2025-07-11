@@ -19,12 +19,9 @@ use libm::pow;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  // Percentages are defined by default with 2 decimals of precision (100.00). 
-	// The precision is indicated by PERCENTAGE_FACTOR
   pub const PERCENTAGE_FACTOR: U256 = U256([0xde0b6b3a7640000, 0x0, 0x0, 0x0]);
   pub const HALF_PERCENT: U256 = U256([0x06f05b59d3b20000, 0x0, 0x0, 0x0]);
 
-  /// Percentage Math
   /// Inspired by Aave PercentageMath
 
   /// `x` is value
@@ -46,7 +43,7 @@ impl<T: Config> Pallet<T> {
     let result = x * y / Self::PERCENTAGE_FACTOR;
 
     if result > U256::from(u128::MAX) {
-      return 0;
+      return 0
     }
 
     result.try_into().unwrap_or(u128::MAX)
@@ -74,7 +71,7 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn percentage_factor_as_u128() -> u128 {
-    Self::PERCENTAGE_FACTOR.try_into().unwrap_or(u128::MAX)
+    1_000_000_000_000_000_000
   }
 
   /// Get percentage in decimal format that uses `PERCENTAGE_FACTOR` as f64

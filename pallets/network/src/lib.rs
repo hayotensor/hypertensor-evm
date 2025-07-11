@@ -97,8 +97,8 @@ pub use supply::*;
 pub mod consensus;
 pub use consensus::*;
 
-mod rewards;
-mod rewards_v3;
+// mod rewards;
+mod rewards_v4;
 
 // All pallet logic is defined in its own module and must be annotated by the `pallet` attribute.
 #[frame_support::pallet]
@@ -379,6 +379,9 @@ pub mod pallet {
 		/// Cannot deactivate node if current epochs validator
 		IsValidatorCannotDeactivate,
 
+		/// NodeRemovalStakePercentageDelta is above 100.0%
+		InvalidNodeRemovalStakePercentageDelta,
+
 
 		/// Maximum amount of subnet registrations surpassed, see subnet `node_registration_interval` for more information
 		MaxSubnetRegistrationReached,
@@ -453,6 +456,8 @@ pub mod pallet {
 		// Conversion to balance was zero
 		InsufficientBalanceToSharesConversion,
 		MinDelegateStake,
+		/// Elected validator on current epoch cannot unstake to ensure they are able to be penalized
+		ElectedValidatorCannotUnstake,
 
 		/// Not enough balance to withdraw bid for proposal
 		NotEnoughBalanceToBid,
@@ -567,6 +572,64 @@ pub mod pallet {
     Active,
   }
 
+	/// Subnet data used before activation
+	///
+	/// # Arguments
+	///
+	/// * name: Unique name of subnet
+	/// * repo: Repository URL to open-sourced subnet code base
+	/// * description: Description of subnet
+	/// * misc: Miscillanous information 
+	/// * churn_limit: Number of subnet activations per epoch
+	/// * min_stake: Minimum stake balance to register a subnet node in the subnet
+	/// * max_stake: Maximum stake balance to register a subnet node in the subnet
+	/// * delegate_stake_percentage: Percentage of emissions that are allocated to delegate stakers
+	/// * registration_queue_epochs: Number of epochs for registered nodes to be in queue before activation
+	/// * activation_grace_epochs: Grace period following `registration_queue_epochs` to activate
+	/// * queue_classification_epochs: Number of epochs in "Queue" classification (See SubnetNodeClass)
+	/// * included_classification_epochs: Number of epochs in "Included" classification (See SubnetNodeClass)
+	/// * max_node_penalties: Number of penalties to be removed
+	/// * initial_coldkeys: List of initial coldkeys that can register while subnet is in registration
+	/// * max_registered_nodes: Maximum number of nodes that can be registered at any time
+	///
+	///
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct RegistrationSubnetData<AccountId> {
+		pub name: Vec<u8>,
+		pub repo: Vec<u8>,
+		pub description: Vec<u8>,
+		pub misc: Vec<u8>,
+		pub churn_limit: u32,
+		pub min_stake: u128,
+		pub max_stake: u128,
+		pub delegate_stake_percentage: u128,
+		pub registration_queue_epochs: u32,
+		pub activation_grace_epochs: u32,
+		pub queue_classification_epochs: u32,
+		pub included_classification_epochs: u32,
+		pub max_node_penalties: u32,
+		pub initial_coldkeys: BTreeSet<AccountId>,
+		pub max_registered_nodes: u32,
+		pub node_removal_system: NodeRemovalSystem,
+	}
+	
+	/// Removal system
+	///
+	/// How activating nodes remove other nodes when the subnet is at its max node count.
+	/// 
+	/// # Arguments
+	///
+	/// *Consensus: Nodes can only be removed based on consensus, i.e., by hitting max penalties
+	/// *Stake: Lowest staked & newest node is removed if activating node has a higher stake balance
+	///		- If using this, there should be a min - max range for stake balance to allow balance competing.
+	/// *Reputation: Lowest rated & newest node is removed if activating node has a higher reputation and age.
+	#[derive(Default, EnumIter, FromRepr, Copy, Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
+	pub enum NodeRemovalSystem {
+		#[default] Consensus,
+    Stake,
+    Reputation,
+  }
+
 	pub struct SubnetInfo<AccountId> {
 		pub id: u32,
 		pub name: Vec<u8>,
@@ -588,6 +651,7 @@ pub mod pallet {
 		pub max_registered_nodes: u32,
 		pub owner: AccountId,
 		pub registration_epoch: u32,
+		pub node_removal_system: NodeRemovalSystem,
 	}
 
 	/// Subnet Node
@@ -691,12 +755,6 @@ pub mod pallet {
 	/// Scoring is calculated off-chain between subnet nodes hosting AI subnets together
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct SubnetNodeConsensusData {
-		pub peer_id: PeerId,
-		pub score: u128,
-	}
-
-	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct SubnetNodeConsensusDataV2 {
 		pub subnet_node_id: u32,
 		pub score: u128,
 	}
@@ -734,7 +792,6 @@ pub mod pallet {
 		pub subnet_nodes: Vec<SubnetNode<AccountId>>,
   }
 
-
 	/// Reasons for a subnets removal
 	///
 	/// # Enums
@@ -771,15 +828,6 @@ pub mod pallet {
 	}
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct ConsensusDataV2<AccountId> {
-		pub validator_id: u32, // Chosen validator of the epoch
-		pub attests: BTreeMap<u32, u32>, // Count of attestations of the submitted data
-		pub subnet_nodes: Vec<SubnetNode<AccountId>>,
-		pub data: Vec<SubnetNodeConsensusDataV2>, // Data submitted by chosen validator
-		pub args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>, // Optional arguements to pass for subnet to validate
-	}
-
-	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct RewardsData {
     pub overall_subnet_reward: u128,
     pub subnet_owner_reward: u128,
@@ -798,64 +846,6 @@ pub mod pallet {
   pub enum VoteType {
     Yay,
     Nay,
-  }
-
-	/// Subnet data used before activation
-	///
-	/// # Arguments
-	///
-	/// * name: Unique name of subnet
-	/// * repo: Repository URL to open-sourced subnet code base
-	/// * description: Description of subnet
-	/// * misc: Miscillanous information 
-	/// * churn_limit: Number of subnet activations per epoch
-	/// * min_stake: Minimum stake balance to register a subnet node in the subnet
-	/// * max_stake: Maximum stake balance to register a subnet node in the subnet
-	/// * delegate_stake_percentage: Percentage of emissions that are allocated to delegate stakers
-	/// * registration_queue_epochs: Number of epochs for registered nodes to be in queue before activation
-	/// * activation_grace_epochs: Grace period following `registration_queue_epochs` to activate
-	/// * queue_classification_epochs: Number of epochs in "Queue" classification (See SubnetNodeClass)
-	/// * included_classification_epochs: Number of epochs in "Included" classification (See SubnetNodeClass)
-	/// * max_node_penalties: Number of penalties to be removed
-	/// * initial_coldkeys: List of initial coldkeys that can register while subnet is in registration
-	/// * max_registered_nodes: Maximum number of nodes that can be registered at any time
-	///
-	///
-	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-	pub struct RegistrationSubnetData<AccountId> {
-		pub name: Vec<u8>,
-		pub repo: Vec<u8>,
-		pub description: Vec<u8>,
-		pub misc: Vec<u8>,
-		pub churn_limit: u32,
-		pub min_stake: u128,
-		pub max_stake: u128,
-		pub delegate_stake_percentage: u128,
-		pub registration_queue_epochs: u32,
-		pub activation_grace_epochs: u32,
-		pub queue_classification_epochs: u32,
-		pub included_classification_epochs: u32,
-		pub max_node_penalties: u32,
-		pub initial_coldkeys: BTreeSet<AccountId>,
-		pub max_registered_nodes: u32,
-		pub node_removal_system: NodeRemovalSystem,
-	}
-	
-	/// Removal system
-	///
-	/// How activating nodes remove other nodes when the subnet is at its max node count.
-	/// 
-	/// # Arguments
-	///
-	/// *Consensus: Nodes can only be removed based on consensus, i.e., by hitting max penalties
-	/// *Stake: Lowest staked & newest node is removed if activating node has a higher stake balance
-	///		- If using this, there should be a min - max range for stake balance to allow balance competing.
-	/// *Reputation: Lowest rated & newest node is removed if activating node has a higher reputation and age.
-	#[derive(Default, EnumIter, FromRepr, Copy, Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
-	pub enum NodeRemovalSystem {
-		#[default] Consensus,
-    Stake,
-    Reputation,
   }
 
 	/// Subnet node deactivation parameters
@@ -1034,15 +1024,27 @@ pub mod pallet {
 		4
 	}
 	#[pallet::type_value]
-	pub fn DefaultMaxStakeBalance() -> u128 {
+	pub fn DefaultNetworkMaxStakeBalance() -> u128 {
 		280000000000000000000000
 	}
 	#[pallet::type_value]
-	pub fn DefaultMinStakeBalance() -> u128 {
+	pub fn DefaultNetworkMinStakeBalance() -> u128 {
 		1000e+18 as u128
 	}
+	#[pallet::type_value]
+	pub fn DefaultMinActiveNodeStakeEpochs() -> u32 {
+		100
+	}
+	#[pallet::type_value]
+	pub fn DefaultSubnetMinStakeBalance() -> u128 {
+		100+18 as u128
+	}
+	#[pallet::type_value]
+	pub fn DefaultSubnetMaxStakeBalance() -> u128 {
+		10000e+18 as u128
+	}
 	// #[pallet::type_value]
-	// pub fn DefaultMaxStakeBalance() -> u128 {
+	// pub fn DefaultNetworkMaxStakeBalance() -> u128 {
 	// 	1000e+18 as u128
 	// }
 	#[pallet::type_value]
@@ -1063,6 +1065,14 @@ pub mod pallet {
 	pub fn DefaultDelegateStakeTransferPeriod() -> u32 {
 		1000
 	}
+	// #[pallet::type_value]
+	// pub fn DefaultSubnetMinStakeBalance() -> u128 {
+	// 	1000
+	// }
+	// #[pallet::type_value]
+	// pub fn DefaultSubnetMaxStakeBalance() -> u128 {
+	// 	1000
+	// }
 	#[pallet::type_value]
 	pub fn DefaultDelegateStakeRewardsPercentage() -> u128 {
 		// 1100
@@ -1332,7 +1342,7 @@ pub mod pallet {
 	}
 	#[pallet::type_value]
 	pub fn DefaultMaxSubnetMaxStake() -> u128 {
-		100000e+18 as u128
+		10000e+18 as u128
 	}
 	#[pallet::type_value]
 	pub fn DefaultMinDelegateStakePercentage() -> u128 {
@@ -1363,6 +1373,10 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultSubnetNodeRemovalSystem() -> NodeRemovalSystem {
 		NodeRemovalSystem::Consensus
+	}
+	#[pallet::type_value]
+	pub fn DefaultNodeRemovalStakePercentageDelta() -> u128 {
+		0
 	}
 	#[pallet::type_value]
 	pub fn DefaultQueueClassificationEpochs() -> u32 {
@@ -1597,7 +1611,7 @@ pub mod pallet {
 
 	/// Maps subnet_id => slot (block offset in epoch)
 	#[pallet::storage]
-	pub type SubnetRewardSlot<T> = StorageMap<_, Identity, u32, u32, OptionQuery>;
+	pub type SubnetSlot<T> = StorageMap<_, Identity, u32, u32, OptionQuery>;
 
 	/// Reverse: slot => subnet_id (to track occupied slots)
 	#[pallet::storage]
@@ -1752,12 +1766,12 @@ pub mod pallet {
 
 	// Min required stake balance for a subnet node in a specified subnet
 	#[pallet::storage]
-	pub type SubnetMinStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultMinStakeBalance>;
+	pub type SubnetMinStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultSubnetMinStakeBalance>;
 		
 	// Max stake balance for a subnet node in a specified subnet
 	// A node can go over this amount as a balance but cannot add more above it
 	#[pallet::storage]
-	pub type SubnetMaxStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultMinStakeBalance>;
+	pub type SubnetMaxStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultSubnetMaxStakeBalance>;
 
 	#[pallet::storage]
 	pub type SubnetDelegateStakeRewardsPercentage<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultDelegateStakeRewardsPercentage>;
@@ -1797,40 +1811,18 @@ pub mod pallet {
 	pub type SubnetNodeRemovalSystem<T> =
 		StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
 
-	// /// Max epochs a subnet node can be in the registration phase before being removed
-	// #[pallet::storage]
-	// pub type SubnetNodeRegistrationEpochs<T> = StorageMap<
-	// 	_,
-	// 	Identity,
-	// 	u32,
-	// 	u32,
-	// 	ValueQuery,
-	// 	DefaultSubnetNodeRegistrationEpochs
-	// >;
-
-	// /// Epochs a node is in the Queue period before being upgraded to Included
-	// #[pallet::storage]
-	// pub type SubnetNodeQueuePeriod<T> = StorageMap<
-	// 	_,
-	// 	Identity,
-	// 	u32,
-	// 	u32,
-	// 	ValueQuery,
-	// 	DefaultSubnetNodeQueuePeriod
-	// >;
+	/// When subnet utilizes the node removal system Stake
+	/// The percentage delta of the activating node versus the removal node minimum delta
+	/// e.g. If the NodeRemovalStakePercentageDelta is 10% and the activating node has 100, 
+	/// 		 the removing node must have a stake of less than 90
+	#[pallet::storage]
+	pub type NodeRemovalStakePercentageDelta<T> =
+		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalStakePercentageDelta>;
 
 	#[pallet::storage] // subnet_id --> u32
 	pub type TotalSubnetNodeUids<T: Config> = StorageMap<_, Identity, u32, u32, ValueQuery>;
 
 	/// Coldkey identities
-
-	// /// Fee to register an identity
-	// #[pallet::storage]
-	// pub type IdentityFee<T: Config> = StorageValue<_, u128, ValueQuery, DefaultIdentityFee>;
-
-	// /// Public Identity => Coldkey
-	// #[pallet::storage]
-	// pub type IdentityColdkey<T: Config> = StorageMap<_, Identity, Vec<u8>, T::AccountId, ValueQuery, DefaultAccountId<T>>;
 
 	/// Coldkey => Public Identity
 	#[pallet::storage] 
@@ -1898,12 +1890,6 @@ pub mod pallet {
 		ValueQuery,
 		DefaultSubnetNode<T>,
 	>;
-
-	// #[pallet::storage] // subnet_id --> [subnet_node_id]
-	// pub type RegistrationQueue<T: Config> = StorageMap<_, Identity, u32, Vec<u32>, ValueQuery>;
-
-	// #[pallet::storage]
-	// pub type RegisteredSubnetNodes<T: Config> = StorageMap<_, Identity, u32, BTreeMap<SubnetNode<T::AccountId>, u32>, ValueQuery>;
 	
 	#[pallet::storage] // subnet_id --> peer_id --> subnet_node_id
 	#[pallet::getter(fn subnet_node_account)]
@@ -2009,16 +1995,6 @@ pub mod pallet {
 		Identity,
 		u32,
 		ConsensusData<T::AccountId>,
-	>;
-
-	#[pallet::storage] // subnet ID => epoch  => data
-	pub type SubnetConsensusSubmissionV2<T: Config> = StorageDoubleMap<
-		_,
-		Identity,
-		u32,
-		Identity,
-		u32,
-		ConsensusDataV2<T::AccountId>,
 	>;
 
 	#[pallet::storage]
@@ -2143,20 +2119,24 @@ pub mod pallet {
 	pub type StakeUnbondingLedger<T: Config> = 
 		StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u128>, ValueQuery, DefaultStakeUnbondingLedger>;
 
-	// Maximum stake balance per subnet node
+	// Network maximum stake balance per subnet node
 	// Only checked on `do_add_stake` and ``
 	// A subnet staker can have greater than the max stake balance although any rewards
 	// they would receive based on their stake balance will only account up to the max stake balance allowed
 	#[pallet::storage]
-	pub type MaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMaxStakeBalance>;
+	pub type NetworkMaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMaxStakeBalance>;
 
-	// Minimum required subnet node stake balance per subnet
+	// Network minimum required subnet node stake balance per subnet
 	#[pallet::storage]
-	pub type MinStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMinStakeBalance>;
+	pub type NetworkMinStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMinStakeBalance>;
+
+	// The number of epochs a node must stay staked as a node from start_epoch
+	#[pallet::storage]
+	pub type MinActiveNodeStakeEpochs<T> = StorageValue<_, u32, ValueQuery, DefaultMinActiveNodeStakeEpochs>;
 
 	// The maximum balance a subnet can require a node to stake to become a node in Hypertensor
 	// #[pallet::storage]
-	// pub type MaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultMaxStakeBalance>;
+	// pub type NetworkMaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMaxStakeBalance>;
 
 	//
 	// Delegate Staking
@@ -3300,7 +3280,26 @@ pub mod pallet {
 			//		They are removed in `do_remove_subnet_node()` when self or consensus removed
 			// This includes registered, active, and deactivated subnet nodes
 			let is_subnet_node: bool = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &hotkey) {
-				Ok(subnet_node_id) => true,
+				Ok(subnet_node_id) => {
+					let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+					let is_validator: bool = Self::is_validator(subnet_id, subnet_node_id, subnet_epoch);
+					// --- Check if current epochs validator, can't unstake if so
+					ensure!(
+						!is_validator,
+						Error::<T>::ElectedValidatorCannotUnstake
+					);
+
+					if let Some(subnet_node) = Self::get_activated_subnet_node(subnet_id, subnet_node_id) {
+						let min_stake_epochs = MinActiveNodeStakeEpochs::<T>::get();
+						// --- Ensure activated nodes minimum stake epochs are complete to remove any balances
+						ensure!(
+							subnet_epoch > subnet_node.classification.start_epoch + min_stake_epochs,
+							Error::<T>::ElectedValidatorCannotUnstake
+						);
+					}
+					
+					true
+				},
 				Err(()) => false,
 			};
 
@@ -4004,7 +4003,6 @@ pub mod pallet {
 						match ColdkeyIdentity::<T>::try_get(&curr_coldkey) {
 							Ok(identity) => {
 								ColdkeyIdentity::<T>::swap(&curr_coldkey, &new_coldkey);
-								// IdentityColdkey::<T>::insert(identity, &new_coldkey);
 							},
 							// Has no identity, pass
 							Err(()) => (),
@@ -4585,8 +4583,6 @@ pub mod pallet {
 
 			TotalActiveSubnets::<T>::mutate(|n: &mut u32| *n += 1);
 
-			// --- Remove registration epoch
-			// SubnetRegistrationEpoch::<T>::remove(subnet_id);
 			// --- Remove registration whitelist
 			SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
 
@@ -5137,17 +5133,7 @@ pub mod pallet {
 			};
 
 			let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-			// let is_validator: bool = match SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
-			let is_validator: bool = match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
-				Ok(validator_id) => {
-					let mut is_validator = false;
-					if subnet_node_id == validator_id {
-						is_validator = true
-					}
-					is_validator
-				},
-				Err(()) => false,
-			};
+			let is_validator: bool = Self::is_validator(subnet_id, subnet_node_id, subnet_epoch);
 
 			ensure!(
 				!is_validator,
@@ -5306,7 +5292,7 @@ pub mod pallet {
 				return weight.saturating_add(step_weight)
 			} else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
 				weight = weight.saturating_add(T::DbWeight::get().reads(1));
-				let step_weight = Self::emission_step_v2(block, current_epoch, subnet_id);
+				let step_weight = Self::emission_step(block, current_epoch, subnet_id);
 				return weight.saturating_add(step_weight)
 			} else {
 				// If we made it this far, SlotAssignment was read
@@ -5385,7 +5371,7 @@ pub mod pallet {
 			// LastSubnetRegistrationEpoch::<T>::set(1);
 
 			// // Increase delegate stake to allow activation of subnet model
-			// let min_stake_balance = MinStakeBalance::<T>::get();
+			// let min_stake_balance = NetworkMinStakeBalance::<T>::get();
 			// // --- Get minimum subnet stake balance
 			// let min_subnet_stake_balance = min_stake_balance;
 
@@ -5451,7 +5437,7 @@ pub mod pallet {
 			// // Only initialize to test using subnet nodes
 			// // If testing using subnet nodes in a subnet, comment out the ``for`` loop
 
-			// let mut stake_amount: u128 = MinStakeBalance::<T>::get();
+			// let mut stake_amount: u128 = NetworkMinStakeBalance::<T>::get();
 			
 			// let mut count = 0;
 			// for (account_id, peer_id) in &self.subnet_nodes {

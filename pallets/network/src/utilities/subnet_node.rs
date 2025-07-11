@@ -142,6 +142,29 @@ impl<T: Config> Pallet<T> {
     Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
   }
 
+  pub fn get_subnet_node(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNode<T::AccountId>> {
+    if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(RegisteredSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(DeactivatedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else {
+      None
+    }
+  }
+
+  /// Get any subnet node that has been activated (not including registered nodes)
+  pub fn get_activated_subnet_node(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNode<T::AccountId>> {
+    if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(DeactivatedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else {
+      None
+    }
+  }
+
   pub fn get_classified_subnet_node_ids<C>(
     subnet_id: u32,
     classification: &SubnetNodeClass,
@@ -206,13 +229,15 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_lowest_stake_balance_node(subnet_id: u32, hotkey: &T::AccountId) -> Option<u32> {
     // Get calling nodes stake balance
-    let stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+    let activating_node_stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+    let percentage_delta = NodeRemovalStakePercentageDelta::<T>::get(subnet_id);
+    let min_stake_balance = Self::percent_mul(activating_node_stake_balance, percentage_delta);
     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
 
     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
       let node_hotkey = node.hotkey.clone();
       let stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
-      if stake >= stake_balance {
+      if stake >= min_stake_balance {
         continue
       }
       let start_epoch = node.classification.start_epoch;
@@ -323,6 +348,19 @@ impl<T: Config> Pallet<T> {
     match HotkeyOwner::<T>::try_get(hotkey) {
       Ok(subnet_node_coldkey) => return subnet_node_coldkey == coldkey,
       Err(()) => return false
+    }
+  }
+
+  pub fn is_validator(subnet_id: u32, subnet_node_id: u32, subnet_epoch: u32) -> bool {
+    match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
+      Ok(validator_subnet_node_id) => {
+        let mut is_validator = false;
+        if subnet_node_id == validator_subnet_node_id {
+          is_validator = true
+        }
+        is_validator
+      },
+      Err(()) => false,
     }
   }
 

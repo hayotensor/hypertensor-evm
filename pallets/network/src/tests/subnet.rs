@@ -20,7 +20,7 @@ use crate::{
   SubnetState,
   TotalActiveSubnets,
   MaxSubnetNodes,
-  SubnetRewardSlot,
+  SubnetSlot,
   SlotAssignment,
   AssignedSlots,
 };
@@ -44,7 +44,7 @@ use crate::{
 #[test]
 fn test_register_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -64,7 +64,7 @@ fn test_register_subnet() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -83,7 +83,7 @@ fn test_register_subnet() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     // Check treasury pot
@@ -96,7 +96,7 @@ fn test_register_subnet() {
 #[test]
 fn test_register_subnet_subnet_registration_cooldown() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     increase_epochs(1);
 
@@ -118,7 +118,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -138,17 +138,17 @@ fn test_register_subnet_subnet_registration_cooldown() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
-    let subnet_path: Vec<u8> = "subnet-name-2".into();
+    let subnet_name: Vec<u8> = "subnet-name-2".into();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -185,14 +185,14 @@ fn test_register_subnet_subnet_registration_cooldown() {
     );
 
     // --- Cooldown expected after registering again
-    let subnet_path: Vec<u8> = "subnet-name-3".into();
+    let subnet_name: Vec<u8> = "subnet-name-3".into();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -211,7 +211,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
 #[test]
 fn test_register_subnet_exists_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -231,7 +231,7 @@ fn test_register_subnet_exists_error() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -266,7 +266,7 @@ fn test_register_subnet_exists_error() {
 fn test_register_subnet_not_enough_balance_err() {
   new_test_ext().execute_with(|| {
     // let _ = Balances::deposit_creating(&account(0), cost+1000);  
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let min_nodes = MinSubnetNodes::<Test>::get();
 
@@ -278,7 +278,7 @@ fn test_register_subnet_not_enough_balance_err() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -303,7 +303,7 @@ fn test_register_subnet_not_enough_balance_err() {
 #[test]
 fn test_activate_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -323,7 +323,7 @@ fn test_activate_subnet() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -342,7 +342,7 @@ fn test_activate_subnet() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -393,7 +393,7 @@ fn test_activate_subnet() {
       )
     );
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
     assert_eq!(subnet.id, subnet_id);
 
@@ -407,7 +407,7 @@ fn test_activate_subnet() {
 #[test]
 fn test_activate_subnet_invalid_subnet_id_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -427,7 +427,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -446,7 +446,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -487,7 +487,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
 #[test]
 fn test_activate_subnet_already_activated_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -507,7 +507,7 @@ fn test_activate_subnet_already_activated_err() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -526,7 +526,7 @@ fn test_activate_subnet_already_activated_err() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -590,7 +590,7 @@ fn test_activate_subnet_already_activated_err() {
 #[test]
 fn test_activate_subnet_enactment_period_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -610,7 +610,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -630,7 +630,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
     let id = subnet.id;
@@ -691,20 +691,20 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_name.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
 
     // --- Ensure nodes can be removed and unstake
-    // post_subnet_removal_ensures(subnet_id, subnets, max_subnet_nodes, subnet_path, 0, total_subnet_nodes);
+    // post_subnet_removal_ensures(subnet_id, subnets, max_subnet_nodes, subnet_name, 0, total_subnet_nodes);
   })
 }
 
 #[test]
 fn test_activate_subnet_initializing_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -724,7 +724,7 @@ fn test_activate_subnet_initializing_error() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -744,7 +744,7 @@ fn test_activate_subnet_initializing_error() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -796,7 +796,7 @@ fn test_activate_subnet_initializing_error() {
 #[test]
 fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -816,7 +816,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -835,7 +835,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -861,7 +861,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_name.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
@@ -871,7 +871,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
 #[test]
 fn test_activate_subnet_min_delegate_balance_remove_subnet() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
@@ -891,7 +891,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
       subnets,
       max_subnet_nodes,
-      subnet_path.clone().into(),
+      subnet_name.clone().into(),
       start, 
       end
     );
@@ -910,7 +910,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       )
     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
     let id = subnet.id;
@@ -957,7 +957,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       }
 		);
 
-    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_path.clone());
+    let removed_subnet_id = SubnetName::<Test>::try_get(subnet_name.clone());
     assert_eq!(removed_subnet_id, Err(()));
     let subnet = SubnetsData::<Test>::try_get(subnet_id);
     assert_eq!(subnet, Err(()));
@@ -972,7 +972,7 @@ fn test_assign_subnet_slot_success() {
 		let slot = Network::assign_subnet_slot(subnet_id).unwrap();
 		assert_eq!(slot, 2); // Should assign slot 2, since 0-1 is skipped
 
-		assert_eq!(SubnetRewardSlot::<Test>::get(subnet_id), Some(2));
+		assert_eq!(SubnetSlot::<Test>::get(subnet_id), Some(2));
 		assert_eq!(SlotAssignment::<Test>::get(2), Some(subnet_id));
 		assert!(AssignedSlots::<Test>::get().contains(&2));
 	});
@@ -1001,12 +1001,12 @@ fn test_free_slot_removes_assignment() {
 		let subnet_id = 42;
 		let _ = Network::assign_subnet_slot(subnet_id);
 
-		assert!(SubnetRewardSlot::<Test>::contains_key(subnet_id));
+		assert!(SubnetSlot::<Test>::contains_key(subnet_id));
 		assert!(AssignedSlots::<Test>::get().len() > 0);
 
 		Network::free_slot_of_subnet(subnet_id);
 
-		assert!(!SubnetRewardSlot::<Test>::contains_key(subnet_id));
+		assert!(!SubnetSlot::<Test>::contains_key(subnet_id));
 		assert_eq!(SlotAssignment::<Test>::iter().count(), 0);
 		assert_eq!(AssignedSlots::<Test>::get().len(), 0);
 	});
@@ -1019,7 +1019,7 @@ fn test_free_slot_does_nothing_if_slot_not_found() {
 		Network::free_slot_of_subnet(123);
 
 		// Make sure storage still empty
-		assert_eq!(SubnetRewardSlot::<Test>::iter().count(), 0);
+		assert_eq!(SubnetSlot::<Test>::iter().count(), 0);
 		assert_eq!(SlotAssignment::<Test>::iter().count(), 0);
 		assert_eq!(AssignedSlots::<Test>::get().len(), 0);
 	});

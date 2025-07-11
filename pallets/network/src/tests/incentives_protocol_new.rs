@@ -27,7 +27,7 @@ use crate::{
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
   PeerIdSubnetNode,
-  MinStakeBalance,
+  NetworkMinStakeBalance,
   SubnetOwnerPercentage,
   SubnetNodesData,
   TotalNodeDelegateStakeShares,
@@ -67,26 +67,29 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 #[test]
 fn test_validate() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let end = 12;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = block_number / epoch_length;
 
-    // Network::do_epoch_preliminaries(System::block_number(), epoch);
     set_block_to_subnet_slot(epoch, subnet_id);
+
+    let blockchain_epoch = Network::get_current_epoch_as_u32();
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
@@ -94,27 +97,21 @@ fn test_validate() {
       block_number
     );
 
-    let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+    let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+
+    // for x in subnet_node_data_vec.iter() {
+    //   let subnet_node = SubnetNodesData::<Test>::get(
+    //     subnet_id, 
+    //     x.subnet_node_id
+    //   );
+    //   log::error!("subnet_node {:?}", subnet_node.classification);
+    // }
 
     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
 
     let hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
     // assert!(hotkey != None, "Validator is None");
-
-    // assert_err!(
-    //   Network::validate(
-    //     RuntimeOrigin::signed(hotkey.clone()), 
-    //     subnet_id,
-    //     subnet_node_data_vec.clone(),
-    //     None,
-    //   ),
-    //   Error::<Test>::InvalidValidator
-    // );
-
-    // // Incrase by one block to get to the next epoch
-    // let block_number = System::block_number();
-    // System::set_block_number(block_number + 1);
 
     assert_ok!(
       Network::validate(
@@ -132,6 +129,7 @@ fn test_validate() {
     let sum = submission.data.iter().fold(0, |acc, x| acc + x.score);
     assert_eq!(sum, DEFAULT_SCORE * total_subnet_nodes as u128, "Err: sum");
     assert_eq!(submission.attests.len(), 1, "Err: attests"); // validator auto-attests
+    assert_eq!(submission.subnet_nodes.len() as u32, end, "Err: Nodes length");
 
     assert_err!(
       Network::validate(
@@ -148,18 +146,18 @@ fn test_validate() {
 #[test]
 fn test_validate_after_slot_error() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 12, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let epoch_length = EpochLength::get();
@@ -174,7 +172,7 @@ fn test_validate_after_slot_error() {
       block_number
     );
 
-    let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+    let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
@@ -200,15 +198,15 @@ fn test_validate_after_slot_error() {
 // #[test]
 // fn test_validate_peer_with_0_score() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let epoch_length = EpochLength::get();
@@ -259,17 +257,17 @@ fn test_validate_after_slot_error() {
 #[test]
 fn test_validate_invalid_validator() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let epoch_length = EpochLength::get();
@@ -284,7 +282,7 @@ fn test_validate_invalid_validator() {
       block_number
     );
 
-    let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+    let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
     assert!(validator_id != None, "Validator is None");
@@ -312,18 +310,18 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_attest() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let epoch_length = EpochLength::get();
@@ -331,7 +329,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
 //     assert!(validator_id != None, "Validator is None");
@@ -398,17 +396,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_attest_remove_exiting_attester() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let epoch_length = EpochLength::get();
@@ -416,7 +414,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Get validator
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -502,17 +500,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_attest_no_submission_err() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     // increase_epochs(1);
@@ -522,7 +520,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Get validator
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -541,17 +539,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_attest_already_attested_err() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     // increase_epochs(1);
@@ -561,7 +559,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
 //     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
@@ -638,15 +636,15 @@ fn test_validate_invalid_validator() {
 // // #[test]
 // // fn test_reward_subnets() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// //     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-// //     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+// //     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     // increase_epochs(1);
@@ -657,7 +655,7 @@ fn test_validate_invalid_validator() {
 // //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
 
-// //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// //     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
 
 // //     // --- Get validator
 // //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -692,17 +690,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_reward_subnets_v2() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     // increase_epochs(1);
@@ -712,7 +710,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Get validator
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -749,15 +747,15 @@ fn test_validate_invalid_validator() {
 // // fn test_reward_subnets_remove_subnet_node() {
 // //   new_test_ext().execute_with(|| {
 // //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// // let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// // let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-// // build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+// // build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     increase_epochs(1);
@@ -771,7 +769,7 @@ fn test_validate_invalid_validator() {
 // //     for num in 0..max_absent+1 {
 // //       let epoch = System::block_number() / epoch_length;
   
-// //       let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes-1);
+// //       let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes-1);
     
 // //       // --- Insert validator
 // //       SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -876,13 +874,13 @@ fn test_validate_invalid_validator() {
 // // // fn test_reward_subnets_absent_node_increment_decrement() {
 // // //   new_test_ext().execute_with(|| {
 // // //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
-// // //     let subnet_path: Vec<u8> = "subnet-name".into();
+// // //     let subnet_name: Vec<u8> = "subnet-name".into();
 // // //     let deposit_amount: u128 = 10000000000000000000000;
 // // //     let amount: u128 = 1000000000000000000000;
 
-// // //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, amount);
+// // //     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, amount);
 
-// // //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// // //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // // //     increase_epochs(1);
@@ -900,7 +898,7 @@ fn test_validate_invalid_validator() {
 // // //       if num % 2 == 0 {
 // // //         // increment on even epochs
 
-// // //         let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes-1);
+// // //         let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes-1);
     
 // // //         assert_ok!(
 // // //           Network::validate(
@@ -926,7 +924,7 @@ fn test_validate_invalid_validator() {
 // // //         assert_eq!(node_absent_count, 1);
 // // //       } else {
 // // //         // decrement on odd epochs
-// // //         let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// // //         let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
         
 // // //         assert_ok!(
 // // //           Network::validate(
@@ -962,13 +960,13 @@ fn test_validate_invalid_validator() {
 // //   new_test_ext().execute_with(|| {
 // //     let max_absent = MaxSubnetNodePenalties::<Test>::get();
 
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, amount);
+// //     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     increase_epochs(1);
@@ -976,7 +974,7 @@ fn test_validate_invalid_validator() {
 // //     let epoch_length = EpochLength::get();
 // //     let epoch = System::block_number() / epoch_length;
 
-// //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// //     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
   
 // //     // --- Insert validator
 // //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1053,15 +1051,15 @@ fn test_validate_invalid_validator() {
 // // #[test]
 // // fn test_reward_subnets_validator_slash() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// //     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-// //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+// //     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     // increase_epochs(1);
@@ -1071,7 +1069,7 @@ fn test_validate_invalid_validator() {
 
 // //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-// //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// //     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
 
 // //     // --- Get validator
 // //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -1102,17 +1100,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_reward_subnets_v2_validator_slash() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     // increase_epochs(1);
@@ -1122,7 +1120,7 @@ fn test_validate_invalid_validator() {
 
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Get validator
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
@@ -1153,15 +1151,15 @@ fn test_validate_invalid_validator() {
 // // #[test]
 // // fn test_reward_subnets_subnet_penalty_count() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// //     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-// //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+// //     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     increase_epochs(1);
@@ -1169,7 +1167,7 @@ fn test_validate_invalid_validator() {
 // //     let epoch_length = EpochLength::get();
 // //     let epoch = System::block_number() / epoch_length;
 
-// //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// //     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
 
 // //     // --- Insert validator
 // //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1213,17 +1211,17 @@ fn test_validate_invalid_validator() {
 //   new_test_ext().execute_with(|| {
 //     let _ = env_logger::builder().is_test(true).try_init();
 
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     increase_epochs(1);
@@ -1231,7 +1229,7 @@ fn test_validate_invalid_validator() {
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Insert validator
 //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1273,15 +1271,15 @@ fn test_validate_invalid_validator() {
 // // #[test]
 // // fn test_reward_subnets_account_penalty_count() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 // //     let deposit_amount: u128 = 10000000000000000000000;
 // //     let amount: u128 = 1000000000000000000000;
 
-// //     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// //     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-// //     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+// //     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 // //     increase_epochs(1);
@@ -1289,7 +1287,7 @@ fn test_validate_invalid_validator() {
 // //     let epoch_length = EpochLength::get();
 // //     let epoch = System::block_number() / epoch_length;
 
-// //     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+// //     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
 
 // //     // --- Insert validator
 // //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1318,17 +1316,17 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_reward_subnets_v2_account_penalty_count() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 15, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 15, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     increase_epochs(1);
@@ -1336,7 +1334,7 @@ fn test_validate_invalid_validator() {
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
 //     // --- Insert validator
 //     Network::do_epoch_preliminaries(System::block_number(), epoch);
@@ -1375,7 +1373,7 @@ fn test_validate_invalid_validator() {
 // // #[test]
 // // fn test_do_epoch_preliminaries_deactivate_subnet_enactment_period() {
 // //   new_test_ext().execute_with(|| {
-// //     let subnet_path: Vec<u8> = "subnet-name".into();
+// //     let subnet_name: Vec<u8> = "subnet-name".into();
 
 // //     let epoch_length = EpochLength::get();
 // //     let block_number = System::block_number();
@@ -1386,7 +1384,7 @@ fn test_validate_invalid_validator() {
 // //     let _ = Balances::deposit_creating(&account(1), cost+1000);
   
 // //     let add_subnet_data = RegistrationSubnetData {
-// //       name: subnet_path.clone().into(),
+// //       name: subnet_name.clone().into(),
 // //       max_node_registration_epochs: 16,
 // //       node_registration_interval: 0,
 // //       node_queue_period: 1,
@@ -1408,7 +1406,7 @@ fn test_validate_invalid_validator() {
 // //       )
 // //     );
 
-// //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 // //     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
 // //     let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
@@ -1449,16 +1447,16 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
     
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     // --- Remove delegate stake to force MinSubnetDelegateStake removal reason
@@ -1491,16 +1489,16 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_do_epoch_preliminaries_deactivate_max_penalties() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
     
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let max_subnet_penalty_count = MaxSubnetPenaltyCount::<Test>::get();
@@ -1526,16 +1524,16 @@ fn test_validate_invalid_validator() {
 // #[test]
 // fn test_do_epoch_preliminaries_choose_validator() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
     
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     increase_epochs(1);
@@ -1553,9 +1551,9 @@ fn test_validate_invalid_validator() {
 // // // // #[test]
 // // // // fn test_add_subnet_node_signature() {
 // // // //   new_test_ext().execute_with(|| {
-// // // //     let subnet_path: Vec<u8> = "subnet-name".into();
+// // // //     let subnet_name: Vec<u8> = "subnet-name".into();
 
-// // // //     build_subnet(subnet_path.clone());
+// // // //     build_subnet(subnet_name.clone());
 // // // //     assert_eq!(Network::total_subnets(), 1);
 
 // // // // let mut n_peers: u32 = Network::max_subnet_nodes();
@@ -1567,7 +1565,7 @@ fn test_validate_invalid_validator() {
 // // // //     let amount: u128 = 1000000000000000000000;
 // // // //     let mut amount_staked: u128 = 0;
 
-// // // //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// // // //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 // // // //     let encoded_peer_id = Encode::encode(&peer(1).0.to_vec());
 // // // //     let public = sr25519_generate(0.into(), None);
@@ -1637,16 +1635,16 @@ fn test_validate_invalid_validator() {
 // // // // 		assert_ok!(Network::validate_signature(&encoded_data, &signature, &user_1));
 
 // // // //     // validate signature is the owner of the peer_id
-// // // //     let subnet_path: Vec<u8> = "subnet-name".into();
+// // // //     let subnet_name: Vec<u8> = "subnet-name".into();
 
-// // // //     build_subnet(subnet_path.clone());
+// // // //     build_subnet(subnet_name.clone());
 
 // // // //     let deposit_amount: u128 = 10000000000000000000000;
 // // // //     let amount: u128 = 1000000000000000000000;
 
 // // // //     let mut total_staked: u128 = 0;
 
-// // // //     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+// // // //     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 // // // //     let _ = Balances::deposit_creating(&user_1, deposit_amount);
     
@@ -1666,15 +1664,15 @@ fn test_validate_invalid_validator() {
 //   new_test_ext().execute_with(|| {
 //     let _ = env_logger::builder().is_test(true).try_init();
 
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
 //     build_activated_subnet_with_delegator_rewards(
-//       subnet_path.clone(), 
+//       subnet_name.clone(), 
 //       0, 
 //       16, 
 //       deposit_amount, 
@@ -1682,7 +1680,7 @@ fn test_validate_invalid_validator() {
 //       DEFAULT_DELEGATE_REWARD_RATE,
 //     );
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
 //     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), amount+500);
@@ -1700,7 +1698,7 @@ fn test_validate_invalid_validator() {
 
 //     let epoch = get_epoch();
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
   
 //     // --- Insert validator
 //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1801,15 +1799,15 @@ fn test_validate_invalid_validator() {
 //   new_test_ext().execute_with(|| {
 //     let _ = env_logger::builder().is_test(true).try_init();
 
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
 //     build_activated_subnet_with_delegator_rewards(
-//       subnet_path.clone(), 
+//       subnet_name.clone(), 
 //       0, 
 //       16, 
 //       deposit_amount, 
@@ -1817,7 +1815,7 @@ fn test_validate_invalid_validator() {
 //       DEFAULT_DELEGATE_REWARD_RATE,
 //     );
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 //     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
     
 //     for n in 1..total_subnet_nodes+1 {
@@ -1837,7 +1835,7 @@ fn test_validate_invalid_validator() {
 
 //     let epoch = get_epoch();
 
-//     let subnet_node_data_vec = subnet_node_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
   
 //     // --- Insert validator
 //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -1965,16 +1963,16 @@ fn test_validate_invalid_validator() {
 //   new_test_ext().execute_with(|| {
 //     let _ = env_logger::builder().is_test(true).try_init();
 
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 //     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 //     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
-//     build_activated_subnet_new(subnet_path.clone(), 0, 12, deposit_amount, stake_amount);
+//     build_activated_subnet_new(subnet_name.clone(), 0, 12, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //     increase_epochs(2);
 // 		let epoch = get_epoch();

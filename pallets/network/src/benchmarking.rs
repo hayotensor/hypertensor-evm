@@ -60,7 +60,7 @@ fn funded_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
 	let caller: T::AccountId = account(name, index, SEED);
 	// Give the account half of the maximum value of the `Balance` type.
 	// Otherwise some transfers will fail with an overflow error.
-	let deposit_amount: u128 = MinStakeBalance::<T>::get() + 10000;
+	let deposit_amount: u128 = NetworkMinStakeBalance::<T>::get() + 10000;
 	T::Currency::deposit_creating(&caller, deposit_amount.try_into().ok().expect("REASON"));
 	caller
 }
@@ -349,14 +349,14 @@ pub fn get_subnet_node_consensus_data<T: Config>(
 
 	for n in 0..node_count {
 		let node_id = subnet_id*max_subnet_nodes+n;
-		let peer_id = peer(node_id);
+		// let peer_id = peer(node_id);
 
 		// Simulate some score and block number
 		let score = 1000e+18 as u128;
 
 		attests.insert(node_id, block_number);
 		data.push(SubnetNodeConsensusData {
-			peer_id,
+			node_id,
 			score,
 		});
 	}
@@ -618,7 +618,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn distribute_rewards_v2() {
+	fn distribute_rewards() {
 		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
@@ -677,7 +677,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			let _ = Network::<T>::distribute_rewards_v2(
+			let _ = Network::<T>::distribute_rewards(
 				subnet_id,
 				block,
 				epoch,
@@ -806,7 +806,7 @@ mod benchmarks {
 
 	// 	#[block]
 	// 	{
-	// 		let _ = Network::<T>::emission_step_v2(
+	// 		let _ = Network::<T>::emission_step(
 	// 			block,
 	// 			epoch,
 	// 			1,
@@ -1119,7 +1119,7 @@ mod benchmarks {
 
 	// 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
 
-	// 	let stake_weights_normalized = Network::<T>::calculate_stake_weights_v2(epoch);
+	// 	let stake_weights_normalized = Network::<T>::calculate_stake_weights(epoch);
 
 	// 	#[block]
 	// 	{

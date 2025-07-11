@@ -30,6 +30,8 @@ impl<T: Config> Pallet<T> {
     description: BoundedVec<u8, DefaultMaxVectorLength>,
     misc: BoundedVec<u8, DefaultMaxVectorLength>,
   ) -> DispatchResult {
+    // --- Ensure is or has had a subnet node
+    // This will not completely stop non-subnet-node users from registering identities but prevents it
     ensure!(
       HotkeyOwner::<T>::get(&hotkey) == coldkey,
       Error::<T>::NotKeyOwner

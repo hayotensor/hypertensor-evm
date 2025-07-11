@@ -44,6 +44,7 @@ impl<T: Config> Pallet<T> {
       max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
       owner: SubnetOwner::<T>::get(subnet_id)?,
       registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id)?,
+      node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
     };
 
     Some(subnet_info)

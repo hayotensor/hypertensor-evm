@@ -16,7 +16,7 @@ use crate::{
   AccountSubnetStake,
   StakeUnbondingLedger, 
   HotkeySubnetNodeId, 
-  MinStakeBalance,
+  NetworkMinStakeBalance,
   RegisteredSubnetNodesData,
   TotalActiveSubnets,
   MaxSubnetNodes,
@@ -41,19 +41,19 @@ use crate::{
 #[test]
 fn test_register_remove_claim_stake_unbondings() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
     let account_n = 10000;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
@@ -142,20 +142,20 @@ fn test_register_remove_claim_stake_unbondings() {
 #[test]
 fn test_register_activate_remove_claim_stake_unbondings() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
     let account_n = 10000;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
@@ -259,20 +259,20 @@ fn test_register_activate_remove_claim_stake_unbondings() {
 #[test]
 fn test_remove_stake_twice_in_epoch() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
     let account_n = 10000;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
@@ -396,20 +396,20 @@ fn test_remove_stake_twice_in_epoch() {
 #[test]
 fn test_claim_stake_unbondings_no_unbondings_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
     let account_n = 10000;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
@@ -450,20 +450,20 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
 #[test]
 fn test_remove_to_stake_max_unlockings_reached_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 
     let account_n = 10000;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let _ = Balances::deposit_creating(&account(account_n), deposit_amount);

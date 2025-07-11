@@ -26,7 +26,7 @@ use crate::{
   SubnetNodeClass,
   AccountNodeDelegateStakeShares,
   TotalNodeDelegateStakeBalance,
-  MinStakeBalance,
+  NetworkMinStakeBalance,
   TotalActiveSubnets,
   MaxSubnetNodes,
 };
@@ -53,7 +53,7 @@ fn test_add_to_node_delegate_stake() {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     build_activated_subnet_with_delegator_rewards(
       subnet_name.clone(), 
@@ -102,7 +102,7 @@ fn test_remove_node_delegate_stake() {
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     build_activated_subnet_with_delegator_rewards(
       subnet_name.clone(), 
@@ -195,7 +195,7 @@ fn test_swap_node_delegate_stake() {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 =         1000000000000000000000;
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -214,14 +214,14 @@ fn test_swap_node_delegate_stake() {
     let from_subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_from_subnet_nodes = TotalSubnetNodes::<Test>::get(from_subnet_id);
 
-    let to_subnet_path: Vec<u8> = "petals-team/StableBeluga3".into();
+    let to_subnet_name: Vec<u8> = "petals-team/StableBeluga3".into();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
 
     let to_account_n = max_subnet_nodes+1*subnets;
 
     build_activated_subnet_with_delegator_rewards(
-      to_subnet_path.clone(), 
+      to_subnet_name.clone(), 
       0, 
       16, 
       deposit_amount, 
@@ -229,7 +229,7 @@ fn test_swap_node_delegate_stake() {
       DEFAULT_DELEGATE_REWARD_RATE,
     );
 
-    let to_subnet_id = SubnetName::<Test>::get(to_subnet_path.clone()).unwrap();
+    let to_subnet_id = SubnetName::<Test>::get(to_subnet_name.clone()).unwrap();
 
     let _ = Balances::deposit_creating(&account(total_from_subnet_nodes+1), amount+500);
 
@@ -360,7 +360,7 @@ fn test_swap_node_delegate_stake() {
 //     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
-// let stake_amount: u128 = MinStakeBalance::<Test>::get();
+// let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
 //     build_activated_subnet_with_delegator_rewards(
 //       subnet_name.clone(), 
@@ -390,7 +390,7 @@ fn test_swap_node_delegate_stake() {
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;
 
-//     let subnet_node_data_vec = subnet_node_data(0, total_subnet_nodes);
+//     let subnet_node_data_vec = get_subnet_node_consensus_data(0, total_subnet_nodes);
   
 //     // --- Insert validator
 //     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
@@ -496,7 +496,7 @@ fn test_transfer_node_delegate_stake() {
 
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnet_name: Vec<u8> = "subnet-name".into();
     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);

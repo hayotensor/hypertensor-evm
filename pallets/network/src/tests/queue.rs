@@ -11,7 +11,7 @@
 // use sp_core::OpaquePeerId as PeerId;
 // use crate::{
 //   SubnetName, 
-//   MinStakeBalance,
+//   NetworkMinStakeBalance,
 //   RegistrationQueue,
 //   ChurnLimit,
 //   RegistrationQueueEpochs,
@@ -37,16 +37,16 @@
 // fn test_single_node_entry() {
 //   new_test_ext().execute_with(|| {
 
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
 //     let n_peers = 8;
-//     let stake_amount: u128 = MinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-//     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, stake_amount);
+//     build_activated_subnet(subnet_name.clone(), 0, n_peers, deposit_amount, stake_amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //     ChurnLimit::<Test>::insert(subnet_id, 2);
 //     RegistrationQueueEpochs::<Test>::insert(subnet_id, 5);

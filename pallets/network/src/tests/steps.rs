@@ -23,14 +23,14 @@ use crate::{
 // #[test]
 // fn test_epoch_steps() {
 //   new_test_ext().execute_with(|| {
-//     let subnet_path: Vec<u8> = "subnet-name".into();
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 //     let deposit_amount: u128 = 10000000000000000000000;
 //     let amount: u128 = 1000000000000000000000;
 
 //     let n_peers = 8;
-//     build_activated_subnet(subnet_path.clone(), 0, n_peers, deposit_amount, amount);
+//     build_activated_subnet(subnet_name.clone(), 0, n_peers, deposit_amount, amount);
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //     let epoch_length = EpochLength::get();
 //     let epoch = System::block_number() / epoch_length;
@@ -56,7 +56,7 @@ use crate::{
 //       let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch).unwrap();
 //       let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id).unwrap();
 
-//       let subnet_node_data_vec = subnet_node_data(0, (included_nodes_count) as u32);
+//       let subnet_node_data_vec = get_subnet_node_consensus_data(0, (included_nodes_count) as u32);
 //       let subnet_node_data_vec_len = subnet_node_data_vec.len();
 //       log::error!("subnet_node_data_vec_len {:?}", subnet_node_data_vec_len);
 

@@ -36,7 +36,7 @@ pub trait WeightInfo {
 	fn get_epoch_emissions() -> Weight;
 	fn precheck_consensus_submission() -> Weight;
 	fn calculate_rewards_v2() -> Weight;
-	fn distribute_rewards_v2() -> Weight;
+	fn distribute_rewards() -> Weight;
 	fn elect_validator_v3() -> Weight;
 	fn get_random_number() -> Weight;
 }
@@ -130,7 +130,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalSubnetDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn distribute_rewards_v2() -> Weight {
+	fn distribute_rewards() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `66042`
 		//  Estimated: `1334232`
@@ -258,7 +258,7 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalSubnetDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn distribute_rewards_v2() -> Weight {
+	fn distribute_rewards() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `66042`
 		//  Estimated: `1334232`

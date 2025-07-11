@@ -19,7 +19,7 @@ use crate::{
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
   SubnetNodesData, 
-  MinStakeBalance,
+  NetworkMinStakeBalance,
   TotalActiveSubnets,
   MaxSubnetNodes,
   ColdkeyHotkeys,
@@ -29,12 +29,12 @@ use crate::{
 #[test]
 fn test_update_coldkey() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -43,9 +43,9 @@ fn test_update_coldkey() {
 
     let account_n = max_subnet_nodes+end*subnets;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, end, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
@@ -252,11 +252,11 @@ fn test_update_coldkey() {
 #[test]
 fn test_update_coldkey_key_taken_err() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -265,9 +265,9 @@ fn test_update_coldkey_key_taken_err() {
 
     let account_n = max_subnet_nodes+end*subnets;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, end, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     assert_err!(
@@ -284,12 +284,12 @@ fn test_update_coldkey_key_taken_err() {
 #[test]
 fn test_update_hotkey() {
   new_test_ext().execute_with(|| {
-    let subnet_path: Vec<u8> = "subnet-name".into();
+    let subnet_name: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
     let amount: u128 = 1000000000000000000000;
 
-    let stake_amount: u128 = MinStakeBalance::<Test>::get();
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -298,9 +298,9 @@ fn test_update_hotkey() {
 
     let account_n = max_subnet_nodes+end*subnets;
 
-    build_activated_subnet_new(subnet_path.clone(), 0, end, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
-    let subnet_id = SubnetName::<Test>::get(subnet_path.clone()).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
     let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();

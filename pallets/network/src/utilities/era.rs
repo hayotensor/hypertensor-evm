@@ -55,7 +55,7 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_current_subnet_epoch_as_u32(subnet_id: u32) -> u32 {
     let epoch_length = T::EpochLength::get();
-    let subnet_slot = match SubnetRewardSlot::<T>::try_get(subnet_id) {
+    let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
       Ok(slot) => slot,
       Err(_) => 0,
     };
@@ -128,6 +128,7 @@ impl<T: Config> Pallet<T> {
             } else if is_registering && epoch <= max_enactment_epoch {
               // --- Enactment Period
               // If in enactment period, ensure min nodes
+              // Otherwise continue
               let active_subnet_nodes_count = TotalActiveSubnetNodes::<T>::get(subnet_id);
               weight = weight.saturating_add(T::DbWeight::get().reads(1));
               if active_subnet_nodes_count < min_subnet_nodes {
@@ -135,6 +136,7 @@ impl<T: Config> Pallet<T> {
                   *subnet_id,
                   SubnetRemovalReason::MinSubnetNodes,
                 );
+                // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
               }
               continue
             } else if is_registering && epoch > max_enactment_epoch {
@@ -144,6 +146,7 @@ impl<T: Config> Pallet<T> {
                 *subnet_id,
                 SubnetRemovalReason::EnactmentPeriod,
               );
+              // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
               continue
             }
           },
@@ -168,6 +171,7 @@ impl<T: Config> Pallet<T> {
           *subnet_id,
           SubnetRemovalReason::MinSubnetDelegateStake,
         );
+        // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
         continue
       }
 

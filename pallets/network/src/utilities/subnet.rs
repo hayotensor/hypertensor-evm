@@ -41,7 +41,7 @@ impl<T: Config> Pallet<T> {
     AssignedSlots::<T>::put(assigned_slots);
 
     // Assign
-    SubnetRewardSlot::<T>::insert(subnet_id, free_slot);
+    SubnetSlot::<T>::insert(subnet_id, free_slot);
     SlotAssignment::<T>::insert(free_slot, subnet_id);
 
     Ok(free_slot)
@@ -50,7 +50,7 @@ impl<T: Config> Pallet<T> {
   pub fn free_slot_of_subnet(subnet_id: u32) {
     let assigned_slots = AssignedSlots::<T>::get();
 
-    if let Some(slot) = SubnetRewardSlot::<T>::take(subnet_id) {
+    if let Some(slot) = SubnetSlot::<T>::take(subnet_id) {
       SlotAssignment::<T>::remove(slot);
 
       let mut assigned_slots = assigned_slots;
