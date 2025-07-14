@@ -96,6 +96,8 @@ pub mod supply;
 pub use supply::*;
 pub mod consensus;
 pub use consensus::*;
+pub mod overwatch_nodes;
+pub use overwatch_nodes::*;
 
 // mod rewards;
 mod rewards_v4;
@@ -545,6 +547,18 @@ pub mod pallet {
 		InvalidCurveParameters,
 		/// Transactions are paused
 		Paused,
+
+		// Keys
+		/// Hotkey has an owner, use a fresh hotkey
+		HotkeyHasOwner,
+
+		NoCommitFound,
+		NoCommitsFound,
+		RevealMismatch,
+		CommitsEmpty,
+		AlreadyCommitted,
+		/// Invalid subnet weight, must be below percentage factor 1e18
+		InvalidWeight,
 	}
 	
 	/// Subnet data
@@ -570,6 +584,15 @@ pub mod pallet {
   pub enum SubnetState {
 		#[default] Registered,
     Active,
+		Paused,
+  }
+
+	#[derive(Default, EnumIter, FromRepr, Copy, Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
+  pub enum KeyType {
+		#[default] Rsa,
+		Ed25519,
+		Secp256k1,
+		Ecdsa,
   }
 
 	/// Subnet data used before activation
@@ -611,6 +634,7 @@ pub mod pallet {
 		pub initial_coldkeys: BTreeSet<AccountId>,
 		pub max_registered_nodes: u32,
 		pub node_removal_system: NodeRemovalSystem,
+		pub key_type: KeyType,
 	}
 	
 	/// Removal system
@@ -652,6 +676,7 @@ pub mod pallet {
 		pub owner: AccountId,
 		pub registration_epoch: u32,
 		pub node_removal_system: NodeRemovalSystem,
+		pub key_type: KeyType,
 	}
 
 	/// Subnet Node
@@ -811,6 +836,7 @@ pub mod pallet {
 		EnactmentPeriod,
 		MaxSubnets,
 		Owner,
+		PauseExpired,
   }
 
 	/// Attests format for consensus
@@ -835,6 +861,42 @@ pub mod pallet {
     pub delegate_stake_rewards: u128,
     pub subnet_node_rewards: u128,
   }
+
+	// Overwatch nodes
+
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	pub struct OverwatchNode<AccountId> {
+		pub id: u32,
+		pub hotkey: AccountId,
+	}
+
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	pub struct OverwatchCommit<Hash> {
+		pub subnet_id: u32,
+		pub weight: Hash,
+	}
+
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	pub struct OverwatchReveal {
+		pub subnet_id: u32,
+		pub weight: u128,
+		pub salt: Vec<u8>,
+	}
+
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	pub struct OverwatchRevealData<AccountId> {
+		pub subnet_id: u32,
+		pub hotkey: AccountId,
+		pub stake_balance: u128,
+		pub weight: u128,
+	}
+
+	// #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
+	// pub struct AllOverwatchReveals {
+	// 	pub total_stake: u128,
+	// 	pub total_weight: u128,
+	// 	pub weights: Vec<OverwatchReveal>,
+	// }
 
 	/// Vote types
 	///
@@ -1262,6 +1324,15 @@ pub mod pallet {
 		// 50.0%
 		500000000000000000
 	}
+	#[pallet::type_value]
+	pub fn DefaultSigmoidMidpoint() -> u128 {
+		// 50.0%
+		500000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultSigmoidSteepness() -> u128 {
+		7
+	}
 	// #[pallet::type_value]
 	// pub fn DefaultDeactivationLedger<T: Config>() -> BTreeSet<SubnetNodeDeactivation> {
 	// 	BTreeSet::new()
@@ -1512,6 +1583,13 @@ pub mod pallet {
 		// Local
 		1000000000000000000
 	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchMinStakeBalance() -> u128 {
+		100e+18 as u128
+	}
+	
+
+
 	
 	// 
 	// Subnet elements
@@ -1811,6 +1889,9 @@ pub mod pallet {
 	pub type SubnetNodeRemovalSystem<T> =
 		StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
 
+	#[pallet::storage]
+	pub type SubnetKeyType<T> = StorageMap<_, Identity, u32, KeyType, ValueQuery>;
+
 	/// When subnet utilizes the node removal system Stake
 	/// The percentage delta of the activating node versus the removal node minimum delta
 	/// e.g. If the NodeRemovalStakePercentageDelta is 10% and the activating node has 100, 
@@ -1838,6 +1919,7 @@ pub mod pallet {
 
 	// Coldkey => {Hotkeys}
 	// This conditions unique hotkeys over the entire network and enables tracking hotkeys to coldkeys
+	// *Note:* This is only used for subnet nodes
 	#[pallet::storage]
 	pub type ColdkeyHotkeys<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<T::AccountId>, ValueQuery>;
 
@@ -1892,7 +1974,6 @@ pub mod pallet {
 	>;
 	
 	#[pallet::storage] // subnet_id --> peer_id --> subnet_node_id
-	#[pallet::getter(fn subnet_node_account)]
 	pub type PeerIdSubnetNode<T: Config> = StorageDoubleMap<
 		_,
 		Identity,
@@ -2316,6 +2397,135 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type UtilizationUpperBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationUpperBound>;
 
+	/// Inflation grpah midpoint (sigmoid)
+	#[pallet::storage]
+	pub type SigmoidMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
+
+	/// Inflation grpah midpoint (sigmoid)
+	#[pallet::storage]
+	pub type SigmoidSteepness<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidSteepness>;
+
+	//
+	// Overwatch Nodes
+	//
+	
+	#[pallet::storage]
+	pub type TotalOverwatchNodeUids<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+
+	// Hotkey => OverwatchNode
+	#[pallet::storage]
+	pub type OverwatchNodes<T: Config> = StorageMap<
+		_,
+		Identity,
+		u32,
+		OverwatchNode<T::AccountId>,
+		OptionQuery
+	>;
+
+	#[pallet::storage]
+	pub type OverwatchNodeIdHotkey<T: Config> = StorageMap<
+		_,
+		Identity,
+		u32,
+		T::AccountId,
+		OptionQuery
+	>;
+	
+	#[pallet::storage] // subnet_id --> peer_id --> overwatch_node_id
+	pub type PeerIdOverwatchNode<T: Config> = StorageDoubleMap<
+		_,
+		Identity,
+		u32,
+		Blake2_128Concat,
+		PeerId,
+		u32,
+		ValueQuery,
+		DefaultZeroU32,
+	>;
+
+	#[pallet::storage]
+	pub type OverwatchCommits<T: Config> = StorageNMap<
+		_,
+		(
+			NMapKey<Identity, u32>, // Epoch
+			NMapKey<Identity, u32>, // Overwatch ID
+			NMapKey<Identity, u32>, // Subnet ID
+		),
+		T::Hash, // Commit
+		OptionQuery
+	>;
+
+	#[pallet::storage]
+	pub type OverwatchReveals<T: Config> = StorageNMap<
+		_,
+		(
+			NMapKey<Identity, u32>, // Epoch
+			NMapKey<Identity, u32>, // Subnet ID
+			NMapKey<Identity, u32>, // Overwatch ID
+		),
+		u128, // Reveal
+		OptionQuery
+	>;
+	
+	// Epoch >>> Subnet ID
+	#[pallet::storage]
+	pub type OverwatchWeights<T: Config> = StorageDoubleMap<
+    _, 
+    Identity, 
+		u32, 
+    Identity, 
+		u32,
+    Vec<u8>, 
+		OptionQuery
+	>;
+	
+	// ow ID -> penalties count
+	#[pallet::storage]
+	pub type OverwatchNodePenalties<T: Config> = StorageMap<
+		_,
+		Identity,
+		u32,
+		u32,
+		OptionQuery
+	>;
+	
+	/// Finalized calculated subnet weights from overwatch nodes
+	#[pallet::storage]
+	pub type OverwatchSubnetWeights<T: Config> = StorageMap<
+		_,
+		Identity,
+		u32,
+		u128,
+		OptionQuery
+	>;
+	
+	/// Overwatch node scores
+	#[pallet::storage]
+	pub type OverwatchNodeWeights<T: Config> = StorageDoubleMap<
+    _, 
+    Identity, 
+		u32,  	// Epoch
+    Identity, 
+		u32, 		// Node ID
+    u128, 	// Weight
+		OptionQuery
+	>;
+
+	//
+	// Overwatch staking
+	//
+
+	#[pallet::storage]
+	pub type TotalOverwatchStake<T> = StorageValue<_, u128, ValueQuery>;
+
+	// Overwatch hotkey stake balance
+	#[pallet::storage] // subnet_uid --> peer_data
+	pub type AccountOverwatchStake<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u128, ValueQuery, DefaultAccountTake>;
+
+	#[pallet::storage]
+	pub type OverwatchMinStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultOverwatchMinStakeBalance>;
+		
 	/// The pallet's dispatchable functions ([`Call`]s).
 	///
 	/// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -2915,7 +3125,7 @@ pub mod pallet {
 			Self::is_paused()?;
 
 			ensure!(
-				Self::is_keys_owner(
+				Self::is_subnet_node_keys_owner(
 					subnet_id, 
 					subnet_node_id, 
 					key, 
@@ -3283,6 +3493,7 @@ pub mod pallet {
 				Ok(subnet_node_id) => {
 					let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
 					let is_validator: bool = Self::is_validator(subnet_id, subnet_node_id, subnet_epoch);
+
 					// --- Check if current epochs validator, can't unstake if so
 					ensure!(
 						!is_validator,
@@ -3875,7 +4086,7 @@ pub mod pallet {
 			let key: T::AccountId = ensure_signed(origin)?;
 
 			ensure!(
-				Self::is_keys_owner(
+				Self::is_subnet_node_keys_owner(
 					subnet_id, 
 					subnet_node_id, 
 					key, 
@@ -3927,7 +4138,7 @@ pub mod pallet {
 			Self::is_paused()?;
 
 			ensure!(
-				Self::is_keys_owner(
+				Self::is_subnet_node_keys_owner(
 					subnet_id, 
 					subnet_node_id, 
 					key, 
@@ -4142,7 +4353,7 @@ pub mod pallet {
 
 			// Subnet node PeerIds and bootstrap PeerIds can match only if they are under the same subnet node ID
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, &new_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, 0, &new_peer_id),
 				Error::<T>::PeerIdExist
 			);
 
@@ -4193,7 +4404,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, &new_bootstrap_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, 0, &new_bootstrap_peer_id),
 				Error::<T>::BootstrapPeerIdExist
 			);
 
@@ -4242,7 +4453,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, &new_client_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, 0, &new_client_peer_id),
 				Error::<T>::ClientPeerIdExist
 			);
 
@@ -4263,6 +4474,91 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::call_index(60)]
+		#[pallet::weight({0})]
+		pub fn register_overwatch_node(
+			origin: OriginFor<T>,
+			hotkey: T::AccountId,
+			stake_to_be_added: u128,
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Self::do_register_ow(
+				origin,
+				hotkey,
+				stake_to_be_added,
+			)
+		}
+
+		#[pallet::call_index(61)]
+		#[pallet::weight({0})]
+		pub fn remove_overwatch_node(
+			origin: OriginFor<T>,
+			hotkey: T::AccountId,
+			stake_to_be_added: u128,
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Ok(())
+		}
+
+		#[pallet::call_index(62)]
+		#[pallet::weight({0})]
+		pub fn set_overwatch_peer_id(
+			origin: OriginFor<T>,
+			subnet_id: u32,
+			overwatch_node_id: u32,
+			peer_id: PeerId
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Self::do_set_ow_peer_id(
+				origin,
+				subnet_id,
+				overwatch_node_id,
+				peer_id
+			)
+		}
+
+		#[pallet::call_index(63)]
+		#[pallet::weight({0})]
+		pub fn commit_ow_weights(
+			origin: OriginFor<T>,
+			overwatch_node_id: u32,
+			mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Self::do_commit_ow_weights(
+				origin,
+				overwatch_node_id,
+				commit_weights,
+			)
+		}
+
+		#[pallet::call_index(64)]
+		#[pallet::weight({0})]
+		pub fn reveal_ow_weights(
+			origin: OriginFor<T>,
+			overwatch_node_id: u32,
+			reveals: Vec<OverwatchReveal>,
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Self::do_reveal_ow_weights(
+				origin,
+				overwatch_node_id,
+				reveals,
+			)
+		}
+
+		#[pallet::call_index(65)]
+		#[pallet::weight({0})]
+		pub fn add_to_overwatch_stake(
+			origin: OriginFor<T>,
+			overwatch_node_id: u32,
+			hotkey: T::AccountId,
+			stake_to_be_added: u128,
+		) -> DispatchResult {
+			Self::is_paused()?;
+			Ok(())
+		}
+
 		/// Collective functions
 		///
 		/// These are a set of functions designated for the collective to manage the network
@@ -4274,7 +4570,7 @@ pub mod pallet {
 		///
 		/// Requires majority vote
 		/// 
-		#[pallet::call_index(60)]
+		#[pallet::call_index(66)]
 		#[pallet::weight({0})]
 		pub fn pause(origin: OriginFor<T>) -> DispatchResult {
 			T::MajorityCollectiveOrigin::ensure_origin(origin)?;
@@ -4287,7 +4583,7 @@ pub mod pallet {
 		///
 		/// Requires majority vote
 		/// 
-		#[pallet::call_index(61)]
+		#[pallet::call_index(67)]
 		#[pallet::weight({0})]
 		pub fn unpause(origin: OriginFor<T>) -> DispatchResult {
 			T::MajorityCollectiveOrigin::ensure_origin(origin)?;
@@ -4300,7 +4596,7 @@ pub mod pallet {
 		///
 		/// Requires majority vote
 		/// 
-		#[pallet::call_index(62)]
+		#[pallet::call_index(68)]
 		#[pallet::weight({0})]
 		pub fn set_max_subnet_nodes(
 			origin: OriginFor<T>, 
@@ -4316,7 +4612,7 @@ pub mod pallet {
 		///
 		/// Requires super majority vote
 		/// 
-		#[pallet::call_index(63)]
+		#[pallet::call_index(69)]
 		#[pallet::weight({0})]
 		pub fn set_min_subnet_delegate_stake_factor(
 			origin: OriginFor<T>, 
@@ -4332,7 +4628,7 @@ pub mod pallet {
 		///
 		/// Requires super majority vote
 		/// 
-		#[pallet::call_index(64)]
+		#[pallet::call_index(70)]
 		#[pallet::weight({0})]
 		pub fn set_subnet_owner_percentage(
 			origin: OriginFor<T>, 
@@ -4493,6 +4789,8 @@ pub mod pallet {
 			// Store unique name
 			SubnetName::<T>::insert(&subnet_data.name, subnet_id);
 			SubnetRepo::<T>::insert(&subnet_data.repo, subnet_id);
+			SubnetNodeRemovalSystem::<T>::insert(subnet_id, subnet_registration_data.node_removal_system);
+			SubnetKeyType::<T>::insert(subnet_id, subnet_registration_data.key_type);
 			// Store subnet data
 			SubnetsData::<T>::insert(subnet_id, &subnet_data);
 			// Update latest registration epoch for all subnets
@@ -4739,9 +5037,9 @@ pub mod pallet {
 
 		pub fn do_register_subnet_node_new(
 			origin: OriginFor<T>,
-			subnet_id: u32, 
+			subnet_id: u32,
 			hotkey: T::AccountId,
-			peer_id: PeerId, 
+			peer_id: PeerId,
 			bootstrap_peer_id: PeerId,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
@@ -4848,13 +5146,13 @@ pub mod pallet {
 
 			// Unique subnet_id -> PeerId
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, &peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &peer_id),
 				Error::<T>::PeerIdExist
 			);
 
 			// Unique subnet_id -> Bootstrap PeerId
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, &bootstrap_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &bootstrap_peer_id),
 				Error::<T>::BootstrapPeerIdExist
 			);
 
@@ -5103,7 +5401,7 @@ pub mod pallet {
 			};
 
 			// can deactivate using both keys
-			let (hotkey, coldkey) = match Self::get_hotkey_coldkey(subnet_id, subnet_node_id) {
+			let (hotkey, coldkey) = match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
 				Some((hotkey, coldkey)) => {
 					(hotkey, coldkey)
 				}
@@ -5177,7 +5475,7 @@ pub mod pallet {
 			};
 
 			// can deactivate using both keys
-			let (hotkey, coldkey) = match Self::get_hotkey_coldkey(subnet_id, subnet_node_id) {
+			let (hotkey, coldkey) = match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
 				Some((hotkey, coldkey)) => {
 					(hotkey, coldkey)
 				}

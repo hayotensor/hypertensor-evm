@@ -19,6 +19,313 @@ use super::*;
 use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
+
+  // pub fn calculate_overwatch_rewards(current_epoch: u32) -> BTreeMap<u32, f64> {
+  //   let power = 0.5;
+  //   // node_id -> score
+  //   let mut node_total_scores: BTreeMap<u32, f64> = BTreeMap::new();
+
+  //   // Step 1: Group reveals by subnet
+  //   let mut subnet_reveals: BTreeMap<u32, BTreeMap<u32, u128>> = BTreeMap::new();
+  //   for ((subnet_id, node_id), weight) in OverwatchReveals::<T>::iter_prefix((current_epoch,)) {
+  //     subnet_reveals.entry(subnet_id).or_default().insert(node_id, weight);
+  //   }
+
+  //   let total_stake = TotalOverwatchStake::<T>::get();
+
+  //   // Step 2: Iterate each subnet
+  //   for (subnet_id, node_weights) in subnet_reveals.iter() {
+  //     // Step 2a: Compute stake fractions with dampening
+  //     let mut adjusted_fractions = BTreeMap::new();
+  //     let mut total_adjusted = 0f64;
+
+  //     // Get node stake weight
+  //     for (&node_id, _) in node_weights.iter() {
+  //       // Get stake weights
+  //       let Some(overwatch_node) = OverwatchNodes::<T>::get(node_id) else {
+  //         continue
+  //       };
+  //       let stake = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+  //       let fraction = stake as f64 / total_stake as f64;
+  //       let adjusted = Self::pow(fraction, power);
+  //       adjusted_fractions.insert(node_id, adjusted);
+
+  //       log::error!("node_id  {:?}", node_id);
+  //       log::error!("fraction {:?}", fraction);
+  //       log::error!("adjusted {:?}", adjusted);
+  //       log::error!(" ");
+
+  //       total_adjusted += adjusted;
+  //     }
+
+  //     // Normalize fractions (stake weights)
+  //     for value in adjusted_fractions.values_mut() {
+  //       // let test = *value /= total_adjusted;
+  //       // log::error!("adjusted_fractions {:?}", test);
+  //       // log::error!(" ");
+  //       *value /= total_adjusted;
+  //     }
+
+  //     // Step 2b: Compute average weight for subnet
+  //     let sum_weights: u128 = node_weights.values().sum();
+  //     let avg_weight = sum_weights as f64 / node_weights.len() as f64;
+
+  //     // Step 2c: Score nodes and accumulate
+  //     for (&node_id, &weight) in node_weights.iter() {
+  //       let stake_weight = *adjusted_fractions.get(&node_id).unwrap_or(&0.0);
+  //       if stake_weight == 0.0 {
+  //         log::error!("NO STAKE");
+  //         continue
+  //       }
+  //       let deviation = ((weight as f64 - avg_weight).abs()) / avg_weight;
+  //       let closeness_score = if deviation >= 1.0 { 0.0 } else { 1.0 - deviation };
+        
+  //       let final_score = closeness_score * stake_weight;
+
+  //       log::error!("deviation {:?}", deviation);
+  //       log::error!("closeness_score {:?}", closeness_score);
+  //       log::error!("stake_weight {:?}", stake_weight);
+  //       log::error!("final_score {:?}", final_score);
+  //       log::error!(" ");
+
+  //       // Step 3: Accumulate score
+  //       *node_total_scores.entry(node_id).or_insert(0.0) += final_score;
+  //     }
+  //   }
+
+  //   // Step 4: Normalize total scores
+  //   let total_final_score: f64 = node_total_scores.values().sum();
+  //   log::error!("total_final_score {:?}", total_final_score);
+  //   for (node_id, score) in node_total_scores.iter_mut() {
+  //     *score /= total_final_score;
+  //   }
+
+  //   node_total_scores
+  // }
+
+  // pub fn calculate_overwatch_rewards(current_epoch: u32) -> BTreeMap<u32, u128> {
+  //   let mut subnet_weights: BTreeMap<u32,u128> = BTreeMap::new();
+  //   let percentage_factor = Self::percentage_factor_as_u128();
+  //   let power = 0.5;
+
+  //   let mut node_total_scores: BTreeMap<u32, u128> = BTreeMap::new();
+
+  //   let total_stake = TotalOverwatchStake::<T>::get();
+
+  //   // Step 1: Group reveals by subnet
+  //   let mut subnet_reveals: BTreeMap<u32, (u128, BTreeMap<u32, u128>)> = BTreeMap::new();
+  //   for ((subnet_id, overwatch_node_id), weight) in OverwatchReveals::<T>::iter_prefix((current_epoch,)) {
+  //     let Some(overwatch_node) = OverwatchNodes::<T>::get(overwatch_node_id) else {
+  //       continue
+  //     };
+  //     let stake_balance = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+
+  //     let stake_weight = Self::percent_div(stake_balance, total_stake);
+
+  //     let entry = subnet_reveals.entry(subnet_id).or_insert((0, BTreeMap::new()));
+  //     entry.0 += weight;                          // sum all weights for this subnet
+  //     entry.1.insert(overwatch_node_id, weight);  // store each node's weight per subnet
+  //   }
+
+
+  //   // Step 2: Iterate each subnet
+  //   for (&subnet_id, (sum_weights, node_weights)) in subnet_reveals.iter() {
+  //     // Step 2a: Compute stake fractions with dampening
+  //     let mut adjusted_fractions = BTreeMap::new();
+  //     let mut total_adjusted = 0_u128;
+
+  //     // Get node stake weight
+  //     for (&node_id, _) in node_weights.iter() {
+  //       // Get stake weights
+  //       let Some(overwatch_node) = OverwatchNodes::<T>::get(node_id) else {
+  //         continue
+  //       };
+  //       let stake = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+  //       // Get node stake weight
+  //       let fraction = Self::percent_div(stake, total_stake);
+  //       // Increase the stake weight to later be normalized
+  //       let adjusted = Self::pow(Self::get_percent_as_f64(fraction), power);
+  //       // Adjust back to u128
+  //       let adjusted_u128 = Self::get_f64_as_percentage(adjusted);
+
+  //       adjusted_fractions.insert(node_id, adjusted_u128);
+
+  //       // Sum of total adjusted weights for normalizing
+  //       total_adjusted += adjusted_u128;
+  //     }
+
+  //     // Normalize fractions (stake weights)
+  //     for value in adjusted_fractions.values_mut() {
+  //       *value = Self::percent_div(*value, total_adjusted);
+  //     }
+
+  //     // Step 2b: Compute average weight for subnet
+  //     let avg_weight = *sum_weights / node_weights.len() as u128;
+
+  //     // Step 2c: Score nodes and accumulate
+  //     for (&node_id, &weight) in node_weights.iter() {
+  //       let stake_weight = *adjusted_fractions.get(&node_id).unwrap_or(&0);
+  //       if stake_weight == 0 {
+  //         continue
+  //       }
+  //       let deviation = Self::percent_div(
+  //         (weight).abs_diff(avg_weight),
+  //         avg_weight
+  //       );
+  //       let closeness_score = if deviation >= percentage_factor { 0 } else { percentage_factor - deviation };
+  //       let final_score = Self::percent_mul(closeness_score, stake_weight);
+
+  //       // Step 3: Accumulate score
+  //       *node_total_scores.entry(node_id).or_insert(0) += final_score;
+  //     }
+
+  //     // Score subnets
+  //   }
+  //   // TODO: Store subnet overwatch weights (subnet scores from ow nodes)
+
+  //   // Step 4: Normalize node total scores
+  //   let total_final_score: u128 = node_total_scores.values().sum();
+
+  //   for (node_id, score) in node_total_scores.iter_mut() {
+  //     *score = Self::percent_div(*score, total_final_score);
+  //   }
+  //   // // TODO: Store overwatch node weights (ow node scores)
+
+  //   node_total_scores
+  // }
+
+  pub fn calculate_overwatch_rewards(current_epoch: u32) -> Weight {
+    let mut weight = Weight::zero();
+    let mut subnet_weights: BTreeMap<u32,u128> = BTreeMap::new();
+    let percentage_factor = Self::percentage_factor_as_u128();
+    let power = 0.5;
+
+    let mut node_total_scores: BTreeMap<u32, u128> = BTreeMap::new();
+
+    let total_stake = TotalOverwatchStake::<T>::get();
+
+    // Step 1: Group reveals by subnet
+    let mut subnet_reveals: BTreeMap<u32, (u128, BTreeMap<u32, u128>)> = BTreeMap::new();
+    for ((subnet_id, overwatch_node_id), weight) in OverwatchReveals::<T>::iter_prefix((current_epoch,)) {
+      let Some(overwatch_node) = OverwatchNodes::<T>::get(overwatch_node_id) else {
+        continue
+      };
+      let stake_balance = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+
+      let stake_weight = Self::percent_div(stake_balance, total_stake);
+
+      let entry = subnet_reveals.entry(subnet_id).or_insert((0, BTreeMap::new()));
+      entry.0 += weight;                          // sum all weights for this subnet
+      entry.1.insert(overwatch_node_id, weight);  // store each node's weight per subnet
+    }
+
+
+    // Step 2: Iterate each subnet
+    for (&subnet_id, (sum_weights, node_weights)) in subnet_reveals.iter() {
+      // Step 2a: Compute stake fractions with dampening
+      let mut adjusted_fractions = BTreeMap::new();
+      let mut total_adjusted = 0_u128;
+
+      // Get node stake weight
+      for (&node_id, _) in node_weights.iter() {
+        // Get stake weights
+        let Some(overwatch_node) = OverwatchNodes::<T>::get(node_id) else {
+          continue
+        };
+        let stake = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+        // Get node stake weight
+        let fraction = Self::percent_div(stake, total_stake);
+        // Increase the stake weight to later be normalized
+        let adjusted = Self::pow(Self::get_percent_as_f64(fraction), power);
+        // Adjust back to u128
+        let adjusted_u128 = Self::get_f64_as_percentage(adjusted);
+
+        adjusted_fractions.insert(node_id, adjusted_u128);
+
+        // Sum of total adjusted weights for normalizing
+        total_adjusted += adjusted_u128;
+      }
+
+      // Normalize fractions (stake weights)
+      for value in adjusted_fractions.values_mut() {
+        *value = Self::percent_div(*value, total_adjusted);
+      }
+
+      // Step 2b: Compute average weight for subnet
+      let mut avg_weight = *sum_weights / node_weights.len() as u128;
+      if avg_weight > percentage_factor {
+        avg_weight = percentage_factor;
+      }
+      // Score subnets
+      OverwatchSubnetWeights::<T>::insert(subnet_id, avg_weight);
+
+      // Step 2c: Score nodes and accumulate
+      for (&node_id, &weight) in node_weights.iter() {
+        let stake_weight = *adjusted_fractions.get(&node_id).unwrap_or(&0);
+        if stake_weight == 0 {
+          continue
+        }
+        let deviation = Self::percent_div(
+          (weight).abs_diff(avg_weight),
+          avg_weight
+        );
+        let closeness_score = if deviation >= percentage_factor { 0 } else { percentage_factor - deviation };
+        let final_score = Self::percent_mul(closeness_score, stake_weight);
+
+        // Step 3: Accumulate score
+        *node_total_scores.entry(node_id).or_insert(0) += final_score;
+      }
+    }
+
+    // Step 4: Normalize node total scores
+    let total_final_score: u128 = node_total_scores.values().sum();
+
+    for (node_id, score) in node_total_scores.iter() {
+      let final_score = Self::percent_div(*score, total_final_score);
+      OverwatchNodeWeights::<T>::insert(current_epoch, node_id, final_score);
+    }
+
+    weight
+  }
+
+  // Calculate weights from overwatch reveals
+  pub fn calculate_overwatch_weights(epoch: u32) -> Option<u128> {
+
+    let total_stake_balance = TotalOverwatchStake::<T>::get();
+
+    // subnet_id -> (sum_weights, map of overwatch_node_id -> weight)
+    let mut subnet_scores: BTreeMap<u32, (u128, BTreeMap<u32, u128>)> = BTreeMap::new();
+    for ((subnet_id, overwatch_node_id), weight) in OverwatchReveals::<T>::iter_prefix((epoch,)) {
+      let Some(overwatch_node) = OverwatchNodes::<T>::get(overwatch_node_id) else {
+        continue
+      };
+      let stake_balance = AccountOverwatchStake::<T>::get(overwatch_node.hotkey);
+
+      let stake_weight: f64 = stake_balance as f64 / total_stake_balance as f64;
+      // let subnet_weight_pow: f64 = Self::pow(stake_weight, 0.5);
+
+      let entry = subnet_scores.entry(subnet_id).or_insert((0, BTreeMap::new()));
+      entry.0 += weight;                          // sum all weights for this subnet
+      entry.1.insert(overwatch_node_id, weight);  // store each node's weight per subnet
+    }
+
+    let mut averages: BTreeMap<u32,u128> = BTreeMap::new();
+
+    for (&subnet_id, (sum_weights, node_weights)) in subnet_scores.iter() {
+      let count = node_weights.len() as u128;
+      let average = if count > 0 {
+        *sum_weights / count
+      } else {
+        0
+      };
+      averages.insert(subnet_id, average);
+    }
+
+
+    Some(1)
+  }
+
+  // Version with total nodes included
   pub fn calculate_emission_weights(
     subnet_ids: &[u32],
     percentage_factor: u128,
@@ -114,7 +421,7 @@ impl<T: Config> Pallet<T> {
         // --- Elect new validator for the current epoch
         // The current epoch is the start of the subnets epoch
         // We only elect if the subnet has weights, otherwise it isn't activate yet
-        // See `calculate_stake_weights`
+        // See `calculate_subnet_weights`
         Self::elect_validator_v3(
           subnet_id,
           current_epoch,
@@ -133,12 +440,12 @@ impl<T: Config> Pallet<T> {
 
   pub fn handle_subnet_emission_weights(epoch: u32) -> Weight {
     // Get weights
-    let (subnet_weights, mut weight): (BTreeMap<u32, u128>, Weight) = Self::calculate_stake_weights(epoch);
+    let (subnet_weights, mut weight): (BTreeMap<u32, u128>, Weight) = Self::calculate_subnet_weights(epoch);
 
     // Store weights
     if !subnet_weights.is_empty() {
       let data = DistributionData {
-        total_issuance: Self::get_epoch_emissions(epoch),
+        total_issuance: Self::get_epoch_emissions(),
         weights: subnet_weights
       };
       // weight = weight.saturating_add(T::WeightInfo::get_epoch_emissions());
@@ -149,7 +456,7 @@ impl<T: Config> Pallet<T> {
     weight
   }
 
-  pub fn calculate_stake_weights(epoch: u32) 
+  pub fn calculate_subnet_weights(epoch: u32) 
     -> (BTreeMap<u32, u128>, Weight)
   {
     let mut weight = Weight::zero();
@@ -180,17 +487,17 @@ impl<T: Config> Pallet<T> {
     }
 
     weight = weight.saturating_add(T::DbWeight::get().reads(total_subnet_reads));
-    let mut stake_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
+    let mut subnet_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
     let percentage_factor = Self::percentage_factor_as_u128();
 
     // --- Normalize delegate stake weights from `pow`
     for (subnet_id, subnet_weight) in stake_weights {
       let weight_normalized: u128 = (subnet_weight / stake_weight_sum * percentage_factor as f64) as u128;
-      stake_weights_normalized.insert(subnet_id, weight_normalized);
+      subnet_weights_normalized.insert(subnet_id, weight_normalized);
       weight = weight.saturating_add(Weight::from_parts(400_000, 0));
     }
     
-    (stake_weights_normalized, weight)
+    (subnet_weights_normalized, weight)
   }
 
   pub fn precheck_consensus_submission(

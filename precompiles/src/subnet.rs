@@ -10,7 +10,7 @@ use frame_support::{
   dispatch::{GetDispatchInfo, PostDispatchInfo},
 	storage::bounded_vec::BoundedVec,
 };
-use pallet_network::{RegistrationSubnetData, NodeRemovalSystem};
+use pallet_network::{RegistrationSubnetData, NodeRemovalSystem, KeyType};
 use frame_support::traits::ConstU32;
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -86,7 +86,7 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256)")]
+  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256,uint256)")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
@@ -106,6 +106,7 @@ where
 		initial_coldkeys: Vec<Address>,
     max_registered_nodes: U256,
     node_removal_system: U256,
+    key_type: U256,
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -127,6 +128,9 @@ where
     let node_removal_system = node_removal_from_u256(node_removal_system)
       .ok_or_else(|| revert("Invalid NodeRemovalSystem value"))?;
 
+    let key_type = key_type_from_u256(key_type)
+      .ok_or_else(|| revert("Invalid KeyType value"))?;
+
     let subnet_data = pallet_network::RegistrationSubnetData::<R::AccountId> {
       name: name.into(),
       repo: repo.into(),
@@ -143,7 +147,8 @@ where
       max_node_penalties,
       initial_coldkeys,
       max_registered_nodes,
-      node_removal_system
+      node_removal_system,
+      key_type
     };
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
@@ -470,6 +475,16 @@ fn node_removal_from_u256(val: U256) -> Option<NodeRemovalSystem> {
     0 => Some(NodeRemovalSystem::Consensus),
     1 => Some(NodeRemovalSystem::Stake),
     2 => Some(NodeRemovalSystem::Reputation),
+    _ => None,
+  }
+}
+
+fn key_type_from_u256(val: U256) -> Option<KeyType> {
+  match val.as_u32() {
+    0 => Some(KeyType::Rsa),
+    1 => Some(KeyType::Ed25519),
+    2 => Some(KeyType::Secp256k1),
+    2 => Some(KeyType::Ecdsa),
     _ => None,
   }
 }

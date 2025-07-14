@@ -45,6 +45,7 @@ impl<T: Config> Pallet<T> {
       owner: SubnetOwner::<T>::get(subnet_id)?,
       registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id)?,
       node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
+      key_type: SubnetKeyType::<T>::get(subnet_id),
     };
 
     Some(subnet_info)
@@ -263,7 +264,6 @@ impl<T: Config> Pallet<T> {
   ///
   pub fn proof_of_stake(
     subnet_id: u32, 
-    subnet_node_id: u32,
     peer_id: Vec<u8>,
     require_active: bool
   ) -> bool {
@@ -272,23 +272,6 @@ impl<T: Config> Pallet<T> {
     }
 
     let mut is_staked = false;
-
-    // --- Use subnet node ID
-    if subnet_node_id > 0 {
-      if require_active {
-        is_staked = match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-          Ok(_) => true,
-          Err(()) => false
-        };
-      } else {
-        is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
-          Ok(_) => true,
-          Err(()) => false
-        };
-      }
-
-      return is_staked
-    }
 
     // --- Use peer ID
     is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
@@ -329,7 +312,7 @@ impl<T: Config> Pallet<T> {
     }
 
     // --- Use peer ID, check client peer ID
-    match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+    is_staked = match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
       Ok(subnet_node_id) => {
         if require_active {
           match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -341,8 +324,100 @@ impl<T: Config> Pallet<T> {
         }
       },
       Err(()) => false,
+    };
+
+    if is_staked {
+      return true
+    }
+
+    // --- Check overwatch node
+    match PeerIdOverwatchNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      Ok(_) => true,
+      Err(()) => false,
     }
   }
+  // pub fn proof_of_stake(
+  //   subnet_id: u32, 
+  //   subnet_node_id: u32,
+  //   peer_id: Vec<u8>,
+  //   require_active: bool
+  // ) -> bool {
+  //   if !SubnetsData::<T>::contains_key(subnet_id) {
+  //     return false
+  //   }
+
+  //   let mut is_staked = false;
+
+  //   // --- Use subnet node ID
+  //   if subnet_node_id > 0 {
+  //     if require_active {
+  //       is_staked = match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //         Ok(_) => true,
+  //         Err(()) => false
+  //       };
+  //     } else {
+  //       is_staked = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
+  //         Ok(_) => true,
+  //         Err(()) => false
+  //       };
+  //     }
+
+  //     return is_staked
+  //   }
+
+  //   // --- Use peer ID
+  //   is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       if require_active {
+  //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //           Ok(_) => true,
+  //           Err(()) => false
+  //         }
+  //       } else {
+  //         true
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   };
+
+  //   if is_staked {
+  //     return true
+  //   }
+
+  //   // --- Use peer ID, check bootstrap peer ID
+  //   is_staked = match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       if require_active {
+  //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //           Ok(_) => true,
+  //           Err(()) => false
+  //         }
+  //       } else {
+  //         true
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   };
+
+  //   if is_staked {
+  //     return true
+  //   }
+
+  //   // --- Use peer ID, check client peer ID
+  //   match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       if require_active {
+  //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //           Ok(_) => true,
+  //           Err(()) => false
+  //         }
+  //       } else {
+  //         true
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   }
+  // }
 
   /// Client Proof-of-stake
   ///

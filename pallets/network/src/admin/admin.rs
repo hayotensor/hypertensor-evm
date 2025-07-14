@@ -145,4 +145,20 @@ impl<T: Config> Pallet<T> {
 
     Ok(())
   }
+
+  pub fn do_admin_remove_subnet(subnet_id: u32) -> DispatchResult {
+
+    Ok(())
+  }
+
+  pub fn do_admin_remove_subnet_node(subnet_id: u32, node_id: u32) -> DispatchResult {
+
+    Ok(())
+  }
+
+  pub fn do_admin_remove_overwatch_node(node_id: u32) -> DispatchResult {
+
+    Ok(())
+  }
+
 }

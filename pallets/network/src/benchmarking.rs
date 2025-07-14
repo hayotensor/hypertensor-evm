@@ -1119,7 +1119,7 @@ mod benchmarks {
 
 	// 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);
 
-	// 	let stake_weights_normalized = Network::<T>::calculate_stake_weights(epoch);
+	// 	let stake_weights_normalized = Network::<T>::calculate_subnet_weights(epoch);
 
 	// 	#[block]
 	// 	{

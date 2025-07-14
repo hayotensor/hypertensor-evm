@@ -56,6 +56,12 @@ frame_support::construct_runtime!(
 	}
 );
 
+/// A hash of some data used by the chain.
+pub type Hash = H256;
+
+/// The hashing algorithm used by the chain.
+pub type Hashing = BlakeTwo256;
+
 // An index to a block.
 pub type BlockNumber = u32;
 

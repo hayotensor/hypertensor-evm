@@ -15,6 +15,7 @@ use crate::{
   TotalSubnetDelegateStakeBalance,
   AccountSubnetDelegateStakeShares, 
   RegistrationSubnetData,
+  KeyType,
   StakeUnbondingLedger, 
   TotalSubnetStake, 
   HotkeySubnetNodeId, 
@@ -415,7 +416,8 @@ pub fn default_registration_subnet_data(
     max_node_penalties: 3,
     initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end),
     max_registered_nodes: 100,
-    node_removal_system: NodeRemovalSystem::Consensus
+    node_removal_system: NodeRemovalSystem::Consensus,
+    key_type: KeyType::Rsa,
   };
   add_subnet_data
 }

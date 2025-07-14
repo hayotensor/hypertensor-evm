@@ -377,6 +377,19 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  pub fn do_owner_update_key_type(origin: T::RuntimeOrigin, subnet_id: u32, value: KeyType) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetKeyType::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
   pub fn do_owner_update_node_removal_stake_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 

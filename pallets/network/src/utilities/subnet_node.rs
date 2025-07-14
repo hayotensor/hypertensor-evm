@@ -309,7 +309,7 @@ impl<T: Config> Pallet<T> {
   // }
 
   /// Is hotkey or coldkey owner for functions that allow both
-  pub fn get_hotkey_coldkey(
+  pub fn get_subnet_node_hotkey_coldkey(
     subnet_id: u32, 
     subnet_node_id: u32, 
   ) -> Option<(T::AccountId, T::AccountId)> {
@@ -319,12 +319,12 @@ impl<T: Config> Pallet<T> {
     Some((hotkey, coldkey))
   }
 
-  pub fn is_keys_owner(
+  pub fn is_subnet_node_keys_owner(
     subnet_id: u32, 
     subnet_node_id: u32, 
     key: T::AccountId, 
   ) -> bool {
-    let (hotkey, coldkey) = match Self::get_hotkey_coldkey(subnet_id, subnet_node_id) {
+    let (hotkey, coldkey) = match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
       Some((hotkey, coldkey)) => {
         (hotkey, coldkey)
       }
@@ -407,7 +407,12 @@ impl<T: Config> Pallet<T> {
   /// Main, bootstrap, and client peer IDs must be unique so we check all of them to ensure
   /// that no one else owns them
   /// Returns True is no owner or the peer ID is ownerless and available
-  pub fn is_owner_of_peer_or_ownerless(subnet_id: u32, subnet_node_id: u32, peer_id: &PeerId) -> bool {
+  pub fn is_owner_of_peer_or_ownerless(
+    subnet_id: u32,
+    subnet_node_id: u32,
+    overwatch_node_id: u32,
+    peer_id: &PeerId
+  ) -> bool {
     let mut is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(peer_subnet_node_id) => {
         if peer_subnet_node_id == subnet_node_id {
@@ -428,9 +433,19 @@ impl<T: Config> Pallet<T> {
       Err(()) => true,
     };
 
-    is_peer_owner_or_ownerless && match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
       Ok(client_subnet_node_id) => {
         if client_subnet_node_id == subnet_node_id {
+          return true
+        }
+        false
+      },
+      Err(()) => true,
+    };
+
+    is_peer_owner_or_ownerless && match PeerIdOverwatchNode::<T>::try_get(subnet_id, peer_id) {
+      Ok(peer_overwatch_node_id) => {
+        if peer_overwatch_node_id == overwatch_node_id {
           return true
         }
         false

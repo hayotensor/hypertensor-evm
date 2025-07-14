@@ -79,6 +79,10 @@ impl<T: Config> Pallet<T> {
     v as f64 / Self::percentage_factor_as_u128() as f64
   }
 
+  pub fn get_f64_as_percentage(v: f64) -> u128 {
+    (v * Self::percentage_factor_as_u128() as f64) as u128
+  }
+
   pub fn pow(x: f64, exp: f64) -> f64 {
     pow(x, exp)
   }
