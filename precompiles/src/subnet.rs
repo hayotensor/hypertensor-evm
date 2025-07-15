@@ -86,7 +86,7 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256,uint256)")]
+  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256,uint256[])")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
@@ -106,7 +106,7 @@ where
 		initial_coldkeys: Vec<Address>,
     max_registered_nodes: U256,
     node_removal_system: U256,
-    key_type: U256,
+    key_types: Vec<U256>,
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -128,8 +128,10 @@ where
     let node_removal_system = node_removal_from_u256(node_removal_system)
       .ok_or_else(|| revert("Invalid NodeRemovalSystem value"))?;
 
-    let key_type = key_type_from_u256(key_type)
-      .ok_or_else(|| revert("Invalid KeyType value"))?;
+    let key_types: BTreeSet<KeyType> = key_types
+      .into_iter()
+      .map(|val| key_type_from_u256(val).ok_or_else(|| revert("Invalid KeyType value")))
+      .collect::<Result<_, _>>()?;
 
     let subnet_data = pallet_network::RegistrationSubnetData::<R::AccountId> {
       name: name.into(),
@@ -148,7 +150,7 @@ where
       initial_coldkeys,
       max_registered_nodes,
       node_removal_system,
-      key_type
+      key_types
     };
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
@@ -484,7 +486,7 @@ fn key_type_from_u256(val: U256) -> Option<KeyType> {
     0 => Some(KeyType::Rsa),
     1 => Some(KeyType::Ed25519),
     2 => Some(KeyType::Secp256k1),
-    2 => Some(KeyType::Ecdsa),
+    3 => Some(KeyType::Ecdsa),
     _ => None,
   }
 }

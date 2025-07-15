@@ -33,8 +33,8 @@ impl<T: Config> Pallet<T> {
     // Slot 1: Electing validators
     // Slot 2: Generating weights
     let free_slot = (2..max_slots)
-        .find(|slot| !assigned_slots.contains(slot))
-        .ok_or(Error::<T>::NoAvailableSlots)?;
+      .find(|slot| !assigned_slots.contains(slot))
+      .ok_or(Error::<T>::NoAvailableSlots)?;
 
     // Update assigned slots set
     assigned_slots.insert(free_slot);
@@ -47,6 +47,7 @@ impl<T: Config> Pallet<T> {
     Ok(free_slot)
   }
 
+  /// Remove a subnet from its slot
   pub fn free_slot_of_subnet(subnet_id: u32) {
     let assigned_slots = AssignedSlots::<T>::get();
 

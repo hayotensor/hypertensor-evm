@@ -45,7 +45,7 @@ use crate::{
 ///
 ///
 ///
-/// Subnet Nodes Add/Remove
+/// Keys
 ///
 ///
 ///
@@ -856,7 +856,7 @@ fn test_add_subnet_node_not_exists_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNodeExist
+      Error::<Test>::InvalidSubnetNodeId
     );
 
     assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
@@ -894,7 +894,7 @@ fn test_add_subnet_node_not_exists_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNodeExist
+      Error::<Test>::InvalidSubnetNodeId
     );
 
     assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);

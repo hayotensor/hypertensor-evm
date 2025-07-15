@@ -77,8 +77,7 @@ impl<T: Config> Pallet<T> {
     let block: u32 = Self::get_current_block_as_u32();
 
     // --- Validator auto-attests the epoch
-    let mut attests: BTreeMap<u32, u32> = BTreeMap::new();
-    attests.insert(validator_id, block);
+    let attests: BTreeMap<u32, u32> = BTreeMap::from([(validator_id, block)]);
 
     // --- Get all eligible nodes to be in consensus on this epoch
     // We get this here instead of in the rewards distribution to handle block weight more efficiently

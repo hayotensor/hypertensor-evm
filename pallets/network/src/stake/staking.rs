@@ -162,7 +162,6 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn do_swap_hotkey_balance(
-    origin: T::RuntimeOrigin, 
     subnet_id: u32,
     old_hotkey: &T::AccountId,
     new_hotkey: &T::AccountId,

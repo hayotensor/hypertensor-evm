@@ -42,11 +42,23 @@ use crate::{
   TotalActiveSubnets,
   SubnetSlot,
   NodeRemovalSystem,
+  TotalOverwatchNodeUids,
+  OverwatchNode,
+  OverwatchNodes,
+  OverwatchNodeIdHotkey,
+  ColdkeyHotkeys,
+  AccountOverwatchStake,
+  TotalOverwatchStake,
+  OverwatchReveals,
+  HotkeyOverwatchNodeId,
 };
 use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_runtime::SaturatedConversion;
 use sp_io::hashing::blake2_128;
+use frame_support::{
+	storage::bounded_vec::BoundedVec,
+};
 
 pub type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 
@@ -192,7 +204,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
 
   let delegate_staker_account = 1000;
   // Add 100e18 to account for block increase on activation
-  let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+  // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+  let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
   let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
 
   assert_ne!(min_subnet_delegate_stake, u128::MAX);
@@ -344,7 +357,8 @@ pub fn build_activated_subnet_with_delegator_rewards(
 
   let delegate_staker_account = 1000;
   // Add 100e18 to account for block increase on activation
-  let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+  // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+  let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
   let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
   // --- Add the minimum required delegate stake balance to activate the subnet
   assert_ok!(
@@ -417,7 +431,7 @@ pub fn default_registration_subnet_data(
     initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end),
     max_registered_nodes: 100,
     node_removal_system: NodeRemovalSystem::Consensus,
-    key_type: KeyType::Rsa,
+    key_types: BTreeSet::from([KeyType::Rsa]),
   };
   add_subnet_data
 }
@@ -709,4 +723,49 @@ pub fn add_subnet_node(
     None,
     None,
   )
+}
+
+pub fn to_bounded<Len: frame_support::traits::Get<u32>>(s: &str) -> BoundedVec<u8, Len> {
+  BoundedVec::try_from(s.as_bytes().to_vec()).expect("String too long")
+}
+
+pub fn insert_overwatch_node(coldkey_n: u32, hotkey_n: u32) -> u32 {
+  let coldkey = account(coldkey_n);
+  let hotkey = account(hotkey_n);
+
+  TotalOverwatchNodeUids::<Test>::mutate(|n: &mut u32| *n += 1);
+  let current_uid = TotalOverwatchNodeUids::<Test>::get();
+
+  let overwatch_node = OverwatchNode {
+    id: current_uid,
+    hotkey: hotkey.clone(),
+  };
+
+  OverwatchNodes::<Test>::insert(current_uid, overwatch_node);
+  HotkeyOwner::<Test>::insert(hotkey.clone(), coldkey.clone());
+  OverwatchNodeIdHotkey::<Test>::insert(current_uid, hotkey.clone());
+
+  let mut hotkeys = ColdkeyHotkeys::<Test>::get(&coldkey.clone());
+  hotkeys.insert(hotkey.clone());
+  ColdkeyHotkeys::<Test>::insert(&coldkey.clone(), hotkeys);
+
+  HotkeyOverwatchNodeId::<Test>::insert(&hotkey.clone(), current_uid);
+
+  current_uid
+}
+
+pub fn set_stake(account_id: u32, amount: u128) {
+    // -- increase account staking balance
+  AccountOverwatchStake::<Test>::mutate(account(account_id), |mut n| *n += amount);
+  // -- increase total stake
+  TotalOverwatchStake::<Test>::mutate(|mut n| *n += amount);
+}
+
+pub fn submit_weight(
+  epoch: u32,
+  subnet_id: u32,
+  node_id: u32,
+  weight: u128
+) {
+  OverwatchReveals::<Test>::insert((epoch, subnet_id, node_id), weight);
 }

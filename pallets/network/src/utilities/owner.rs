@@ -377,7 +377,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_update_key_type(origin: T::RuntimeOrigin, subnet_id: u32, value: KeyType) -> DispatchResult {
+  pub fn do_owner_update_key_type(origin: T::RuntimeOrigin, subnet_id: u32, value: BTreeSet<KeyType>) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -385,7 +385,7 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    SubnetKeyType::<T>::insert(subnet_id, value);
+    SubnetKeyTypes::<T>::insert(subnet_id, value);
 
     Ok(())
   }
@@ -406,6 +406,77 @@ impl<T: Config> Pallet<T> {
     NodeRemovalStakePercentageDelta::<T>::insert(subnet_id, value);
 
     Ok(())
+  }
+
+  pub fn do_owner_update_node_removal_reputation_score_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      value <= Self::percentage_factor_as_u128(),
+      Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
+    );
+
+    NodeRemovalReputationScorePercentageDelta::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
+  pub fn do_owner_activate_subnet_node(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    activate_subnet_node_id: u32,
+    remove_subnet_node_id: u32
+  ) -> DispatchResult {
+    // must have EnableOwnerActivation
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    let subnet = match SubnetsData::<T>::try_get(subnet_id) {
+      Ok(subnet) => subnet,
+      Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+    };
+
+    let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+
+    // Node must register within the grace period if subnet activated
+    ensure!(
+      subnet.state == SubnetState::Active,
+      Error::<T>::SubnetNotActive
+    );
+
+    let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+    let max_nodes = MaxSubnetNodes::<T>::get();
+
+    // --- If subnet is full, the owner must supply a node to remove
+    if total_nodes >= max_nodes {
+      // --- Ensure node exists
+      let subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, remove_subnet_node_id) {
+				Ok(subnet_node) => subnet_node,
+				Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+			};
+      // --- Remove node
+      Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id);
+    }
+
+    let mut subnet_node = RegisteredSubnetNodesData::<T>::take(subnet_id, activate_subnet_node_id);
+    let activating_subnet_node_coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
+
+    Self::perform_activate_subnet_node(
+      activating_subnet_node_coldkey, 
+      subnet_id, 
+      subnet.state,
+      subnet_node,
+      subnet_epoch,
+    )
   }
 
   pub fn do_owner_remove_subnet_node(origin: T::RuntimeOrigin, subnet_id: u32, subnet_node_id: u32) -> DispatchResult {

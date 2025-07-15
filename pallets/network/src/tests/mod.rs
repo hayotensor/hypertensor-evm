@@ -22,3 +22,4 @@ mod reputation;
 // mod emissions_stake_weight;
 mod commit_reveal;
 mod overwatch_nodes;
+mod identity;

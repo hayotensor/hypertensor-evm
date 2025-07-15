@@ -370,7 +370,8 @@ fn test_activate_subnet() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
+    // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
@@ -554,7 +555,8 @@ fn test_activate_subnet_already_activated_err() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
@@ -660,7 +662,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
   
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(
@@ -772,7 +775,8 @@ fn test_activate_subnet_initializing_error() {
       );
     }
   
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    // let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
     // --- Add the minimum required delegate stake balance to activate the subnet
     assert_ok!(

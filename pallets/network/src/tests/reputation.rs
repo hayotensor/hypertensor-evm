@@ -18,7 +18,7 @@ fn test_increase_coldkey_reputation_with_weight_factor() {
     // Set initial reputation
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
       start_epoch: 0,
-      weight: 500_000_000_000_000_000,
+      score: 500_000_000_000_000_000,
       lifetime_node_count: 0,
       total_active_nodes: 0,
       total_increases: 0,
@@ -41,7 +41,7 @@ fn test_increase_coldkey_reputation_with_weight_factor() {
     assert_eq!(rep.total_increases, 1);
     assert_eq!(rep.last_validator_epoch, epoch);
     assert_eq!(rep.average_attestation, attestation);
-    assert!(rep.weight > 500_000_000_000_000_000); // weight increased
+    assert!(rep.score > 500_000_000_000_000_000); // score increased
   });
 }
 
@@ -56,7 +56,7 @@ fn test_average_attestation_over_multiple_increases() {
     // Step 1: insert initial rep
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
       start_epoch: 0,
-      weight: 500_000_000_000_000_000,
+      score: 500_000_000_000_000_000,
       lifetime_node_count: 0,
       total_active_nodes: 0,
       total_increases: 0,
@@ -106,11 +106,11 @@ fn test_single_decrease_updates_average_and_weight() {
     let min_attestation = 660_000_000_000_000_000u128;
     let attestation = 500_000_000_000_000_000u128; // 50%
     let weight_factor = 500_000_000_000_000_000u128; // 0.5
-    let start_weight = 800_000_000_000_000_000u128;
+    let start_score = 800_000_000_000_000_000u128;
 
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
         start_epoch: 0,
-        weight: start_weight,
+        score: start_score,
         lifetime_node_count: 0,
         total_active_nodes: 0,
         total_increases: 0,
@@ -131,7 +131,7 @@ fn test_single_decrease_updates_average_and_weight() {
     let rep = ColdkeyReputation::<Test>::get(&coldkey);
     assert_eq!(rep.total_decreases, 1);
     assert_eq!(rep.average_attestation, attestation);
-    assert!(rep.weight < start_weight);
+    assert!(rep.score < start_score);
     assert_eq!(rep.last_validator_epoch, 1);
   });
 }
@@ -142,12 +142,12 @@ fn test_average_attestation_over_multiple_decreases() {
     let coldkey: AccountId = account(1);
     let min_attestation = 660_000_000_000_000_000u128;
     let weight_factor = 500_000_000_000_000_000u128; // 0.5
-    let start_weight = 900_000_000_000_000_000u128;
+    let start_score = 900_000_000_000_000_000u128;
 
     // Initial insert
     ColdkeyReputation::<Test>::insert(&coldkey, Reputation {
         start_epoch: 0,
-        weight: start_weight,
+        score: start_score,
         lifetime_node_count: 0,
         total_active_nodes: 0,
         total_increases: 0,
@@ -180,6 +180,6 @@ fn test_average_attestation_over_multiple_decreases() {
     // Confirm all other reputation fields are tracking
     assert_eq!(rep3.total_decreases, 3);
     assert_eq!(rep3.last_validator_epoch, 3);
-    assert!(rep3.weight < start_weight); // weight has gone down over 3 penalties
+    assert!(rep3.score < start_score); // score has gone down over 3 penalties
   });
 }

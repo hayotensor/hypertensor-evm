@@ -17,17 +17,6 @@ use super::*;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  // pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
-  //   SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
-  //     if !slot_list.contains(&subnet_node_id) {
-  //       let idx = slot_list.len() as u32;
-  //       slot_list.try_push(subnet_node_id).map_err(|_| Error::<T>::MaxSubnetNodes)?;
-  //       NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
-  //     }
-  //     Ok(())
-  //   })
-  // }
-
   pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
     SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
       if !slot_list.contains(&subnet_node_id) {
@@ -40,29 +29,6 @@ impl<T: Config> Pallet<T> {
       }
     }).unwrap_or(false)
   }
-
-  // pub fn remove_node_from_election_slot(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
-  //   SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| {
-  //     if let Some(pos) = slot_list.iter().position(|id| *id == subnet_node_id) {
-  //       // Swap-remove node at position
-  //       let last_idx = slot_list.len() - 1;
-  //       slot_list.swap_remove(pos);
-
-  //       // If removed node was not the last one, update moved node index
-  //       if pos != last_idx {
-  //         let moved_node_id = slot_list[pos];
-  //         NodeSlotIndex::<T>::insert(subnet_id, moved_node_id, pos as u32);
-  //       }
-
-  //       // Remove the index entry for removed node
-  //       NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
-
-  //       Ok(())
-  //     } else {
-  //       Err(Error::<T>::SubnetNodeNotExist.into())
-  //     }
-  //   })
-  // }
 
   pub fn remove_node_from_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
     SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
@@ -112,6 +78,16 @@ impl<T: Config> Pallet<T> {
     HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
     SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
 
+    // Remove subnet ID from set
+    match HotkeyOwner::<T>::try_get(&hotkey) {
+      Ok(coldkey) => {
+        ColdkeySubnets::<T>::mutate(&coldkey, |subnets| {
+          subnets.remove(&subnet_id);
+        });
+      },
+      Err(()) => ()
+    }
+
     // We don't remove the HotkeyOwner so the user can remove stake with coldkey
 
     // Update total subnet peers by subtracting  1
@@ -136,9 +112,6 @@ impl<T: Config> Pallet<T> {
       }
     }
 
-    // // Reset sequential absent subnet node count
-    // SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
-
     Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
   }
 
@@ -162,6 +135,41 @@ impl<T: Config> Pallet<T> {
       Some(DeactivatedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
     } else {
       None
+    }
+  }
+
+  /// Get any subnet node that has been activated (not including registered nodes)
+  pub fn update_subnet_node_hotkey(subnet_id: u32, subnet_node_id: u32, new_hotkey: T::AccountId) {
+    if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      SubnetNodesData::<T>::try_mutate_exists(
+        subnet_id,
+        subnet_node_id,
+        |maybe_params| -> DispatchResult {
+          let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
+          params.hotkey = new_hotkey.clone();
+          Ok(())
+        }
+      );
+    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      DeactivatedSubnetNodesData::<T>::try_mutate_exists(
+        subnet_id,
+        subnet_node_id,
+        |maybe_params| -> DispatchResult {
+          let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
+          params.hotkey = new_hotkey.clone();
+          Ok(())
+        }
+      );
+    } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      RegisteredSubnetNodesData::<T>::try_mutate_exists(
+        subnet_id,
+        subnet_node_id,
+        |maybe_params| -> DispatchResult {
+          let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
+          params.hotkey = new_hotkey.clone();
+          Ok(())
+        }
+      );
     }
   }
 
@@ -231,13 +239,15 @@ impl<T: Config> Pallet<T> {
     // Get calling nodes stake balance
     let activating_node_stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
     let percentage_delta = NodeRemovalStakePercentageDelta::<T>::get(subnet_id);
-    let min_stake_balance = Self::percent_mul(activating_node_stake_balance, percentage_delta);
+    let removal_stake_balance = activating_node_stake_balance.saturating_sub(
+      Self::percent_mul(activating_node_stake_balance, percentage_delta)
+    );
     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
 
     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
       let node_hotkey = node.hotkey.clone();
       let stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
-      if stake >= min_stake_balance {
+      if stake >= removal_stake_balance {
         continue
       }
       let start_epoch = node.classification.start_epoch;
@@ -258,18 +268,24 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_lowest_reputation_node(subnet_id: u32, coldkey: &T::AccountId) -> Option<u32> {
     let coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
-    let rep_weight = coldkey_reputation.weight;
+    let percentage_delta = NodeRemovalReputationScorePercentageDelta::<T>::get(subnet_id);
+    let rep_score = coldkey_reputation.score;
+    let removal_rep_score = rep_score.saturating_sub(
+      Self::percent_mul(rep_score, percentage_delta)
+    );
 
-    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, weight, start_epoch)
+    let immunity_epochs = NodeRemovalImmunityEpochs::<T>::get(subnet_id);
+
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
 
     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
       let node_hotkey = node.hotkey.clone();
       let reputation = ColdkeyReputation::<T>::get(coldkey);
-      if reputation.weight >= rep_weight {
+      if reputation.score >= removal_rep_score {
         continue
       }
       let start_epoch = node.classification.start_epoch;
-      candidates.push((uid, reputation.weight, start_epoch));
+      candidates.push((uid, reputation.score, start_epoch));
     }
 
     if candidates.is_empty() {
@@ -277,7 +293,7 @@ impl<T: Config> Pallet<T> {
     }
 
     candidates.sort_by(|a, b| {
-      // Sort by reputation.weight ascending, then start_epoch descending
+      // Sort by reputation.score ascending, then start_epoch descending
       a.1.cmp(&b.1).then(b.2.cmp(&a.2))
     });
 
@@ -298,15 +314,6 @@ impl<T: Config> Pallet<T> {
       .map(|(_, subnet_node)| subnet_node.hotkey)
       .collect()
   }
-
-  // pub fn is_subnet_node_owner(subnet_id: u32, subnet_node_id: u32, hotkey: T::AccountId) -> bool {
-  //   match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-  //     Ok(data) => {
-  //       data.hotkey == hotkey
-  //     },
-  //     Err(()) => false,
-  //   }
-  // }
 
   /// Is hotkey or coldkey owner for functions that allow both
   pub fn get_subnet_node_hotkey_coldkey(
@@ -364,23 +371,6 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  // pub fn graduate_class(
-  //   subnet_id: u32, 
-  //   subnet_node_id: u32, 
-  //   start_epoch: u32,
-  // ) {
-  //   // TODO: Add querying epoch here
-  //   SubnetNodesData::<T>::mutate(
-  //     subnet_id,
-  //     subnet_node_id,
-  //     |params: &mut SubnetNode<T::AccountId>| {
-  //       params.classification = SubnetNodeClassification {
-  //         node_class: params.classification.node_class.next(),
-  //         start_epoch: start_epoch,
-  //       };
-  //     },
-  //   );
-  // }
   pub fn graduate_class(
     subnet_id: u32, 
     subnet_node_id: u32, 
@@ -459,95 +449,25 @@ impl<T: Config> Pallet<T> {
     0
   }
 
-  pub fn is_identity_owner(coldkey: T::AccountId, identity: Vec<u8>) -> bool {
-    true    
-  }
+  /// Get the subnets minimum delegate stake multipler based on the current electable nodes count
+  pub fn get_subnet_min_delegate_staking_multiplier(electable_node_count: u32) -> u128 {
+    let min_nodes = MinSubnetNodes::<T>::get();
+    let max_nodes = MaxSubnetNodes::<T>::get();
+    let min_multiplier = Self::percentage_factor_as_u128(); // 100%
+    let max_multiplier = MaxMinDelegateStakeMultiplier::<T>::get();
 
-  pub fn is_identity_taken(identity: Vec<u8>) -> bool {
-    true    
-  }
-
-  pub const EMA_ALPHA_NUMERATOR: u128 = 95200000000000000;
-
-  pub fn update_ema(subnet_id: u32, current_node_count: u32, block: u32) {
-    let prev_ema_u128 = SubnetNodeCountEMA::<T>::get(subnet_id);
-    let prev_ema = U256::from(prev_ema_u128);
-
-    let current_scaled = U256::from(current_node_count) * Self::PERCENTAGE_FACTOR;
-
-    let last_updated_block: u32 = SubnetNodeCountEMALastUpdated::<T>::get(subnet_id);
-    let delta_blocks = block.saturating_sub(last_updated_block).max(1);
-
-    // Compute effective alpha based on how many blocks have passed
-    let alpha_numer = U256::from(Self::EMA_ALPHA_NUMERATOR) * U256::from(delta_blocks);
-
-    let effective_alpha = alpha_numer.min(Self::PERCENTAGE_FACTOR); // cap at 1.0
-
-    let one_minus_alpha = Self::PERCENTAGE_FACTOR - effective_alpha;
-
-    let updated_ema = (
-        effective_alpha * current_scaled +
-        one_minus_alpha * prev_ema
-    ) / Self::PERCENTAGE_FACTOR;
-
-    // Clamp the current EMA
-    // We only want the moving average to lag when nodes are increasing
-    // This will clamp and reset the EMA node count value
-    let clamped_ema = updated_ema.min(current_scaled);
-    let updated_ema_u128 = clamped_ema.try_into().unwrap_or(u128::MAX);
-
-    // let updated_ema_u128 = updated_ema.try_into().unwrap_or(u128::MAX);
-
-    SubnetNodeCountEMA::<T>::insert(subnet_id, updated_ema_u128);
-    SubnetNodeCountEMALastUpdated::<T>::insert(subnet_id, block);
-  }
-
-  /// Converts scaled EMA (u128) to integer node count, rounding UP
-  pub fn ema_as_rounded_up_integer(subnet_id: u32) -> u32 {
-    let current_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-    let ema_scaled = SubnetNodeCountEMA::<T>::get(subnet_id);
-    // Divide by scaling factor, but round up any remainder
-    let percentage_factor: u128 = Self::percentage_factor_as_u128();
-    let integer_part = ema_scaled / percentage_factor;
-    let remainder = ema_scaled % percentage_factor;
-
-    if (integer_part as u32) > current_active_nodes {
-      return current_active_nodes
+    if electable_node_count <= min_nodes {
+      return min_multiplier;
+    } else if electable_node_count >= max_nodes {
+      return max_multiplier;
     }
 
-    if remainder > 0 {
-      // If there's any fractional part, round up by adding 1
-      (integer_part + 1) as u32
-    } else {
-      integer_part as u32
-    }
-  }
+    let node_delta = electable_node_count - min_nodes;
+    let range = max_nodes - min_nodes;
 
-  pub fn get_min_delegate_stake_multiplier(subnet_id: u32) -> u128 {
-    let ema_scaled = SubnetNodeCountEMA::<T>::get(subnet_id); // u128, scaled by 1e18
-    let pf = Self::percentage_factor_as_u128();
-    let base = MinSubnetNodes::<T>::get() as u128 * pf;
+    let ratio = Self::percent_div(node_delta as u128, range as u128);
+    let delta = max_multiplier.saturating_sub(min_multiplier);
 
-    if ema_scaled <= base {
-      return pf
-    }
-
-    // Compute ln(ema / base) ≈ log2(ema / base) * ln(2)
-    let ratio = U256::from(ema_scaled) * U256::from(pf) / U256::from(base);
-
-    let ln_2_scaled = U256::from(693_147_180_559_945_309u128); // ln(2) * 1e18
-    let log2_ratio = ratio.bits().saturating_sub(1) as u128;
-
-    // Apply slope k = 0.6 (scaled)
-    let slope_k = U256::from(600_000_000_000_000_000u128); // 0.6 * 1e18
-
-    let ln_scaled = U256::from(log2_ratio) * ln_2_scaled; // ln(x) in 1e18 scale
-    let multiplier_extra = slope_k * ln_scaled / U256::from(pf);
-
-    let multiplier = U256::from(pf) + multiplier_extra;
-
-    // Clamp to max multiplier = 2.5x
-    let max_multiplier = U256::from(2_500_000_000_000_000_000u128); // 2.5 * 1e18
-    multiplier.min(max_multiplier).as_u128()
+    min_multiplier.saturating_add(Self::percent_mul(ratio, delta))
   }
 }

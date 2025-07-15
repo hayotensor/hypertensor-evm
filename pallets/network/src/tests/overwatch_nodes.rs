@@ -2,7 +2,9 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use log::info;
+use frame_support::traits::Currency;
 use crate::{
+  Error,
   SubnetsData,
   OverwatchCommits,
   OverwatchReveals,
@@ -18,6 +20,12 @@ use crate::{
   AccountOverwatchStake,
   TotalOverwatchStake,
   OverwatchNodeWeights,
+  ColdkeyHotkeys,
+  OverwatchMinStakeBalance,
+  HotkeyOverwatchNodeId,
+  TotalActiveSubnets,
+  NetworkMinStakeBalance,
+  MaxSubnetNodes,
 };
 use frame_support::{
 	assert_noop, assert_ok, assert_err
@@ -39,39 +47,85 @@ use sp_runtime::traits::Hash;
 //
 //
 //
-fn insert_overwatch_node(account_id: u32) -> u32 {
-  let coldkey = account(account_id);
-  let hotkey = account(account_id);
+// 
 
-  TotalOverwatchNodeUids::<Test>::mutate(|n: &mut u32| *n += 1);
-  let current_uid = TotalOverwatchNodeUids::<Test>::get();
+#[test]
+fn test_register_overwatch_node() {
+  new_test_ext().execute_with(|| {
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+    let stake_amount: u128 = OverwatchMinStakeBalance::<Test>::get();
 
-  let overwatch_node = OverwatchNode {
-    id: current_uid,
-    hotkey: hotkey.clone(),
-  };
+    let coldkey = account(0);
+    let hotkey = account(1);
 
-  OverwatchNodes::<Test>::insert(current_uid, overwatch_node);
-  HotkeyOwner::<Test>::insert(hotkey.clone(), coldkey.clone());
-  OverwatchNodeIdHotkey::<Test>::insert(current_uid, hotkey.clone());
+    let _ = Balances::deposit_creating(&coldkey, deposit_amount);
 
-  current_uid
+    assert_ok!(
+      Network::register_overwatch_node(
+        RuntimeOrigin::signed(coldkey.clone()),
+        hotkey.clone(),
+        stake_amount,
+      )
+    );
+
+    let hotkeys = ColdkeyHotkeys::<Test>::get(&coldkey);
+    assert!(hotkeys.contains(&hotkey));
+
+    let owner = HotkeyOwner::<Test>::get(&hotkey.clone());
+    assert_eq!(owner, coldkey.clone());
+
+    let node_id = HotkeyOverwatchNodeId::<Test>::get(&hotkey.clone()).unwrap();
+    assert_eq!(node_id, 1);
+
+    let ow_hotkey = OverwatchNodeIdHotkey::<Test>::get(node_id);
+    assert_eq!(ow_hotkey, Some(hotkey.clone()));
+
+    let ow_node = OverwatchNodes::<Test>::get(node_id);
+    assert_eq!(ow_node.unwrap().hotkey, hotkey.clone());
+  });
 }
 
-fn set_stake(account_id: u32, amount: u128) {
-    // -- increase account staking balance
-  AccountOverwatchStake::<Test>::mutate(account(account_id), |mut n| *n += amount);
-  // -- increase total stake
-  TotalOverwatchStake::<Test>::mutate(|mut n| *n += amount);
-}
+#[test]
+fn test_overwatch_subnet_node_unique_hotkeys() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+    let end = 16;
 
-fn submit_weight(
-  epoch: u32,
-  subnet_id: u32,
-  node_id: u32,
-  weight: u128
-) {
-  OverwatchReveals::<Test>::insert((epoch, subnet_id, node_id), weight);
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+    // subnet node keys
+    let coldkey = account(max_subnet_nodes+end*subnets);
+    let hotkey = account(max_subnet_nodes+end*subnets);
+
+    let _ = Balances::deposit_creating(&coldkey, deposit_amount);
+
+    assert_err!(
+      Network::register_overwatch_node(
+        RuntimeOrigin::signed(coldkey.clone()),
+        hotkey.clone(),
+        stake_amount,
+      ),
+      Error::<Test>::HotkeyHasOwner
+    );
+
+    let free_hotkey = account(max_subnet_nodes+end*subnets+1);
+
+    assert_ok!(
+      Network::register_overwatch_node(
+        RuntimeOrigin::signed(coldkey.clone()),
+        free_hotkey.clone(),
+        stake_amount,
+      )
+    );
+  });
 }
 
 #[test]
@@ -81,8 +135,8 @@ fn test_equal_stake_equal_weights() {
     let epoch = 1;
 
     // Setup
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 100);
     set_stake(2, 100);
 
@@ -110,8 +164,8 @@ fn test_stake_dampening_effect() {
     let subnet_id = 1;
     let epoch = 1;
 
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 90);
     set_stake(2, 10);
 
@@ -138,8 +192,8 @@ fn test_two_noces_same_stake_dif_weights() {
     let subnet_id = 1;
     let epoch = 1;
 
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 50);
     set_stake(2, 50);
 
@@ -162,8 +216,8 @@ fn test_missing_stake_gets_zero_score() {
     let epoch = 1;
 
     // Only node 1 has registered stake
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 100);
 
     submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
@@ -186,8 +240,8 @@ fn test_multiple_subnets_score_accumulation() {
     let subnet_id_2 = 2;
     let epoch = 1;
 
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 50);
     set_stake(2, 100);
 
@@ -215,8 +269,8 @@ fn test_multiple_subnets_score_accumulation_v2() {
     let subnet_id_2 = 2;
     let epoch = 1;
 
-    let node_id_1 = insert_overwatch_node(1);
-    let node_id_2 = insert_overwatch_node(2);
+    let node_id_1 = insert_overwatch_node(1,1);
+    let node_id_2 = insert_overwatch_node(2,2);
     set_stake(1, 100);
     set_stake(2, 50);
 

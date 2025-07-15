@@ -146,19 +146,38 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_admin_remove_subnet(subnet_id: u32) -> DispatchResult {
+  pub fn do_collective_remove_subnet(subnet_id: u32) -> DispatchResult {
+    Self::do_remove_subnet(
+      subnet_id,
+      SubnetRemovalReason::Council,
+    )
+  }
+
+  pub fn do_collective_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
+    Self::do_remove_subnet_node(
+			subnet_id,
+			subnet_node_id,
+		)
+  }
+
+  pub fn do_collective_remove_overwatch_node(overwatch_node_id: u32) -> DispatchResult {
 
     Ok(())
   }
 
-  pub fn do_admin_remove_subnet_node(subnet_id: u32, node_id: u32) -> DispatchResult {
+  pub fn do_set_sigmoid_midpoint(value: u128) -> DispatchResult {
+    ensure!(
+      value <= Self::percentage_factor_as_u128(),
+      Error::<T>::InvalidPercent
+    );
+
+    SigmoidMidpoint::<T>::put(value);
 
     Ok(())
   }
 
-  pub fn do_admin_remove_overwatch_node(node_id: u32) -> DispatchResult {
-
+  pub fn do_set_sigmoid_steepness(value: u128) -> DispatchResult {
+    SigmoidSteepness::<T>::put(value);
     Ok(())
   }
-
 }

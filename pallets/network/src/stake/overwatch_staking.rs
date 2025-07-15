@@ -80,7 +80,7 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotEnoughStakeToWithdraw
     );
     
-    // if user is still a subnet node they must keep the required minimum balance
+    // if user is still an overwatch node they must keep the required minimum balance
     if is_overwatch_node {
       ensure!(
         account_stake_balance.saturating_sub(stake_to_be_removed) >= OverwatchMinStakeBalance::<T>::get(),
@@ -114,7 +114,6 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn do_swap_overwatch_hotkey_balance(
-    origin: T::RuntimeOrigin, 
     old_hotkey: &T::AccountId,
     new_hotkey: &T::AccountId,
   ) {
@@ -128,10 +127,10 @@ impl<T: Config> Pallet<T> {
     hotkey: &T::AccountId,
     amount: u128,
   ) {
-    // -- increase account subnet staking balance
+    // -- increase account overwatch staking balance
     AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_accrue(amount));
 
-    // -- increase total subnet stake
+    // -- increase total overwatch stake
     TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_accrue(amount));
    }
   
@@ -139,10 +138,10 @@ impl<T: Config> Pallet<T> {
     hotkey: &T::AccountId,
     amount: u128,
   ) {
-    // -- decrease account subnet staking balance
+    // -- decrease account overwatch staking balance
     AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_reduce(amount));
 
-    // -- decrease total subnet stake
+    // -- decrease total overwatch stake
     TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_reduce(amount));
   }
 
@@ -150,7 +149,7 @@ impl<T: Config> Pallet<T> {
     old_hotkey: &T::AccountId,
     new_hotkey: &T::AccountId,
   ) {
-    // -- swap old_hotkey subnet staking balance
+    // --- swap old_hotkey overwatch staking balance
     let old_hotkey_stake_balance = AccountOverwatchStake::<T>::take(old_hotkey);
     // --- Redundant take of new hotkeys stake balance
     // --- New hotkey is always checked before updating

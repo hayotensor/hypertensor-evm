@@ -87,8 +87,6 @@ impl<T: Config> Pallet<T> {
 
     weight = weight.saturating_add(T::DbWeight::get().reads(5));
 
-    let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance();
-
     let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
     let total_subnets: u32 = subnets.len() as u32;
     weight = weight.saturating_add(T::DbWeight::get().reads(total_subnets.into()));
@@ -112,6 +110,8 @@ impl<T: Config> Pallet<T> {
       //  - Remove if not activated.
       //
       // ==========================
+
+      let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(*subnet_id);
 
       let is_registering = data.state == SubnetState::Registered;
       let is_paused = data.state == SubnetState::Paused;

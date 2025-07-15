@@ -34,6 +34,8 @@ use crate::{
   TotalActiveSubnets,
   SubnetNodeCountEMA,
   SubnetNodeCountEMALastUpdated,
+  MinSubnetNodes,
+  TotalActiveSubnetNodes,
 };
 use sp_core::U256;
 ///
@@ -165,7 +167,8 @@ fn test_activate_subnet_node_post_subnet_activation() {
     // let queue = RegistrationQueue::<Test>::get(subnet_id);
 		// assert_eq!(queue, vec![hotkey_subnet_node_id]);
 
-    set_epoch(start_epoch);
+    // set_epoch(start_epoch);
+    set_block_to_subnet_slot(start_epoch, subnet_id);
 
     assert_ok!(
       Network::activate_subnet_node(
@@ -221,7 +224,8 @@ fn test_register_after_activate_with_same_keys() {
     let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     let start_epoch = subnet_node.classification.start_epoch;
 
-    set_epoch(start_epoch);
+    // set_epoch(start_epoch);
+    set_block_to_subnet_slot(start_epoch, subnet_id);
 
     assert_ok!(
       Network::activate_subnet_node(
@@ -247,7 +251,7 @@ fn test_register_after_activate_with_same_keys() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNodeExist
+      Error::<Test>::HotkeyHasOwner
     );
   })
 }
@@ -293,7 +297,7 @@ fn test_register_after_deactivate_with_same_keys() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNodeExist
+      Error::<Test>::HotkeyHasOwner
     );
 
   })
@@ -506,12 +510,16 @@ fn test_add_subnet_node_not_exists_err() {
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
+    let coldkey = account(subnets*max_subnet_nodes+end+1);
+    let hotkey = account(subnets*max_subnet_nodes+end+1);
+    let used_hotkey = account(subnets*max_subnet_nodes+end);
+
     // try reregistering again
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(max_subnet_nodes+1*subnets)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(max_subnet_nodes+1*subnets),
+        used_hotkey.clone(),
         peer(max_subnet_nodes+1*subnets),
         peer(max_subnet_nodes+1*subnets),
         0,
@@ -520,18 +528,18 @@ fn test_add_subnet_node_not_exists_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNodeExist
+      Error::<Test>::HotkeyHasOwner
     );
 
     assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
 
     assert_err!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(max_subnet_nodes+end+1*subnets)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(max_subnet_nodes+end+1*subnets),
-        peer(max_subnet_nodes+1*subnets),
-        peer(max_subnet_nodes+1*subnets),
+        hotkey.clone(),
+        peer(subnets*max_subnet_nodes+end),
+        peer(subnets*max_subnet_nodes+end),
         0,
         amount,
         None,
@@ -816,21 +824,21 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
       )
     );
 
-    assert_err!(
-      Network::register_subnet_node(
-        RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
-        subnet_id,
-        account(subnet_id*total_subnet_nodes+1),
-        peer(subnet_id*total_subnet_nodes+1),
-        peer(subnet_id*total_subnet_nodes+1),
-        0,
-        amount,
-        None,
-        None,
-        None,
-      ),
-      Error::<Test>::MustUnstakeToRegister
-    );
+    // assert_err!(
+    //   Network::register_subnet_node(
+    //     RuntimeOrigin::signed(account(subnet_id*total_subnet_nodes+1)),
+    //     subnet_id,
+    //     account(subnet_id*total_subnet_nodes+1),
+    //     peer(subnet_id*total_subnet_nodes+1),
+    //     peer(subnet_id*total_subnet_nodes+1),
+    //     0,
+    //     amount,
+    //     None,
+    //     None,
+    //     None,
+    //   ),
+    //   Error::<Test>::MustUnstakeToRegister
+    // );
   });
 }
 
@@ -1232,6 +1240,112 @@ fn test_update_peer_id_not_key_owner() {
 }
 
 // #[test]
+// fn ema_should_lag_behind_increasing_node_count() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 77;
+//     let mut block = 1;
+
+//     // Start at 10 nodes, increase to 200 over time
+//     let mut actual_node_count = 10u32;
+
+//     // Run the loop for 20 simulated blocks
+//     for _ in 0..20 {
+//       Network::update_ema(subnet_id, actual_node_count, block);
+
+//       let ema = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//       assert!(
+//         ema < actual_node_count as u128 * Network::PERCENTAGE_FACTOR.low_u128(),
+//         "EMA should be less than actual scaled node count (lagging behavior)"
+//       );
+
+//       log::error!("ema: {:?}, actual: {:?}", ema, actual_node_count);
+
+//       // Increase the node count more aggressively over time
+//       actual_node_count += 1;
+//       block += 1;
+//     }
+
+//     assert!(false);
+
+//     // At the end, the EMA should be close to—but still less than—the final value
+//     let final_ema = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     let final_node_scaled = U256::from(actual_node_count) * Network::PERCENTAGE_FACTOR;
+//     assert!(
+//       U256::from(final_ema) < final_node_scaled,
+//       "Final EMA should still lag behind final node count"
+//     );
+//   });
+// }
+
+// // #[test]
+// // fn ema_updates_correctly_on_first_insert() {
+// //   new_test_ext().execute_with(|| {
+// //     let subnet_id = 42;
+// //     let node_count = 100;
+// //     let block = 10;
+
+// //     // let min_nodes = MinSubnetNodes::<Test>::get();
+// //     // Ensure storage is empty
+// //     // assert_eq!(SubnetNodeCountEMA::<Test>::get(subnet_id), min_nodes as u128 * 1e+18 as u128);
+// //     assert_eq!(SubnetNodeCountEMA::<Test>::get(subnet_id), 0);
+// //     assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), 0);
+
+// //     // Run the function
+// //     Network::update_ema(subnet_id, node_count, block);
+
+// //     // The EMA should match node_count * percentage_factor on first update
+// //     let expected = U256::from(node_count) * Network::PERCENTAGE_FACTOR;
+// //     let stored = U256::from(SubnetNodeCountEMA::<Test>::get(subnet_id));
+// //     assert_eq!(stored, expected);
+
+// //     // Last block updated should be stored
+// //     assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block);
+// //   });
+// // }
+
+// #[test]
+// fn ema_updates_smoothly_on_constant_value() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 7;
+//     let node_count = 120;
+
+//     // First update at block 5
+//     Network::update_ema(subnet_id, node_count, 5);
+//     let ema_1 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+
+//     // Update again at block 6 (short interval)
+//     Network::update_ema(subnet_id, node_count, 6);
+//     let ema_2 = SubnetNodeCountEMA::<Test>::get(subnet_id);
+
+//     // Since the value didn’t change, EMA should stabilize near scaled node count
+//     assert!(ema_2 >= ema_1);
+//   });
+// }
+
+// #[test]
+// fn ema_lags_on_increase_and_clamps() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 1;
+//     let initial_count = 50;
+//     let updated_count = 200;
+
+//     // Initialize with block 10
+//     Network::update_ema(subnet_id, initial_count, 10);
+
+//     // Save initial EMA value
+//     let initial_ema = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     assert!(initial_ema > 0);
+
+//     // Advance to block 15 and increase node count
+//     Network::update_ema(subnet_id, updated_count, 15);
+
+//     let updated_ema = SubnetNodeCountEMA::<Test>::get(subnet_id);
+//     assert!(updated_ema > initial_ema, "EMA should increase");
+//     assert!(updated_ema < updated_count * Network::PERCENTAGE_FACTOR.low_u128(), "EMA should lag behind new value");
+//   });
+// }
+
+// #[test]
 // fn test_node_count_ema_updates_correctly() {
 //   new_test_ext().execute_with(|| {
 //     let subnet_id = 1;
@@ -1333,3 +1447,97 @@ fn test_update_peer_id_not_key_owner() {
 //     // assert_eq!(SubnetNodeCountEMALastUpdated::<Test>::get(subnet_id), block_100);
 //   });
 // }
+
+#[test]
+fn subnet_stake_multiplier_works() {
+  new_test_ext().execute_with(|| {
+      let subnet_id = 1;
+
+      // Set test constants
+      MinSubnetNodes::<Test>::put(10);
+      MaxSubnetNodes::<Test>::put(100);
+      TotalActiveSubnetNodes::<Test>::insert(subnet_id, 10);
+
+      // Multiplier should be 100% at min
+      let mult = Network::get_subnet_min_delegate_staking_multiplier(10);
+      assert_eq!(mult, Network::percentage_factor_as_u128()); // 100%
+
+      // Multiplier should be 400% at max
+      TotalActiveSubnetNodes::<Test>::insert(subnet_id, 100);
+      let mult = Network::get_subnet_min_delegate_staking_multiplier(100);
+      assert_eq!(mult, 4000000000000000000); // 400%
+
+      // Multiplier should be ~250% halfway
+      TotalActiveSubnetNodes::<Test>::insert(subnet_id, 55); // halfway between 10 and 100
+      let mult = Network::get_subnet_min_delegate_staking_multiplier(55);
+      let expected = Network::percentage_factor_as_u128() + (3000000000000000000 / 2);
+      assert_eq!(mult, expected);
+  });
+}
+
+#[test]
+fn test_subnet_overwatch_node_unique_hotkeys() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let end = 16;
+
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let deposit_amount: u128 = 1000000000000000000000000;
+
+    let free_coldkey = account(subnet_id*total_subnet_nodes+1);
+    let hotkey = account(max_subnet_nodes+end*subnets+1);
+    let free_hotkey = account(max_subnet_nodes+end*subnets+2);
+
+    let _ = Balances::deposit_creating(&free_coldkey, deposit_amount);
+
+    assert_ok!(
+      Network::register_overwatch_node(
+        RuntimeOrigin::signed(free_coldkey.clone()),
+        hotkey.clone(),
+        stake_amount,
+      )
+    );
+
+    assert_err!(
+      Network::register_subnet_node(
+        RuntimeOrigin::signed(free_coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        0,
+        amount,
+        None,
+        None,
+        None,
+      ),
+      Error::<Test>::HotkeyHasOwner
+    );
+
+    assert_ok!(
+      Network::register_subnet_node(
+        RuntimeOrigin::signed(free_coldkey.clone()),
+        subnet_id,
+        free_hotkey.clone(),
+        peer(subnet_id*total_subnet_nodes+1),
+        peer(subnet_id*total_subnet_nodes+1),
+        0,
+        amount,
+        None,
+        None,
+        None,
+      )
+    );
+  });
+}

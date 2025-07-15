@@ -30,6 +30,16 @@ impl<T: Config> Pallet<T> {
       Error::<T>::HotkeyHasOwner
     );
 
+    let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+    ensure!(
+      !hotkeys.contains(&hotkey),
+      Error::<T>::HotkeyAlreadyRegisteredToColdkey
+    );
+
+    // Insert coldkey -> hotkeys
+    hotkeys.insert(hotkey.clone());
+    ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+
     // ⸺ Ensure qualifies via reputation
     let reputation = ColdkeyReputation::<T>::get(&coldkey);
 
@@ -45,6 +55,7 @@ impl<T: Config> Pallet<T> {
     let current_uid = TotalOverwatchNodeUids::<T>::get();
 
     HotkeyOwner::<T>::insert(&hotkey, &coldkey);
+    HotkeyOverwatchNodeId::<T>::insert(&hotkey, current_uid);
 
     let overwatch_node: OverwatchNode<T::AccountId> = OverwatchNode {
       id: current_uid,
@@ -88,7 +99,12 @@ impl<T: Config> Pallet<T> {
       Error::<T>::PeerIdExist
     );
 
-    PeerIdOverwatchNode::<T>::insert(subnet_id, peer_id, overwatch_node_id);
+    PeerIdOverwatchNode::<T>::insert(subnet_id, &peer_id, overwatch_node_id);
+
+    // Add or replace PeerID under subnet ID
+    OverwatchNodeIndex::<T>::mutate(overwatch_node_id, |map| {
+      map.insert(subnet_id, peer_id);
+    });
 
     Ok(())
   }

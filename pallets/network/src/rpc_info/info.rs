@@ -45,7 +45,8 @@ impl<T: Config> Pallet<T> {
       owner: SubnetOwner::<T>::get(subnet_id)?,
       registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id)?,
       node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
-      key_type: SubnetKeyType::<T>::get(subnet_id),
+      key_types: SubnetKeyTypes::<T>::get(subnet_id),
+      slot_index: SubnetSlot::<T>::get(subnet_id)?,
     };
 
     Some(subnet_info)

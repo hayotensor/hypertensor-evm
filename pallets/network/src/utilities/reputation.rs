@@ -34,17 +34,17 @@ impl<T: Config> Pallet<T> {
 
     let percentage_factor = Self::percentage_factor_as_u128();
     let mut coldkey_reputation = ColdkeyReputation::<T>::get(&coldkey);
-    let current_weight = coldkey_reputation.weight;
+    let current_score = coldkey_reputation.score;
 
     // Stop early if weight is already maxed out
-    if current_weight >= percentage_factor {
+    if current_score >= percentage_factor {
       return
     }
 
     // Reward factor decreases as weight increases (to make it harder to max out)
     let reward_factor: u128 = percentage_factor
       .saturating_mul(percentage_factor)
-      / current_weight.saturating_add(1);
+      / current_score.saturating_add(1);
 
     // Compute nominal increase
     let nominal_increase: u128 = (attestation_percentage - min_attestation_percentage)
@@ -57,13 +57,13 @@ impl<T: Config> Pallet<T> {
       return
     }
 
-    let new_weight = current_weight.saturating_add(nominal_increase).min(percentage_factor);
-    if new_weight == current_weight {
+    let new_weight = current_score.saturating_add(nominal_increase).min(percentage_factor);
+    if new_weight == current_score {
       return
     }
 
     // Update fields
-    coldkey_reputation.weight = new_weight;
+    coldkey_reputation.score = new_weight;
     coldkey_reputation.total_increases += 1;
     coldkey_reputation.last_validator_epoch = epoch;
 
@@ -105,19 +105,19 @@ impl<T: Config> Pallet<T> {
     let percentage_factor = Self::percentage_factor_as_u128();
     // Safe get, has Default value
     let mut coldkey_reputation = ColdkeyReputation::<T>::get(&coldkey);
-    let current_weight = coldkey_reputation.weight;
+    let current_score = coldkey_reputation.score;
 
     // Remove node / Avoid division by zero
-    if current_weight == 0 {
+    if current_score == 0 {
       return
     }
 
-    // Penalty increases as weight increases (same pattern as reward logic)
+    // Penalty increases as score increases (same pattern as reward logic)
     let penalty_factor: u128 = percentage_factor
         .saturating_mul(percentage_factor)
-        / current_weight.saturating_add(1);
+        / current_score.saturating_add(1);
 
-    // Calculate nominal decrease: how much worse than threshold * weight * penalty
+    // Calculate nominal decrease: how much worse than threshold * score * penalty
     let nominal_decrease: u128 = (min_attestation_percentage - attestation_percentage)
         .saturating_mul(decrease_weight_factor)
         .saturating_mul(penalty_factor)
@@ -128,12 +128,12 @@ impl<T: Config> Pallet<T> {
       return
     }
 
-    let new_weight = current_weight.saturating_sub(nominal_decrease);
-    if new_weight == current_weight {
+    let new_weight = current_score.saturating_sub(nominal_decrease);
+    if new_weight == current_score {
       return
     }
 
-    coldkey_reputation.weight = new_weight;
+    coldkey_reputation.score = new_weight;
     coldkey_reputation.total_decreases += 1;
     coldkey_reputation.last_validator_epoch = epoch;
 
