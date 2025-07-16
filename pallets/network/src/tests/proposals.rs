@@ -135,7 +135,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // //         peer(1),
 // //         Vec::new()
 // //       ),
-// //       Error::<Test>::SubnetNotExist
+// //       Error::<Test>::InvalidSubnet
 // //     );
 // //   })
 // // }

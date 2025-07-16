@@ -56,7 +56,7 @@ fn test_add_to_stake_not_key_owner() {
         account(1),
         amount,
       ),
-      Error::<Test>::SubnetNotExist,
+      Error::<Test>::InvalidSubnet,
     );
 
     let subnet_name: Vec<u8> = "subnet-name".into();
@@ -101,7 +101,7 @@ fn test_remove_stake_not_key_owner() {
         account(1),
         amount,
       ),
-      Error::<Test>::SubnetNotExist,
+      Error::<Test>::InvalidSubnet,
     );
 
     let subnet_name: Vec<u8> = "subnet-name".into();

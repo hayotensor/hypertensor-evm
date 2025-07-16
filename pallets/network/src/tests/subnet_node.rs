@@ -706,7 +706,7 @@ fn test_register_subnet_node_activate_subnet_node() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
-    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Queue);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
     assert_eq!(subnet_node.classification.start_epoch, epoch + 1);
   })
 }
@@ -782,7 +782,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNotExist
+      Error::<Test>::InvalidSubnet
     );
 
     let subnet_id = 1;
@@ -799,7 +799,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNotExist
+      Error::<Test>::InvalidSubnet
     );
   })
 }
@@ -2222,8 +2222,8 @@ fn test_remove_subnet_node() {
       assert_eq!(subnet_node_data, Err(()));
     }
 
-    // let node_set = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Queue, epoch);
-    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Queue, epoch);
+    // let node_set = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, epoch);
+    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, epoch);
 
     assert_eq!(node_set.len(), (total_subnet_nodes - remove_n_peers) as usize);
     assert_eq!(Network::total_stake(), amount_staked);

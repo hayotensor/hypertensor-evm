@@ -235,71 +235,6 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn get_lowest_stake_balance_node(subnet_id: u32, hotkey: &T::AccountId) -> Option<u32> {
-    // Get calling nodes stake balance
-    let activating_node_stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
-    let percentage_delta = NodeRemovalStakePercentageDelta::<T>::get(subnet_id);
-    let removal_stake_balance = activating_node_stake_balance.saturating_sub(
-      Self::percent_mul(activating_node_stake_balance, percentage_delta)
-    );
-    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
-
-    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-      let node_hotkey = node.hotkey.clone();
-      let stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
-      if stake >= removal_stake_balance {
-        continue
-      }
-      let start_epoch = node.classification.start_epoch;
-      candidates.push((uid, stake, start_epoch));
-    }
-
-    if candidates.is_empty() {
-      return None
-    }
-
-    candidates.sort_by(|a, b| {
-      // Sort by stake ascending, then start_epoch descending
-      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
-    });
-
-    candidates.first().map(|(uid, _, _)| *uid)
-  }
-
-  pub fn get_lowest_reputation_node(subnet_id: u32, coldkey: &T::AccountId) -> Option<u32> {
-    let coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
-    let percentage_delta = NodeRemovalReputationScorePercentageDelta::<T>::get(subnet_id);
-    let rep_score = coldkey_reputation.score;
-    let removal_rep_score = rep_score.saturating_sub(
-      Self::percent_mul(rep_score, percentage_delta)
-    );
-
-    let immunity_epochs = NodeRemovalImmunityEpochs::<T>::get(subnet_id);
-
-    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
-
-    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-      let node_hotkey = node.hotkey.clone();
-      let reputation = ColdkeyReputation::<T>::get(coldkey);
-      if reputation.score >= removal_rep_score {
-        continue
-      }
-      let start_epoch = node.classification.start_epoch;
-      candidates.push((uid, reputation.score, start_epoch));
-    }
-
-    if candidates.is_empty() {
-      return None
-    }
-
-    candidates.sort_by(|a, b| {
-      // Sort by reputation.score ascending, then start_epoch descending
-      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
-    });
-
-    candidates.first().map(|(uid, _, _)| *uid)
-  }
-
   // Get subnet node ``hotkeys`` by classification
   pub fn get_classified_hotkeys<C>(
     subnet_id: u32,
@@ -469,5 +404,73 @@ impl<T: Config> Pallet<T> {
     let delta = max_multiplier.saturating_sub(min_multiplier);
 
     min_multiplier.saturating_add(Self::percent_mul(ratio, delta))
+  }
+
+  
+  pub fn get_lowest_stake_balance_node(subnet_id: u32, hotkey: &T::AccountId) -> Option<u32> {
+    // Get calling nodes stake balance
+    let activating_node_stake_balance = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
+    let percentage_delta = NodeRemovalStakePercentageDelta::<T>::get(subnet_id);
+    let removal_stake_balance = activating_node_stake_balance.saturating_sub(
+      Self::percent_mul(activating_node_stake_balance, percentage_delta)
+    );
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+      let node_hotkey = node.hotkey.clone();
+      let stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
+      if stake >= removal_stake_balance {
+        continue
+      }
+      let start_epoch = node.classification.start_epoch;
+      candidates.push((uid, stake, start_epoch));
+    }
+
+    if candidates.is_empty() {
+      return None
+    }
+
+    candidates.sort_by(|a, b| {
+      // Sort by stake ascending, then start_epoch descending
+      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
+  }
+
+  pub fn get_lowest_reputation_node(subnet_id: u32, coldkey: &T::AccountId) -> Option<u32> {
+    // Get calling nodes reputation element
+    let coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
+    let percentage_delta = NodeRemovalReputationScorePercentageDelta::<T>::get(subnet_id);
+    let min_score = NodeRemovalReputationScoreMin::<T>::get(subnet_id);
+    let rep_score = coldkey_reputation.score;
+    let removal_rep_score = rep_score.saturating_sub(
+      Self::percent_mul(rep_score, percentage_delta)
+    );
+
+    let immunity_epochs = NodeRemovalImmunityEpochs::<T>::get(subnet_id);
+
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+      let node_hotkey = node.hotkey.clone();
+      let reputation = ColdkeyReputation::<T>::get(coldkey);
+      if reputation.score >= removal_rep_score || reputation.score >= min_score {
+        continue
+      }
+      let start_epoch = node.classification.start_epoch;
+      candidates.push((uid, reputation.score, start_epoch));
+    }
+
+    if candidates.is_empty() {
+      return None
+    }
+
+    candidates.sort_by(|a, b| {
+      // Sort by reputation.score ascending, then start_epoch descending
+      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
   }
 }

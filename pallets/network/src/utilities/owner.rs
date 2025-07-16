@@ -253,14 +253,14 @@ impl<T: Config> Pallet<T> {
     );
 
     ensure!(
-      value >= MinQueueClassificationEpochs::<T>::get() &&
-      value <= MaxQueueClassificationEpochs::<T>::get(),
-      Error::<T>::InvalidQueueClassificationEpochs
+      value >= MinIdleClassificationEpochs::<T>::get() &&
+      value <= MaxIdleClassificationEpochs::<T>::get(),
+      Error::<T>::InvalidIdleClassificationEpochs
     );
 
-    QueueClassificationEpochs::<T>::insert(subnet_id, value);
+    IdleClassificationEpochs::<T>::insert(subnet_id, value);
 
-    Self::deposit_event(Event::QueueClassificationEpochsUpdate { 
+    Self::deposit_event(Event::IdleClassificationEpochsUpdate { 
       subnet_id: subnet_id,
       owner: coldkey, 
       value: value 
@@ -390,6 +390,22 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  pub fn set_node_removal_policy(
+    origin: T::RuntimeOrigin,
+    subnet_id: u32,
+    policy: NodeRemovalPolicy,
+  ) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    NodeRemovalSystemV2::<T>::insert(subnet_id, policy);
+    Ok(())
+  }
+
   pub fn do_owner_update_node_removal_stake_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -426,6 +442,24 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  pub fn do_owner_update_node_removal_reputation_score_min(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      value <= Self::percentage_factor_as_u128(),
+      Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
+    );
+
+    NodeRemovalReputationScoreMin::<T>::insert(subnet_id, value);
+
+    Ok(())
+  }
+
   pub fn do_owner_activate_subnet_node(
     origin: T::RuntimeOrigin, 
     subnet_id: u32, 
@@ -442,7 +476,7 @@ impl<T: Config> Pallet<T> {
 
     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
       Ok(subnet) => subnet,
-      Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+      Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
     };
 
     let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
@@ -461,7 +495,7 @@ impl<T: Config> Pallet<T> {
       // --- Ensure node exists
       let subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, remove_subnet_node_id) {
 				Ok(subnet_node) => subnet_node,
-				Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+				Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
 			};
       // --- Remove node
       Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id);
@@ -476,7 +510,9 @@ impl<T: Config> Pallet<T> {
       subnet.state,
       subnet_node,
       subnet_epoch,
-    )
+    ).map_err(|e| e)?;
+
+    Ok(())
   }
 
   pub fn do_owner_remove_subnet_node(origin: T::RuntimeOrigin, subnet_id: u32, subnet_node_id: u32) -> DispatchResult {

@@ -37,7 +37,7 @@ impl<T: Config> Pallet<T> {
       delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
       registration_queue_epochs: RegistrationQueueEpochs::<T>::get(subnet_id),
       activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
-      queue_classification_epochs: QueueClassificationEpochs::<T>::get(subnet_id),
+      queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
       included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
       max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
       initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
@@ -59,7 +59,7 @@ impl<T: Config> Pallet<T> {
       return Vec::new();
     }
     let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Queue, epoch)
+    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, epoch)
   }
 
   pub fn get_subnet_nodes_included(

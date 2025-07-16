@@ -81,7 +81,7 @@ impl<T: Config> Pallet<T> {
 
     // --- Get all eligible nodes to be in consensus on this epoch
     // We get this here instead of in the rewards distribution to handle block weight more efficiently
-    let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Queue, subnet_epoch);
+    let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
     let subnet_nodes_count = subnet_nodes.len();
 
     let consensus_data: ConsensusData<T::AccountId> = ConsensusData {

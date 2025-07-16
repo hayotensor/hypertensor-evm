@@ -78,7 +78,7 @@ impl<T: Config> Pallet<T> {
 
     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
       Ok(subnet) => subnet,
-      Err(()) => return Err(Error::<T>::SubnetNotExist.into()),
+      Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
     };
 
     ensure!(

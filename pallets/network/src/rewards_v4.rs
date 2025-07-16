@@ -31,7 +31,7 @@ impl<T: Config> Pallet<T> {
   ) -> Weight {
     let mut weight = Weight::zero();
 
-    let queue_epochs = QueueClassificationEpochs::<T>::get(subnet_id);
+    let queue_epochs = IdleClassificationEpochs::<T>::get(subnet_id);
     let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
     let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
     weight = weight.saturating_add(T::DbWeight::get().reads(3));
@@ -91,8 +91,8 @@ impl<T: Config> Pallet<T> {
         continue
       }
 
-      if subnet_node.classification.node_class == SubnetNodeClass::Queue {
-        // Queue classified nodes can't be included in consensus data and can't have penalties
+      if subnet_node.classification.node_class == SubnetNodeClass::Idle {
+        // Idle classified nodes can't be included in consensus data and can't have penalties
         // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
         if subnet_node.classification.start_epoch + queue_epochs > current_epoch {

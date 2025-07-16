@@ -36,6 +36,7 @@ use crate::{
   SubnetNodeCountEMALastUpdated,
   MinSubnetNodes,
   TotalActiveSubnetNodes,
+  RegistrationQueueEpochs,
 };
 use sp_core::U256;
 ///
@@ -179,7 +180,7 @@ fn test_activate_subnet_node_post_subnet_activation() {
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
-    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Queue);
+    assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
 
     let new_total_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
     assert_eq!(total_subnet_nodes + 1, new_total_nodes);
@@ -445,7 +446,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNotExist
+      Error::<Test>::InvalidSubnet
     );
 
     let subnet_id = 1;
@@ -462,7 +463,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::SubnetNotExist
+      Error::<Test>::InvalidSubnet
     );
   })
 }
@@ -875,8 +876,8 @@ fn test_remove_subnet_node() {
       assert_eq!(subnet_node_data, Err(()));
     }
 
-    // let node_set = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Queue, epoch);
-    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Queue, epoch);
+    // let node_set = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, epoch);
+    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, epoch);
 
     assert_eq!(node_set.len(), (total_subnet_nodes - remove_n_peers) as usize);
     assert_eq!(Network::total_stake(), amount_staked);
@@ -1540,4 +1541,72 @@ fn test_subnet_overwatch_node_unique_hotkeys() {
       )
     );
   });
+}
+
+#[test]
+fn test_defer_node() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    build_activated_subnet_new(subnet_name.clone(), 0, max_subnet_nodes, deposit_amount, stake_amount);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+    let total_active_subnet_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+    let registration_queue_epochs = RegistrationQueueEpochs::<Test>::get(subnet_id);
+
+    let coldkey = account(subnet_id*max_subnet_nodes+max_subnet_nodes+1);
+    let hotkey = account(subnet_id*max_subnet_nodes+max_subnet_nodes+1);
+    let peer_id = peer(subnet_id*max_subnet_nodes+max_subnet_nodes+1);
+    let bootstrap_peer_id = peer(subnet_id*max_subnet_nodes+max_subnet_nodes+1);
+
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+    let starting_balance = Balances::free_balance(&coldkey.clone());
+
+    assert_ok!(
+      Network::register_subnet_node(
+        RuntimeOrigin::signed(coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        peer_id.clone(),
+        bootstrap_peer_id.clone(),
+        0,
+        amount,
+        None,
+        None,
+        None,
+      )
+    );
+
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
+
+    let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+    let initial_start_epoch = subnet_node.classification.start_epoch;
+
+    set_block_to_subnet_slot(initial_start_epoch, subnet_id);
+
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+    assert_ok!(
+      Network::activate_subnet_node(
+        RuntimeOrigin::signed(hotkey.clone()),
+        subnet_id,
+        hotkey_subnet_node_id
+      )
+    );
+
+    assert_eq!(SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id), Err(()));
+
+    let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+    let deferred_start_epoch = subnet_node.classification.start_epoch;
+    assert_ne!(initial_start_epoch, deferred_start_epoch);
+    assert_eq!(deferred_start_epoch, subnet_epoch + registration_queue_epochs);
+  })
 }

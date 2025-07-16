@@ -24,7 +24,7 @@
 // ///
 // ///
 // ///
-// /// Subnet Nodes Queue
+// /// Subnet Nodes Idle
 // ///
 // ///
 // ///

@@ -114,10 +114,10 @@ use crate::{
 //             None,
 //           ) 
 //         );
-//         // activated as Queue
+//         // activated as Idle
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Queue);    
+//         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);    
 //       } else if n == 1 {
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(n_peers)).unwrap();
 //         // automatically upgraded to Included after first next epoch

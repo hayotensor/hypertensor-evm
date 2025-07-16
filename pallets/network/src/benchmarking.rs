@@ -449,7 +449,7 @@ mod benchmarks {
 
 	// 	#[block]
 	// 	{
-	// 		let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Queue, 0);
+	// 		let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, 0);
 	// 	}
 	// }
 

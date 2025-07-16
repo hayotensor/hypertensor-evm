@@ -88,8 +88,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(574_832_000, 145522)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
-	/// Storage: `Network::QueueClassificationEpochs` (r:1 w:0)
-	/// Proof: `Network::QueueClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::IdleClassificationEpochs` (r:1 w:0)
+	/// Proof: `Network::IdleClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::IncludedClassificationEpochs` (r:1 w:0)
 	/// Proof: `Network::IncludedClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxSubnetNodePenalties` (r:1 w:0)
@@ -216,8 +216,8 @@ impl WeightInfo for () {
 		Weight::from_parts(574_832_000, 145522)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
-	/// Storage: `Network::QueueClassificationEpochs` (r:1 w:0)
-	/// Proof: `Network::QueueClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::IdleClassificationEpochs` (r:1 w:0)
+	/// Proof: `Network::IdleClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::IncludedClassificationEpochs` (r:1 w:0)
 	/// Proof: `Network::IncludedClassificationEpochs` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxSubnetNodePenalties` (r:1 w:0)

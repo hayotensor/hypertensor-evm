@@ -1507,7 +1507,7 @@ fn test_do_epoch_preliminaries_choose_validator() {
 // // //       ) 
 // // //     );
 
-// // //     let node_set = SubnetNodesClasses::<Test>::get(subnet_id, SubnetNodeClass::Queue);
+// // //     let node_set = SubnetNodesClasses::<Test>::get(subnet_id, SubnetNodeClass::Idle);
 // // //     assert_eq!(node_set.len(), n_peers as usize);
 
 // // //   })

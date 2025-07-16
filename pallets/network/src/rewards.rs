@@ -147,7 +147,7 @@
 //           };
       
 //           // --- (if) Check if subnet node is past the max registration epochs to activate (if registered or deactivated)
-//           // --- (else if) Check if past Queue and can be included in validation data
+//           // --- (else if) Check if past Idle and can be included in validation data
 //           // Always continue if any of these are true
 //           // Note: Only ``included`` or above nodes can get emissions
 //           if subnet_node.classification.node_class <= SubnetNodeClass::Registered {
@@ -155,7 +155,7 @@
 //               Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
 //             }
 //             continue
-//           } else if subnet_node.classification.node_class == SubnetNodeClass::Queue {
+//           } else if subnet_node.classification.node_class == SubnetNodeClass::Idle {
 //             // If not, upgrade classification and continue
 //             // --- Upgrade to included
 //             SubnetNodesData::<T>::mutate(
