@@ -27,7 +27,7 @@ use crate::{
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
   SubnetNodesData, 
-  PeerIdSubnetNode,
+  PeerIdSubnetNodeId,
   DeactivationLedger, 
   SubnetNodeDeactivation, 
   MaxRewardRateDecrease,
@@ -99,7 +99,7 @@ fn test_register_subnet_node() {
     assert_eq!(subnet_node.peer_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Registered);
 
-    let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
+    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node_account, hotkey_subnet_node_id);
 
     let account_subnet_stake = AccountSubnetStake::<Test>::get(account(total_subnet_nodes+1), subnet_id);
@@ -176,6 +176,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(account(1)),
         account(1),
         account(total_subnet_nodes+1),
+        // None,
       )
     );
 
@@ -241,6 +242,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(account(1)),
         account(2),
         account(total_subnet_nodes+1),
+        // None,
       ),
       Error::<Test>::NotKeyOwner
     );
@@ -300,6 +302,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
         account(total_subnet_nodes+15),
         account(total_subnet_nodes+2),
+        // None,
       )
     );
 
@@ -308,6 +311,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
         account(total_subnet_nodes+15),
         account(total_subnet_nodes+2),
+        // None,
       ),
       Error::<Test>::NotKeyOwner
     );    
@@ -334,6 +338,7 @@ fn test_update_coldkey_key_taken_err() {
         RuntimeOrigin::signed(account(1)),
         account(2),
         account(1),
+        // None
       ),
       Error::<Test>::NotKeyOwner
     );
@@ -420,6 +425,7 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(1)),
+        account(2),
         add_subnet_data,
       )
     );
@@ -485,6 +491,7 @@ fn test_register_subnet_node_then_activate() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(1)),
+        account(2),
         add_subnet_data,
       )
     );
@@ -607,6 +614,7 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
 //     assert_ok!(
 //       Network::register_subnet(
 //         RuntimeOrigin::signed(account(1)),
+//         account(2),
 //         add_subnet_data,
 //       )
 //     );
@@ -686,7 +694,7 @@ fn test_register_subnet_node_activate_subnet_node() {
     assert_eq!(subnet_node.peer_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Registered);
 
-    let subnet_node_account = PeerIdSubnetNode::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
+    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer(total_subnet_nodes+1));
     assert_eq!(subnet_node_account, subnet_node_id);
 
     let account_subnet_stake = AccountSubnetStake::<Test>::get(account(total_subnet_nodes+1), subnet_id);
@@ -2234,7 +2242,7 @@ fn test_remove_subnet_node() {
       let subnet_node_id = HotkeySubnetNodeId::<Test>::try_get(subnet_id, account(n));
       assert_eq!(subnet_node_id, Err(()));
 
-      let subnet_node_account = PeerIdSubnetNode::<Test>::try_get(subnet_id, peer(n));
+      let subnet_node_account = PeerIdSubnetNodeId::<Test>::try_get(subnet_id, peer(n));
       assert_eq!(subnet_node_account, Err(()));
   
       let account_subnet_stake = AccountSubnetStake::<Test>::get(account(n), subnet_id);

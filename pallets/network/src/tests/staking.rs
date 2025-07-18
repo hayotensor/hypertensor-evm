@@ -23,6 +23,7 @@ use crate::{
   SubnetNodesData,
   RegisteredSubnetNodesData,
   TotalSubnetNodeUids,
+  MaxSubnets,
 };
 
 // ///
@@ -112,31 +113,35 @@ fn test_remove_stake_not_key_owner() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    
+    let end = 3;
 
-    let account_n = max_subnet_nodes+1*subnets;
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
-    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
     assert_ok!(
       Network::add_to_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         subnet_node_id,
-        account(account_n),
+        hotkey.clone(),
         amount,
       ) 
     );
 
     assert_err!(
       Network::remove_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         account(2),
         amount,
@@ -158,33 +163,36 @@ fn test_add_to_stake() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    
+    let end = 3;
 
-    let account_n = max_subnet_nodes+1*subnets;
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
-    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
     let amount_staked = TotalSubnetStake::<Test>::get(subnet_id);
 
-    let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
     assert_ok!(
       Network::add_to_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         subnet_node_id,
-        account(account_n),
+        hotkey.clone(),
         amount,
       ) 
     );
 
-    assert_eq!(Network::account_subnet_stake(account(account_n), subnet_id), amount + amount);
-    // assert_eq!(Network::total_account_stake(account(account_n)), amount + amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount + amount);
     assert_eq!(Network::total_stake(), amount_staked + amount);
     assert_eq!(Network::total_subnet_stake(subnet_id), amount_staked + amount);
   });
@@ -250,43 +258,47 @@ fn test_remove_stake() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    
+    let end = 3;
 
-    let account_n = max_subnet_nodes+1*subnets;
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
-    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-    let _ = Balances::deposit_creating(&account(account_n), deposit_amount);
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let subnet_name: Vec<u8> = "subnet-name".into();
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
     // add double amount to stake
     assert_ok!(
       Network::add_to_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         subnet_node_id,
-        account(account_n),
+        hotkey.clone(),
         amount,
       ) 
     );
 
-    assert_eq!(Network::account_subnet_stake(account(account_n), subnet_id), amount + amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount + amount);
 
     // remove amount ontop
     assert_ok!(
       Network::remove_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(account_n),
+        hotkey.clone(),
         amount,
       )
     );
 
-    assert_eq!(Network::account_subnet_stake(account(account_n), subnet_id), amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount);
     // assert_eq!(Network::total_account_stake(account(account_n)), amount);
   });
 }
@@ -448,21 +460,25 @@ fn test_deactivate_try_removing_all_stake() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    
+    let end = 3;
 
-    let account_n = max_subnet_nodes+1*subnets;
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
-    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(account_n)).unwrap();
+    let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
     let epoch = get_epoch();
 
     assert_ok!(
       Network::deactivate_subnet_node(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         subnet_node_id,
       )
@@ -475,9 +491,9 @@ fn test_deactivate_try_removing_all_stake() {
 
     assert_err!(
       Network::remove_stake(
-        RuntimeOrigin::signed(account(account_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(account_n),
+        hotkey.clone(),
         stake_amount,
       ),
       Error::<Test>::MinStakeNotReached

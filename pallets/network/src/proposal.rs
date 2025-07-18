@@ -51,7 +51,7 @@ impl<T: Config> Pallet<T> {
 
     // Unique subnet_id -> PeerId
     // Ensure peer ID exists within subnet
-    let defendant_subnet_node_id = match PeerIdSubnetNode::<T>::try_get(subnet_id, &peer_id) {
+    let defendant_subnet_node_id = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, &peer_id) {
       Ok(defendant_subnet_node_id) => defendant_subnet_node_id,
       Err(()) => return Err(Error::<T>::PeerIdNotExist.into()),
     };

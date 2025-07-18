@@ -19,7 +19,7 @@ use crate::{
   SubnetRemovalReason,
   StakeUnbondingLedger,
   AccountNodeDelegateStakeShares,
-  TotalNodeDelegateStakeBalance,
+  NodeDelegateStakeBalance,
   TotalNodeDelegateStakeShares,
   NetworkMinStakeBalance,
   TotalActiveSubnets,
@@ -1189,7 +1189,7 @@ fn test_switch_delegate_stake_node_to_subnet() {
     );
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_from_subnet_nodes+1), from_subnet_id, 1));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(from_subnet_id, 1);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -1336,7 +1336,7 @@ fn test_switch_delegate_stake_subnet_to_node() {
     assert_eq!(after_transfer_tensor, before_transfer_tensor);
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(n_account), to_subnet_id, 1));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(to_subnet_id, 1);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(to_subnet_id, 1);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(to_subnet_id, 1);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(

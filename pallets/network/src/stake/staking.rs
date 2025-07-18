@@ -144,15 +144,6 @@ impl<T: Config> Pallet<T> {
       block
     ).map_err(|e| e)?;
 
-    // TODO: Test this feature works in all test cases
-    if stake_to_be_removed == account_stake_balance {
-      HotkeyOwner::<T>::remove(&hotkey);
-
-      let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
-      hotkeys.remove(&hotkey);
-      ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
-    }
-
     // Set last block for rate limiting
     Self::set_last_tx_block(&coldkey, block);
 

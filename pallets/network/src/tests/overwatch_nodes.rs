@@ -26,6 +26,7 @@ use crate::{
   TotalActiveSubnets,
   NetworkMinStakeBalance,
   MaxSubnetNodes,
+  MaxSubnets,
 };
 use frame_support::{
 	assert_noop, assert_ok, assert_err
@@ -96,14 +97,16 @@ fn test_overwatch_subnet_node_unique_hotkeys() {
     let end = 16;
 
     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
-
+    
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+
+    // subnet node keys, same keys as the last node
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
     build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
-    // subnet node keys
-    let coldkey = account(max_subnet_nodes+end*subnets);
-    let hotkey = account(max_subnet_nodes+end*subnets);
 
     let _ = Balances::deposit_creating(&coldkey, deposit_amount);
 

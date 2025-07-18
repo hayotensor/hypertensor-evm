@@ -94,8 +94,9 @@ impl<T: Config> Pallet<T> {
       Error::<T>::InvalidPeerId
     );
 
+    // Ensure no one owns the peer Id and we don't already own it
     ensure!(
-      Self::is_owner_of_peer_or_ownerless(subnet_id, 0, overwatch_node_id, &peer_id),
+      Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &peer_id),
       Error::<T>::PeerIdExist
     );
 

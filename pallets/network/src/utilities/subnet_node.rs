@@ -73,8 +73,8 @@ impl<T: Config> Pallet<T> {
     }
 
     // Remove all subnet node elements
-    PeerIdSubnetNode::<T>::remove(subnet_id, &peer_id);
-    BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
+    PeerIdSubnetNodeId::<T>::remove(subnet_id, &peer_id);
+    BootstrapPeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
     HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
     SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
 
@@ -338,7 +338,7 @@ impl<T: Config> Pallet<T> {
     overwatch_node_id: u32,
     peer_id: &PeerId
   ) -> bool {
-    let mut is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    let mut is_peer_owner_or_ownerless = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
       Ok(peer_subnet_node_id) => {
         if peer_subnet_node_id == subnet_node_id {
           return true
@@ -348,7 +348,7 @@ impl<T: Config> Pallet<T> {
       Err(()) => true,
     };
 
-    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
+    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
       Ok(bootstrap_subnet_node_id) => {
         if bootstrap_subnet_node_id == subnet_node_id {
           return true

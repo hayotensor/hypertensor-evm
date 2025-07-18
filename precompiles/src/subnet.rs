@@ -86,10 +86,11 @@ where
   //   Ok(())
   // }
 
-  #[precompile::public("registerSubnet(string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256,uint256[])")]
+  #[precompile::public("registerSubnet(address,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256,uint256[])")]
   #[precompile::payable]
   fn register_subnet(
     handle: &mut impl PrecompileHandle,
+    hotkey: Address,
     name: BoundedString<ConstU32<256>>,
     repo: BoundedString<ConstU32<1024>>,
     description: BoundedString<ConstU32<1024>>,
@@ -110,6 +111,7 @@ where
   ) -> EvmResult<()> {
     handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
+    let hotkey = R::AddressMapping::into_account_id(hotkey.into());
     let churn_limit = try_u256_to_u32(churn_limit)?;
     let min_stake: u128 = min_stake.unique_saturated_into();
     let max_stake: u128 = max_stake.unique_saturated_into();
@@ -155,6 +157,7 @@ where
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
     let call = pallet_network::Call::<R>::register_subnet {
+      hotkey,
       subnet_data
     };
 

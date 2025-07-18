@@ -26,7 +26,7 @@ use crate::{
   MaxSubnetPenaltyCount, 
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
-  PeerIdSubnetNode,
+  PeerIdSubnetNodeId,
   NetworkMinStakeBalance,
   SubnetOwnerPercentage,
   SubnetNodesData,
@@ -787,7 +787,7 @@ fn test_reward_subnets_v2() {
 //     let subnet_node_id = HotkeySubnetNodeId::<Test>::try_get(subnet_id, account(total_subnet_nodes));
 //     assert_eq!(subnet_node_id, Err(()));
 
-//     let subnet_node_account = PeerIdSubnetNode::<Test>::try_get(subnet_id, peer(total_subnet_nodes));
+//     let subnet_node_account = PeerIdSubnetNodeId::<Test>::try_get(subnet_id, peer(total_subnet_nodes));
 //     assert_eq!(subnet_node_account, Err(()));
 //   });
 // }

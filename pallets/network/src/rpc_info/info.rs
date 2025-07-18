@@ -188,7 +188,7 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn get_subnet_node_stake_by_peer_id(subnet_id: u32, peer_id: PeerId) -> u128 {
-    match PeerIdSubnetNode::<T>::try_get(subnet_id, &peer_id) {
+    match PeerIdSubnetNodeId::<T>::try_get(subnet_id, &peer_id) {
       Ok(subnet_node_id) => {
         let hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node_id).unwrap(); // TODO: error fallback
         AccountSubnetStake::<T>::get(hotkey, subnet_id)
@@ -199,14 +199,14 @@ impl<T: Config> Pallet<T> {
 
   // TODO: Make this only return true is Validator subnet node
   pub fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
-    match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id)) {
+    match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id)) {
       Ok(_) => true,
       Err(()) => false,
     }
   }
 
   pub fn is_subnet_node_by_bootstrap_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
-    match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id)) {
+    match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id)) {
       Ok(_) => true,
       Err(()) => false,
     }
@@ -216,7 +216,7 @@ impl<T: Config> Pallet<T> {
     let mut subnet_nodes: BTreeMap<Vec<u8>, bool> = BTreeMap::new();
 
     for peer_id in peer_ids.iter() {
-      let is = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+      let is = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
         Ok(_) => true,
         Err(()) => false,
       };
@@ -275,7 +275,7 @@ impl<T: Config> Pallet<T> {
     let mut is_staked = false;
 
     // --- Use peer ID
-    is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+    is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
       Ok(subnet_node_id) => {
         if require_active {
           match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -294,7 +294,7 @@ impl<T: Config> Pallet<T> {
     }
 
     // --- Use peer ID, check bootstrap peer ID
-    is_staked = match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+    is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
       Ok(subnet_node_id) => {
         if require_active {
           match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -367,7 +367,7 @@ impl<T: Config> Pallet<T> {
   //   }
 
   //   // --- Use peer ID
-  //   is_staked = match PeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //   is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
   //     Ok(subnet_node_id) => {
   //       if require_active {
   //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -386,7 +386,7 @@ impl<T: Config> Pallet<T> {
   //   }
 
   //   // --- Use peer ID, check bootstrap peer ID
-  //   is_staked = match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //   is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
   //     Ok(subnet_node_id) => {
   //       if require_active {
   //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {

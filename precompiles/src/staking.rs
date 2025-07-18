@@ -559,7 +559,7 @@ where
 
     let account_node_delegate_stake_shares: u128 = pallet_network::AccountNodeDelegateStakeShares::<R>::get((&hotkey, subnet_id, subnet_node_id));
     let total_node_delegated_stake_shares = pallet_network::TotalNodeDelegateStakeShares::<R>::get(subnet_id, subnet_node_id);
-    let total_node_delegated_stake_balance = pallet_network::TotalNodeDelegateStakeBalance::<R>::get(subnet_id, subnet_node_id);
+    let total_node_delegated_stake_balance = pallet_network::NodeDelegateStakeBalance::<R>::get(subnet_id, subnet_node_id);
 
     let balance: u128 = pallet_network::Pallet::<R>::convert_to_balance(
       account_node_delegate_stake_shares,

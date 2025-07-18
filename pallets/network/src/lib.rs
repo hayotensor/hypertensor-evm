@@ -557,6 +557,7 @@ pub mod pallet {
 		// Keys
 		/// Hotkey has an owner and hotkeys must be unique to each node. If you're the owner, use a fresh hotkey
 		HotkeyHasOwner,
+		ColdkeyMatchesHotkey,
 
 		NoCommitFound,
 		NoCommitsFound,
@@ -678,10 +679,11 @@ pub mod pallet {
 
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
 	pub enum NodeRemovalConditionType {
-		PercentageDeltaExceeds(u128),         // e.g. > 20%
-		BelowMinScoreThreshold(u128),         // e.g. < 1000
-		BelowAverageAttestation(u128),        // e.g. < 90%
-		PercentStakeDelta(u128),       			  // e.g. 10%
+		PercentageDeltaExceeds(u128),         	// e.g. > 20%
+		BelowMinScoreThreshold(u128),         	// e.g. < 1000
+		BelowAverageAttestation(u128),        	// e.g. < 90%
+		PercentStakeDelta(u128),       			  	// e.g. 10%
+		NodeDelegateStakePercentageDelta(u128), // e.g. 10%
 	}
 
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
@@ -1707,6 +1709,20 @@ pub mod pallet {
 	#[pallet::storage] // subnet_id => AccountId
 	pub type SubnetOwner<T: Config> = StorageMap<_, Identity, u32, T::AccountId>;
 
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct SubnetOwnerKeys<AccountId> {
+		pub coldkey: AccountId,
+		pub hotkey: AccountId,
+	}
+
+	// Owner of subnet (defaulted to registerer of subnet)
+	#[pallet::storage] // subnet_id => AccountId
+	pub type SubnetOwnerV2<T: Config> = StorageMap<_, Identity, u32, SubnetOwnerKeys<T::AccountId>>;
+
+	// Owner of subnet (defaulted to registerer of subnet)
+	#[pallet::storage] // subnet_id => AccountId
+	pub type SubnetOwnerHotkey<T: Config> = StorageMap<_, Identity, u32, T::AccountId>;
+
 	// Pending owner of subnet
 	#[pallet::storage] // subnet_id => AccountId
 	pub type PendingSubnetOwner<T: Config> = StorageMap<_, Identity, u32, T::AccountId>;
@@ -2063,7 +2079,7 @@ pub mod pallet {
 	>;
 	
 	#[pallet::storage] // subnet_id --> peer_id --> subnet_node_id
-	pub type PeerIdSubnetNode<T: Config> = StorageDoubleMap<
+	pub type PeerIdSubnetNodeId<T: Config> = StorageDoubleMap<
 		_,
 		Identity,
 		u32,
@@ -2075,7 +2091,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage] // subnet_id --> bootstrap_peer_id --> subnet_node_id
-	pub type BootstrapPeerIdSubnetNode<T: Config> = StorageDoubleMap<
+	pub type BootstrapPeerIdSubnetNodeId<T: Config> = StorageDoubleMap<
 		_,
 		Identity,
 		u32,
@@ -2384,7 +2400,7 @@ pub mod pallet {
 
 	// Total stake sum of balance in specified subnet node
 	#[pallet::storage]
-	pub type TotalNodeDelegateStakeBalance<T> = StorageDoubleMap<
+	pub type NodeDelegateStakeBalance<T> = StorageDoubleMap<
 		_,
 		Identity,
 		u32,
@@ -2658,14 +2674,16 @@ pub mod pallet {
 		#[pallet::weight({0})]
 		pub fn register_subnet(
 			origin: OriginFor<T>, 
+			hotkey: T::AccountId,
 			subnet_data: RegistrationSubnetData<T::AccountId>,
 		) -> DispatchResult {
-			let account_id: T::AccountId = ensure_signed(origin)?;
+			let owner: T::AccountId = ensure_signed(origin)?;
 	
 			Self::is_paused()?;
 
 			Self::do_register_subnet(
-				account_id,
+				owner,
+				hotkey,
 				subnet_data,
 			)
 		}
@@ -3051,8 +3069,6 @@ pub mod pallet {
 			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
-			// DispatchResultWithPostInfo
-			// Self::is_paused().map_err(|e| e)?;
 
 			Self::do_register_subnet_node(
 				origin.clone(),
@@ -3068,26 +3084,8 @@ pub mod pallet {
 				c,
 			).map_err(|e| e)?;
 
-			let subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone());
-
-			// This is redundant to check, but check we do
-			// match HotkeySubnetNodeId::<T>::try_get(subnet_id, hotkey.clone()) {
-			// 	// Ok(subnet_node_id) => Self::do_activate_subnet_node(
-			// 	// 	origin.clone(),
-			// 	// 	subnet_id,
-			// 	// 	subnet_node_id
-			// 	// ),
-			// 	// Returns DispatchResultWithPostInfo
-			// 	Ok(subnet_node_id) => Ok(Self::do_activate_subnet_node(
-			// 		origin.clone(),
-			// 		subnet_id,
-			// 		subnet_node_id
-			// 	).map(|_| ()).expect("REASON")),
-
-			// 	Err(()) => return Err(Error::<T>::NotUidOwner.into()),
-			// }
 			let subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone())
-					.ok_or(Error::<T>::NotUidOwner)?;
+				.ok_or(Error::<T>::NotUidOwner)?;
 
 			Self::do_activate_subnet_node(
 				origin,
@@ -4315,11 +4313,12 @@ pub mod pallet {
 		///
 		/// * `hotkey` - Current hotkey.
 		/// * `new_coldkey` - New coldkey
+		/// * `subnet_id` - Optional parameter used for subnet owners
 		/// 
 		#[pallet::call_index(55)]
 		#[pallet::weight({0})]
 		pub fn update_coldkey(
-			origin: OriginFor<T>, 
+			origin: OriginFor<T>,
 			hotkey: T::AccountId,
 			new_coldkey: T::AccountId,
 		) -> DispatchResult {
@@ -4503,7 +4502,7 @@ pub mod pallet {
 
 			// Subnet node PeerIds and bootstrap PeerIds can match only if they are under the same subnet node ID
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, 0, &new_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_peer_id),
 				Error::<T>::PeerIdExist
 			);
 
@@ -4513,8 +4512,8 @@ pub mod pallet {
 				|maybe_params| -> DispatchResult {
 					let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
 
-					PeerIdSubnetNode::<T>::remove(subnet_id, &params.peer_id);
-					PeerIdSubnetNode::<T>::insert(subnet_id, &new_peer_id, subnet_node_id);
+					PeerIdSubnetNodeId::<T>::remove(subnet_id, &params.peer_id);
+					PeerIdSubnetNodeId::<T>::insert(subnet_id, &new_peer_id, subnet_node_id);
 
 					params.peer_id = new_peer_id;
 					Ok(())
@@ -4565,8 +4564,8 @@ pub mod pallet {
 				|maybe_params| -> DispatchResult {
 					let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
 
-					BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, &params.bootstrap_peer_id);
-					BootstrapPeerIdSubnetNode::<T>::insert(subnet_id, &new_bootstrap_peer_id, subnet_node_id);
+					BootstrapPeerIdSubnetNodeId::<T>::remove(subnet_id, &params.bootstrap_peer_id);
+					BootstrapPeerIdSubnetNodeId::<T>::insert(subnet_id, &new_bootstrap_peer_id, subnet_node_id);
 		
 					params.bootstrap_peer_id = new_bootstrap_peer_id;
 					Ok(())
@@ -4905,6 +4904,7 @@ pub mod pallet {
 		/// Register subnet
 		pub fn do_register_subnet(
 			owner: T::AccountId,
+			owner_hotkey: T::AccountId,
 			subnet_registration_data: RegistrationSubnetData<T::AccountId>,
 		) -> DispatchResult {
 			// Ensure name is unique
@@ -5027,16 +5027,51 @@ pub mod pallet {
 				start_epoch: u32::MAX,
 			};
 
-			ChurnLimit::<T>::insert(subnet_id, subnet_registration_data.churn_limit);
-			SubnetMinStakeBalance::<T>::insert(subnet_id, subnet_registration_data.min_stake);
-			SubnetMaxStakeBalance::<T>::insert(subnet_id, subnet_registration_data.max_stake);
-			SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, subnet_registration_data.delegate_stake_percentage);
-			RegistrationQueueEpochs::<T>::insert(subnet_id, subnet_registration_data.registration_queue_epochs);
-			ActivationGraceEpochs::<T>::insert(subnet_id, subnet_registration_data.activation_grace_epochs);
-			IdleClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.queue_classification_epochs);
-			IncludedClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.included_classification_epochs);
+			ensure!(
+				&owner != &owner_hotkey,
+				Error::<T>::ColdkeyMatchesHotkey
+			);
+
 			// Store owner
 			SubnetOwner::<T>::insert(subnet_id, &owner);
+
+			// SubnetOwnerV2::<T>::insert(
+			// 	subnet_id,
+			// 	SubnetOwnerKeys {
+			// 		coldkey: owner.clone(),
+			// 		hotkey: owner_hotkey.clone(),
+			// 	}
+			// );
+			// // SubnetOwnerHotkey::<T>::insert(subnet_id, &owner_hotkey);
+			// // Give owner HotkeyOwner for rewards
+			// // Enables to give owner rewards from staking and require them to use the unbonding ledger
+			// HotkeyOwner::<T>::insert(&owner_hotkey, &owner);
+
+			// // --- Ensure owner is not using the coldkey has a hotkey anywhere else
+			// let mut hotkeys = ColdkeyHotkeys::<T>::get(&owner);
+			// ensure!(
+			// 	!hotkeys.contains(&owner_hotkey),
+			// 	Error::<T>::HotkeyAlreadyRegisteredToColdkey
+			// );
+			// hotkeys.insert(owner_hotkey.clone());
+			// ColdkeyHotkeys::<T>::insert(&owner, hotkeys);
+
+			// Store the stake balance range
+			SubnetMinStakeBalance::<T>::insert(subnet_id, subnet_registration_data.min_stake);
+			SubnetMaxStakeBalance::<T>::insert(subnet_id, subnet_registration_data.max_stake);
+
+			// Add delegate state ratio
+			SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, subnet_registration_data.delegate_stake_percentage);
+
+			// Add classification epochs
+			RegistrationQueueEpochs::<T>::insert(subnet_id, subnet_registration_data.registration_queue_epochs);
+			IdleClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.queue_classification_epochs);
+			IncludedClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.included_classification_epochs);
+
+			// Add queue variables
+			ActivationGraceEpochs::<T>::insert(subnet_id, subnet_registration_data.activation_grace_epochs);
+			ChurnLimit::<T>::insert(subnet_id, subnet_registration_data.churn_limit);
+
 			// Store max node penalties
 			MaxSubnetNodePenalties::<T>::insert(subnet_id, subnet_registration_data.max_node_penalties);
 
@@ -5201,8 +5236,8 @@ pub mod pallet {
 
 			let _ = TotalSubnetNodes::<T>::remove(subnet_id);
 			let _ = TotalSubnetNodeUids::<T>::remove(subnet_id);
-			let _ = PeerIdSubnetNode::<T>::clear_prefix(subnet_id, u32::MAX, None);
-			let _ = BootstrapPeerIdSubnetNode::<T>::clear_prefix(subnet_id, u32::MAX, None);			
+			let _ = PeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+			let _ = BootstrapPeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);			
 			let _ = SubnetNodeUniqueParam::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = HotkeySubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetNodeIdHotkey::<T>::clear_prefix(subnet_id, u32::MAX, None);
@@ -5266,6 +5301,11 @@ pub mod pallet {
         Ok(subnet) => subnet,
         Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
 			};
+
+			// ensure!(
+			// 	&owner != &owner_hotkey,
+			// 	Error::<T>::ColdkeyMatchesHotkey
+			// );
 
 			// TODO: Ensure subnet not paused
 			let is_subnet_registering: bool = subnet.state == SubnetState::Registered;
@@ -5396,8 +5436,8 @@ pub mod pallet {
 			// This ensures others cannot claim to own a PeerId they are not the owner of
 
 			// Insert subnet peer and bootstrap peer to keep peer_ids unique within subnets
-			PeerIdSubnetNode::<T>::insert(subnet_id, &peer_id, current_uid);
-			BootstrapPeerIdSubnetNode::<T>::insert(subnet_id, &bootstrap_peer_id, current_uid);
+			PeerIdSubnetNodeId::<T>::insert(subnet_id, &peer_id, current_uid);
+			BootstrapPeerIdSubnetNodeId::<T>::insert(subnet_id, &bootstrap_peer_id, current_uid);
 
 			// Add to registration queue
 			let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
@@ -5460,12 +5500,26 @@ pub mod pallet {
 			subnet_node_id: u32,
 		) -> DispatchResultWithPostInfo {
 			// Activate with hotkey from the subnet node server
-			let hotkey: T::AccountId = ensure_signed(origin)?;
+			let key: T::AccountId = ensure_signed(origin)?;
 
-			let coldkey = match HotkeyOwner::<T>::try_get(&hotkey) {
-				Ok(coldkey) => coldkey,
-				Err(()) => return Err(Error::<T>::NotKeyOwner.into()),
+			let (hotkey, coldkey) = match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
+				Some((hotkey, coldkey)) => {
+					(hotkey, coldkey)
+				}
+				None => {
+					return Err(Error::<T>::NotKeyOwner.into())
+				}
 			};
+
+			ensure!(
+				key == hotkey || key == coldkey,
+				Error::<T>::NotKeyOwner
+			);
+
+			// let coldkey = match HotkeyOwner::<T>::try_get(&hotkey) {
+			// 	Ok(coldkey) => coldkey,
+			// 	Err(()) => return Err(Error::<T>::NotKeyOwner.into()),
+			// };
 
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
@@ -5972,7 +6026,7 @@ pub mod pallet {
 			// 	// Redundant
 			// 	// Unique subnet_id -> PeerId
 			// 	// Ensure peer ID doesn't already exist within subnet regardless of account_id
-			// 	let peer_exists: bool = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id.clone()) {
+			// 	let peer_exists: bool = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id.clone()) {
 			// 		Ok(_) => true,
 			// 		Err(()) => false,
 			// 	};
@@ -6049,7 +6103,7 @@ pub mod pallet {
 			// 	SubnetNodesData::<T>::insert(subnet_id, current_uid, subnet_node);
 	
 			// 	// Insert subnet peer account to keep peer_ids unique within subnets
-			// 	PeerIdSubnetNode::<T>::insert(subnet_id, peer_id.clone(), current_uid);
+			// 	PeerIdSubnetNodeId::<T>::insert(subnet_id, peer_id.clone(), current_uid);
 		
 			// 	// Increase total subnet nodes
 			// 	TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);

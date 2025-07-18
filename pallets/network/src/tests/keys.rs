@@ -32,6 +32,7 @@ use crate::{
   OverwatchNodeIdHotkey,
   OverwatchNodes,
   MinActiveNodeStakeEpochs,
+  MaxSubnets,
 };
 
 
@@ -47,15 +48,24 @@ fn test_update_coldkey() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
 
     let end = 16;
 
-    let coldkey = account(max_subnet_nodes+end*subnets);
-    let hotkey = account(max_subnet_nodes+end*subnets);
-    let new_hotkey = account(max_subnet_nodes+end*subnets+4);
-    let new_coldkey = account((max_subnet_nodes+end*subnets)+1);
-    let new_coldkey_2 = account((max_subnet_nodes+end*subnets)+2);
-    let fake_coldkey = account((max_subnet_nodes+end*subnets)+3);
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
+
+    let new_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
+    let new_coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
+    let new_coldkey_2 = get_coldkey(subnets, max_subnet_nodes, end+2);
+    let fake_coldkey = get_coldkey(subnets, max_subnet_nodes, end+3);
+
+    // let coldkey = account(max_subnet_nodes+end*subnets);
+    // let hotkey = account(max_subnet_nodes+end*subnets);
+    // let new_hotkey = account(max_subnet_nodes+end*subnets+4);
+    // let new_coldkey = account((max_subnet_nodes+end*subnets)+1);
+    // let new_coldkey_2 = account((max_subnet_nodes+end*subnets)+2);
+    // let fake_coldkey = account((max_subnet_nodes+end*subnets)+3);
 
     // Insert overwatch node with coldkey
     let overwatch_node_id = insert_overwatch_node(max_subnet_nodes+end*subnets, 0);
@@ -65,8 +75,8 @@ fn test_update_coldkey() {
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, coldkey.clone()).unwrap();
-    let starting_account_subnet_stake = AccountSubnetStake::<Test>::get(coldkey.clone(), subnet_id);
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
+    let starting_account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
 
     // add extra stake and then add to ledger to check if it swapped
     let add_stake_amount = 1000000000000000000000;
@@ -120,7 +130,7 @@ fn test_update_coldkey() {
       )
     );
 
-    let stake_balance = AccountSubnetStake::<Test>::get(&coldkey.clone(), subnet_id);
+    let stake_balance = AccountSubnetStake::<Test>::get(&hotkey.clone(), subnet_id);
     assert_eq!(stake_balance, starting_account_subnet_stake + add_stake_amount);
 
     let min_stake_epochs = MinActiveNodeStakeEpochs::<Test>::get();
@@ -155,6 +165,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(coldkey.clone()),
         hotkey.clone(),
         new_coldkey.clone(), // new_coldkey
+        // None,
       )
     );
 
@@ -186,7 +197,7 @@ fn test_update_coldkey() {
     assert_eq!(new_ledger_balance, original_ledger_balance);  
 
     let subnet_node_id_hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, hotkey_subnet_node_id).unwrap();
-    assert_eq!(subnet_node_id_hotkey, coldkey.clone());
+    assert_eq!(subnet_node_id_hotkey, hotkey.clone());
 
     let subnet_node_data = SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).unwrap();
     assert_eq!(subnet_node_data.hotkey, hotkey.clone());
@@ -255,6 +266,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(coldkey.clone()),
         hotkey.clone(),
         new_coldkey.clone(), // new_coldkey
+        // None,
       ),
       Error::<Test>::NotKeyOwner
     );
@@ -317,6 +329,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(new_coldkey.clone()),
         new_hotkey.clone(),
         new_coldkey_2.clone(), // new_coldkey
+        // None,
       )
     );
 
@@ -325,6 +338,7 @@ fn test_update_coldkey() {
         RuntimeOrigin::signed(new_coldkey.clone()),
         new_hotkey.clone(),
         new_coldkey_2.clone(), // new_coldkey
+        // None,
       ),
       Error::<Test>::NotKeyOwner
     );
@@ -364,6 +378,7 @@ fn test_update_coldkey_key_taken_err() {
         RuntimeOrigin::signed(account(account_n)),
         account(2),
         account(account_n),
+        // None,
       ),
       Error::<Test>::NotKeyOwner
     );
@@ -382,18 +397,29 @@ fn test_update_hotkey() {
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
 
     let end = 16;
 
-    let coldkey = account(max_subnet_nodes+end*subnets);
-    let hotkey = account(max_subnet_nodes+end*subnets);
-    let new_hotkey = account(max_subnet_nodes+end*subnets+4);
-    let new_coldkey = account((max_subnet_nodes+end*subnets)+1);
-    let new_coldkey_2 = account((max_subnet_nodes+end*subnets)+2);
-    let fake_coldkey = account((max_subnet_nodes+end*subnets)+3);
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
+    
+    let new_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
+    let new_coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
+    let new_coldkey_2 = get_coldkey(subnets, max_subnet_nodes, end+2);
+    let fake_coldkey = get_coldkey(subnets, max_subnet_nodes, end+3);
+
+    // let coldkey = account(max_subnet_nodes+end*subnets);
+    // let hotkey = account(max_subnet_nodes+end*subnets);
+    // let new_hotkey = account(max_subnet_nodes+end*subnets+4);
+    // let new_coldkey = account((max_subnet_nodes+end*subnets)+1);
+    // let new_coldkey_2 = account((max_subnet_nodes+end*subnets)+2);
+    // let fake_coldkey = account((max_subnet_nodes+end*subnets)+3);
 
     // Insert overwatch node with coldkey
-    let overwatch_node_id = insert_overwatch_node(max_subnet_nodes+end*subnets, 0);
+    let ow_hotkey_n = 1;
+    let ow_hotkey = account(ow_hotkey_n);
+    let overwatch_node_id = insert_overwatch_node(max_subnet_nodes+end*subnets, ow_hotkey_n);
 
     build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
@@ -465,8 +491,7 @@ fn test_update_hotkey() {
     assert_eq!(account_subnet_stake, starting_account_subnet_stake);
 
     // Update overwatch node hotkey
-    let ow_hotkey = account(0);
-    let ow_new_hotkey = account(1);
+    let ow_new_hotkey = account(2);
 
     assert_ok!(
       Network::update_hotkey(

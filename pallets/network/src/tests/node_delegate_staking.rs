@@ -25,7 +25,7 @@ use crate::{
   SubnetNodeIdHotkey,
   SubnetNodeClass,
   AccountNodeDelegateStakeShares,
-  TotalNodeDelegateStakeBalance,
+  NodeDelegateStakeBalance,
   NetworkMinStakeBalance,
   TotalActiveSubnets,
   MaxSubnetNodes,
@@ -79,7 +79,7 @@ fn test_add_to_node_delegate_stake() {
     );
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_subnet_nodes+1), subnet_id, 0));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, 0);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -128,7 +128,7 @@ fn test_remove_node_delegate_stake() {
     );
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_subnet_nodes+1), subnet_id, 0));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, 0);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -168,7 +168,7 @@ fn test_remove_node_delegate_stake() {
     );
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_subnet_nodes+1), subnet_id, 0));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(subnet_id, 0);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, 0);
 
     assert_eq!(account_node_delegate_stake_shares, account_node_delegate_stake_shares_to_be_removed);
@@ -243,7 +243,7 @@ fn test_swap_node_delegate_stake() {
     );
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_from_subnet_nodes+1), from_subnet_id, 1));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(from_subnet_id, 1);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -310,7 +310,7 @@ fn test_swap_node_delegate_stake() {
     // Get accounts delegate stake info from staking to node 1 (now removed partial)
     //
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_from_subnet_nodes+1), from_subnet_id, 1));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(from_subnet_id, 1);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(from_subnet_id, 1);
 
     log::error!("account_node_delegate_stake_shares :: {:?}", account_node_delegate_stake_shares);
@@ -332,7 +332,7 @@ fn test_swap_node_delegate_stake() {
     //
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(total_from_subnet_nodes+1), to_subnet_id, 2));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(to_subnet_id, 2);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(to_subnet_id, 2);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(to_subnet_id, 2);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -522,7 +522,7 @@ fn test_transfer_node_delegate_stake() {
     let to_n_account_balance = Balances::free_balance(&account(to_n_account));
 
     let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((account(n_account), subnet_id, subnet_node_id));
-    let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+    let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
     let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
 
     let account_node_delegate_stake_balance = Network::convert_to_balance(
@@ -576,7 +576,7 @@ fn test_transfer_node_delegate_stake() {
     let after_to_node_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((account(to_n_account), subnet_id, subnet_node_id));
 
     let after_total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<Test>::get(subnet_id, subnet_node_id);
-    let after_total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+    let after_total_node_delegate_stake_balance = NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
 
     assert_eq!(after_delegate_shares, 0);
     assert_eq!(account_node_delegate_stake_shares, after_to_node_delegate_shares);

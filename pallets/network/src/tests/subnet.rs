@@ -79,6 +79,7 @@ fn test_register_subnet() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -134,6 +135,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -157,6 +159,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
     assert_err!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(2),
         add_subnet_data.clone(),
       ),
       Error::<Test>::SubnetRegistrationCooldown
@@ -180,6 +183,7 @@ fn test_register_subnet_subnet_registration_cooldown() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(3),
         add_subnet_data.clone(),
       )
     );
@@ -200,7 +204,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
 
     assert_err!(
       Network::register_subnet(
-        RuntimeOrigin::signed(account(0)),
+        RuntimeOrigin::signed(account(1)),
+        account(4),
         add_subnet_data.clone(),
       ),
       Error::<Test>::SubnetRegistrationCooldown
@@ -247,6 +252,7 @@ fn test_register_subnet_exists_error() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data.clone(),
       )
     );
@@ -254,6 +260,7 @@ fn test_register_subnet_exists_error() {
     assert_err!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data.clone(),
       ),
       Error::<Test>::SubnetNameExist
@@ -293,6 +300,7 @@ fn test_register_subnet_not_enough_balance_err() {
     assert_err!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       ),
       Error::<Test>::NotEnoughBalanceToRegisterSubnet
@@ -338,6 +346,7 @@ fn test_activate_subnet() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -443,6 +452,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -523,6 +533,7 @@ fn test_activate_subnet_already_activated_err() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -628,6 +639,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -743,6 +755,7 @@ fn test_activate_subnet_initializing_error() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -835,6 +848,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );
@@ -910,6 +924,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     assert_ok!(
       Network::register_subnet(
         RuntimeOrigin::signed(account(0)),
+        account(1),
         add_subnet_data,
       )
     );

@@ -185,7 +185,7 @@ fn build_activated_subnet<T: Config>(
     assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-    let peer_subnet_node_account = PeerIdSubnetNode::<T>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
+    let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
     assert_eq!(peer_subnet_node_account, hotkey_subnet_node_id);
 
     let account_subnet_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
@@ -1006,7 +1006,7 @@ mod benchmarks {
 	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
 
   //   // -- increase total subnet delegate stake 
-  //   let old_node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
+  //   let old_node_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, 1);
 
   //   let old_total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
 
@@ -1019,7 +1019,7 @@ mod benchmarks {
 	// 		);
 	// 	}
 
-  //   let node_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, 1);
+  //   let node_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, 1);
 
   //   let total_node_stake_balance = TotalNodeDelegateStake::<T>::get();
 
@@ -1210,7 +1210,7 @@ mod benchmarks {
 	// 		assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
 	// 		assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-	// 		let peer_subnet_node_account = PeerIdSubnetNode::<T>::get(subnet_id, peer(n));
+	// 		let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(n));
 	// 		assert_eq!(peer_subnet_node_account, hotkey_subnet_node_id);
 
 	// 		let account_subnet_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
@@ -1329,7 +1329,7 @@ mod benchmarks {
 	// 	assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
 	// 	assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-	// 	let peer_subnet_node_account = PeerIdSubnetNode::<T>::get(subnet_id, peer(1));
+	// 	let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(1));
 	// 	assert_eq!(peer_subnet_node_account, hotkey_subnet_node_id);
 
 	// 	let account_subnet_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
@@ -1482,7 +1482,7 @@ mod benchmarks {
 	// 	let subnet_node_id = HotkeySubnetNodeId::<T>::try_get(subnet_id, subnet_node_account.clone());
 	// 	assert_eq!(subnet_node_id, Err(()));
 
-	// 	let subnet_node_account = PeerIdSubnetNode::<T>::try_get(subnet_id, peer(end+1));
+	// 	let subnet_node_account = PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer(end+1));
 	// 	assert_eq!(subnet_node_account, Err(()));
 	// }
 
@@ -1820,7 +1820,7 @@ mod benchmarks {
 	// 	add_to_node_delegate_stake(RawOrigin::Signed(delegate_node_account.clone()), subnet_id, subnet_node_id, DEFAULT_SUBNET_NODE_STAKE);
 		
   //   let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), subnet_id, subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
 
   //   let account_node_delegate_stake_balance = Network::<T>::convert_to_balance(
@@ -1857,7 +1857,7 @@ mod benchmarks {
 	// 		)
 	// 	);
 
-	// 	let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
+	// 	let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, from_subnet_node_id);
 
 	// 	let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), from_subnet_id, from_subnet_node_id));
@@ -1886,7 +1886,7 @@ mod benchmarks {
 	// 	);
 		
   //   let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), from_subnet_id, from_subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, from_subnet_node_id);
 
   //   let account_node_delegate_stake_balance = Network::<T>::convert_to_balance(
@@ -1901,7 +1901,7 @@ mod benchmarks {
 
 
 	// 	let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), to_subnet_id, to_subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(to_subnet_id, to_subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(to_subnet_id, to_subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(to_subnet_id, to_subnet_node_id);
 
   //   let account_node_delegate_stake_balance = Network::<T>::convert_to_balance(
@@ -1939,7 +1939,7 @@ mod benchmarks {
 	// 		)
 	// 	);
 
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
 
 	// 	let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), subnet_id, subnet_node_id));
@@ -1964,7 +1964,7 @@ mod benchmarks {
 	// 	remove_node_delegate_stake(RawOrigin::Signed(delegate_node_account.clone()), subnet_id, subnet_node_id, account_node_delegate_stake_shares_to_be_removed);
 		
   //   let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_node_account.clone(), subnet_id, subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
 
   //   assert_eq!(account_node_delegate_stake_shares, account_node_delegate_stake_shares_to_be_removed);
@@ -1993,12 +1993,12 @@ mod benchmarks {
 
 	// 	let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 
-	// 	let pre_total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+	// 	let pre_total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
 	// 	#[extrinsic_call]
 	// 	increase_node_delegate_stake(RawOrigin::Signed(delegate_account), subnet_id, subnet_node_id, DEFAULT_SUBNET_NODE_STAKE);
 		
-	// 	let post_total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+	// 	let post_total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
 	// 	assert_eq!(pre_total_node_delegate_stake_balance + DEFAULT_SUBNET_NODE_STAKE, post_total_node_delegate_stake_balance);
 	// }
@@ -2025,7 +2025,7 @@ mod benchmarks {
   //   );
 
 	// 	let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_account.clone(), from_subnet_id, from_subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, from_subnet_node_id);
 
   //   let account_node_delegate_stake_shares_to_be_removed = account_node_delegate_stake_shares / 2;
@@ -2109,7 +2109,7 @@ mod benchmarks {
 	// 	);
 		
   //   let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<T>::get((delegate_account.clone(), to_subnet_id, to_subnet_node_id));
-  //   let total_node_delegate_stake_balance = TotalNodeDelegateStakeBalance::<T>::get(to_subnet_id, to_subnet_node_id);
+  //   let total_node_delegate_stake_balance = NodeDelegateStakeBalance::<T>::get(to_subnet_id, to_subnet_node_id);
   //   let total_node_delegate_stake_shares = TotalNodeDelegateStakeShares::<T>::get(to_subnet_id, to_subnet_node_id);
 
   //   let account_node_delegate_stake_balance = Network::<T>::convert_to_balance(

@@ -61,12 +61,22 @@ impl<T: Config> Pallet<T> {
     //
 
     // --- Reward owner
+    // if rewards_data.subnet_owner_reward > 0 {
+    //   match SubnetOwnerV2::<T>::try_get(subnet_id) {
+    //     Ok(keys) => {
+    //       Self::increase_account_stake(
+    //         &keys.hotkey,
+    //         subnet_id, 
+    //         rewards_data.subnet_owner_reward,
+    //       );
+    //     },
+    //     Err(()) => (),
+    //   }
+    // }
     match SubnetOwner::<T>::try_get(subnet_id) {
       Ok(coldkey) => {
         let subnet_owner_reward_as_currency = Self::u128_to_balance(rewards_data.subnet_owner_reward);
         if subnet_owner_reward_as_currency.is_some() {
-          // Add balance to coldkey account
-          // An owner may not have a subnet node
           Self::add_balance_to_coldkey_account(
             &coldkey,
             subnet_owner_reward_as_currency.unwrap()
