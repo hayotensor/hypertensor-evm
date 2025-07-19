@@ -41,7 +41,7 @@ pub struct Inflation {
 
 const DEFAULT_INITIAL: f64 = 0.1;
 const DEFAULT_TERMINAL: f64 = 0.015;
-const DEFAULT_TAPER: f64 = 0.15;
+const DEFAULT_TAPER: f64 = 0.033;
 const DEFAULT_FOUNDATION: f64 = 0.05;
 const DEFAULT_FOUNDATION_TERM: f64 = 6.0;
 
@@ -58,19 +58,6 @@ impl Default for Inflation {
 }
 
 impl Inflation {
-  pub fn epoch(&self, epoch: u32, epochs_per_year: u32, denominator: u128) -> f64 {
-    let years_elapsed = epoch as f64 / epochs_per_year as f64;
-    // let rate = self.initial * pow(1.0 - self.terminal, years_elapsed);
-
-    self.total(years_elapsed)
-
-    // Ensure inflation does not go below the minimum taper rate
-    // let final_rate = rate.max(self.taper);
-
-    // final_rate
-    // final_rate as u128 * denominator
-  }
-
   /// portion of total that goes to validators
   pub fn validator(&self, year: f64) -> f64 {
     self.total(year) - self.foundation(year)
@@ -87,8 +74,7 @@ impl Inflation {
 
   /// inflation rate at year
   pub fn total(&self, year: f64) -> f64 {
-    // let tapered = self.initial * pow(1.0 - self.taper, year);
-    let tapered = self.initial * pow(1.0, year);
+    let tapered = self.initial * pow(1.0 - self.taper, year);
 
     if tapered > self.terminal {
       tapered
@@ -99,6 +85,16 @@ impl Inflation {
 
   pub fn year_from_epoch(&self, epoch: u32, epochs_per_year: u32) -> f64 {
     epoch as f64 / epochs_per_year as f64
+  }
+
+  pub fn current_max_rate(&self, year: f64) -> f64 {
+    let tapered = self.initial * pow(1.0 - self.taper, year);
+
+    if tapered > self.terminal {
+      tapered
+    } else {
+      self.terminal
+    }
   }
 
   /// Get the yearly inflation rate
@@ -112,7 +108,7 @@ impl Inflation {
   /// *u: Node utilization ratio
   /// *mid: Sigmoid midpoint
   /// *f: Sigmoid steepness
-  pub fn inflation(&self, u: f64, mid: f64, k: f64) -> f64 {
+  pub fn inflation(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
     let c = (u - mid).abs();
     let d = k * c;
     let exp = libm::exp(d);
@@ -122,25 +118,30 @@ impl Inflation {
       exp/(1.0+exp)
     };
 
-    self.terminal-(self.terminal-self.initial)*sigmoid
+    let max = self.current_max_rate(year);
+    // let max = self.initial;
+
+    self.terminal+(max-self.terminal)*sigmoid
   }
 }
 
 impl<T: Config> Pallet<T> {
-  pub fn get_inflation(node_utilization: f64) -> f64 {
+  pub fn get_inflation(node_utilization: f64, year: f64) -> f64 {
     let mid = Self::get_percent_as_f64(SigmoidMidpoint::<T>::get());
     let k = SigmoidSteepness::<T>::get() as f64;
 
     let inflation = Inflation::default();
 
-    inflation.inflation(node_utilization, mid, k)
+    inflation.inflation(node_utilization, mid, k, year)
   }
 
   pub fn get_epoch_inflation_rate(
+    epoch: u32,
     node_utilization: f64,
   ) -> f64 {
-    let yearly_rate: f64 = Self::get_inflation(node_utilization);
     let epochs_per_year: f64 = T::EpochsPerYear::get() as f64;
+    let year: f64 = epoch as f64 / epochs_per_year;
+    let yearly_rate: f64 = Self::get_inflation(node_utilization, year);
 
     yearly_rate / epochs_per_year
   }
@@ -153,9 +154,10 @@ impl<T: Config> Pallet<T> {
     (total_active_nodes as f64 / max_nodes as f64).clamp(0.0, 1.0)
   }
 
-  pub fn get_epoch_emissions() -> u128 {
+  pub fn get_epoch_emissions(epoch: u32) -> u128 {
     // Get epoch inflation rate
     let epoch_rate: f64 = Self::get_epoch_inflation_rate(
+      epoch,
       Self::get_subnet_node_utilization().min(1.0)
     );
 

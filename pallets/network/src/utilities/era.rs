@@ -90,6 +90,7 @@ impl<T: Config> Pallet<T> {
     let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
     let total_subnets: u32 = subnets.len() as u32;
     weight = weight.saturating_add(T::DbWeight::get().reads(total_subnets.into()));
+    
     let excess_subnets: bool = total_subnets > max_subnets;
     let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
 

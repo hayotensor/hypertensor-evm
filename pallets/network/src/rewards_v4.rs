@@ -117,6 +117,7 @@ impl<T: Config> Pallet<T> {
         .iter()
         .find(|data| data.subnet_node_id == subnet_node.id);
 
+
       if subnet_node_data_find.is_none() {
         // Not included in consensus, increase
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);

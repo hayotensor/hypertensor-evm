@@ -42,16 +42,20 @@ impl<T: Config> Pallet<T> {
     }
 
     // Reward factor decreases as weight increases (to make it harder to max out)
+    // 1999999999999999996 = 1e18 * 1e18 / (.5e18 + 1) 
     let reward_factor: u128 = percentage_factor
       .saturating_mul(percentage_factor)
-      / current_score.saturating_add(1);
+      .saturating_div(current_score.saturating_add(1));
 
     // Compute nominal increase
+    // Examples
+    // 339999999999999999 = (1e18 - .66e18) * .5e18 * 1999999999999999996 / 1e18 / 1e18
+    // 39999999999999999 = (.7e18 - .66e18) * .5e18 * 1999999999999999996 / 1e18 / 1e18
     let nominal_increase: u128 = (attestation_percentage - min_attestation_percentage)
       .saturating_mul(increase_weight_factor)
       .saturating_mul(reward_factor)
-      / percentage_factor
-      / percentage_factor;
+      .saturating_div(percentage_factor)
+      .saturating_div(percentage_factor);
 
     if nominal_increase == 0 {
       return
@@ -80,8 +84,8 @@ impl<T: Config> Pallet<T> {
     coldkey_reputation.average_attestation = if prev_total == 0 {
       attestation_percentage
     } else {
-      (coldkey_reputation.average_attestation * prev_total + attestation_percentage)
-        / (prev_total + 1)
+      (coldkey_reputation.average_attestation.saturating_mul(prev_total).saturating_add(attestation_percentage))
+        .saturating_div(prev_total + 1)
     };
 
     ColdkeyReputation::<T>::insert(&coldkey, coldkey_reputation);
@@ -115,14 +119,14 @@ impl<T: Config> Pallet<T> {
     // Penalty increases as score increases (same pattern as reward logic)
     let penalty_factor: u128 = percentage_factor
         .saturating_mul(percentage_factor)
-        / current_score.saturating_add(1);
+        .saturating_div(current_score.saturating_add(1));
 
     // Calculate nominal decrease: how much worse than threshold * score * penalty
     let nominal_decrease: u128 = (min_attestation_percentage - attestation_percentage)
         .saturating_mul(decrease_weight_factor)
         .saturating_mul(penalty_factor)
-        / percentage_factor
-        / percentage_factor;
+        .saturating_div(percentage_factor)
+        .saturating_div(percentage_factor);
 
     if nominal_decrease == 0 {
       return
@@ -149,8 +153,8 @@ impl<T: Config> Pallet<T> {
     coldkey_reputation.average_attestation = if prev_total == 0 {
       attestation_percentage
     } else {
-      (coldkey_reputation.average_attestation * prev_total + attestation_percentage)
-        / (prev_total + 1)
+      (coldkey_reputation.average_attestation.saturating_mul(prev_total).saturating_add(attestation_percentage))
+        .saturating_div(prev_total + 1)
     };
 
     ColdkeyReputation::<T>::insert(&coldkey, coldkey_reputation);

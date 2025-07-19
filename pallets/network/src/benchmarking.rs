@@ -74,19 +74,13 @@ fn funded_initializer<T: Config>(name: &'static str, index: u32) -> T::AccountId
 	caller
 }
 
-// fn increase_epochs<T: Config>(epochs: u32) {
-//   if epochs == 0 {
-//     return
-//   }
+fn get_coldkey<T: Config>(subnets: u32, max_subnet_nodes: u32, n: u32) -> T::AccountId {
+	get_account::<T>("coldkey", subnets*max_subnet_nodes+n)
+}
 
-//   let block = get_current_block_as_u32::<T>();
-
-//   let epoch_length = T::EpochLength::get();
-
-//   let next_epoch_start_block = (epoch_length * epochs) + block - (block % (epoch_length * epochs));
-
-// 	frame_system::Pallet::<T>::set_block_number(next_epoch_start_block.into());
-// }
+fn get_hotkey<T: Config>(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> T::AccountId {
+	get_account::<T>("hotkey", subnets*max_subnets*max_subnet_nodes+n)
+}
 
 pub fn increase_epochs<T: Config>(epochs: u32) {
   if epochs == 0 {
@@ -115,11 +109,13 @@ fn build_activated_subnet<T: Config>(
   let next_registration_epoch = Network::<T>::get_next_registration_epoch(epoch);
   increase_epochs::<T>(next_registration_epoch.saturating_sub(epoch));
 
-	let funded_initializer = funded_initializer::<T>("funded_initializer", 0);
-
 	let min_nodes = MinSubnetNodes::<T>::get();
-	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 	let subnets = TotalActiveSubnets::<T>::get() + 1;
+  let max_subnets = MaxSubnets::<T>::get();
+  let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+  let owner_coldkey = funded_initializer::<T>("subnet_owner", subnets*max_subnets*max_subnet_nodes);
+  let owner_hotkey = get_account::<T>("subnet_owner", subnets*max_subnets*max_subnet_nodes+1);
 
 	let register_subnet_data: RegistrationSubnetData<T::AccountId> = default_registration_subnet_data::<T>(
     subnets,
@@ -132,7 +128,8 @@ fn build_activated_subnet<T: Config>(
 		// --- Register subnet for activation
   assert_ok!(
     Network::<T>::register_subnet(
-      RawOrigin::Signed(funded_initializer.clone()).into(),
+      RawOrigin::Signed(owner_coldkey.clone()).into(),
+			owner_hotkey.clone(),
       register_subnet_data,
     )
   );
@@ -146,18 +143,22 @@ fn build_activated_subnet<T: Config>(
 
   let epoch = get_current_block_as_u32::<T>() / epoch_length;
 
+	let deposit_amount: u128 = NetworkMinStakeBalance::<T>::get() + 10000;
+
   // --- Add subnet nodes
   let block_number = get_current_block_as_u32::<T>();
   let mut amount_staked = 0;
   for n in start..end {
-		let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", subnets*max_subnet_nodes+n);
-		T::Currency::deposit_creating(&subnet_node_account, DEFAULT_STAKE_TO_BE_ADDED.try_into().ok().expect("REASON"));
+		let _n = n + 1;
+    let coldkey = get_coldkey::<T>(subnets, max_subnet_nodes, _n);
+    let hotkey = get_hotkey::<T>(subnets, max_subnet_nodes, max_subnets, _n);
+		T::Currency::deposit_creating(&coldkey.clone(), (deposit_amount + DEFAULT_STAKE_TO_BE_ADDED).try_into().ok().expect("REASON"));
     amount_staked += amount;
     assert_ok!(
       Network::<T>::add_subnet_node(
-        RawOrigin::Signed(subnet_node_account.clone()).into(),
+        RawOrigin::Signed(coldkey.clone()).into(),
         subnet_id,
-				subnet_node_account.clone(),
+				hotkey.clone(),
         peer(subnets*max_subnet_nodes+n),
 				peer(subnets*max_subnet_nodes+n),
 				0,
@@ -167,17 +168,17 @@ fn build_activated_subnet<T: Config>(
         None,
       ) 
     );
-    let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, subnet_node_account.clone()).unwrap();
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone()).unwrap();
 
     let subnet_node_id_hotkey = SubnetNodeIdHotkey::<T>::get(subnet_id, hotkey_subnet_node_id).unwrap();
-    assert_eq!(subnet_node_id_hotkey, subnet_node_account.clone());
+    assert_eq!(subnet_node_id_hotkey, hotkey.clone());
 
     let subnet_node_data = SubnetNodesData::<T>::try_get(subnet_id, hotkey_subnet_node_id).unwrap();
-    assert_eq!(subnet_node_data.hotkey, subnet_node_account.clone());
+    assert_eq!(subnet_node_data.hotkey, hotkey.clone());
     assert_eq!(subnet_node_data.delegate_reward_rate, 0);
 
     let key_owner = HotkeyOwner::<T>::get(subnet_node_data.hotkey.clone());
-    assert_eq!(key_owner, subnet_node_account.clone());
+    assert_eq!(key_owner, coldkey.clone());
 
     assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+n));
 
@@ -188,7 +189,7 @@ fn build_activated_subnet<T: Config>(
     let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
     assert_eq!(peer_subnet_node_account, hotkey_subnet_node_id);
 
-    let account_subnet_stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+    let account_subnet_stake = AccountSubnetStake::<T>::get(hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, amount);
   }
 
@@ -208,7 +209,7 @@ fn build_activated_subnet<T: Config>(
 	let min_subnet_delegate_stake = Network::<T>::get_min_subnet_delegate_stake_balance() + (1000e+18 as u128 * subnets as u128);
   // --- Add the minimum required delegate stake balance to activate the subnet
 
-	let delegate_staker_account: T::AccountId = funded_account::<T>("subnet_node_account", 1);
+	let delegate_staker_account: T::AccountId = funded_account::<T>("delegate_staker", 1);
 	T::Currency::deposit_creating(&delegate_staker_account, min_subnet_delegate_stake.try_into().ok().expect("REASON"));
   assert_ok!(
     Network::<T>::add_to_delegate_stake(
@@ -229,7 +230,7 @@ fn build_activated_subnet<T: Config>(
 
   assert_ok!(
     Network::<T>::activate_subnet(
-      RawOrigin::Signed(funded_initializer.clone()).into(),
+      RawOrigin::Signed(owner_coldkey.clone()).into(),
       subnet_id,
     )
   );
@@ -285,22 +286,66 @@ pub fn default_registration_subnet_data<T: Config>(
     max_node_penalties: 3,
     initial_coldkeys: get_initial_coldkeys::<T>(subnets, max_subnet_nodes, start, end),
     max_registered_nodes: 100,
+		node_removal_system: NodeRemovalSystem::Consensus,
+    key_types: BTreeSet::from([KeyType::Rsa]),
   };
   add_subnet_data
 }
 
-fn get_subnet_node_data(start: u32, end: u32) -> Vec<SubnetNodeConsensusData> {
-  // initialize peer consensus data array
-  let mut subnet_node_data: Vec<SubnetNodeConsensusData> = Vec::new();
-  for n in start..end {
-    let peer_subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData {
-      peer_id: peer(n),
-      score: DEFAULT_SCORE,
-    };
-    subnet_node_data.push(peer_subnet_node_data);
-  }
-  subnet_node_data
+pub fn insert_overwatch_node<T: Config>(coldkey_n: u32, hotkey_n: u32) -> u32 {
+	let coldkey = funded_account::<T>("overwatch_node", coldkey_n);
+	let hotkey = funded_account::<T>("overwatch_node", hotkey_n);
+
+  TotalOverwatchNodeUids::<T>::mutate(|n: &mut u32| *n += 1);
+  let current_uid = TotalOverwatchNodeUids::<T>::get();
+
+  let overwatch_node = OverwatchNode {
+    id: current_uid,
+    hotkey: hotkey.clone(),
+  };
+
+  OverwatchNodes::<T>::insert(current_uid, overwatch_node);
+  HotkeyOwner::<T>::insert(hotkey.clone(), coldkey.clone());
+  OverwatchNodeIdHotkey::<T>::insert(current_uid, hotkey.clone());
+
+  let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey.clone());
+  hotkeys.insert(hotkey.clone());
+  ColdkeyHotkeys::<T>::insert(&coldkey.clone(), hotkeys);
+
+  HotkeyOverwatchNodeId::<T>::insert(&hotkey.clone(), current_uid);
+
+  current_uid
 }
+
+pub fn set_stake<T: Config>(account_id: u32, amount: u128) {
+	let account = funded_account::<T>("overwatch_node", account_id);
+    // -- increase account staking balance
+  AccountOverwatchStake::<T>::mutate(account, |mut n| *n += amount);
+  // -- increase total stake
+  TotalOverwatchStake::<T>::mutate(|mut n| *n += amount);
+}
+
+pub fn submit_weight<T: Config>(
+  epoch: u32,
+  subnet_id: u32,
+  node_id: u32,
+  weight: u128
+) {
+  OverwatchReveals::<T>::insert((epoch, subnet_id, node_id), weight);
+}
+
+// fn get_subnet_node_data(start: u32, end: u32) -> Vec<SubnetNodeConsensusData> {
+//   // initialize peer consensus data array
+//   let mut subnet_node_data: Vec<SubnetNodeConsensusData> = Vec::new();
+//   for n in start..end {
+//     let peer_subnet_node_data: SubnetNodeConsensusData = SubnetNodeConsensusData {
+//       peer_id: peer(n),
+//       score: DEFAULT_SCORE,
+//     };
+//     subnet_node_data.push(peer_subnet_node_data);
+//   }
+//   subnet_node_data
+// }
 
 pub fn u32_to_block<T: frame_system::Config>(input: u32) -> BlockNumberFor<T> {
 	input.try_into().ok().expect("REASON")
@@ -329,7 +374,9 @@ pub fn u128_to_balance<T: frame_system::Config + pallet::Config>(
 pub fn get_initial_coldkeys<T: Config>(subnets: u32, max_subnet_nodes: u32, start: u32, end: u32) -> BTreeSet<T::AccountId> {
   let mut whitelist = BTreeSet::new();
   for n in start..end {
-    whitelist.insert(funded_account::<T>("subnet_node_account", subnets*max_subnet_nodes+n));
+		let _n = n + 1;
+		whitelist.insert(get_coldkey::<T>(subnets, max_subnet_nodes, _n));
+    // whitelist.insert(funded_account::<T>("coldkey", subnets*max_subnet_nodes+n));
   }
   whitelist
 }
@@ -348,15 +395,15 @@ pub fn get_subnet_node_consensus_data<T: Config>(
 	let epoch = get_current_block_as_u32::<T>() / epoch_length;
 
 	for n in 0..node_count {
-		let node_id = subnet_id*max_subnet_nodes+n;
-		// let peer_id = peer(node_id);
+		// let node_id = subnet_id*max_subnet_nodes+n+1;
+		let node_id = subnet_id*max_subnet_nodes-max_subnet_nodes+n+1;
 
 		// Simulate some score and block number
-		let score = 1000e+18 as u128;
+		let score = 1e+18 as u128;
 
 		attests.insert(node_id, block_number);
 		data.push(SubnetNodeConsensusData {
-			node_id,
+			subnet_node_id: node_id,
 			score,
 		});
 	}
@@ -367,7 +414,7 @@ pub fn get_subnet_node_consensus_data<T: Config>(
 		validator_id: subnet_id*max_subnet_nodes,
 		attests,
 		data,
-		included_subnet_nodes,
+		subnet_nodes: included_subnet_nodes,
 		args: None
 	}
 }
@@ -619,7 +666,11 @@ mod benchmarks {
 
 	#[benchmark]
 	fn distribute_rewards() {
+		let min_nodes = MinSubnetNodes::<T>::get();
+		let subnets = TotalActiveSubnets::<T>::get() + 1;
+		let max_subnets = MaxSubnets::<T>::get();
 		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
 		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
 
@@ -660,14 +711,14 @@ mod benchmarks {
 			*subnet_weight.unwrap()
 		);
 
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-
 		let mut stake_snapshot: BTreeMap<T::AccountId, u128> = BTreeMap::new();
 		for n in 0..max_subnet_nodes {
-			let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+			let hotkey = get_hotkey::<T>(subnets, max_subnet_nodes, max_subnets, n+1);
 
-			let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
-			stake_snapshot.insert(subnet_node_account.clone(), stake);
+			let stake = AccountSubnetStake::<T>::get(hotkey.clone(), subnet_id);
+
+			assert_ne!(stake, 0);
+			stake_snapshot.insert(hotkey.clone(), stake);
 		}
 
 		let min_attestation_percentage = MinAttestationPercentage::<T>::get();
@@ -691,11 +742,11 @@ mod benchmarks {
 		}
 
 		for n in 0..max_subnet_nodes {
-			let subnet_node_account: T::AccountId = funded_account::<T>("subnet_node_account", max_subnet_nodes+n);
+			let hotkey = get_hotkey::<T>(subnets, max_subnet_nodes, max_subnets, n+1);
 
-			let stake = AccountSubnetStake::<T>::get(subnet_node_account.clone(), subnet_id);
+			let stake = AccountSubnetStake::<T>::get(hotkey.clone(), subnet_id);
 
-			if let Some(old_stake) = stake_snapshot.get(&subnet_node_account) {
+			if let Some(old_stake) = stake_snapshot.get(&hotkey) {
 				assert!(stake > *old_stake);
 			} else {
 				assert!(false); // auto-fail
@@ -731,6 +782,33 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn calculate_subnet_weights() {
+		let max_subnets = MaxSubnets::<T>::get();
+		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+			build_activated_subnet::<T>(
+				subnet_name.clone().into(), 
+				0, 
+				max_subnet_nodes, 
+				DEFAULT_DEPOSIT_AMOUNT, 
+				DEFAULT_SUBNET_NODE_STAKE
+			);
+		}
+
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+		#[block]
+		{
+			let (stake_weights_normalized, stake_weights_weight) = Network::<T>::calculate_subnet_weights(epoch);
+			assert!(stake_weights_normalized.len() as u32 == max_subnets);
+		}
+	}
+
+	#[benchmark]
 	fn get_random_number() {
 		let mut parent_hash = frame_system::Pallet::<T>::parent_hash();
 
@@ -754,6 +832,71 @@ mod benchmarks {
 		}
 	}
 
+	#[benchmark]
+	fn calculate_overwatch_rewards() {
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+    let subnet_id_1 = 1;
+    let subnet_id_2 = 2;
+    let epoch = 1;
+
+    let node_id_1 = insert_overwatch_node::<T>(1,1);
+    let node_id_2 = insert_overwatch_node::<T>(2,2);
+    set_stake::<T>(1, 50);
+    set_stake::<T>(2, 100);
+
+    // Subnet 1
+    submit_weight::<T>(epoch, subnet_id_1, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_1, node_id_2, 500000000000000000);
+    // Subnet 2
+    submit_weight::<T>(epoch, subnet_id_2, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_2, node_id_2, 600000000000000000);
+
+		#[block]
+		{
+			Network::<T>::calculate_overwatch_rewards(epoch);
+		}
+		
+    let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);
+    let score_2 = OverwatchNodeWeights::<T>::get(epoch, node_id_2);
+
+	}
+
+	#[benchmark]
+	fn calculate_overwatch_rewards_v2() {
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+    let subnet_id_1 = 1;
+    let subnet_id_2 = 2;
+    let epoch = 1;
+
+    let node_id_1 = insert_overwatch_node::<T>(1,1);
+    let node_id_2 = insert_overwatch_node::<T>(2,2);
+    set_stake::<T>(1, 50);
+    set_stake::<T>(2, 100);
+
+    // Subnet 1
+    submit_weight::<T>(epoch, subnet_id_1, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_1, node_id_2, 500000000000000000);
+    // Subnet 2
+    submit_weight::<T>(epoch, subnet_id_2, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_2, node_id_2, 600000000000000000);
+
+		#[block]
+		{
+			Network::<T>::calculate_overwatch_rewards_v2(epoch);
+		}
+		
+    let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);
+    let score_2 = OverwatchNodeWeights::<T>::get(epoch, node_id_2);
+
+	}
 
 	// #[benchmark]
 	// fn emission_step() {

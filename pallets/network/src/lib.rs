@@ -4378,10 +4378,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin.clone())?;
 
-			// TODO: Make this function unique to subnet_id's
 			Self::is_paused()?;
+			// TODO: Make a pause function unique to subnet_id's
 
-			// Ensure old hotkey is owned by caller
+			// Ensure `old_hotkey` is owned by caller
 			ensure!(
 				Self::is_hotkey_owner(&old_hotkey, &coldkey),
 				Error::<T>::NotKeyOwner
@@ -4500,7 +4500,6 @@ pub mod pallet {
 				Error::<T>::InvalidPeerId
 			);
 
-			// Subnet node PeerIds and bootstrap PeerIds can match only if they are under the same subnet node ID
 			ensure!(
 				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_peer_id),
 				Error::<T>::PeerIdExist
@@ -4553,7 +4552,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				Self::is_owner_of_peer_or_ownerless(subnet_id, subnet_node_id, 0, &new_bootstrap_peer_id),
+				Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_bootstrap_peer_id),
 				Error::<T>::BootstrapPeerIdExist
 			);
 
@@ -5863,13 +5862,13 @@ pub mod pallet {
 			let current_epoch = block.saturating_div(epoch_length);
 
 			if block >= epoch_length && block % epoch_length == 0 {
-			// Remove unqualified subnets
+				// Remove unqualified subnets
 				let step_weight = Self::do_epoch_preliminaries(block, current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
-			// Calculate rewards
-			// Calculate emissions based on subnet weights (delegate stake based)
-			// We calculate based on delegate stake weights on all subnets
+				// Calculate rewards
+				// Calculate emissions based on subnet weights (delegate stake based)
+				// We calculate based on delegate stake weights on all subnets
 				let step_weight = Self::handle_subnet_emission_weights(current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {

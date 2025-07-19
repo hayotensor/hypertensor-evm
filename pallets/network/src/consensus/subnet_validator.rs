@@ -164,39 +164,39 @@ impl<T: Config> Pallet<T> {
     Ok(Pays::No.into())
   }
 
-  pub fn elect_validator(
-    block: u32,
-    subnet_id: u32,
-    subnet_node_ids: Vec<u32>,
-    min_subnet_nodes: u32,
-    epoch: u32,
-  ) {
-    // TODO: Make sure this is only called if subnet is activated and on the following epoch
+  // pub fn elect_validator(
+  //   block: u32,
+  //   subnet_id: u32,
+  //   subnet_node_ids: Vec<u32>,
+  //   min_subnet_nodes: u32,
+  //   epoch: u32,
+  // ) {
+  //   // TODO: Make sure this is only called if subnet is activated and on the following epoch
     
-    // Redundant
-    // If validator already chosen, then return
-    if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
-      return
-    }
+  //   // Redundant
+  //   // If validator already chosen, then return
+  //   if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
+  //     return
+  //   }
 
-    let subnet_nodes_len = subnet_node_ids.len();
+  //   let subnet_nodes_len = subnet_node_ids.len();
     
-    // --- Ensure min subnet peers that are submittable are at least the minimum required
-    // --- Consensus cannot begin until this minimum is reached
-    // --- If not min subnet peers count then accountant isn't needed
-    if (subnet_nodes_len as u32) < min_subnet_nodes {
-      return
-    }
+  //   // --- Ensure min subnet peers that are submittable are at least the minimum required
+  //   // --- Consensus cannot begin until this minimum is reached
+  //   // --- If not min subnet peers count then accountant isn't needed
+  //   if (subnet_nodes_len as u32) < min_subnet_nodes {
+  //     return
+  //   }
 
-    // --- n-1 to get 0 index in the randomization
-    let rand_index = Self::get_random_number_with_max(subnet_nodes_len as u32, block as u32);
+  //   // --- n-1 to get 0 index in the randomization
+  //   let rand_index = Self::get_random_number_with_max(subnet_nodes_len as u32, block as u32);
 
-    // --- Choose random accountant from eligible accounts
-    let validator: &u32 = &subnet_node_ids[rand_index as usize];
+  //   // --- Choose random accountant from eligible accounts
+  //   let validator: &u32 = &subnet_node_ids[rand_index as usize];
 
-    // --- Insert validator for next epoch
-    SubnetElectedValidator::<T>::insert(subnet_id, epoch, validator);
-  }
+  //   // --- Insert validator for next epoch
+  //   SubnetElectedValidator::<T>::insert(subnet_id, epoch, validator);
+  // }
 
   pub fn elect_validator_v2(
     subnet_id: u32,
@@ -247,6 +247,8 @@ impl<T: Config> Pallet<T> {
     let mut weight = Weight::zero();
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
+    //
+    // Redundantly use try_get (elected validators can't exit)
     let hotkey = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
       Ok(hotkey) => hotkey,
       // If they exited, ignore slash and return
