@@ -245,6 +245,8 @@ impl<T: Config> Pallet<T> {
     epoch: u32,
   ) -> Weight {
     let mut weight = Weight::zero();
+    let db_weight = T::DbWeight::get();
+
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
     //
@@ -252,10 +254,10 @@ impl<T: Config> Pallet<T> {
     let hotkey = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
       Ok(hotkey) => hotkey,
       // If they exited, ignore slash and return
-      Err(()) => return weight.saturating_add(T::DbWeight::get().reads(1)),
+      Err(()) => return weight.saturating_add(db_weight.reads(1)),
     };
 
-    weight = weight.saturating_add(T::DbWeight::get().reads(1));
+    weight = weight.saturating_add(db_weight.reads(1));
 
     match HotkeyOwner::<T>::try_get(&hotkey) {
       Ok(coldkey) => {
@@ -282,7 +284,7 @@ impl<T: Config> Pallet<T> {
     slash_amount = Self::percent_mul(slash_amount, Self::percentage_factor_as_u128().saturating_sub(attestation_percentage));
     // --- Update slash amount up to max slash
     let max_slash: u128 = MaxSlashAmount::<T>::get();
-    weight = weight.saturating_add(T::DbWeight::get().reads(4));
+    weight = weight.saturating_add(db_weight.reads(4));
 
     if slash_amount > max_slash {
       slash_amount = max_slash
@@ -300,9 +302,9 @@ impl<T: Config> Pallet<T> {
 
     // --- Increase validator penalty count
     let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id);
-    weight = weight.saturating_add(T::DbWeight::get().reads(1));
+    weight = weight.saturating_add(db_weight.reads(1));
     SubnetNodePenalties::<T>::insert(subnet_id, subnet_node_id, penalties + 1);
-    weight = weight.saturating_add(T::DbWeight::get().writes(1));
+    weight = weight.saturating_add(db_weight.writes(1));
 
     // --- Ensure maximum sequential removal consensus threshold is reached
     if penalties + 1 > MaxSubnetNodePenalties::<T>::get(subnet_id) {

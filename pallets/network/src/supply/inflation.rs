@@ -42,8 +42,8 @@ pub struct Inflation {
 const DEFAULT_INITIAL: f64 = 0.1;
 const DEFAULT_TERMINAL: f64 = 0.015;
 const DEFAULT_TAPER: f64 = 0.033;
-const DEFAULT_FOUNDATION: f64 = 0.05;
-const DEFAULT_FOUNDATION_TERM: f64 = 6.0;
+const DEFAULT_FOUNDATION: f64 = 0.2;
+const DEFAULT_FOUNDATION_TERM: f64 = 7.0;
 
 impl Default for Inflation {
   fn default() -> Self {
@@ -58,30 +58,60 @@ impl Default for Inflation {
 }
 
 impl Inflation {
+  // /// portion of total that goes to validators
+  // pub fn validator(&self, year: f64) -> f64 {
+  //   self.total(year) - self.foundation(year)
+  // }
+
+  // /// portion of total that goes to foundation
+  // pub fn foundation(&self, year: f64) -> f64 {
+  //   if year < self.foundation_term {
+  //     self.total(year) * self.foundation
+  //   } else {
+  //     0.0
+  //   }
+  // }
+
+  // /// inflation rate at year
+  // pub fn total(&self, year: f64) -> f64 {
+  //   let tapered = self.initial * pow(1.0 - self.taper, year);
+
+  //   if tapered > self.terminal {
+  //     tapered
+  //   } else {
+  //     self.terminal
+  //   }
+  // }
   /// portion of total that goes to validators
-  pub fn validator(&self, year: f64) -> f64 {
-    self.total(year) - self.foundation(year)
+  pub fn validator(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
+    self.total(u, mid, k, year) - self.foundation(u, mid, k, year)
   }
 
   /// portion of total that goes to foundation
-  pub fn foundation(&self, year: f64) -> f64 {
+  pub fn foundation(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
     if year < self.foundation_term {
-      self.total(year) * self.foundation
+      self.total(u, mid, k, year) * self.foundation
     } else {
       0.0
     }
   }
 
   /// inflation rate at year
-  pub fn total(&self, year: f64) -> f64 {
-    let tapered = self.initial * pow(1.0 - self.taper, year);
-
-    if tapered > self.terminal {
-      tapered
+  pub fn total(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
+    let c = (u - mid).abs();
+    let d = k * c;
+    let exp = libm::exp(d);
+    let sigmoid = if u > mid {
+      1.0/(1.0+exp)
     } else {
-      self.terminal
-    }
+      exp/(1.0+exp)
+    };
+
+    let max = self.current_max_rate(year);
+
+    self.terminal+(max-self.terminal)*sigmoid
   }
+
 
   pub fn year_from_epoch(&self, epoch: u32, epochs_per_year: u32) -> f64 {
     epoch as f64 / epochs_per_year as f64
@@ -119,7 +149,6 @@ impl Inflation {
     };
 
     let max = self.current_max_rate(year);
-    // let max = self.initial;
 
     self.terminal+(max-self.terminal)*sigmoid
   }
@@ -166,5 +195,41 @@ impl<T: Config> Pallet<T> {
     let total_issuance: f64 = 100000000e+18 as f64;
 
     (total_issuance * epoch_rate) as u128
+  }
+
+  /// Get the epochs emissions for validators and foundation
+  ///
+  /// # Arguments
+  ///
+  /// * `epoch` - Current epoch
+  ///
+  /// # Returns
+  /// 
+  /// *(validator emissions, foundation emissions)
+  ///
+  pub fn get_epoch_emissions_v2(epoch: u32) -> (u128, u128) {
+    let mid = Self::get_percent_as_f64(SigmoidMidpoint::<T>::get());
+    let k = SigmoidSteepness::<T>::get() as f64;
+
+    let epochs_per_year: f64 = T::EpochsPerYear::get() as f64;
+    let year: f64 = epoch as f64 / epochs_per_year;
+    let node_utilization = Self::get_subnet_node_utilization().min(1.0);
+
+    let (validator_rate, foundation_rate) = {
+      let inflation = Inflation::default();
+      (
+        (inflation).validator(node_utilization, mid, k, year),
+        (inflation).foundation(node_utilization, mid, k, year),
+      )
+    };
+
+    let total_issuance: f64 = 100000000e+18 as f64;
+    let validator_epoch_rate = validator_rate / epochs_per_year;
+    let foundation_epoch_rate = foundation_rate / epochs_per_year;
+
+    (
+      (total_issuance * validator_epoch_rate) as u128,
+      (total_issuance * validator_epoch_rate) as u128,
+    )
   }
 }

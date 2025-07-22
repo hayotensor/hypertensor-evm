@@ -78,6 +78,7 @@ impl<T: Config> Pallet<T> {
 
   pub fn do_epoch_preliminaries(block: u32, epoch: u32) -> Weight {
     let mut weight = Weight::zero();
+    let db_weight = T::DbWeight::get();
 
     let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
@@ -85,11 +86,11 @@ impl<T: Config> Pallet<T> {
     let min_subnet_nodes = MinSubnetNodes::<T>::get();
     let max_subnets = MaxSubnets::<T>::get();
 
-    weight = weight.saturating_add(T::DbWeight::get().reads(5));
+    weight = weight.saturating_add(db_weight.reads(5));
 
     let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
     let total_subnets: u32 = subnets.len() as u32;
-    weight = weight.saturating_add(T::DbWeight::get().reads(total_subnets.into()));
+    weight = weight.saturating_add(db_weight.reads(total_subnets.into()));
     
     let excess_subnets: bool = total_subnets > max_subnets;
     let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
@@ -132,7 +133,7 @@ impl<T: Config> Pallet<T> {
               // If in enactment period, ensure min nodes
               // Otherwise continue
               let active_subnet_nodes_count = TotalActiveSubnetNodes::<T>::get(subnet_id);
-              weight = weight.saturating_add(T::DbWeight::get().reads(1));
+              weight = weight.saturating_add(db_weight.reads(1));
               if active_subnet_nodes_count < min_subnet_nodes {
                 Self::do_remove_subnet(
                   *subnet_id,
@@ -159,10 +160,10 @@ impl<T: Config> Pallet<T> {
       if is_paused {
         if data.start_epoch < epoch {
           SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-          weight = weight.saturating_add(T::DbWeight::get().writes(1));
+          weight = weight.saturating_add(db_weight.writes(1));
 
           let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
-          weight = weight.saturating_add(T::DbWeight::get().reads(1));
+          weight = weight.saturating_add(db_weight.reads(1));
 
           if penalties > max_subnet_penalty_count {
             // --- Remove
@@ -185,7 +186,7 @@ impl<T: Config> Pallet<T> {
       //  - Minimum nodes (increases penalties if less than - later removed if over max penalties)
       //  - Minimum delegate stake balance (remove subnet if less than)
 			let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-      weight = weight.saturating_add(T::DbWeight::get().reads(1));
+      weight = weight.saturating_add(db_weight.reads(1));
 
       // --- Ensure min delegate stake balance is met
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
@@ -198,7 +199,7 @@ impl<T: Config> Pallet<T> {
       }
 
       let active_subnet_nodes_count = TotalActiveSubnetNodes::<T>::get(subnet_id);
-      weight = weight.saturating_add(T::DbWeight::get().reads(1));
+      weight = weight.saturating_add(db_weight.reads(1));
 
       // --- Ensure min nodes are active
       // Only choose validator if min nodes are present
@@ -207,12 +208,12 @@ impl<T: Config> Pallet<T> {
         // Nodes may be deactivated so we don't remove the subnet here, but increase penalties instead
         // Note: Subnets decrease its number of penalties for each successful epoch
         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-        weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        weight = weight.saturating_add(db_weight.writes(1));
       }
 
       // --- Check penalties and remove subnet is threshold is breached
       let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
-      weight = weight.saturating_add(T::DbWeight::get().reads(1));
+      weight = weight.saturating_add(db_weight.reads(1));
       if penalties > max_subnet_penalty_count {
         Self::do_remove_subnet(
           *subnet_id,

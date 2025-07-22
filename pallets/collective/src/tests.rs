@@ -68,6 +68,9 @@ pub const EPOCH_LENGTH: u32 = 10;
 pub const BLOCKS_PER_EPOCH: u32 = SECS_PER_BLOCK * EPOCH_LENGTH;
 pub const EPOCHS_PER_YEAR: u32 = YEAR as u32 / BLOCKS_PER_EPOCH;
 
+pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000
+pub const OVERWATCH_EPOCH_EMISSIONS: u128 = OVERWATCH_YEARLY_EMISSIONS / (EPOCHS_PER_YEAR as u128);
+
 mod mock_democracy {
 	pub use pallet::*;
 	#[frame_support::pallet(dev_mode)]
@@ -125,6 +128,7 @@ parameter_types! {
 	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
   pub const MaxDelegateStakeUnlockings: u32 = 32;
   pub const MaxStakeUnlockings: u32 = 32;
+	pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
 }
 
 impl pallet_network::Config for Test {
@@ -147,6 +151,7 @@ impl pallet_network::Config for Test {
   type MaxStakeUnlockings = MaxStakeUnlockings;
   type MinProposalStake = MinProposalStake;
 	type TreasuryAccount = ();
+	type OverwatchEpochEmissions = OverwatchEpochEmissions;
 }
 
 pub type BlockNumber = u32;

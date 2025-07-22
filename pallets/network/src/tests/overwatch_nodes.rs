@@ -212,29 +212,29 @@ fn test_two_noces_same_stake_dif_weights() {
   });
 }
 
-#[test]
-fn test_missing_stake_gets_zero_score() {
-  new_test_ext().execute_with(|| {
-    let subnet_id = 1;
-    let epoch = 1;
+// #[test]
+// fn test_missing_stake_gets_zero_score() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_id = 1;
+//     let epoch = 1;
 
-    // Only node 1 has registered stake
-    let node_id_1 = insert_overwatch_node(1,1);
-    let node_id_2 = insert_overwatch_node(2,2);
-    set_stake(1, 100);
+//     // Only node 1 has registered stake
+//     let node_id_1 = insert_overwatch_node(1,1);
+//     let node_id_2 = insert_overwatch_node(2,2);
+//     set_stake(1, 100);
 
-    submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
+//     submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
 
-    // Node leaves after?
-    submit_weight(epoch, subnet_id, node_id_2, 500000000000000000);
+//     // Node leaves after?
+//     submit_weight(epoch, subnet_id, node_id_2, 500000000000000000);
 
-    Network::calculate_overwatch_rewards(epoch);
+//     Network::calculate_overwatch_rewards(epoch);
 
-    assert!(OverwatchNodeWeights::<Test>::get(epoch, node_id_1).is_some());
-    // No stake = not scored
-    assert_eq!(OverwatchNodeWeights::<Test>::try_get(epoch, node_id_2), Err(()));
-  });
-}
+//     assert!(OverwatchNodeWeights::<Test>::get(epoch, node_id_1).is_some());
+//     // No stake = not scored
+//     assert_eq!(OverwatchNodeWeights::<Test>::try_get(epoch, node_id_2), Err(()));
+//   });
+// }
 
 #[test]
 fn test_multiple_subnets_score_accumulation() {

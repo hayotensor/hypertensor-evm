@@ -86,14 +86,15 @@ pub const SECS_PER_BLOCK: u32 = 6000 / 1000;
 
 pub const EPOCH_LENGTH: u32 = 100;
 pub const BLOCKS_PER_EPOCH: u32 = SECS_PER_BLOCK * EPOCH_LENGTH;
-pub const EPOCHS_PER_YEAR: u32 = YEAR as u32 / BLOCKS_PER_EPOCH;
+pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
+
+pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000
+pub const OVERWATCH_EPOCH_EMISSIONS: u128 = OVERWATCH_YEARLY_EMISSIONS / (EPOCHS_PER_YEAR as u128);
 
 parameter_types! {
   pub const BlockHashCount: BlockNumber = 250;
   pub const SS58Prefix: u8 = 42;
 }
-
-// pub type AccountId = U256;
 
 pub type Signature = MultiSignature;
 
@@ -214,8 +215,7 @@ parameter_types! {
 	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
   pub const MaxDelegateStakeUnlockings: u32 = 32;
   pub const MaxStakeUnlockings: u32 = 32;
-	// pub const MaxUrlLength: u32 = 1024;
-	// pub const MaxSocialIdLength: u32 = 255;
+	pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
 }
 
 impl Config for Test {
@@ -236,10 +236,9 @@ impl Config for Test {
 	type DelegateStakeEpochsRemovalWindow = DelegateStakeEpochsRemovalWindow;
   type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
   type MaxStakeUnlockings = MaxStakeUnlockings;
-	// type MaxSocialIdLength = MaxSocialIdLength;
-	// type MaxUrlLength = MaxUrlLength;
   type MinProposalStake = MinProposalStake;
   type TreasuryAccount = TreasuryAccount;
+	type OverwatchEpochEmissions = OverwatchEpochEmissions;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

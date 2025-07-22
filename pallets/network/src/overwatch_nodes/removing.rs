@@ -25,7 +25,18 @@ impl<T: Config> Pallet<T> {
       Err(()) => return Err(Error::<T>::InvalidOverwatchNode.into()),
     };
 
-    OverwatchNodes::<T>::remove(overwatch_node_id);
+    Self::perform_remove_ow(overwatch_node_id);
+    
+    Ok(())
+  }
+
+  pub fn perform_remove_ow(overwatch_node_id: u32) {
+    if OverwatchNodes::<T>::contains_key(overwatch_node_id) {
+      OverwatchNodes::<T>::remove(overwatch_node_id)
+    } else {
+      return
+    }
+
     if let Some(hotkey) = OverwatchNodeIdHotkey::<T>::take(overwatch_node_id) {
       HotkeyOverwatchNodeId::<T>::remove(&hotkey);
     };
@@ -36,6 +47,6 @@ impl<T: Config> Pallet<T> {
       PeerIdOverwatchNode::<T>::remove(subnet_id, peer_id);
     }
 
-    Ok(())
+    TotalOverwatchNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
   }
 }

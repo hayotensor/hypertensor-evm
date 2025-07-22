@@ -38,6 +38,8 @@
 //! abstentions and the proposal is executed if there are enough approvals counting the new votes.
 //!
 //! If there are not, or if no prime is set, then the motion is dropped without being executed.
+//!
+//! Note: Collective is interim solution until fully decentralized governance
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

@@ -30,11 +30,12 @@ impl<T: Config> Pallet<T> {
     min_vast_majority_attestation_percentage: u128
   ) -> Weight {
     let mut weight = Weight::zero();
+    let db_weight = T::DbWeight::get();
 
     let queue_epochs = IdleClassificationEpochs::<T>::get(subnet_id);
     let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
     let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
-    weight = weight.saturating_add(T::DbWeight::get().reads(3));
+    weight = weight.saturating_add(db_weight.reads(3));
 
     // --- If under minimum attestation ratio, penalize validator, skip rewards
     if consensus_submission_data.attestation_ratio < min_attestation_percentage {
@@ -86,12 +87,12 @@ impl<T: Config> Pallet<T> {
       },
       Err(()) => (),
     };
-    weight = weight.saturating_add(T::DbWeight::get().reads(1));
+    weight = weight.saturating_add(db_weight.reads(1));
 
     // Iterate each node, emit rewards, graduate, or penalize
     for subnet_node in &consensus_submission_data.subnet_nodes {
       let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
-      weight = weight.saturating_add(T::DbWeight::get().reads(1));
+      weight = weight.saturating_add(db_weight.reads(1));
 
       if penalties + 1 > max_subnet_node_penalties {
         // Remove node if they haven't already
@@ -121,14 +122,14 @@ impl<T: Config> Pallet<T> {
       if subnet_node_data_find.is_none() {
         // Not included in consensus, increase
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-        weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        weight = weight.saturating_add(db_weight.writes(1));
         continue
       } else if penalties != 0 {
         // Is in consensus data, decrease
         // If the validator submits themselves in the data and is successfully attested, this also
         // decreases the validators penalties
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| n.saturating_dec());
-        weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        weight = weight.saturating_add(db_weight.writes(1));
       }
 
       if subnet_node.classification.node_class == SubnetNodeClass::Included {
@@ -160,7 +161,7 @@ impl<T: Config> Pallet<T> {
       if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
         account_reward += Self::get_validator_reward(consensus_submission_data.attestation_ratio);
         // Add get_validator_reward (At least 1 read, up to 2)
-        weight = weight.saturating_add(T::DbWeight::get().reads(2));
+        weight = weight.saturating_add(db_weight.reads(2));
         match HotkeyOwner::<T>::try_get(&subnet_node.hotkey) {
           Ok(coldkey) => {
             Self::increase_coldkey_reputation(
@@ -175,7 +176,7 @@ impl<T: Config> Pallet<T> {
           Err(()) => (),
         };
         // Add HotkeyOwner read
-        weight = weight.saturating_add(T::DbWeight::get().reads(1));
+        weight = weight.saturating_add(db_weight.reads(1));
       }
       
       // --- Skip if no rewards to give
@@ -186,7 +187,7 @@ impl<T: Config> Pallet<T> {
       if subnet_node.delegate_reward_rate != 0 {
         // --- Ensure users are staked to subnet node
         let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node.id);
-        weight = weight.saturating_add(T::DbWeight::get().reads(1));
+        weight = weight.saturating_add(db_weight.reads(1));
         if total_node_delegated_stake_shares != 0 {
           let node_delegate_reward = Self::percent_mul(account_reward, subnet_node.delegate_reward_rate);
           account_reward = account_reward - node_delegate_reward;
@@ -213,6 +214,12 @@ impl<T: Config> Pallet<T> {
       rewards_data.delegate_stake_rewards,
     );
     // weight = weight.saturating_add(T::WeightInfo::do_increase_delegate_stake());
+
+    weight
+  }
+
+  pub fn distribute_overwatch_rewards() -> Weight {
+    let mut weight = Weight::zero();
 
     weight
   }

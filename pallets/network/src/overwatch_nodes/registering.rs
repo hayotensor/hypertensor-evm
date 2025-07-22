@@ -24,6 +24,12 @@ impl<T: Config> Pallet<T> {
   ) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
+    let total_overwatch_nodes = TotalOverwatchNodes::<T>::get();
+    ensure!(
+      total_overwatch_nodes < MaxOverwatchNodes::<T>::get(),
+      Error::<T>::MaxOverwatchNodes
+    );
+
     // ⸺ Register fresh hotkey
     ensure!(
       !Self::hotkey_has_owner(hotkey.clone()),
@@ -64,6 +70,8 @@ impl<T: Config> Pallet<T> {
 
     OverwatchNodeIdHotkey::<T>::insert(current_uid, hotkey.clone());
     OverwatchNodes::<T>::insert(current_uid, overwatch_node);
+
+    TotalOverwatchNodes::<T>::mutate(|n: &mut u32| *n += 1);
 
     Ok(())
   }

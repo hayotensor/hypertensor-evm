@@ -865,39 +865,6 @@ mod benchmarks {
 
 	}
 
-	#[benchmark]
-	fn calculate_overwatch_rewards_v2() {
-		let current_block_number = get_current_block_as_u32::<T>();
-		let epoch_length = T::EpochLength::get();
-		let block = get_current_block_as_u32::<T>();
-		let epoch = block / epoch_length as u32;
-
-    let subnet_id_1 = 1;
-    let subnet_id_2 = 2;
-    let epoch = 1;
-
-    let node_id_1 = insert_overwatch_node::<T>(1,1);
-    let node_id_2 = insert_overwatch_node::<T>(2,2);
-    set_stake::<T>(1, 50);
-    set_stake::<T>(2, 100);
-
-    // Subnet 1
-    submit_weight::<T>(epoch, subnet_id_1, node_id_1, 500000000000000000);
-    submit_weight::<T>(epoch, subnet_id_1, node_id_2, 500000000000000000);
-    // Subnet 2
-    submit_weight::<T>(epoch, subnet_id_2, node_id_1, 500000000000000000);
-    submit_weight::<T>(epoch, subnet_id_2, node_id_2, 600000000000000000);
-
-		#[block]
-		{
-			Network::<T>::calculate_overwatch_rewards_v2(epoch);
-		}
-		
-    let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);
-    let score_2 = OverwatchNodeWeights::<T>::get(epoch, node_id_2);
-
-	}
-
 	// #[benchmark]
 	// fn emission_step() {
 	// 	let max_subnets = MaxSubnets::<T>::get();

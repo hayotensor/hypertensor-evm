@@ -179,6 +179,9 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
+
+		#[pallet::constant]
+		type OverwatchEpochEmissions: Get<u128>;
 	}
 
 	/// Events that functions in this pallet can emit.
@@ -516,7 +519,7 @@ pub mod pallet {
 		NodeHasActiveProposal,
 		/// Not the key owner
 		NotKeyOwner,
-		/// Not owner of hotkey that owns subnet node
+		/// Not owner of hotkey that owns Subnet Node
 		NotSubnetNodeOwner,
 		/// Subnet Node param A must be unique
 		SubnetNodeUniqueParamTaken,
@@ -524,7 +527,7 @@ pub mod pallet {
 		SubnetNodeUniqueParamIsSet,
 		/// Subnet node params must be Some
 		SubnetNodeNonUniqueParamMustBeSome,
-		/// Non unique subnet node parameters can be updated once per SubnetNodeNonUniqueParamUpdateInterval
+		/// Non unique Subnet Node parameters can be updated once per SubnetNodeNonUniqueParamUpdateInterval
 		SubnetNodeNonUniqueParamUpdateIntervalNotReached,
 		/// Key owner taken
 		KeyOwnerTaken,
@@ -567,6 +570,7 @@ pub mod pallet {
 		/// Invalid subnet weight, must be below percentage factor 1e18
 		InvalidWeight,
 		InvalidOverwatchNode,
+		MaxOverwatchNodes,
 	}
 	
 	/// Subnet data
@@ -612,8 +616,8 @@ pub mod pallet {
 	/// * description: Description of subnet
 	/// * misc: Miscillanous information 
 	/// * churn_limit: Number of subnet activations per epoch
-	/// * min_stake: Minimum stake balance to register a subnet node in the subnet
-	/// * max_stake: Maximum stake balance to register a subnet node in the subnet
+	/// * min_stake: Minimum stake balance to register a Subnet Node in the subnet
+	/// * max_stake: Maximum stake balance to register a Subnet Node in the subnet
 	/// * delegate_stake_percentage: Percentage of emissions that are allocated to delegate stakers
 	/// * registration_queue_epochs: Number of epochs for registered nodes to be in queue before activation
 	/// * activation_grace_epochs: Grace period following `registration_queue_epochs` to activate
@@ -992,8 +996,8 @@ pub mod pallet {
 	///
 	/// # Arguments
 	///
-	/// * `yay` - Mapping of subnet node IDs voted yay.
-	/// * `nay` - Mapping of subnet node IDs voted nay.
+	/// * `yay` - Mapping of Subnet Node IDs voted yay.
+	/// * `nay` - Mapping of Subnet Node IDs voted nay.
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct VoteParams {
 		pub yay: BTreeSet<u32>,
@@ -1005,11 +1009,11 @@ pub mod pallet {
 	/// # Arguments
 	///
 	/// * `subnet_id` - Subnet ID.
-	/// * `plaintiff_id` - Proposers subnet node ID.
-	/// * `defendant_id` - Defendants subnet node ID.
+	/// * `plaintiff_id` - Proposers Subnet Node ID.
+	/// * `defendant_id` - Defendants Subnet Node ID.
 	/// * `plaintiff_bond` - Plaintiffs bond to create proposal (minimum proposal bond at time of proposal).
 	/// * `defendant_bond` - Defendants bond to create proposal (matches plaintiffs bond).
-	/// * `eligible_voters` - Mapping of subnet node IDs eligible to vote at time of proposal.
+	/// * `eligible_voters` - Mapping of Subnet Node IDs eligible to vote at time of proposal.
 	/// * `votes` - Mapping of votes (`yay` and `nay`).
 	/// * `start_block` - Block when proposer proposes proposal.
 	/// * `challenge_block` - Block when defendant disputes proposal.
@@ -1133,6 +1137,14 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultMaxSubnetNodes() -> u32 {
 		512
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxOverwatchNodes() -> u32 {
+		64
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxOverwatchNodePenalties() -> u32 {
+		10
 	}
 	#[pallet::type_value]
 	pub fn DefaultAccountTake() -> u128 {
@@ -1688,6 +1700,9 @@ pub mod pallet {
 	#[pallet::storage] // subnet_id => data struct
 	pub type SubnetsData<T> = StorageMap<_, Identity, u32, SubnetData>;
 
+	#[pallet::storage] // subnet_id => data struct
+	pub type SubnetBootnodes<T> = StorageMap<_, Identity, u32, BoundedVec<u32, DefaultMaxVectorLength>, ValueQuery>;
+
 	// Ensures no duplicate subnet paths within the network at one time
 	// If a subnet name is voted out, it can be voted up later on and any
 	// stakes attached to the subnet_id won't impact the re-initialization
@@ -1932,11 +1947,11 @@ pub mod pallet {
 	pub type IdleClassificationEpochs<T> =
 		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultIdleClassificationEpochs>;
 
-	// Min required stake balance for a subnet node in a specified subnet
+	// Min required stake balance for a Subnet Node in a specified subnet
 	#[pallet::storage]
 	pub type SubnetMinStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultSubnetMinStakeBalance>;
 		
-	// Max stake balance for a subnet node in a specified subnet
+	// Max stake balance for a Subnet Node in a specified subnet
 	// A node can go over this amount as a balance but cannot add more above it
 	#[pallet::storage]
 	pub type SubnetMaxStakeBalance<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultSubnetMaxStakeBalance>;
@@ -2163,7 +2178,7 @@ pub mod pallet {
 	// Validate / Attestation
 	//
 
-	#[pallet::storage] // subnet ID => epoch  => subnet node ID
+	#[pallet::storage] // subnet ID => epoch  => Subnet Node ID
 	pub type SubnetElectedValidator<T> = StorageDoubleMap<
 		_,
 		Identity,
@@ -2194,7 +2209,7 @@ pub mod pallet {
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct DistributionData {
-		pub total_issuance: u128,
+		pub validator_emissions: u128,
 		pub weights: BTreeMap<u32, u128>,
 	}
 
@@ -2247,7 +2262,7 @@ pub mod pallet {
 		DefaultZeroU32,
 	>;
 
-	// Tracking subnet node reputation based on their validator activity
+	// Tracking Subnet Node reputation based on their validator activity
 	// This is used for the gateway to become a validator node to ensure they
 	// are trustworthy
 
@@ -2305,14 +2320,14 @@ pub mod pallet {
 	pub type StakeUnbondingLedger<T: Config> = 
 		StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u128>, ValueQuery, DefaultStakeUnbondingLedger>;
 
-	// Network maximum stake balance per subnet node
+	// Network maximum stake balance per Subnet Node
 	// Only checked on `do_add_stake` and ``
 	// A subnet staker can have greater than the max stake balance although any rewards
 	// they would receive based on their stake balance will only account up to the max stake balance allowed
 	#[pallet::storage]
 	pub type NetworkMaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMaxStakeBalance>;
 
-	// Network minimum required subnet node stake balance per subnet
+	// Network minimum required Subnet Node stake balance per subnet
 	#[pallet::storage]
 	pub type NetworkMinStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMinStakeBalance>;
 
@@ -2373,11 +2388,11 @@ pub mod pallet {
 	// Node Delegate Stake
 	//
 
-	// Time between subnet node updating node delegate staking rate
+	// Time between Subnet Node updating node delegate staking rate
 	#[pallet::storage]
 	pub type RewardRateUpdatePeriod<T> = StorageValue<_, u32, ValueQuery, DefaultRewardRateUpdatePeriod>;
 
-	// Max nominal percentage decrease of subnet node delegate reward rate
+	// Max nominal percentage decrease of Subnet Node delegate reward rate
 	#[pallet::storage]
 	pub type MaxRewardRateDecrease<T> = StorageValue<_, u128, ValueQuery, DefaultMaxRewardRateDecrease>;
 
@@ -2385,7 +2400,7 @@ pub mod pallet {
 	#[pallet::getter(fn total_node_delegate_stake)]
 	pub type TotalNodeDelegateStake<T> = StorageValue<_, u128, ValueQuery>;
 
-	// Total stake sum of shares in specified subnet node
+	// Total stake sum of shares in specified Subnet Node
 	#[pallet::storage]
 	pub type TotalNodeDelegateStakeShares<T> = StorageDoubleMap<
 		_,
@@ -2398,7 +2413,7 @@ pub mod pallet {
 		DefaultAccountTake,
 	>;
 
-	// Total stake sum of balance in specified subnet node
+	// Total stake sum of balance in specified Subnet Node
 	#[pallet::storage]
 	pub type NodeDelegateStakeBalance<T> = StorageDoubleMap<
 		_,
@@ -2474,7 +2489,7 @@ pub mod pallet {
 	//
 
 	// Factor of subnet utilization helper to get the overall inflation on an epoch
-	// *This works alongside subnet node utilization factor
+	// *This works alongside Subnet Node utilization factor
 	//		*Subnet node utilization will be 1.0-SubnetInflationFactor
 	#[pallet::storage]
 	pub type SubnetInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationFactor>;
@@ -2487,7 +2502,7 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationAdjFactor>;
 
-	// Exponent used for subnet node utilization
+	// Exponent used for Subnet Node utilization
 	#[pallet::storage]
 	pub type SubnetNodeInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetNodeInflationAdjFactor>;
 
@@ -2514,6 +2529,12 @@ pub mod pallet {
 	// Overwatch Nodes
 	//
 	
+	#[pallet::storage]
+	pub type MaxOverwatchNodes<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodes>;
+
+	#[pallet::storage]
+	pub type TotalOverwatchNodes<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+
 	#[pallet::storage]
 	pub type TotalOverwatchNodeUids<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 
@@ -2613,6 +2634,9 @@ pub mod pallet {
 		OptionQuery
 	>;
 	
+	#[pallet::storage]
+	pub type MaxOverwatchNodePenalties<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
+
 	/// Finalized calculated subnet weights from overwatch nodes
 	#[pallet::storage]
 	pub type OverwatchSubnetWeights<T: Config> = StorageMap<
@@ -3032,9 +3056,9 @@ pub mod pallet {
 			Self::do_accept_subnet_ownership(origin, subnet_id)
 		}
 
-		/// Add a subnet node to the subnet by registering and activating in one call
+		/// Add a Subnet Node to the subnet by registering and activating in one call
 		///
-		/// The subnet node will be assigned a class (`SubnetNodeClass`)
+		/// The Subnet Node will be assigned a class (`SubnetNodeClass`)
 		/// * If the subnet is in its registration period it will be assigned the Validator class
 		/// * If the subnet is active, it will be assigned as `Registered` and must be inducted by consensus
 		/// - See `SubnetNodeClass` for more information on class levels
@@ -3042,10 +3066,10 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
-		/// * `hotkey` - Hotkey of the subnet node.
-		/// * `peer_id` - The Peer ID of the subnet node within the subnet P2P network.
+		/// * `hotkey` - Hotkey of the Subnet Node.
+		/// * `peer_id` - The Peer ID of the Subnet Node within the subnet P2P network.
 		/// * `stake_to_be_added` - The balance to add to stake.
-		/// * `a` - A subnet node parameter unique to each subnet.
+		/// * `a` - A Subnet Node parameter unique to each subnet.
 		/// * `b` - A non-unique parameter.
 		/// * `c` - A non-unique parameter.
 		///
@@ -3094,10 +3118,10 @@ pub mod pallet {
 			).map(|_| ()).map_err(|e| e.error)
 		}
 
-		/// Register a subnet node to the subnet
+		/// Register a Subnet Node to the subnet
 		///
-		/// A registered subnet node will not be included in consensus data, therefor no incentives until
-		/// the subnet node activates itself (see `activate_subnet_node`)
+		/// A registered Subnet Node will not be included in consensus data, therefor no incentives until
+		/// the Subnet Node activates itself (see `activate_subnet_node`)
 		///
 		/// Subnet nodes register by staking the minimum required balance to pass authentication in any P2P
 		/// networks, such as a subnet.
@@ -3105,10 +3129,10 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
-		/// * `hotkey` - Hotkey of the subnet node.
-		/// * `peer_id` - The Peer ID of the subnet node within the subnet P2P network.
+		/// * `hotkey` - Hotkey of the Subnet Node.
+		/// * `peer_id` - The Peer ID of the Subnet Node within the subnet P2P network.
 		/// * `stake_to_be_added` - The balance to add to stake.
-		/// * `a` - A subnet node parameter unique to each subnet.
+		/// * `a` - A Subnet Node parameter unique to each subnet.
 		/// * `b` - A non-unique parameter.
 		/// * `c` - A non-unique parameter.
 		///
@@ -3146,9 +3170,9 @@ pub mod pallet {
 			)
 		}
 
-		/// Activate a subnet node
+		/// Activate a Subnet Node
 		///
-		/// Subnet nodes should activate their subnet node once they are in the subnet and have completed any
+		/// Subnet nodes should activate their Subnet Node once they are in the subnet and have completed any
 		/// steps the subnet requires, such as any consensus mechanisms.
 		///
 		/// # Arguments
@@ -3173,9 +3197,9 @@ pub mod pallet {
 			)
 		}	
 
-		/// Deactivate a subnet node temporarily
+		/// Deactivate a Subnet Node temporarily
 		///
-		/// A subnet node can deactivate themselves temporarily up to the MaxDeactivationEpochs
+		/// A Subnet Node can deactivate themselves temporarily up to the MaxDeactivationEpochs
 		///
 		/// # Arguments
 		///
@@ -3184,7 +3208,7 @@ pub mod pallet {
 		///
 		/// # Requirements
 		/// 
-		/// * Must be a Validator class to deactivate, otherwise the subnet node must
+		/// * Must be a Validator class to deactivate, otherwise the Subnet Node must
 		/// 
 		#[pallet::call_index(27)]
 		#[pallet::weight({0})]
@@ -3202,7 +3226,7 @@ pub mod pallet {
 			)
 		}
 		
-		/// Reactivate subnet node that is currently deactivated
+		/// Reactivate Subnet Node that is currently deactivated
 		///
 		/// # Arguments
 		///
@@ -3211,7 +3235,7 @@ pub mod pallet {
 		///
 		/// # Requirements
 		///
-		/// * Caller must be owner of subnet node, hotkey or coldkey
+		/// * Caller must be owner of Subnet Node, hotkey or coldkey
 		///
 		#[pallet::call_index(28)]
 		#[pallet::weight({0})]
@@ -3226,7 +3250,7 @@ pub mod pallet {
 		}
 
 
-		/// Remove subnet node of caller
+		/// Remove Subnet Node of caller
 		///
 		/// # Arguments
 		///
@@ -3235,7 +3259,7 @@ pub mod pallet {
 		///
 		/// # Requirements
 		///
-		/// * Caller must be owner of subnet node, hotkey or coldkey
+		/// * Caller must be owner of Subnet Node, hotkey or coldkey
 		///
 		#[pallet::call_index(29)]
 		// #[pallet::weight(T::WeightInfo::remove_subnet_node())]
@@ -3261,7 +3285,7 @@ pub mod pallet {
 			Self::do_remove_subnet_node(subnet_id, subnet_node_id)
 		}
 
-				/// Remove subnet node of caller
+				/// Remove Subnet Node of caller
 		///
 		/// # Arguments
 		///
@@ -3270,7 +3294,7 @@ pub mod pallet {
 		///
 		/// # Requirements
 		///
-		/// * Caller must be owner of subnet node, hotkey or coldkey
+		/// * Caller must be owner of Subnet Node, hotkey or coldkey
 		///
 		#[pallet::call_index(30)]
 		#[pallet::weight({0})]
@@ -3433,7 +3457,7 @@ pub mod pallet {
 		// 	Ok(())
 		// }
 
-		/// Remove subnet node of caller
+		/// Remove Subnet Node of caller
 		///
 		/// # Arguments
 		///
@@ -3443,7 +3467,7 @@ pub mod pallet {
 		///
 		/// # Requirements
 		///
-		/// * Caller must be coldkey owner of subnet node ID.
+		/// * Caller must be coldkey owner of Subnet Node ID.
 		/// * If decreasing rate, new rate must not be more than a 1% decrease nominally
 		///
 		#[pallet::call_index(35)]
@@ -3520,13 +3544,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add to subnet node stake
+		/// Add to Subnet Node stake
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
 		/// * `subnet_node_id` - Subnet node ID assigned during registration
-		/// * `hotkey` - Hotkey of subnet node
+		/// * `hotkey` - Hotkey of Subnet Node
 		/// * `stake_to_be_added` - Amount to add to stake
 		///
 		/// # Requirements
@@ -3579,18 +3603,18 @@ pub mod pallet {
 			)
 		}
 
-		/// Remove from subnet node stake and add to unstaking ledger
+		/// Remove from Subnet Node stake and add to unstaking ledger
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
-		/// * `hotkey` - Hotkey of subnet node
+		/// * `hotkey` - Hotkey of Subnet Node
 		/// * `stake_to_be_removed` - Amount to remove from stake
 		///
 		/// # Requirements
 		///
 		/// * Coldkey caller only
-		/// * If subnet node, must have available staked balance greater than minimum required stake balance
+		/// * If Subnet Node, must have available staked balance greater than minimum required stake balance
 		///
 		#[pallet::call_index(37)]
 		#[pallet::weight({0})]
@@ -3610,7 +3634,7 @@ pub mod pallet {
 				Error::<T>::NotKeyOwner
 			);
 
-			// If account is a subnet node they can remove stake up to minimum required stake balance
+			// If account is a Subnet Node they can remove stake up to minimum required stake balance
 			// Else they can remove entire balance because they are not validating subnets
 			//		They are removed in `do_remove_subnet_node()` when self or consensus removed
 			// This includes registered, active, and deactivated subnet nodes
@@ -3885,7 +3909,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Delegate stake to a subnet node
+		/// Delegate stake to a Subnet Node
 		///
 		/// # Arguments
 		///
@@ -3911,16 +3935,16 @@ pub mod pallet {
 			)
 		}
 
-		/// Transfer subnet node delegate stake between any subnet node across all subnets
+		/// Transfer Subnet Node delegate stake between any Subnet Node across all subnets
 		///
 		/// * Swaps delegate stake from one subnet to another subnet in one call
 		///
 		/// # Arguments
 		///
 		/// * `from_subnet_id` - From subnet ID.
-		/// * `from_subnet_node_id` - From subnet node ID
+		/// * `from_subnet_node_id` - From Subnet Node ID
 		/// * `to_subnet_id` - To subnet ID.
-		/// * `to_subnet_node_id` - To subnet node ID
+		/// * `to_subnet_node_id` - To Subnet Node ID
 		/// * `node_delegate_stake_shares_to_swap` - Shares of `from_subnet_id` to swap to `to_subnet_id`
 		///
 		/// # Requirements
@@ -3939,7 +3963,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::is_paused()?;
 
-			// --- Ensure ``to`` subnet node exists
+			// --- Ensure ``to`` Subnet Node exists
 			ensure!(
 				SubnetNodesData::<T>::contains_key(to_subnet_id, to_subnet_node_id),
 				Error::<T>::SubnetNodeNotExist
@@ -3988,7 +4012,7 @@ pub mod pallet {
 			)
 		}
 
-		/// Remove delegate stake from a subnet node and add to unbonding ledger.
+		/// Remove delegate stake from a Subnet Node and add to unbonding ledger.
 		///
 		/// # Arguments
 		///
@@ -4016,7 +4040,7 @@ pub mod pallet {
 
 		/// * DONATION FUNCTION*
 		///
-		/// Increase the node delegate stake pool balance of a subnet node
+		/// Increase the node delegate stake pool balance of a Subnet Node
 		///
 		/// * Anyone can perform this action as a donation
 		///
@@ -4042,7 +4066,7 @@ pub mod pallet {
 
 			Self::is_paused()?;
 			
-			// --- Ensure subnet node exists, otherwise at risk of burning tokens
+			// --- Ensure Subnet Node exists, otherwise at risk of burning tokens
 			ensure!(
 				SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
 				Error::<T>::SubnetNodeNotExist
@@ -4081,12 +4105,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfer stake from a subnet node to a subnet
+		/// Transfer stake from a Subnet Node to a subnet
 		///
 		/// # Arguments
 		///
 		/// * `from_subnet_id` - From subnet ID to remove delegate stake from.
-		/// * `from_subnet_node_id` - From subnet node ID to remove delegate stake from.
+		/// * `from_subnet_node_id` - From Subnet Node ID to remove delegate stake from.
 		/// * `to_subnet_id` - To subnet ID to add delegate stake to
 		/// * `node_delegate_stake_shares_to_swap` - Shares to remove from delegate pool and add balance to subnet
 		///
@@ -4110,13 +4134,13 @@ pub mod pallet {
 			)		
 		}
 
-		/// Transfer stake from a subnet to a subnet node
+		/// Transfer stake from a subnet to a Subnet Node
 		///
 		/// # Arguments
 		///
 		/// * `from_subnet_id` - From subnet ID to remove delegate stake from.
 		/// * `to_subnet_id` - To subnet ID to add delegate stake to.
-		/// * `to_subnet_node_id` - To subnet node ID to add delegate stake to
+		/// * `to_subnet_node_id` - To Subnet Node ID to add delegate stake to
 		/// * `delegate_stake_shares_to_swap` - Shares to remove from delegate pool and add balance to node
 		///
 		#[pallet::call_index(50)]
@@ -4140,12 +4164,12 @@ pub mod pallet {
 		}
 
 		/// Validator extrinsic for submitting incentives protocol data of the validators view of of the subnet
-		/// This is used t oscore each subnet node for allocation of emissions
+		/// This is used t oscore each Subnet Node for allocation of emissions
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID to increase delegate pool balance of.
-		/// * `data` - Vector of SubnetNodeConsensusData on each subnet node for scoring each
+		/// * `data` - Vector of SubnetNodeConsensusData on each Subnet Node for scoring each
 		/// * `args` (Optional) - Data that can be used by the subnet 
 		/// 
 		#[pallet::call_index(51)]
@@ -4190,12 +4214,12 @@ pub mod pallet {
 			)
 		}
 
-		/// Register unique subnet node parameter if not already added
+		/// Register unique Subnet Node parameter if not already added
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
-		/// * `subnet_node_id` - Callers subnet node ID
+		/// * `subnet_node_id` - Callers Subnet Node ID
 		/// * `a` - The unique parameter
 		/// 
 		#[pallet::call_index(53)]
@@ -4240,12 +4264,12 @@ pub mod pallet {
 			)
 		}
 
-		/// Register non-unique subnet node parameter `b` or `c`
+		/// Register non-unique Subnet Node parameter `b` or `c`
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
-		/// * `subnet_node_id` - Callers subnet node ID
+		/// * `subnet_node_id` - Callers Subnet Node ID
 		/// * `b` (Optional) - The non-unique parameter
 		/// * `c` (Optional) - The non-unique parameter
 		/// 
@@ -4460,7 +4484,7 @@ pub mod pallet {
 				}
 
 				// --- Swap stake balance
-				// If a subnet node or subnet is no longer active, the stake can still be available for unstaking
+				// If a Subnet Node or subnet is no longer active, the stake can still be available for unstaking
 				let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&old_hotkey, subnet_id);
 				if account_stake_balance != 0 {
 					Self::do_swap_hotkey_balance(
@@ -4556,7 +4580,7 @@ pub mod pallet {
 				Error::<T>::BootstrapPeerIdExist
 			);
 
-			// Subnet node PeerIds and bootstrap PeerIds can match only if they are under the same subnet node ID
+			// Subnet node PeerIds and bootstrap PeerIds can match only if they are under the same Subnet Node ID
 			SubnetNodesData::<T>::try_mutate_exists(
 				subnet_id,
 				subnet_node_id,
@@ -4706,6 +4730,19 @@ pub mod pallet {
 			)
 		}
 
+		/// Add to Overwatch Node stake
+		///
+		/// # Arguments
+		///
+		/// * `overwatch_node_id` - Overwatch Node ID assigned during registration
+		/// * `hotkey` - Hotkey of Overwatch Node
+		/// * `stake_to_be_added` - Amount to add to stake
+		///
+		/// # Requirements
+		///
+		/// * Coldkey caller only
+		/// * Must have amount free in wallet
+		///
 		#[pallet::call_index(65)]
 		#[pallet::weight({0})]
 		pub fn add_to_overwatch_stake(
@@ -4737,6 +4774,18 @@ pub mod pallet {
 			)
 		}
 
+		/// Remove from Overwatch Node stake and add to unstaking ledger
+		///
+		/// # Arguments
+		///
+		/// * `hotkey` - Hotkey of Overwatch Node
+		/// * `stake_to_be_removed` - Amount to remove from stake
+		///
+		/// # Requirements
+		///
+		/// * Coldkey caller only
+		/// * If Overwatch Node, must have available staked balance greater than minimum required stake balance
+		///
 		#[pallet::call_index(66)]
 		#[pallet::weight({0})]
 		pub fn remove_overwatch_stake(
@@ -5383,7 +5432,7 @@ pub mod pallet {
 			);
 
 			// --- Ensure they have no stake on registration
-			// If a subnet node deregisters, then they must fully unstake its stake balance to register again using that same balance
+			// If a Subnet Node deregisters, then they must fully unstake its stake balance to register again using that same balance
 			ensure!(
 				AccountSubnetStake::<T>::get(&hotkey, subnet_id) == 0,
 				Error::<T>::MustUnstakeToRegister
@@ -5421,7 +5470,7 @@ pub mod pallet {
 
 			HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, current_uid);
 
-			// Insert subnet node ID -> hotkey
+			// Insert Subnet Node ID -> hotkey
 			SubnetNodeIdHotkey::<T>::insert(subnet_id, current_uid, &hotkey);
 
 			// Insert hotkey -> coldkey
@@ -5498,7 +5547,7 @@ pub mod pallet {
 			subnet_id: u32, 
 			subnet_node_id: u32,
 		) -> DispatchResultWithPostInfo {
-			// Activate with hotkey from the subnet node server
+			// Activate with hotkey from the Subnet Node server
 			let key: T::AccountId = ensure_signed(origin)?;
 
 			let (hotkey, coldkey) = match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
@@ -5855,6 +5904,7 @@ pub mod pallet {
 			if Self::is_paused().is_err() {
 				return weight
 			}
+			let db_weight = T::DbWeight::get();
 
 			let block: u32 = Self::convert_block_as_u32(block_number);
 			let epoch_length: u32 = T::EpochLength::get();
@@ -5867,21 +5917,20 @@ pub mod pallet {
 				return weight.saturating_add(step_weight)
 			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
 				// Calculate rewards
+				// Distribute foundation
 				// Calculate emissions based on subnet weights (delegate stake based)
 				// We calculate based on delegate stake weights on all subnets
 				let step_weight = Self::handle_subnet_emission_weights(current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
-				weight = weight.saturating_add(T::DbWeight::get().reads(1));
+				weight = weight.saturating_add(db_weight.reads(1));
 				let step_weight = Self::emission_step(block, current_epoch, subnet_id);
 				return weight.saturating_add(step_weight)
 			} else {
 				// If we made it this far, SlotAssignment was read
-				weight = weight.saturating_add(T::DbWeight::get().reads(1));
+				weight = weight.saturating_add(db_weight.reads(1));
 			}
-
-
-			
+		
 			// for EVM tests (Weights in on_initialize change the block weight/gas)
 			Weight::from_parts(0, 0)
 		}
@@ -6077,7 +6126,7 @@ pub mod pallet {
 	
 			// 	HotkeySubnetNodeId::<T>::insert(subnet_id, account_id.clone(), current_uid);
 	
-			// 	// Insert subnet node ID -> hotkey
+			// 	// Insert Subnet Node ID -> hotkey
 			// 	SubnetNodeIdHotkey::<T>::insert(subnet_id, current_uid, account_id.clone());
 	
 			// 	// Insert hotkey -> coldkey
