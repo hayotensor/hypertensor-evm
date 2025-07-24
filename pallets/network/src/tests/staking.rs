@@ -510,22 +510,32 @@ fn test_register_try_removing_all_stake() {
     let amount: u128 = 1000000000000000000000;
 
     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+    let end = 12;
 
-    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnets = MaxSubnets::<Test>::get();
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
-    let starting_balance = Balances::free_balance(&account(total_subnet_nodes+1));
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
+    let peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+    let starting_balance = Balances::free_balance(&coldkey.clone());
 
     assert_ok!(
       Network::register_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
-        peer(total_subnet_nodes+1),
+        hotkey.clone(),
+        peer_id,
+        bootstrap_peer_id,
         0,
         amount,
         None,
@@ -536,9 +546,9 @@ fn test_register_try_removing_all_stake() {
 
     assert_err!(
       Network::remove_stake(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(total_subnet_nodes+1),
+        hotkey.clone(),
         stake_amount,
       ),
       Error::<Test>::MinStakeNotReached

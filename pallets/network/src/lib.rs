@@ -5448,11 +5448,10 @@ pub mod pallet {
         Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
 			};
 
-			// KEEP THIS
-			// ensure!(
-			// 	&owner != &owner_hotkey,
-			// 	Error::<T>::ColdkeyMatchesHotkey
-			// );
+			ensure!(
+				&coldkey != &hotkey,
+				Error::<T>::ColdkeyMatchesHotkey
+			);
 
 			ensure!(
 				subnet.state != SubnetState::Paused,
@@ -5665,11 +5664,6 @@ pub mod pallet {
 				Error::<T>::NotKeyOwner
 			);
 
-			// let coldkey = match HotkeyOwner::<T>::try_get(&hotkey) {
-			// 	Ok(coldkey) => coldkey,
-			// 	Err(()) => return Err(Error::<T>::NotKeyOwner.into()),
-			// };
-
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
         Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
@@ -5716,31 +5710,20 @@ pub mod pallet {
 				let mut maybe_remove_node: Option<u32> = None;
 				let mut should_defer = false;
 
-				match SubnetNodeRemovalSystem::<T>::get(subnet_id) {
-					NodeRemovalSystem::Consensus => {
+				match Self::get_removing_node(
+					subnet_id, 
+					&coldkey, 
+					&hotkey, 
+					&subnet_node
+				) {
+					Some(remove_subnet_node_id) => {
+						maybe_remove_node = Some(remove_subnet_node_id);
+					},
+					None => {
 						should_defer = true;
 					},
-					NodeRemovalSystem::Stake => {
-						match Self::get_lowest_stake_balance_node(subnet_id, &hotkey) {
-							Some(remove_subnet_node_id) => {
-								maybe_remove_node = Some(remove_subnet_node_id);
-							},
-							None => {
-								should_defer = true;
-							},
-						}
-					},
-					NodeRemovalSystem::Reputation => {
-						match Self::get_lowest_reputation_node(subnet_id, &coldkey) {
-							Some(remove_subnet_node_id) => {
-								maybe_remove_node = Some(remove_subnet_node_id);
-							},
-							None => {
-								should_defer = true;
-							},
-						}
-					},
 				}
+
 				// Redundant
 				// Ensure either maybe_remove_node is Some or should_defer is true
 				ensure!(maybe_remove_node.is_some() || should_defer, Error::<T>::SubnetNodesMax);

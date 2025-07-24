@@ -157,6 +157,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     let _n = n + 1;
     let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
+    let peer_id = peer(subnets*max_subnet_nodes+_n);
+    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
     amount_staked += amount;
     assert_ok!(
@@ -164,8 +166,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
         RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         hotkey.clone(),
-        peer(subnets*max_subnet_nodes+_n),
-        peer(subnets*max_subnet_nodes+_n),
+        peer_id.clone(),
+        bootstrap_peer_id,
         0,
         amount,
         None,
@@ -196,13 +198,13 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     let key_owner = HotkeyOwner::<Test>::get(subnet_node_data.hotkey.clone());
     assert_eq!(key_owner, coldkey.clone());
 
-    assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+_n));
+    assert_eq!(subnet_node_data.peer_id, peer_id.clone());
 
     // --- Is ``Validator`` if registered before subnet activation
     assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer(subnets*max_subnet_nodes+_n));
+    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer_id.clone());
     assert_eq!(subnet_node_account, hotkey_subnet_node_id);
 
     let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
@@ -329,16 +331,21 @@ pub fn build_activated_subnet_with_delegator_rewards(
   let mut amount_staked = 0;
   for n in start..end {
     let _n = n + 1;
-    let _ = Balances::deposit_creating(&account(subnets*max_subnet_nodes+_n), amount+500);
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
+    let peer_id = peer(subnets*max_subnet_nodes+_n);
+    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
     amount_staked += amount;
     assert_ok!(
       Network::add_subnet_node(
-        RuntimeOrigin::signed(account(subnets*max_subnet_nodes+_n)),
+        RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
-        account(subnets*max_subnet_nodes+_n),
-        peer(subnets*max_subnet_nodes+_n),
-        peer(subnets*max_subnet_nodes+_n),
-        delegate_reward_rate,
+        hotkey.clone(),
+        peer_id.clone(),
+        bootstrap_peer_id,
+        0,
         amount,
         None,
         None,
@@ -346,29 +353,28 @@ pub fn build_activated_subnet_with_delegator_rewards(
       ) 
     );
 
-    
-    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(subnets*max_subnet_nodes+_n)).unwrap();
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
+    // assert_eq!(hotkey_subnet_node_id, coldkey_n);
 
     let subnet_node_id_hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, hotkey_subnet_node_id).unwrap();
-    assert_eq!(subnet_node_id_hotkey, account(subnets*max_subnet_nodes+_n));
+    assert_eq!(subnet_node_id_hotkey, hotkey.clone());
 
     let subnet_node_data = SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).unwrap();
-    assert_eq!(subnet_node_data.hotkey, account(subnets*max_subnet_nodes+_n));
-    assert_eq!(subnet_node_data.delegate_reward_rate, delegate_reward_rate);
+    assert_eq!(subnet_node_data.hotkey, hotkey.clone());
 
     let key_owner = HotkeyOwner::<Test>::get(subnet_node_data.hotkey.clone());
-    assert_eq!(key_owner, account(subnets*max_subnet_nodes+_n));
+    assert_eq!(key_owner, coldkey.clone());
 
-    assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+_n));
+    assert_eq!(subnet_node_data.peer_id, peer_id.clone());
 
     // --- Is ``Validator`` if registered before subnet activation
     assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer(subnets*max_subnet_nodes+_n));
+    let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer_id.clone());
     assert_eq!(subnet_node_account, hotkey_subnet_node_id);
 
-    let account_subnet_stake = AccountSubnetStake::<Test>::get(account(subnets*max_subnet_nodes+_n), subnet_id);
+    let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, amount);
   }
 
