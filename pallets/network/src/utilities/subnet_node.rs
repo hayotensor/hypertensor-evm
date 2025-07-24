@@ -23,6 +23,8 @@ impl<T: Config> Pallet<T> {
         let idx = slot_list.len() as u32;
         slot_list.try_push(subnet_node_id).map_err(|_| ())?;
         NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
+        TotalSubnetElectableNodes::<T>::mutate(subnet_id, |mut n| n.saturating_inc());
+        TotalElectableNodes::<T>::mutate(|mut n| n.saturating_inc());
         Ok(true)
       } else {
         Ok(false)
@@ -42,7 +44,8 @@ impl<T: Config> Pallet<T> {
         }
 
         NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
-
+        TotalSubnetElectableNodes::<T>::mutate(subnet_id, |mut n| n.saturating_dec());
+        TotalElectableNodes::<T>::mutate(|mut n| n.saturating_dec());
         Ok(true)
       } else {
         Ok(false)
@@ -472,5 +475,212 @@ impl<T: Config> Pallet<T> {
     });
 
     candidates.first().map(|(uid, _, _)| *uid)
+  }
+
+  pub fn get_removing_node(
+    subnet_id: u32, 
+    coldkey: &T::AccountId, 
+    hotkey: &T::AccountId, 
+    subnet_node: &SubnetNode<T::AccountId>
+  ) -> Option<u32> {
+    let policy = match NodeRemovalSystemV2::<T>::get(subnet_id) {
+      Some(policy) => policy,
+      None => return None
+    };
+
+    let activating_coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
+    let activating_node_dstake_balance = NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node.id);
+    let activating_stake_balance = AccountSubnetStake::<T>::get(hotkey, subnet_id);
+
+    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
+
+    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+      if uid == subnet_node.id {
+        continue
+      }
+
+      let node_hotkey = node.hotkey.clone();
+      let node_coldkey = HotkeyOwner::<T>::get(&node_hotkey);
+      let proposing_stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
+      let proposing_dstake = NodeDelegateStakeBalance::<T>::get(subnet_id, node.id);
+      let proposing_reputation = ColdkeyReputation::<T>::get(&node_coldkey);
+      let proposing_score = proposing_reputation.score;
+
+      if !Self::evaluate_logic_expr(
+        &policy.logic,
+        activating_coldkey_reputation.score,
+        activating_coldkey_reputation.average_attestation,
+        subnet_node.delegate_reward_rate,
+        activating_node_dstake_balance,
+        activating_stake_balance,
+        proposing_score,
+        proposing_reputation.average_attestation,
+        node.delegate_reward_rate,
+        proposing_dstake,
+        proposing_stake,
+      ) {
+        continue
+      }
+      let start_epoch = node.classification.start_epoch;
+      candidates.push((uid, proposing_score, start_epoch));
+    }
+
+    if candidates.is_empty() {
+      return None
+    }
+
+    candidates.sort_by(|a, b| {
+      // Sort by reputation.score ascending, then start_epoch descending
+      a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    });
+
+    candidates.first().map(|(uid, _, _)| *uid)
+  }
+
+  pub fn evaluate_logic_expr(
+    expr: &LogicExpr,
+    activating_score: u128,
+    activating_avg_attestation: u128,
+    activating_dstake_rate: u128,
+    activating_dstake_balance: u128,
+    activating_stake_balance: u128,
+    proposing_score: u128,
+    proposing_avg_attestation: u128,
+    proposing_dstake_rate: u128,
+    proposing_dstake_balance: u128,
+    proposing_stake_balance: u128,
+  ) -> bool {
+    match expr {
+      LogicExpr::And(left, right) => {
+        Self::evaluate_logic_expr(
+          left, 
+          activating_score,
+          activating_avg_attestation,
+          activating_dstake_rate,
+          activating_dstake_balance,
+          activating_stake_balance,
+          proposing_score,
+          proposing_avg_attestation,
+          proposing_dstake_rate,
+          proposing_dstake_balance,
+          proposing_stake_balance
+        )
+          && Self::evaluate_logic_expr(
+              right, 
+              activating_score,
+              activating_avg_attestation,
+              activating_dstake_rate,
+              activating_dstake_balance,
+              activating_stake_balance,
+              proposing_score,
+              proposing_avg_attestation,
+              proposing_dstake_rate,
+              proposing_dstake_balance,
+              proposing_stake_balance
+            )
+      }
+      LogicExpr::Or(left, right) => {
+        Self::evaluate_logic_expr(
+          left, 
+          activating_score,
+          activating_avg_attestation,
+          activating_dstake_rate,
+          activating_dstake_balance,
+          activating_stake_balance,
+          proposing_score,
+          proposing_avg_attestation,
+          proposing_dstake_rate,
+          proposing_dstake_balance,
+          proposing_stake_balance
+        )
+          || Self::evaluate_logic_expr(
+              right, 
+              activating_score,
+              activating_avg_attestation,
+              activating_dstake_rate,
+              activating_dstake_balance,
+              activating_stake_balance,
+              proposing_score,
+              proposing_avg_attestation,
+              proposing_dstake_rate,
+              proposing_dstake_balance,
+              proposing_stake_balance
+            )
+      }
+      LogicExpr::Xor(left, right) => {
+        Self::evaluate_logic_expr(
+          left, 
+          activating_score,
+          activating_avg_attestation,
+          activating_dstake_rate,
+          activating_dstake_balance,
+          activating_stake_balance,
+          proposing_score,
+          proposing_avg_attestation,
+          proposing_dstake_rate,
+          proposing_dstake_balance,
+          proposing_stake_balance
+        )
+          ^ Self::evaluate_logic_expr(
+              right, 
+              activating_score,
+              activating_avg_attestation,
+              activating_dstake_rate,
+              activating_dstake_balance,
+              activating_stake_balance,
+              proposing_score,
+              proposing_avg_attestation,
+              proposing_dstake_rate,
+              proposing_dstake_balance,
+              proposing_stake_balance
+            )
+      }
+      LogicExpr::Not(inner) => {
+        !Self::evaluate_logic_expr(
+          inner, 
+          activating_score,
+          activating_avg_attestation,
+          activating_dstake_rate,
+          activating_dstake_balance,
+          activating_stake_balance,
+          proposing_score,
+          proposing_avg_attestation,
+          proposing_dstake_rate,
+          proposing_dstake_balance,
+          proposing_stake_balance
+        )
+      }
+      LogicExpr::Condition(cond) => match cond {
+        // hard
+        NodeRemovalConditionType::HardBelowScore(v) => {
+          proposing_score < *v
+        },
+        NodeRemovalConditionType::HardBelowAverageAttestation(v) => {
+          proposing_avg_attestation < *v
+        },
+        NodeRemovalConditionType::HardBelowNodeDelegateStakeRate(v) => {
+          proposing_dstake_rate < *v
+        },
+
+        // delta
+
+        // If node is under the activating nodes score delta value
+        NodeRemovalConditionType::DeltaBelowScore(v) => {
+          proposing_score < activating_score.saturating_sub(Self::percent_mul(activating_score, *v))
+        },
+        NodeRemovalConditionType::DeltaBelowAverageAttestation(v) => {
+          proposing_avg_attestation < activating_avg_attestation.saturating_sub(Self::percent_mul(activating_avg_attestation, *v))
+        },
+        NodeRemovalConditionType::DeltaBelowNodeDelegateStakeRate(v) => {
+          proposing_dstake_rate < activating_dstake_rate.saturating_sub(Self::percent_mul(activating_dstake_rate, *v))
+        },
+        NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(v) => {
+          proposing_dstake_balance < activating_dstake_balance.saturating_sub(Self::percent_mul(activating_dstake_balance, *v))
+        },
+        NodeRemovalConditionType::DeltaBelowStakeBalance(v) => {
+          proposing_stake_balance < activating_stake_balance.saturating_sub(Self::percent_mul(activating_stake_balance, *v))
+        },
+      },
+    }
   }
 }

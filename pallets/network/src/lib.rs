@@ -365,6 +365,12 @@ pub mod pallet {
 		SubnetNodesMin,
 		/// Maximum allowed subnet nodes reached
 		SubnetNodesMax,
+		/// Subnet state must be active to perform this action
+		SubnetMustBeActive,
+		/// Subnet state must be paused to perform this action
+		SubnetMustBePaused,
+		/// Subnet is paused, cannot perform this action
+		SubnetIsPaused,
 		/// Transaction rate limiter exceeded
 		TxRateLimitExceeded,
 		///
@@ -681,13 +687,38 @@ pub mod pallet {
 		pub average_attestation_threshold: u128,
 	}
 
+	/// Condition types
+	///
+	/// # Qualifiers for removal
+	///
+	/// All delta conditions compare the activating node as the dominator value
+	///
+	/// # Hard
+	/// BelowScore: If below reputation score
+	/// BelowAverageAttestation: If below average attestation ratio
+	/// BelowNodeDelegateStakeRate: If below node delegate stake rate
+	///
+	/// # Deltas
+	/// ScorePercentDelta: Score delta threshold
+	/// AverageAttestationPercentDelta:
+	/// DelegateStakeRatePercentDelta:
+	/// DelegateStakeBalancePercentDelta:
+	/// StakeBalancePercentDelta:
+	///
+
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
 	pub enum NodeRemovalConditionType {
-		PercentageDeltaExceeds(u128),         	// e.g. > 20%
-		BelowMinScoreThreshold(u128),         	// e.g. < 1000
-		BelowAverageAttestation(u128),        	// e.g. < 90%
-		PercentStakeDelta(u128),       			  	// e.g. 10%
-		NodeDelegateStakePercentageDelta(u128), // e.g. 10%
+		// hard
+		HardBelowScore(u128),
+		HardBelowAverageAttestation(u128),
+		HardBelowNodeDelegateStakeRate(u128),
+
+		// deltas
+		DeltaBelowScore(u128),
+		DeltaBelowAverageAttestation(u128),
+		DeltaBelowNodeDelegateStakeRate(u128),
+		DeltaBelowNodeDelegateStakeBalance(u128),
+		DeltaBelowStakeBalance(u128),
 	}
 
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
@@ -703,15 +734,6 @@ pub mod pallet {
 	pub struct NodeRemovalPolicy {
 		pub logic: LogicExpr,
 	}
-
-	// #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	// pub enum LogicOp {
-	// 	And(Box<LogicExpr>, Box<LogicExpr>),
-	// 	Or(Box<LogicExpr>, Box<LogicExpr>),
-	// 	Xor(Box<LogicExpr>, Box<LogicExpr>),
-	// 	Not(Box<LogicExpr>),
-	// 	Condition(NodeRemovalConditionType),
-	// }
 
 	pub struct SubnetInfo<AccountId> {
 		pub id: u32,
@@ -1075,6 +1097,10 @@ pub mod pallet {
 		0
 	}
 	#[pallet::type_value]
+	pub fn DefaultZeroU128() -> u128 {
+		0
+	}
+	#[pallet::type_value]
 	pub fn DefaultAccountId<T: Config>() -> T::AccountId {
 		T::AccountId::decode(&mut TrailingZeroInput::zeroes()).unwrap()
 	}
@@ -1424,6 +1450,11 @@ pub mod pallet {
 		1
 	}
 	#[pallet::type_value]
+	pub fn DefaultMaxSubnetPauseEpochs<T: Config>() -> u32 {
+		// 3 days
+		T::EpochsPerYear::get() / 120
+	}
+	#[pallet::type_value]
 	pub fn DefaultMaxChurnLimit() -> u32 {
 		// Must only enable up to 64 node activations per epoch
 		64
@@ -1522,6 +1553,14 @@ pub mod pallet {
 	pub fn DefaultNodeRemovalReputationScorePercentageDelta() -> u128 {
 		0
 	}
+	#[pallet::type_value]
+	pub fn DefaultNodeRemovalStakeBalancePercentageDelta() -> u128 {
+		0
+	}
+	#[pallet::type_value]
+	pub fn DefaultNodeRemovalDelegateStakeRatePercentageDelta() -> u128 {
+		0
+	}	
 	#[pallet::type_value]
 	pub fn DefaultNodeRemovalReputationScoreMin() -> u128 {
 		0
@@ -1674,6 +1713,11 @@ pub mod pallet {
 		// 400%
 		4000000000000000000
 	}
+	#[pallet::type_value]
+	pub fn DefaultDelegateStakeWeightFactor() -> u128 {
+		// 90.0%
+		900000000000000000
+	}
 
 
 
@@ -1769,6 +1813,10 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Min ChurnLimit
+	#[pallet::storage]
+	pub type MaxSubnetPauseEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxSubnetPauseEpochs<T>>;
+
 	// Lower bound of registration fee
 	#[pallet::storage]
 	pub type MinSubnetRegistrationFee<T> = StorageValue<_, u128, ValueQuery, DefaultMinSubnetRegistrationFee>;
@@ -1816,6 +1864,20 @@ pub mod pallet {
 		BoundedVec<u32, DefaultMaxSubnetNodes>,
 		ValueQuery,
 	>;
+
+	// Subnet count of electable nodes
+	#[pallet::storage]
+	pub type TotalSubnetElectableNodes<T> = StorageMap<
+		_,
+		Identity,
+		u32,
+		u32,
+		ValueQuery,
+	>;
+
+	// Network wide count of electable nodes
+	#[pallet::storage]
+	pub type TotalElectableNodes<T> = StorageValue<_, u32, ValueQuery>;
 
 	// Track election slots to avoid iterating
 	#[pallet::storage]
@@ -2011,6 +2073,18 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type NodeRemovalReputationScorePercentageDelta<T> =
 		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalReputationScorePercentageDelta>;
+
+	#[pallet::storage]
+	pub type NodeRemovalStakeBalancePercentageDelta<T> =
+		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalStakeBalancePercentageDelta>;
+
+	#[pallet::storage]
+	pub type NodeRemovalDelegateStakeRatePercentageDelta<T> =
+		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalDelegateStakeRatePercentageDelta>;
+
+	#[pallet::storage]
+	pub type NodeRemovalDelegateStakeBalancePercentageDelta<T> =
+		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultZeroU128>;
 
 	// The minimum score a node must have to NOT qualify to be removed
 	#[pallet::storage]
@@ -2483,39 +2557,44 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ProposalConsensusThreshold<T> = StorageValue<_, u128, ValueQuery, DefaultProposalConsensusThreshold>;
 
+	//
+	// Weight helpers
+	//
+	#[pallet::storage]
+	pub type DelegateStakeWeightFactor<T> = StorageValue<_, u128, ValueQuery, DefaultDelegateStakeWeightFactor>;
 
 	// 
 	// Inflation helpers elements
 	//
 
-	// Factor of subnet utilization helper to get the overall inflation on an epoch
-	// *This works alongside Subnet Node utilization factor
-	//		*Subnet node utilization will be 1.0-SubnetInflationFactor
-	#[pallet::storage]
-	pub type SubnetInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationFactor>;
+	// // Factor of subnet utilization helper to get the overall inflation on an epoch
+	// // *This works alongside Subnet Node utilization factor
+	// //		*Subnet node utilization will be 1.0-SubnetInflationFactor
+	// #[pallet::storage]
+	// pub type SubnetInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationFactor>;
 
-	// Factor that is used as the pow against the utilization factors `SubnetInflationFactor` and subet node inflation factor
-	#[pallet::storage]
-	pub type InflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultInflationAdjFactor>;
+	// // Factor that is used as the pow against the utilization factors `SubnetInflationFactor` and subet node inflation factor
+	// #[pallet::storage]
+	// pub type InflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultInflationAdjFactor>;
 
-	// Exponent used for subnet utilization
-	#[pallet::storage]
-	pub type SubnetInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationAdjFactor>;
+	// // Exponent used for subnet utilization
+	// #[pallet::storage]
+	// pub type SubnetInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationAdjFactor>;
 
-	// Exponent used for Subnet Node utilization
-	#[pallet::storage]
-	pub type SubnetNodeInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetNodeInflationAdjFactor>;
+	// // Exponent used for Subnet Node utilization
+	// #[pallet::storage]
+	// pub type SubnetNodeInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetNodeInflationAdjFactor>;
 
-	#[pallet::storage]
-	pub type TerminalInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultTerminalInflationFactor>;
+	// #[pallet::storage]
+	// pub type TerminalInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultTerminalInflationFactor>;
 
-	/// Lower bound of inflation factor
-	#[pallet::storage]
-	pub type UtilizationLowerBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationLowerBound>;
+	// /// Lower bound of inflation factor
+	// #[pallet::storage]
+	// pub type UtilizationLowerBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationLowerBound>;
 
-	/// Upper bound of inflation factor
-	#[pallet::storage]
-	pub type UtilizationUpperBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationUpperBound>;
+	// /// Upper bound of inflation factor
+	// #[pallet::storage]
+	// pub type UtilizationUpperBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationUpperBound>;
 
 	/// Inflation grpah midpoint (sigmoid)
 	#[pallet::storage]
@@ -2736,7 +2815,7 @@ pub mod pallet {
 			Self::is_paused()?;
 
 			ensure!(
-				Self::is_subnet_owner(&coldkey, subnet_id),
+				Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
 				Error::<T>::NotSubnetOwner
 			);
 
@@ -2812,6 +2891,16 @@ pub mod pallet {
 			Self::is_paused()?;
 			Self::do_owner_pause_subnet(origin, subnet_id)
 		}
+
+		// #[pallet::call_index(3)]
+		// #[pallet::weight({0})]
+		// pub fn owner_unpause_subnet(
+		// 	origin: OriginFor<T>, 
+		// 	subnet_id: u32,
+		// ) -> DispatchResult {
+		// 	Self::is_paused()?;
+		// 	Self::do_owner_pause_subnet(origin, subnet_id)
+		// }
 
 		#[pallet::call_index(4)]
 		#[pallet::weight({0})]
@@ -4388,6 +4477,12 @@ pub mod pallet {
 
 		/// Update hotkey
 		///
+		/// # Requirements
+		///
+		/// * Coldkey caller only
+		/// * New hotkey must be already exist
+		///		- No merging logic
+		///
 		/// # Arguments
 		///
 		/// * `old_hotkey` - Old hotkey to be replaced.
@@ -4487,7 +4582,7 @@ pub mod pallet {
 				// If a Subnet Node or subnet is no longer active, the stake can still be available for unstaking
 				let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&old_hotkey, subnet_id);
 				if account_stake_balance != 0 {
-					Self::do_swap_hotkey_balance(
+					Self::do_swap_hotkey_stake_balance(
 						subnet_id,
 						&old_hotkey, 
 						&new_hotkey, 
@@ -5292,6 +5387,9 @@ pub mod pallet {
 			let _ = SubnetNodeNonUniqueParamLastSet::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetNodePenalties::<T>::clear_prefix(subnet_id, u32::MAX, None);
 
+			let electable_nodes = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
+			TotalElectableNodes::<T>::mutate(|mut n| n.saturating_sub(electable_nodes));
+
 			// Remove all subnet consensus data
 			let _ = SubnetPenaltyCount::<T>::remove(subnet_id);
 
@@ -5350,13 +5448,16 @@ pub mod pallet {
         Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
 			};
 
+			// KEEP THIS
 			// ensure!(
 			// 	&owner != &owner_hotkey,
 			// 	Error::<T>::ColdkeyMatchesHotkey
 			// );
 
-			// TODO: Ensure subnet not paused
-			let is_subnet_registering: bool = subnet.state == SubnetState::Registered;
+			ensure!(
+				subnet.state != SubnetState::Paused,
+				Error::<T>::SubnetIsPaused
+			);
 
 			// Unique network-wide hotkey
 			ensure!(
@@ -5602,6 +5703,13 @@ pub mod pallet {
 
 			let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
 			let max_nodes = MaxSubnetNodes::<T>::get();
+
+			// Push node into queue again if paused
+			if subnet.state == SubnetState::Paused {
+				Self::defer_subnet_node(subnet_id, subnet_node, subnet_epoch);
+				return Ok(Pays::No.into())
+			}
+
 			// --- Use the subnets node removal system
 			// If node can't be removed, push the node back into the queue
 			if total_nodes >= max_nodes {
@@ -5643,13 +5751,7 @@ pub mod pallet {
 				} else if should_defer {
 					// --- Defer the start_epoch
 					// Add node back to the queue
-					let new_start_epoch = Self::get_registration_queue_start_epoch(
-						subnet_id,
-						subnet_node_id,
-						subnet_epoch,
-					);
-					subnet_node.classification.start_epoch = new_start_epoch;
-					RegisteredSubnetNodesData::<T>::insert(subnet_id, subnet_node_id, &subnet_node);
+					Self::defer_subnet_node(subnet_id, subnet_node, subnet_epoch);
 					return Ok(Pays::No.into())
 				}
 			}
@@ -5663,6 +5765,16 @@ pub mod pallet {
 			).map_err(|e| e)?;
 
 			Ok(().into())
+		}
+
+		fn defer_subnet_node(subnet_id: u32, mut subnet_node: SubnetNode<T::AccountId>, subnet_epoch: u32) {
+			let new_start_epoch = Self::get_registration_queue_start_epoch(
+				subnet_id,
+				subnet_node.id,
+				subnet_epoch,
+			);
+			subnet_node.classification.start_epoch = new_start_epoch;
+			RegisteredSubnetNodesData::<T>::insert(subnet_id, subnet_node.id, &subnet_node);
 		}
 
 		pub fn perform_activate_subnet_node(

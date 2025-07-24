@@ -152,7 +152,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_swap_hotkey_balance(
+  pub fn do_swap_hotkey_stake_balance(
     subnet_id: u32,
     old_hotkey: &T::AccountId,
     new_hotkey: &T::AccountId,
@@ -203,7 +203,7 @@ impl<T: Config> Pallet<T> {
     let old_hotkey_stake_balance = AccountSubnetStake::<T>::take(old_hotkey, subnet_id);
     // --- Redundant take of new hotkeys stake balance
     // --- New hotkey is always checked before updating
-    let new_hotkey_stake_balance = AccountSubnetStake::<T>::take(new_hotkey, subnet_id);
+    let new_hotkey_stake_balance = AccountSubnetStake::<T>::get(new_hotkey, subnet_id);
     AccountSubnetStake::<T>::insert(
       new_hotkey, 
       subnet_id, 

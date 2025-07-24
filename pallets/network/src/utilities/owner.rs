@@ -21,15 +21,69 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
-    // SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-    //   if let Some(data) = maybe_data {
-    //     data.name = value.clone();
-    //   }
-    // });
+    ensure!(
+      Self::is_subnet_active(subnet_id).unwrap_or(false),
+      Error::<T>::SubnetMustBeActive
+    );
+
+    let epoch = Self::get_current_epoch_as_u32();
+    let max_pause_epochs = MaxSubnetPauseEpochs::<T>::get();
+
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        // Update state
+        params.state = SubnetState::Paused;
+
+        // When paused, the start_epoch is used as the max pause epoch
+        // The subnet will automatically unpause unless owner unpauses before
+        params.start_epoch = epoch + max_pause_epochs;
+
+        Ok(())
+      }
+    )?;
+
+    Ok(())
+  }
+
+  pub fn do_owner_unpause_subnet(origin: T::RuntimeOrigin, subnet_id: u32) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+      Error::<T>::NotSubnetOwner
+    );
+
+    ensure!(
+      Self::is_subnet_paused(subnet_id).unwrap_or(false),
+      Error::<T>::SubnetMustBePaused
+    );
+
+    let epoch = Self::get_current_epoch_as_u32();
+
+    // If the subnet is passed the max pause epochs, validators via on_initialize already
+    // unpaused it. If not, we allow the owner to unpause
+
+    // A subnet can only pause if it's active, so we re-activate it back in the Active state
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        // Update state
+        params.state = SubnetState::Active;
+
+        params.start_epoch = epoch + 1;
+
+        Ok(())
+      }
+    )?;
 
     Ok(())
   }
@@ -38,7 +92,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -54,7 +108,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -64,12 +118,17 @@ impl<T: Config> Pallet<T> {
     );
 
     let mut prev_name: Vec<u8> = Vec::new();
-    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-      if let Some(data) = maybe_data {
-        prev_name = data.name.clone();
-        data.name = value.clone();
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        prev_name = params.name.clone();
+        params.name = value.clone();
+
+        Ok(())
       }
-    });
+    )?;
 
     SubnetName::<T>::insert(&value, subnet_id);
 
@@ -87,7 +146,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -97,12 +156,17 @@ impl<T: Config> Pallet<T> {
     );
 
     let mut prev_repo: Vec<u8> = Vec::new();
-    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-      if let Some(data) = maybe_data {
-        prev_repo = data.repo.clone();
-        data.repo = value.clone();
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        prev_repo = params.repo.clone();
+        params.repo = value.clone();
+
+        Ok(())
       }
-    });
+    )?;
 
     SubnetRepo::<T>::insert(&value, subnet_id);
 
@@ -120,17 +184,22 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
     let mut prev_description: Vec<u8> = Vec::new();
-    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-      if let Some(data) = maybe_data {
-        prev_description = data.description.clone();
-        data.description = value.clone();
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        prev_description = params.description.clone();
+        params.description = value.clone();
+
+        Ok(())
       }
-    });
+    )?;
 
     Self::deposit_event(Event::SubnetDescriptionUpdate { 
       subnet_id: subnet_id,
@@ -146,17 +215,22 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
     let mut prev_misc: Vec<u8> = Vec::new();
-    SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-      if let Some(data) = maybe_data {
-        prev_misc = data.misc.clone();
-        data.misc = value.clone();
+    SubnetsData::<T>::try_mutate_exists(
+      subnet_id,
+      |maybe_params| -> DispatchResult {
+        let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        prev_misc = params.misc.clone();
+        params.misc = value.clone();
+
+        Ok(())
       }
-    });
+    )?;
 
     Self::deposit_event(Event::SubnetMiscUpdate { 
       subnet_id: subnet_id,
@@ -172,7 +246,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -197,7 +271,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -223,7 +297,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -248,7 +322,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -273,7 +347,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -298,7 +372,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -317,12 +391,12 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
     ensure!(
-      !Self::is_subnet_active(subnet_id),
+      !Self::is_subnet_active(subnet_id).unwrap_or(false),
       Error::<T>::SubnetMustBeRegistering
     );
 
@@ -338,12 +412,12 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
     ensure!(
-      !Self::is_subnet_active(subnet_id),
+      !Self::is_subnet_active(subnet_id).unwrap_or(false),
       Error::<T>::SubnetMustBeRegistering
     );
 
@@ -368,7 +442,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -381,7 +455,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -398,11 +472,12 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
     NodeRemovalSystemV2::<T>::insert(subnet_id, policy);
+    
     Ok(())
   }
 
@@ -410,7 +485,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -428,7 +503,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -446,7 +521,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -470,7 +545,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -519,7 +594,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -531,7 +606,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -555,7 +630,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -579,7 +654,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -603,7 +678,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 
@@ -639,7 +714,7 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id),
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
 

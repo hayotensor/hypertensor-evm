@@ -157,6 +157,7 @@ impl<T: Config> Pallet<T> {
   //   )
   // }
 
+  // Check if the subnet state is registered, and if it's in the registration period
   pub fn is_subnet_registering(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
     let is_registering: bool = state == SubnetState::Registered;
@@ -173,6 +174,7 @@ impl<T: Config> Pallet<T> {
     }
   }
 
+  // Check if the subnet state is registered, and if it's in the enactment period
   pub fn is_subnet_in_enactment(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
     let subnet_activation_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
@@ -205,17 +207,24 @@ impl<T: Config> Pallet<T> {
     // false
   }
 
-  pub fn is_subnet_active(subnet_id: u32) -> bool {
+  pub fn is_subnet_active(subnet_id: u32) -> Option<bool> {
     match SubnetsData::<T>::try_get(subnet_id) {
-      Ok(subnet) => subnet.state == SubnetState::Active,
-      Err(()) => false,
+      Ok(subnet) => Some(subnet.state == SubnetState::Active),
+      Err(()) => None,
     }
   }
 
-  pub fn is_subnet_owner(account_id: &T::AccountId, subnet_id: u32) -> bool {
+  pub fn is_subnet_paused(subnet_id: u32) -> Option<bool> {
+    match SubnetsData::<T>::try_get(subnet_id) {
+      Ok(subnet) => Some(subnet.state == SubnetState::Paused),
+      Err(()) => None,
+    }
+  }
+
+  pub fn is_subnet_owner(account_id: &T::AccountId, subnet_id: u32) -> Option<bool> {
     match SubnetOwner::<T>::try_get(subnet_id) {
-      Ok(owner) => &owner == account_id,
-      Err(()) => false,
+      Ok(owner) => Some(&owner == account_id),
+      Err(()) => None,
     }
   }
 }

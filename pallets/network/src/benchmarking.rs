@@ -317,8 +317,8 @@ pub fn insert_overwatch_node<T: Config>(coldkey_n: u32, hotkey_n: u32) -> u32 {
   current_uid
 }
 
-pub fn set_stake<T: Config>(account_id: u32, amount: u128) {
-	let account = funded_account::<T>("overwatch_node", account_id);
+pub fn set_overwatch_stake<T: Config>(hotkey_n: u32, amount: u128) {
+	let account = funded_account::<T>("overwatch_node", hotkey_n);
     // -- increase account staking balance
   AccountOverwatchStake::<T>::mutate(account, |mut n| *n += amount);
   // -- increase total stake
@@ -707,7 +707,7 @@ mod benchmarks {
 		// ⸺ Calculate subnet distribution of rewards
 		let (rewards_data, rewards_weight) = Network::<T>::calculate_rewards_v2(
 			subnet_id, 
-			subnet_emission_weights.total_issuance, 
+			subnet_emission_weights.validator_emissions, 
 			*subnet_weight.unwrap()
 		);
 
@@ -809,6 +809,56 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn calculate_subnet_weights_v2() {
+		let max_subnets = MaxSubnets::<T>::get();
+		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+		let total_ows = 64;
+
+		// - insert overwatchers
+		for n in 0..total_ows {
+			let _n = n + 1;
+			let coldkey_n = _n;
+			let hotkey_n = total_ows + _n;
+			insert_overwatch_node::<T>(coldkey_n, hotkey_n);
+			set_overwatch_stake::<T>(hotkey_n, 100);
+		}
+
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
+			build_activated_subnet::<T>(
+				subnet_name.clone().into(), 
+				0, 
+				max_subnet_nodes, 
+				DEFAULT_DEPOSIT_AMOUNT, 
+				DEFAULT_SUBNET_NODE_STAKE
+			);
+		}
+
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
+			let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap(); 
+			for n in 0..total_ows {
+				let _n = n + 1;
+				let hotkey_n = total_ows + _n;
+				let hotkey = funded_account::<T>("overwatch_node", hotkey_n);
+				let node_id = HotkeyOverwatchNodeId::<T>::get(&hotkey.clone()).unwrap();
+				submit_weight::<T>(epoch, subnet_id, node_id, 1000000000000000000);
+			}
+		}
+
+		#[block]
+		{
+			let (stake_weights_normalized, stake_weights_weight) = Network::<T>::calculate_subnet_weights_v2(epoch);
+			assert!(stake_weights_normalized.len() as u32 == max_subnets);
+		}
+	}
+
+	#[benchmark]
 	fn get_random_number() {
 		let mut parent_hash = frame_system::Pallet::<T>::parent_hash();
 
@@ -845,8 +895,8 @@ mod benchmarks {
 
     let node_id_1 = insert_overwatch_node::<T>(1,1);
     let node_id_2 = insert_overwatch_node::<T>(2,2);
-    set_stake::<T>(1, 50);
-    set_stake::<T>(2, 100);
+    set_overwatch_stake::<T>(1, 50);
+    set_overwatch_stake::<T>(2, 100);
 
     // Subnet 1
     submit_weight::<T>(epoch, subnet_id_1, node_id_1, 500000000000000000);
@@ -858,6 +908,39 @@ mod benchmarks {
 		#[block]
 		{
 			Network::<T>::calculate_overwatch_rewards(epoch);
+		}
+		
+    let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);
+    let score_2 = OverwatchNodeWeights::<T>::get(epoch, node_id_2);
+
+	}
+
+	#[benchmark]
+	fn calculate_overwatch_rewards_v2() {
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+    let subnet_id_1 = 1;
+    let subnet_id_2 = 2;
+    let epoch = 1;
+
+    let node_id_1 = insert_overwatch_node::<T>(1,1);
+    let node_id_2 = insert_overwatch_node::<T>(2,2);
+    set_overwatch_stake::<T>(1, 50);
+    set_overwatch_stake::<T>(2, 100);
+
+    // Subnet 1
+    submit_weight::<T>(epoch, subnet_id_1, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_1, node_id_2, 500000000000000000);
+    // Subnet 2
+    submit_weight::<T>(epoch, subnet_id_2, node_id_1, 500000000000000000);
+    submit_weight::<T>(epoch, subnet_id_2, node_id_2, 600000000000000000);
+
+		#[block]
+		{
+			Network::<T>::calculate_overwatch_rewards_v2(epoch);
 		}
 		
     let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);

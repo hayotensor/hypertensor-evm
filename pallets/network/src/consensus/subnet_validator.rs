@@ -79,7 +79,7 @@ impl<T: Config> Pallet<T> {
     // --- Validator auto-attests the epoch
     let attests: BTreeMap<u32, u32> = BTreeMap::from([(validator_id, block)]);
 
-    // --- Get all eligible nodes to be in consensus on this epoch
+    // --- Get all (activated) Idle + consensus-eligible nodes
     // We get this here instead of in the rewards distribution to handle block weight more efficiently
     let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
     let subnet_nodes_count = subnet_nodes.len();

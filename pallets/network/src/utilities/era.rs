@@ -159,6 +159,11 @@ impl<T: Config> Pallet<T> {
 
       if is_paused {
         if data.start_epoch < epoch {
+          // Automatic Expiry / Force Unpause
+          // - Increase penalty count
+          // - Check if should remove
+          // - Force unpause
+
           SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
           weight = weight.saturating_add(db_weight.writes(1));
 
@@ -172,6 +177,14 @@ impl<T: Config> Pallet<T> {
               SubnetRemovalReason::PauseExpired,
             );
             // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
+            continue
+          } else {
+            SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+              if let Some(data) = maybe_data {
+                data.state = SubnetState::Active;
+                data.start_epoch = epoch + 1;
+              }
+            });
             continue
           }
         }
@@ -238,8 +251,6 @@ impl<T: Config> Pallet<T> {
       // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
     }
 
-    // --- TODO: Push subnet_ids and subnet_nodes into mapping and choose validator after possible removal of subnet
-    // Avoid randomization if there are max subnets
     weight
   }
 

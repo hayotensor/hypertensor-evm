@@ -21,7 +21,8 @@ use crate::{
   TotalSubnetNodeUids, 
   HotkeySubnetNodeId, 
   SubnetNodeIdHotkey, 
-  SubnetNodesData, 
+  SubnetNodesData,
+  SubnetNode,
   PeerIdSubnetNodeId,
   BootstrapPeerIdSubnetNodeId,
   MaxRewardRateDecrease,
@@ -38,6 +39,14 @@ use crate::{
   TotalActiveSubnetNodes,
   RegistrationQueueEpochs,
   MaxSubnets,
+  NodeRemovalPolicy,
+  LogicExpr,
+  NodeRemovalConditionType,
+  NodeRemovalSystemV2,
+  ColdkeyReputation,
+  NodeDelegateStakeBalance,
+  Reputation,
+  SubnetNodeClassification,
 };
 use sp_core::U256;
 ///
@@ -1656,4 +1665,130 @@ fn test_defer_node() {
     assert_ne!(initial_start_epoch, deferred_start_epoch);
     assert_eq!(deferred_start_epoch, subnet_epoch + registration_queue_epochs);
   })
+}
+
+#[test]
+fn test_get_removing_node_respects_policy() {
+  new_test_ext().execute_with(|| {
+    let subnet_id = 1;
+    let owner = account(0);
+    let challenger_coldkey = account(100);
+    let challenger_hotkey = account(101);
+
+    let removal_policy = NodeRemovalPolicy {
+      logic: LogicExpr::And(
+        Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowScore(200))),
+        Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100))),
+      )
+    };
+
+    NodeRemovalSystemV2::<Test>::insert(subnet_id, removal_policy);
+
+    // Insert challenger node
+    SubnetNodesData::<Test>::insert(subnet_id, 0, SubnetNode {
+        id: 0,
+        hotkey: challenger_hotkey.clone(),
+        peer_id: peer(0),
+        bootstrap_peer_id: peer(0),
+        client_peer_id: peer(0),
+        delegate_reward_rate: 10,
+        last_delegate_reward_rate_update: 0,
+        classification: SubnetNodeClassification {
+          node_class: SubnetNodeClass::Validator,
+          start_epoch: 100,
+        },
+        a: Some(BoundedVec::new()),
+        b: Some(BoundedVec::new()),
+        c: Some(BoundedVec::new()),
+    });
+
+    ColdkeyReputation::<Test>::insert(&challenger_coldkey, Reputation { 
+      score: 1000000000000000000, 
+      average_attestation: 500000000000000000,
+      start_epoch: 0,
+      lifetime_node_count: 0,
+      total_active_nodes: 0,
+      total_increases: 0,
+      total_decreases: 0,
+      last_validator_epoch: 0,
+      ow_score: 0,
+    });
+    NodeDelegateStakeBalance::<Test>::insert(subnet_id, 0, 300);
+    AccountSubnetStake::<Test>::insert(&challenger_hotkey, subnet_id, 500);
+
+    // Candidate 1 (should be chosen)
+    let candidate_hotkey = account(1);
+    let candidate_coldkey = account(2);
+    SubnetNodesData::<Test>::insert(subnet_id, 1, SubnetNode {
+        id: 1,
+        hotkey: candidate_hotkey.clone(),
+        peer_id: peer(1),
+        bootstrap_peer_id: peer(1),
+        client_peer_id: peer(1),
+        delegate_reward_rate: 5,
+        last_delegate_reward_rate_update: 0,
+        classification: SubnetNodeClassification {
+          node_class: SubnetNodeClass::Validator,
+          start_epoch: 50,
+        },
+        a: Some(BoundedVec::new()),
+        b: Some(BoundedVec::new()),
+        c: Some(BoundedVec::new()),
+    });
+    ColdkeyReputation::<Test>::insert(&candidate_coldkey, Reputation {
+      score: 700000000000000000, 
+      average_attestation: 400000000000000000,
+      start_epoch: 0,
+      lifetime_node_count: 0,
+      total_active_nodes: 0,
+      total_increases: 0,
+      total_decreases: 0,
+      last_validator_epoch: 0,
+      ow_score: 0,
+    });
+    NodeDelegateStakeBalance::<Test>::insert(subnet_id, 1, 100); // delta = 200
+    AccountSubnetStake::<Test>::insert(&candidate_hotkey, subnet_id, 300);
+
+    // Candidate 2 (should be skipped: score difference too small)
+    let other_hotkey = account(3);
+    let other_coldkey = account(4);
+    SubnetNodesData::<Test>::insert(subnet_id, 2, SubnetNode {
+        id: 2,
+        hotkey: other_hotkey.clone(),
+        peer_id: peer(2),
+        bootstrap_peer_id: peer(2),
+        client_peer_id: peer(2),
+        delegate_reward_rate: 5,
+        last_delegate_reward_rate_update: 0,
+        classification: SubnetNodeClassification {
+          node_class: SubnetNodeClass::Validator,
+          start_epoch: 30,
+        },
+        a: Some(BoundedVec::new()),
+        b: Some(BoundedVec::new()),
+        c: Some(BoundedVec::new()),
+    });
+    ColdkeyReputation::<Test>::insert(&other_coldkey, Reputation {
+      score: 950000000000000000,
+      average_attestation: 400000000000000000,
+      start_epoch: 0,
+      lifetime_node_count: 0,
+      total_active_nodes: 0,
+      total_increases: 0,
+      total_decreases: 0,
+      last_validator_epoch: 0,
+      ow_score: 0,
+    });
+    NodeDelegateStakeBalance::<Test>::insert(subnet_id, 2, 250); // delta = 50 (fails threshold)
+    AccountSubnetStake::<Test>::insert(&other_hotkey, subnet_id, 400);
+
+    let maybe_uid = Network::get_removing_node(
+        subnet_id,
+        &challenger_coldkey,
+        &challenger_hotkey,
+        &SubnetNodesData::<Test>::get(subnet_id, 0)
+    );
+
+    assert_eq!(maybe_uid, Some(1));
+  });
 }

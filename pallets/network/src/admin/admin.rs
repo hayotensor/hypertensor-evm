@@ -84,32 +84,32 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_set_subnet_inflation_factor(value: u128) -> DispatchResult {
-    ensure!(
-      value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidPercent
-    );
+  // pub fn do_set_subnet_inflation_factor(value: u128) -> DispatchResult {
+  //   ensure!(
+  //     value <= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidPercent
+  //   );
 
-    SubnetInflationFactor::<T>::set(value);
+  //   SubnetInflationFactor::<T>::set(value);
 
-    Self::deposit_event(Event::SetSubnetInflationFactor(value));
+  //   Self::deposit_event(Event::SetSubnetInflationFactor(value));
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
   
-  pub fn do_set_inflation_adj_factor(value: u128) -> DispatchResult {
-    ensure!(
-      value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidPercent
-    );
+  // pub fn do_set_inflation_adj_factor(value: u128) -> DispatchResult {
+  //   ensure!(
+  //     value <= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidPercent
+  //   );
 
-    InflationAdjFactor::<T>::set(value);
+  //   InflationAdjFactor::<T>::set(value);
 
-    Self::deposit_event(Event::SetSubnetInflationFactor(value));
+  //   Self::deposit_event(Event::SetSubnetInflationFactor(value));
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
   pub fn do_set_min_subnet_delegate_stake_factor(value: u128) -> DispatchResult {
     ensure!(
@@ -124,27 +124,27 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_set_subnet_inflation_adj_factor(value: u128) -> DispatchResult {
-    ensure!(
-      value >= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidPercent
-    );
+  // pub fn do_set_subnet_inflation_adj_factor(value: u128) -> DispatchResult {
+  //   ensure!(
+  //     value >= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidPercent
+  //   );
 
-    SubnetInflationAdjFactor::<T>::set(value);
+  //   SubnetInflationAdjFactor::<T>::set(value);
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
-  pub fn do_set_subnet_node_inflation_adj_factor(value: u128) -> DispatchResult {
-    ensure!(
-      value >= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidPercent
-    );
+  // pub fn do_set_subnet_node_inflation_adj_factor(value: u128) -> DispatchResult {
+  //   ensure!(
+  //     value >= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidPercent
+  //   );
 
-    SubnetNodeInflationAdjFactor::<T>::set(value);
+  //   SubnetNodeInflationAdjFactor::<T>::set(value);
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
   pub fn do_collective_remove_subnet(subnet_id: u32) -> DispatchResult {
     Self::do_remove_subnet(
@@ -161,6 +161,12 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn do_collective_remove_overwatch_node(overwatch_node_id: u32) -> DispatchResult {
+
+    Ok(())
+  }
+
+  /// Temporary solution until network maturity
+  pub fn do_collective_blacklist_overwatch_node(coldkey: T::AccountId) -> DispatchResult {
 
     Ok(())
   }
