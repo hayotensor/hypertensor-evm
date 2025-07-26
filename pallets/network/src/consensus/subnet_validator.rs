@@ -44,6 +44,11 @@ impl<T: Config> Pallet<T> {
       Error::<T>::InvalidValidator
     );
 
+    ensure!(
+      AccountSubnetStake::<T>::get(&hotkey, subnet_id) >= SubnetMinStakeBalance::<T>::get(subnet_id),
+      Error::<T>::MinStakeNotReached
+    );
+
     // --- Ensure not submitted already
     ensure!(
       !SubnetConsensusSubmission::<T>::contains_key(subnet_id, subnet_epoch),
@@ -130,6 +135,11 @@ impl<T: Config> Pallet<T> {
       Ok(subnet_node) => subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch),
       Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
     };
+
+    ensure!(
+      AccountSubnetStake::<T>::get(&hotkey, subnet_id) >= SubnetMinStakeBalance::<T>::get(subnet_id),
+      Error::<T>::MinStakeNotReached
+    );
 
     let block: u32 = Self::get_current_block_as_u32();
 
@@ -247,6 +257,11 @@ impl<T: Config> Pallet<T> {
     let mut weight = Weight::zero();
     let db_weight = T::DbWeight::get();
 
+    // Redundant
+    if attestation_percentage >= min_attestation_percentage {
+      return weight
+    }
+
     // We never ensure balance is above 0 because any hotkey chosen must have the target stake
     // balance at a minimum
     //
@@ -277,11 +292,23 @@ impl<T: Config> Pallet<T> {
     let account_subnet_stake: u128 = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
 
     // --- Get slash amount up to max slash
-    //
-    let mut slash_amount: u128 = Self::percent_mul(account_subnet_stake, SlashPercentage::<T>::get());
+    // --- Base slash amount
+    // stake balance * BaseSlashPercentage
+    let base_slash: u128 = Self::percent_mul(account_subnet_stake, BaseSlashPercentage::<T>::get());
 
-    // --- Update slash amount up to attestation percent
-    slash_amount = Self::percent_mul(slash_amount, Self::percentage_factor_as_u128().saturating_sub(attestation_percentage));
+    // --- Get percent difference between attestation ratio and min attestation ratio
+    // 1.0 - attestation ratio / min attestation ratio
+    let attestation_delta = Self::percentage_factor_as_u128().saturating_sub(
+      Self::percent_div(
+        attestation_percentage, 
+        min_attestation_percentage
+      )
+    );
+
+    // --- Update slash amount based on delta
+    // base_slash * attestation_delta
+    let mut slash_amount = Self::percent_mul(base_slash, attestation_delta);
+
     // --- Update slash amount up to max slash
     let max_slash: u128 = MaxSlashAmount::<T>::get();
     weight = weight.saturating_add(db_weight.reads(4));

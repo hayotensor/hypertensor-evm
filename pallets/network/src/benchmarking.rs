@@ -159,8 +159,8 @@ fn build_activated_subnet<T: Config>(
         RawOrigin::Signed(coldkey.clone()).into(),
         subnet_id,
 				hotkey.clone(),
-        peer(subnets*max_subnet_nodes+n),
-				peer(subnets*max_subnet_nodes+n),
+        peer(subnets*max_subnet_nodes+_n),
+				peer(subnets*max_subnet_nodes+_n),
 				0,
         amount,
         None,
@@ -180,13 +180,13 @@ fn build_activated_subnet<T: Config>(
     let key_owner = HotkeyOwner::<T>::get(subnet_node_data.hotkey.clone());
     assert_eq!(key_owner, coldkey.clone());
 
-    assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+n));
+    assert_eq!(subnet_node_data.peer_id, peer(subnets*max_subnet_nodes+_n));
 
     // --- Is ``Validator`` if registered before subnet activation
     assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
     assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
 
-    let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(subnets*max_subnet_nodes+n));
+    let peer_subnet_node_account = PeerIdSubnetNodeId::<T>::get(subnet_id, peer(subnets*max_subnet_nodes+_n));
     assert_eq!(peer_subnet_node_account, hotkey_subnet_node_id);
 
     let account_subnet_stake = AccountSubnetStake::<T>::get(hotkey.clone(), subnet_id);
@@ -946,6 +946,73 @@ mod benchmarks {
     let score_1 = OverwatchNodeWeights::<T>::get(epoch, node_id_1);
     let score_2 = OverwatchNodeWeights::<T>::get(epoch, node_id_2);
 
+	}
+
+		#[benchmark]
+	fn get_removing_node() {
+		let max_subnets = MaxSubnets::<T>::get();
+		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+		let min_nodes = MinSubnetNodes::<T>::get();
+		let subnets = TotalActiveSubnets::<T>::get() + 1;
+		let _n = max_subnet_nodes + 1;
+
+		let subnet_name: Vec<u8> = format!("subnet-name").into(); 
+		build_activated_subnet::<T>(
+			subnet_name.clone().into(), 
+			0, 
+			max_subnet_nodes, 
+			DEFAULT_DEPOSIT_AMOUNT, 
+			DEFAULT_SUBNET_NODE_STAKE
+		);
+		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap(); 
+		
+		let removal_policy = NodeRemovalPolicy {
+      logic: LogicExpr::And(
+        Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowScore(200))),
+        Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100))),
+      )
+    };
+
+    NodeRemovalSystemV2::<T>::insert(subnet_id, removal_policy);
+
+
+		// Simulate the subnet node registration logic
+
+		let challenger_coldkey = get_coldkey::<T>(subnets, max_subnet_nodes, _n);
+    let challenger_hotkey = get_hotkey::<T>(subnets, max_subnet_nodes, max_subnets, _n);
+		T::Currency::deposit_creating(&challenger_coldkey.clone(), (DEFAULT_DEPOSIT_AMOUNT + DEFAULT_STAKE_TO_BE_ADDED).try_into().ok().expect("REASON"));
+
+		assert_ok!(
+			Network::<T>::register_subnet_node(
+				RawOrigin::Signed(challenger_coldkey.clone()).into(), 
+				subnet_id, 
+				challenger_hotkey.clone(),
+				peer(subnets*max_subnet_nodes+_n), 
+				peer(subnets*max_subnet_nodes+_n), 
+				0,
+				DEFAULT_SUBNET_NODE_STAKE,
+				None,
+				None,
+				None,
+			) 
+		);
+		
+		let hotkey_subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, challenger_hotkey.clone()).unwrap();
+
+		let current_block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let block = get_current_block_as_u32::<T>();
+		let epoch = block / epoch_length as u32;
+
+		#[block]
+		{
+			let maybe_uid = Network::<T>::get_removing_node(
+				subnet_id,
+				&challenger_coldkey,
+				&challenger_hotkey,
+				&RegisteredSubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id)
+			);
+		}
 	}
 
 	// #[benchmark]

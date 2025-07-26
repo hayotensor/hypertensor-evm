@@ -1807,7 +1807,7 @@ fn test_get_removing_node_respects_policy() {
     NodeRemovalSystemV2::<Test>::insert(subnet_id, removal_policy);
 
     // Insert challenger node
-    SubnetNodesData::<Test>::insert(subnet_id, 0, SubnetNode {
+    RegisteredSubnetNodesData::<Test>::insert(subnet_id, 0, SubnetNode {
       id: 0,
       hotkey: challenger_hotkey.clone(),
       peer_id: peer(0),
@@ -1908,7 +1908,7 @@ fn test_get_removing_node_respects_policy() {
       subnet_id,
       &challenger_coldkey,
       &challenger_hotkey,
-      &SubnetNodesData::<Test>::get(subnet_id, 0)
+      &RegisteredSubnetNodesData::<Test>::get(subnet_id, 0)
     );
 
     assert_eq!(maybe_uid, Some(1));

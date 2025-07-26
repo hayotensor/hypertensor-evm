@@ -25,9 +25,15 @@ impl<T: Config> Pallet<T> {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     let total_overwatch_nodes = TotalOverwatchNodes::<T>::get();
+
     ensure!(
       total_overwatch_nodes < MaxOverwatchNodes::<T>::get(),
       Error::<T>::MaxOverwatchNodes
+    );
+
+    ensure!(
+      &hotkey != &coldkey,
+      Error::<T>::ColdkeyMatchesHotkey
     );
 
     // ⸺ Register fresh hotkey

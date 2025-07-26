@@ -689,23 +689,26 @@ pub mod pallet {
 
 	/// Condition types
 	///
-	/// # Qualifiers for removal
+	/// # Logic expression for node removal policy
 	///
-	/// All delta conditions compare the activating node as the dominator value
+	/// # Options
+	///
+	/// Below are the logic expression options that can be used to qualify a node to be removed
 	///
 	/// # Hard
-	/// BelowScore: If below reputation score
-	/// BelowAverageAttestation: If below average attestation ratio
-	/// BelowNodeDelegateStakeRate: If below node delegate stake rate
+	///
+	/// HardBelowScore: Below score (see Reputation)
+	/// HardBelowAverageAttestation: Below average attestation ratio (see Reputation)
+	/// HardBelowNodeDelegateStakeRate: Below node delegate stake rate (see stake/delegate_staking)
 	///
 	/// # Deltas
-	/// ScorePercentDelta: Score delta threshold
-	/// AverageAttestationPercentDelta:
-	/// DelegateStakeRatePercentDelta:
-	/// DelegateStakeBalancePercentDelta:
-	/// StakeBalancePercentDelta:
+	/// - Note: Percent uses 1e18 as u128 (see math.rs)
 	///
-
+	/// DeltaBelowScore: Delta % below activating node score
+	/// DeltaBelowAverageAttestation: Delta % below activating node average attestation ratio
+	/// DeltaBelowNodeDelegateStakeRate: Delta % below activating node delegate stake rate
+	/// DeltaBelowNodeDelegateStakeBalance: Delta % below activating node delegate stake balance (users staked to node) (see stake/delegate_staking)
+	/// DeltaBelowStakeBalance: Delta % below activating node stake balance (only works if subnet has a min-max stake range for nodes)
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
 	pub enum NodeRemovalConditionType {
 		// hard
@@ -721,6 +724,8 @@ pub mod pallet {
 		DeltaBelowStakeBalance(u128),
 	}
 
+	/// A tree-based logic system where node removal conditions are expressed as composable Boolean 
+	/// logic expressions (AND, OR, XOR, NOT) over measurable properties
 	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
 	pub enum LogicExpr {
 		And(Box<LogicExpr>, Box<LogicExpr>),
@@ -1267,6 +1272,10 @@ pub mod pallet {
 		3
 	}
 	#[pallet::type_value]
+	pub fn DefaultSubnetNodeScorePenaltyThreshold() -> u32 {
+		0
+	}
+	#[pallet::type_value]
 	pub fn DefaultSlashPercentage() -> u128 {
 		31250000000000000
 	}
@@ -1730,6 +1739,13 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type TotalSubnetUids<T> = StorageValue<_, u32, ValueQuery>;
 	
+	/// Slots for each subnet based no max subnets
+	#[pallet::storage]
+	pub type FriendlySubnetUids<T> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::storage] // friendly_subnet_id => subnet_id
+	pub type FriendlyUidToUid<T> = StorageMap<_, Identity, u32, u32, ValueQuery>;
+
 	/// Count of active subnets
 	#[pallet::storage]
 	pub type TotalActiveSubnets<T> = StorageValue<_, u32, ValueQuery>;
@@ -2307,7 +2323,7 @@ pub mod pallet {
 	pub type BaseValidatorReward<T> = StorageValue<_, u128, ValueQuery, DefaultBaseValidatorReward>;
 
 	#[pallet::storage]
-	pub type SlashPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultSlashPercentage>;
+	pub type BaseSlashPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultSlashPercentage>;
 
 	#[pallet::storage]
 	pub type MaxSlashAmount<T> = StorageValue<_, u128, ValueQuery, DefaultMaxSlashAmount>;
@@ -2321,6 +2337,16 @@ pub mod pallet {
 		u32,
 		ValueQuery,
 		DefaultMaxSubnetNodePenalties
+	>;
+
+	#[pallet::storage]
+	pub type SubnetNodeScorePenaltyThreshold<T> = StorageMap<
+		_,
+		Identity,
+		u32,
+		u32,
+		ValueQuery,
+		DefaultSubnetNodeScorePenaltyThreshold
 	>;
 
 	// A subnet nodes penalties count
@@ -2991,13 +3017,13 @@ pub mod pallet {
 
 		#[pallet::call_index(12)]
 		#[pallet::weight({0})]
-		pub fn owner_update_queue_classification_epochs(
+		pub fn owner_update_idle_classification_epochs(
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			value: u32
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_owner_update_queue_classification_epochs(origin, subnet_id, value)
+			Self::do_owner_update_idle_classification_epochs(origin, subnet_id, value)
 		}
 
 		#[pallet::call_index(13)]
@@ -4439,6 +4465,11 @@ pub mod pallet {
 
 			Self::is_paused()?;
 
+			ensure!(
+				&hotkey != &new_coldkey,
+				Error::<T>::ColdkeyMatchesHotkey
+			);
+
 			HotkeyOwner::<T>::try_mutate_exists(hotkey, |maybe_coldkey| -> DispatchResult {
         match maybe_coldkey {
 					Some(coldkey) if *coldkey == curr_coldkey => {
@@ -4475,7 +4506,7 @@ pub mod pallet {
 			})
 		}
 
-		/// Update hotkey
+		/// Update hotkey (subnet node, overwatch node)
 		///
 		/// # Requirements
 		///
@@ -4499,6 +4530,11 @@ pub mod pallet {
 
 			Self::is_paused()?;
 			// TODO: Make a pause function unique to subnet_id's
+
+			ensure!(
+				&coldkey != &new_hotkey,
+				Error::<T>::ColdkeyMatchesHotkey
+			);
 
 			// Ensure `old_hotkey` is owned by caller
 			ensure!(
@@ -4558,9 +4594,6 @@ pub mod pallet {
 				);
 			}
 
-			// let subnets = ColdkeySubnets::<T>::get(&coldkey);
-			// for subnet_id in subnets {
-
 			// Iterate each subnet and update node and stake balance
 			for (subnet_id, _) in SubnetsData::<T>::iter() {
 				let subnet_node_owner: (bool, u32) = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &old_hotkey) {
@@ -4577,15 +4610,17 @@ pub mod pallet {
 					// Swap hotkeys -> node_id
 					HotkeySubnetNodeId::<T>::swap(subnet_id, &old_hotkey, subnet_id, &new_hotkey);
 				}
+			}
 
-				// --- Swap stake balance
-				// If a Subnet Node or subnet is no longer active, the stake can still be available for unstaking
-				let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&old_hotkey, subnet_id);
-				if account_stake_balance != 0 {
+			// --- Swap stake balance
+			// Iterate each hotkey stake
+			// If a Subnet Node or subnet is no longer active, the stake can still be available for unstaking
+			for (subnet_id, balance) in AccountSubnetStake::<T>::iter_prefix(&old_hotkey) {
+				if balance != 0 {
 					Self::do_swap_hotkey_stake_balance(
 						subnet_id,
-						&old_hotkey, 
-						&new_hotkey, 
+						&old_hotkey, // from
+						&new_hotkey, // to
 					);
 				}
 			}
@@ -5679,7 +5714,14 @@ pub mod pallet {
 				RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
 				Error::<T>::NotUidOwner
 			);
-			
+
+			// --- Check stake balance
+			// This can only revert if the owner updated the required minimum balance
+			ensure!(
+				AccountSubnetStake::<T>::get(&hotkey, subnet_id) >= SubnetMinStakeBalance::<T>::get(subnet_id),
+				Error::<T>::MinStakeNotReached
+			);
+
 			// --- Remove from RegisteredSubnetNodesData
 			let mut subnet_node = RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id);
 			let start_epoch = subnet_node.classification.start_epoch;

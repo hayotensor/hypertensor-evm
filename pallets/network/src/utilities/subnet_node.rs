@@ -495,6 +495,7 @@ impl<T: Config> Pallet<T> {
     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
 
     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+      // Redundant, activating node is in RegisteredSubnetNodesData
       if uid == subnet_node.id {
         continue
       }

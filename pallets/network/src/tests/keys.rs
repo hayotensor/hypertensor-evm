@@ -501,6 +501,9 @@ fn test_update_hotkey() {
       )
     );
 
+    let account_subnet_stake = AccountSubnetStake::<Test>::get(new_hotkey.clone(), subnet_id);
+    assert_eq!(account_subnet_stake, starting_account_subnet_stake);
+
     // Old ow hotkey should be removed
     let ow_node_id = HotkeyOverwatchNodeId::<Test>::try_get(&ow_hotkey.clone());
     assert_eq!(ow_node_id, Err(()));

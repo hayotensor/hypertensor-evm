@@ -318,7 +318,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_update_queue_classification_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
+  pub fn do_owner_update_idle_classification_epochs(origin: T::RuntimeOrigin, subnet_id: u32, value: u32) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
