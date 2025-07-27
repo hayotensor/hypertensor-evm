@@ -191,8 +191,9 @@ fn test_activate_subnet_node_post_subnet_activation() {
     let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     let start_epoch = subnet_node.classification.start_epoch;
 
-    // set_epoch(start_epoch);
-    set_block_to_subnet_slot(start_epoch, subnet_id);
+    set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
+
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     assert_ok!(
       Network::activate_subnet_node(
@@ -204,6 +205,7 @@ fn test_activate_subnet_node_post_subnet_activation() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
+    assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
 
     let new_total_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
     assert_eq!(total_subnet_nodes + 1, new_total_nodes);
@@ -258,7 +260,7 @@ fn test_register_after_activate_with_same_keys() {
     let start_epoch = subnet_node.classification.start_epoch;
 
     // set_epoch(start_epoch);
-    set_block_to_subnet_slot(start_epoch, subnet_id);
+    set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
 
     assert_ok!(
       Network::activate_subnet_node(
@@ -1768,7 +1770,7 @@ fn test_defer_node() {
     let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     let initial_start_epoch = subnet_node.classification.start_epoch;
 
-    set_block_to_subnet_slot(initial_start_epoch, subnet_id);
+    set_block_to_subnet_slot_epoch(initial_start_epoch, subnet_id);
 
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 

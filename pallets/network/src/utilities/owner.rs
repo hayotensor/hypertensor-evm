@@ -658,11 +658,28 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    let block = Self::get_current_block_as_u32();
+    let last_update = LastSubnetDelegateStakeRewardsUpdate::<T>::get(subnet_id);
+    let update_period = SubnetDelegateStakeRewardsUpdatePeriod::<T>::get();
+
+    ensure!(
+      last_update + update_period < block,
+      Error::<T>::DelegateStakePercentageUpdateTooSoon
+    );
+
+    let current_rate = SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id);
+    let max_change = MaxSubnetDelegateStakeRewardsPercentageChange::<T>::get();
+
+    ensure!(
+      current_rate.abs_diff(value) <= max_change,
+      Error::<T>::DelegateStakePercentageAbsDiffTooLarge
+    );
+
     ensure!(
       value >= MinDelegateStakePercentage::<T>::get() &&
       value <= MaxDelegateStakePercentage::<T>::get() &&
       value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidMinDelegateStakePercentage
+      Error::<T>::InvalidDelegateStakePercentage
     );
 
     SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, value);

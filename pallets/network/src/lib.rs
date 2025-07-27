@@ -420,6 +420,10 @@ pub mod pallet {
 		// Min stake must be lesser than the max stake
 		InvalidSubnetStakeParameters,
 		InvalidMinDelegateStakePercentage,
+		InvalidDelegateStakePercentage,
+		DelegateStakePercentageUpdateTooSoon,
+		/// The distance between the current rate and new rate is too large, see MaxSubnetDelegateStakeRewardsPercentageChange
+		DelegateStakePercentageAbsDiffTooLarge,
 		
 		DelegateStakeTransferPeriodExceeded,
 		MustUnstakeToRegister,
@@ -1242,6 +1246,20 @@ pub mod pallet {
 		110000000000000000
 	}
 	#[pallet::type_value]
+	pub fn DefaultLastSubnetDelegateStakeRewardsUpdate() -> u32 {
+		0
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxSubnetDelegateStakeRewardsPercentageChange() -> u128 {
+		// 2%
+		20000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultSubnetDelegateStakeRewardsUpdatePeriod() -> u32 {
+		// 1 day at 6 seconds a block (86,000s per day)
+		14400
+	}
+	#[pallet::type_value]
 	pub fn DefaultDelegateStakeCooldown() -> u32 {
 		0
 	}
@@ -1272,7 +1290,7 @@ pub mod pallet {
 		3
 	}
 	#[pallet::type_value]
-	pub fn DefaultSubnetNodeScorePenaltyThreshold() -> u32 {
+	pub fn DefaultSubnetNodeScorePenaltyThreshold() -> u128 {
 		0
 	}
 	#[pallet::type_value]
@@ -2037,6 +2055,15 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetDelegateStakeRewardsPercentage<T> = StorageMap<_, Identity, u32, u128, ValueQuery, DefaultDelegateStakeRewardsPercentage>;
 
+	#[pallet::storage]
+	pub type LastSubnetDelegateStakeRewardsUpdate<T> = StorageMap<_, Identity, u32, u32, ValueQuery, DefaultLastSubnetDelegateStakeRewardsUpdate>;
+
+	#[pallet::storage]
+	pub type MaxSubnetDelegateStakeRewardsPercentageChange<T> = StorageValue<_, u128, ValueQuery, DefaultMaxSubnetDelegateStakeRewardsPercentageChange>;
+
+	#[pallet::storage]
+	pub type SubnetDelegateStakeRewardsUpdatePeriod<T> = StorageValue<_, u32, ValueQuery, DefaultSubnetDelegateStakeRewardsUpdatePeriod>;
+
 	/// Length of epochs an Included classified node must be in that class for
 	/// This can be used in tandem with SubnetNodePenalties to ensure a node is included
 	/// in consensus data before they are activated instead of automatically being upgraded
@@ -2339,17 +2366,19 @@ pub mod pallet {
 		DefaultMaxSubnetNodePenalties
 	>;
 
+	// The subnet node weight (score ratio) threshold where a node will get increase penalties
 	#[pallet::storage]
 	pub type SubnetNodeScorePenaltyThreshold<T> = StorageMap<
 		_,
 		Identity,
 		u32,
-		u32,
+		u128,
 		ValueQuery,
 		DefaultSubnetNodeScorePenaltyThreshold
 	>;
 
 	// A subnet nodes penalties count
+	// subnet ID -> subnet node ID -> penalties
 	#[pallet::storage]
 	pub type SubnetNodePenalties<T> = StorageDoubleMap<
 		_,

@@ -52,7 +52,10 @@ use crate::{
   OverwatchReveals,
   HotkeyOverwatchNodeId,
   MaxSubnets,
+  ConsensusData,
+  SubnetNode,
 };
+use sp_std::collections::btree_map::BTreeMap;
 use frame_support::traits::{OnInitialize, Currency};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_runtime::SaturatedConversion;
@@ -628,7 +631,7 @@ pub fn get_epoch() -> u32 {
   current_block.saturating_div(epoch_length)
 }
 
-pub fn set_block_to_subnet_slot(epoch: u32, subnet_id: u32) {
+pub fn set_block_to_subnet_slot_epoch(epoch: u32, subnet_id: u32) {
   let epoch_length = EpochLength::get();
   let slot = SubnetSlot::<Test>::get(subnet_id)
       .expect("SubnetSlot must be assigned before setting block");
@@ -673,6 +676,44 @@ pub fn get_subnet_node_consensus_data(
     subnet_node_data.push(peer_subnet_node_data);
   }
   subnet_node_data
+}
+
+pub fn get_simulated_consensus_data(
+	subnet_id: u32,
+	node_count: u32,
+) -> ConsensusData<<Test as frame_system::Config>::AccountId> { 
+	let mut attests = BTreeMap::new();
+	let mut data = Vec::new();
+
+	let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+	let block_number = Network::get_current_block_as_u32();
+	let epoch_length = EpochLength::get();
+	let epoch = Network::get_current_block_as_u32() / epoch_length;
+
+	for n in 0..node_count {
+		// let node_id = subnet_id*max_subnet_nodes+n+1;
+		let node_id = subnet_id*max_subnet_nodes-max_subnet_nodes+n+1;
+
+		// Simulate some score and block number
+		let score = 1e+18 as u128;
+
+		attests.insert(node_id, block_number);
+		data.push(SubnetNodeConsensusData {
+			subnet_node_id: node_id,
+			score,
+		});
+	}
+
+	let included_subnet_nodes: Vec<SubnetNode<<Test as frame_system::Config>::AccountId>> = Network::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+
+	ConsensusData {
+		validator_id: subnet_id*max_subnet_nodes,
+		attests,
+		data,
+		subnet_nodes: included_subnet_nodes,
+		args: None
+	}
 }
 
 // pub fn subnet_node_data_invalid_scores(start: u32, end: u32) -> Vec<SubnetNodeConsensusData> {

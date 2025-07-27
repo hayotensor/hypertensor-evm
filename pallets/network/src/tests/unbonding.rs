@@ -202,7 +202,7 @@ fn test_register_activate_remove_claim_stake_unbondings() {
     assert_eq!(after_stake_balance, starting_balance - amount);
 
     // set_epoch(start_epoch);
-    set_block_to_subnet_slot(start_epoch, subnet_id);
+    set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
 
     assert_ok!(
       Network::activate_subnet_node(

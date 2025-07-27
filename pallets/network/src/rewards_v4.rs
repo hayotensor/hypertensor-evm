@@ -32,15 +32,14 @@ impl<T: Config> Pallet<T> {
     let mut weight = Weight::zero();
     let db_weight = T::DbWeight::get();
 
-    let queue_epochs = IdleClassificationEpochs::<T>::get(subnet_id);
+    let idle_epochs = IdleClassificationEpochs::<T>::get(subnet_id);
     let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
     let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
-    weight = weight.saturating_add(db_weight.reads(3));
+    let score_threshold = SubnetNodeScorePenaltyThreshold::<T>::get(subnet_id);
+    weight = weight.saturating_add(db_weight.reads(4));
 
     // --- If under minimum attestation ratio, penalize validator, skip rewards
     if consensus_submission_data.attestation_ratio < min_attestation_percentage {
-      SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-
       // --- Slash validator
       // Slashes stake balance
       // Decreases reputation
@@ -62,18 +61,6 @@ impl<T: Config> Pallet<T> {
     //
 
     // --- Reward owner
-    // if rewards_data.subnet_owner_reward > 0 {
-    //   match SubnetOwnerV2::<T>::try_get(subnet_id) {
-    //     Ok(keys) => {
-    //       Self::increase_account_stake(
-    //         &keys.hotkey,
-    //         subnet_id, 
-    //         rewards_data.subnet_owner_reward,
-    //       );
-    //     },
-    //     Err(()) => (),
-    //   }
-    // }
     match SubnetOwner::<T>::try_get(subnet_id) {
       Ok(coldkey) => {
         let subnet_owner_reward_as_currency = Self::u128_to_balance(rewards_data.subnet_owner_reward);
@@ -94,7 +81,10 @@ impl<T: Config> Pallet<T> {
       let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
       weight = weight.saturating_add(db_weight.reads(1));
 
-      if penalties + 1 > max_subnet_node_penalties {
+      // locally tracking of penalties, avoid hitting db
+      let mut _penalties = penalties;
+
+      if penalties > max_subnet_node_penalties {
         // Remove node if they haven't already
         Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
         // 112_050_000
@@ -106,7 +96,7 @@ impl<T: Config> Pallet<T> {
         // Idle classified nodes can't be included in consensus data and can't have penalties
         // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
-        if subnet_node.classification.start_epoch + queue_epochs > current_epoch {
+        if subnet_node.classification.start_epoch + idle_epochs < current_epoch {
           // Increase class if they exist
           Self::graduate_class(subnet_id, subnet_node.id, current_epoch);
           // weight = weight.saturating_add(T::WeightInfo::graduate_class());
@@ -117,7 +107,6 @@ impl<T: Config> Pallet<T> {
       let subnet_node_data_find = consensus_submission_data.data
         .iter()
         .find(|data| data.subnet_node_id == subnet_node.id);
-
 
       if subnet_node_data_find.is_none() {
         // Not included in consensus, increase
@@ -132,27 +121,44 @@ impl<T: Config> Pallet<T> {
         weight = weight.saturating_add(db_weight.writes(1));
       }
 
+      // Safely unwrap node_weight, we already confirmed it's not None
+      let node_weight = subnet_node_data_find.unwrap().score;
+
+      // --- Calculate node_weight percentage of peer versus the weighted sum
+      let score_ratio: u128 = Self::percent_div(node_weight, consensus_submission_data.weight_sum);
+
+      // Increase penalties if under subnets penalty score threshold
+      // We don't automatically increase penalties if a node is at ZERO
+      // Zero should represent they are not in the subnet
+      if score_ratio < score_threshold {
+        SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+        _penalties += 1;
+      }
+
       if subnet_node.classification.node_class == SubnetNodeClass::Included {
-        // --- Upgrade to Validator if no penalties
-        if penalties == 0 && subnet_node.classification.start_epoch + included_epochs > current_epoch {
+        // --- Upgrade to Validator if no penalties and included in weights
+        if _penalties == 0 && subnet_node.classification.start_epoch + included_epochs < current_epoch {
           if Self::graduate_class(subnet_id, subnet_node.id, current_epoch) {
             // --- Insert into election slot
             Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
             // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
           }
         }
+        // SubnetNodeClass::Included does not get rewards yet, they must pass the gauntlet 
         continue
       }
 
-      // Safely unwrap node_weight, we already confirmed it's not None
-      let node_weight = subnet_node_data_find.unwrap().score;
-
-      if node_weight == 0 {
+      if _penalties > max_subnet_node_penalties {
+        // Remove node if they haven't already
+        Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
+        // 112_050_000
+        // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
         continue
       }
 
-      // --- Calculate node_weight percentage of peer versus the weighted sum
-      let score_ratio: u128 = Self::percent_div(node_weight, consensus_submission_data.weight_sum);
+      if score_ratio == 0 {
+        continue
+      }
 
       // --- Calculate node_weight percentage of total subnet generated epoch rewards
       let mut account_reward: u128 = Self::percent_mul(score_ratio, rewards_data.subnet_node_rewards);
@@ -184,6 +190,7 @@ impl<T: Config> Pallet<T> {
       if account_reward == 0 {
         continue
       }
+      
       if subnet_node.delegate_reward_rate != 0 {
         // --- Ensure users are staked to subnet node
         let total_node_delegated_stake_shares = TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node.id);
@@ -208,11 +215,14 @@ impl<T: Config> Pallet<T> {
       );
       // weight = weight.saturating_add(T::WeightInfo::increase_account_stake());
     }
+
     // --- Increase the delegate stake pool balance
-    Self::do_increase_delegate_stake(
-      subnet_id,
-      rewards_data.delegate_stake_rewards,
-    );
+    if rewards_data.delegate_stake_rewards != 0 {
+      Self::do_increase_delegate_stake(
+        subnet_id,
+        rewards_data.delegate_stake_rewards,
+      );
+    }
     // weight = weight.saturating_add(T::WeightInfo::do_increase_delegate_stake());
 
     weight

@@ -31,7 +31,6 @@ impl<T: Config> Pallet<T> {
     // Each subnet epoch overlaps with the blockchains epochs, and can submit consensus data for epoch
     // 2 on epoch 1 (if after slot) or 2 (if before slot).
     // If a subnet is on slot 3 of 5 slots, we make sure it can submit on the current blockchains epoch.
-    // We use n+1 on the slots offset epoch
     let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
 
     // --- Ensure current subnet validator by its hotkey

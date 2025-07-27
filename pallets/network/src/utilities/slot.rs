@@ -616,7 +616,10 @@ impl<T: Config> Pallet<T> {
     let mut weight = Weight::zero();
     let submission = match SubnetConsensusSubmission::<T>::try_get(subnet_id, epoch) {
       Ok(submission) => submission,
-      Err(()) => return None,
+      Err(()) => {
+        SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+        return None
+      },
     };
     weight = weight.saturating_add(T::DbWeight::get().reads(1));
 
