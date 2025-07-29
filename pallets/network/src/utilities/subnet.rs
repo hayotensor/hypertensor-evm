@@ -15,6 +15,8 @@
 
 use super::*;
 use frame_support::pallet_prelude::DispatchError;
+use sp_runtime::{FixedU128, FixedPointNumber};
+use frame_support::pallet_prelude::One;
 
 impl<T: Config> Pallet<T> {
   pub fn assign_subnet_slot(subnet_id: u32) -> Result<u32, DispatchError> {
@@ -226,5 +228,132 @@ impl<T: Config> Pallet<T> {
       Ok(owner) => Some(&owner == account_id),
       Err(()) => None,
     }
+  }
+
+  // pub fn get_current_registration_cost() -> u128 {
+  //   let last_registration_cost = LastRegistrationCost::<T>::get();
+  //   let min_price = MinRegistrationCost::<T>::get();
+  //   let last_updated = LastRegistrationBlock::<T>::get();
+  //   let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
+  //   log::error!("last_registration_cost {:?}", last_registration_cost);
+  //   log::error!("min_price              {:?}", min_price);
+  //   log::error!("last_updated           {:?}", last_updated);
+  //   log::error!("decay_blocks           {:?}", decay_blocks);
+
+  //   let current_block = Self::get_current_block_as_u32();
+  //   let delta_blocks = current_block.saturating_sub(last_updated);
+  //   log::error!("current_block          {:?}", current_block);
+  //   log::error!("delta_blocks           {:?}", delta_blocks);
+
+  //   if decay_blocks == 0 || last_registration_cost <= min_price {
+  //     return last_registration_cost.max(min_price);
+  //   }
+
+  //   let diff = last_registration_cost.saturating_sub(min_price);
+  //   log::error!("diff                   {:?}", diff);
+
+  //   // Calculate decay exponent: delta_blocks / decay_blocks
+  //   // This is in fixed point
+  //   let ratio = FixedU128::saturating_from_rational(delta_blocks as u128, decay_blocks as u128);
+  //   log::error!("ratio                  {:?}", ratio);
+
+  //   // Approximate e^(-ratio) using pow-based approximation
+  //   // For small x, (1 - x / n)^n ~ e^-x. We'll pick n = 64 for reasonable accuracy.
+  //   let n: u128 = 64;
+  //   // Divide ratio by integer n:
+  //   let n_fixed = FixedU128::from_inner(n * 1000000000000000000);
+  //   log::error!("n_fixed                {:?}", n_fixed);
+
+  //   let base_factor = match ratio.const_checked_div(n_fixed) {
+  //     Some(v) => v,
+  //     None => FixedU128::one()
+  //   };
+  //   log::error!("base_factor            {:?}", base_factor);
+
+  //   let base = FixedU128::one().saturating_sub(base_factor);
+    
+  //   // decay_factor = base ^ n
+  //   let decay_factor = base.saturating_pow(n as usize);
+
+  //   log::error!("base                   {:?}", base);
+  //   log::error!("decay_factor           {:?}", decay_factor);
+
+  //   let decayed = min_price.saturating_add(
+  //     decay_factor.saturating_mul_int(diff)
+  //   );
+  //   log::error!("decayed                {:?}", decayed);
+  //   log::error!("decayed                {:?}", decayed.max(min_price));
+
+  //   decayed.max(min_price)
+  // }
+
+  // pub fn get_current_registration_cost() -> u128 {
+  //   let last_registration_cost = LastRegistrationCost::<T>::get();
+  //   let min_price = MinRegistrationCost::<T>::get();
+  //   let last_updated = LastRegistrationBlock::<T>::get();
+  //   let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
+  //   log::error!("decay_blocks           {:?}", decay_blocks);
+
+  //   let current_block = Self::get_current_block_as_u32();
+  //   let delta_blocks = current_block.saturating_sub(last_updated);
+  //   log::error!("current_block          {:?}", current_block);
+  //   log::error!("delta_blocks           {:?}", delta_blocks);
+
+  //   // Already at min or no decay period
+  //   if decay_blocks == 0 || last_registration_cost <= min_price {
+  //     return last_registration_cost.max(min_price);
+  //   }
+
+  //   let diff = last_registration_cost.saturating_sub(min_price);
+  //   log::error!("diff                   {:?}", diff);
+
+  //   // Linear decay: factor = 1 - delta / decay_blocks
+  //   let factor = decay_blocks.saturating_sub(delta_blocks) as u128;
+  //   let decayed = min_price.saturating_add(diff.saturating_mul(factor) / decay_blocks as u128);
+  //   log::error!("factor                 {:?}", factor);
+  //   log::error!("decayed                {:?}", decayed);
+
+  //   decayed.max(min_price)
+  // }
+
+  pub fn get_current_registration_cost(block: u32) -> u128 {
+    let last_registration_cost = LastRegistrationCost::<T>::get();
+    let min_price = MinRegistrationCost::<T>::get();
+    let last_updated = LastRegistrationBlock::<T>::get();
+    let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
+    let alpha = RegistrationCostIncreaseAlpha::<T>::get();
+
+    let delta_blocks = block.saturating_sub(last_updated);
+
+    // Already at min or no decay period
+    if decay_blocks == 0 || last_registration_cost <= min_price {
+      return last_registration_cost.max(min_price);
+    }
+
+    // Fully decayed: exactly min price
+    if delta_blocks >= decay_blocks {
+      return min_price;
+    }
+
+    let diff = last_registration_cost.saturating_sub(min_price);
+
+    let remaining_frac = Self::percent_div((decay_blocks - delta_blocks) as u128, decay_blocks as u128);
+
+    // Apply concave exponential: exponent α < 1
+    // e.g., α = 0.5 = sqrt (concave)
+    // concave factor = remaining_frac ^ alpha
+    let concave_factor = Self::pow(Self::get_percent_as_f64(remaining_frac), Self::get_percent_as_f64(alpha));
+
+    // price = min_price + diff * concave_factor
+    let decayed = min_price.saturating_add(
+      (diff as f64 * concave_factor) as u128
+    );
+
+    decayed.max(min_price)
+  }
+
+  pub fn update_last_registration_cost(cost: u128, block: u32) {
+    LastRegistrationCost::<T>::put(cost);
+    LastRegistrationBlock::<T>::put(block);
   }
 }

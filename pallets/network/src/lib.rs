@@ -1869,6 +1869,49 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetRegistrationInterval<T> = StorageValue<_, u32, ValueQuery, DefaultSubnetRegistrationInterval>;
 
+
+	//
+	// Registration fees
+	//
+
+	#[pallet::type_value]
+	pub fn DefaultLastRegistrationCost() -> u128 {
+		1000000000000000000000
+	}
+
+	#[pallet::storage]
+	pub type LastRegistrationCost<T> = StorageValue<_, u128, ValueQuery, DefaultLastRegistrationCost>;
+
+	#[pallet::type_value]
+	pub fn DefaultMinRegistrationCost() -> u128 {
+		10000000000000000000
+	}
+
+	#[pallet::storage]
+	pub type MinRegistrationCost<T> = StorageValue<_, u128, ValueQuery, DefaultMinRegistrationCost>;
+
+	/// Last block the price was updated
+	#[pallet::storage]
+	pub type LastRegistrationBlock<T> = StorageValue<_, u32, ValueQuery>;
+
+	#[pallet::type_value]
+	pub fn DefaultRegistrationCostDecayBlocks() -> u32 {
+		// 3 months
+		1314871
+	}
+
+	#[pallet::storage]
+	pub type RegistrationCostDecayBlocks<T> = StorageValue<_, u32, ValueQuery, DefaultRegistrationCostDecayBlocks>;
+
+	#[pallet::type_value]
+	pub fn DefaultRegistrationCostIncreaseAlpha() -> u128 {
+		// 50%
+		500000000000000000
+	}
+
+	#[pallet::storage]
+	pub type RegistrationCostIncreaseAlpha<T> = StorageValue<_, u128, ValueQuery, DefaultRegistrationCostIncreaseAlpha>;
+	
 	//
 	// Subnet reward slots
 	//
@@ -5133,7 +5176,6 @@ pub mod pallet {
 				Error::<T>::SubnetRegistrationCooldown
 			);
 	
-			// TODO: Add conditionals for subnet_registration_data
 			ensure!(
 				subnet_registration_data.churn_limit >= MinChurnLimit::<T>::get() &&
 				subnet_registration_data.churn_limit <= MaxChurnLimit::<T>::get(),
@@ -5201,19 +5243,22 @@ pub mod pallet {
 				Error::<T>::InvalidSubnetRegistrationInitialColdkeys
 			);
 
-			let subnet_fee: u128 = Self::registration_cost(epoch);
+			// let subnet_fee: u128 = Self::registration_cost(epoch);
+			let block: u32 = Self::get_current_block_as_u32();
+			let cost = Self::get_current_registration_cost(block);
+			Self::update_last_registration_cost(cost, block);
 
-			if subnet_fee > 0 {
-				let subnet_fee_as_balance = Self::u128_to_balance(subnet_fee);
+			if cost > 0 {
+				let cost_as_balance = Self::u128_to_balance(cost);
 
 				// Ensure user has the funds, give accurate information on errors
 				ensure!(
-					Self::can_remove_balance_from_coldkey_account(&owner, subnet_fee_as_balance.unwrap()),
+					Self::can_remove_balance_from_coldkey_account(&owner, cost_as_balance.unwrap()),
 					Error::<T>::NotEnoughBalanceToRegisterSubnet
 				);
 				
 				// Send funds to Treasury and revert if failed
-				Self::send_to_treasury(&owner, subnet_fee_as_balance.unwrap())?;
+				Self::send_to_treasury(&owner, cost_as_balance.unwrap())?;
 			}
 
 			// Get total subnets ever

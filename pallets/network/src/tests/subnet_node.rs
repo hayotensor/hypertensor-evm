@@ -400,7 +400,8 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(1), cost+1000);
   
@@ -466,7 +467,8 @@ fn test_register_subnet_node_then_activate() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(1), cost+deposit_amount);
   

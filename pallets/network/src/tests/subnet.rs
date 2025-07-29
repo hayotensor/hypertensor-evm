@@ -24,6 +24,10 @@ use crate::{
   SlotAssignment,
   AssignedSlots,
   MaxSubnets,
+  LastRegistrationBlock,
+  MinRegistrationCost,
+  RegistrationCostDecayBlocks,
+  LastRegistrationCost,
 };
 
 //
@@ -51,7 +55,8 @@ fn test_register_subnet() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -106,7 +111,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -176,7 +182,8 @@ fn test_register_subnet_subnet_registration_cooldown() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
 
@@ -223,7 +230,8 @@ fn test_register_subnet_exists_error() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -318,7 +326,8 @@ fn test_activate_subnet() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -429,7 +438,8 @@ fn test_activate_subnet_invalid_subnet_id_error() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -516,7 +526,8 @@ fn test_activate_subnet_already_activated_err() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -627,7 +638,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -749,7 +761,8 @@ fn test_activate_subnet_initializing_error() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -849,7 +862,8 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -925,7 +939,8 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
   
-    let cost = Network::registration_cost(epoch);
+    // let cost = Network::registration_cost(epoch);
+    let cost = Network::get_current_registration_cost(block_number);
   
     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
@@ -1095,4 +1110,39 @@ fn test_assign_and_free_reassigns_correctly() {
 		let slot2 = Network::assign_subnet_slot(subnet2).unwrap();
 		assert_eq!(slot2, 2);
 	});
+}
+
+#[test]
+fn test_get_current_registration_cost() {
+  new_test_ext().execute_with(|| {
+    // ---- Initial state ----
+    // Default cost should be 1000e18 (LastRegistrationCost default)
+    let initial_cost = LastRegistrationCost::<Test>::get();
+    // let initial_cost = Network::get_current_registration_cost();
+    // assert_eq!(initial_cost, 1000000000000000000000);
+
+    // ---- Simulate elapsed blocks with no updates ----
+    // Move forward half the decay period
+    let half_decay = RegistrationCostDecayBlocks::<Test>::get() / 2;
+    let last_block = LastRegistrationBlock::<Test>::get();
+    System::set_block_number(last_block + half_decay);
+
+    let cost_after_half_decay = Network::get_current_registration_cost(System::block_number());
+    // Cost should be between min_price and initial_cost
+    let min_price = MinRegistrationCost::<Test>::get();
+    assert!(cost_after_half_decay < initial_cost);
+    assert!(cost_after_half_decay > min_price);
+
+    // ---- Move to full decay period ----
+    System::set_block_number(last_block + RegistrationCostDecayBlocks::<Test>::get());
+    let cost_after_full_decay = Network::get_current_registration_cost(System::block_number());
+    // Cost should be at min price
+    assert_eq!(cost_after_full_decay, min_price);
+
+    // // ---- Move beyond full decay ----
+    System::set_block_number(last_block + RegistrationCostDecayBlocks::<Test>::get() * 2);
+    let cost_after_double_decay = Network::get_current_registration_cost(System::block_number());
+    // Still at min price
+    assert_eq!(cost_after_double_decay, min_price);
+  });
 }

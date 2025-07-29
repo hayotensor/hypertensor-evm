@@ -598,6 +598,7 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
 
     Ok(())
   }

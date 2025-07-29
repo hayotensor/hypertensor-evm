@@ -118,7 +118,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
   let owner_coldkey = account(subnets*max_subnets*max_subnet_nodes);
   let owner_hotkey = account(subnets*max_subnets*max_subnet_nodes+1);
 
-  let cost = Network::registration_cost(epoch);
+  // let cost = Network::registration_cost(epoch);
+  let cost = Network::get_current_registration_cost(block_number);
   let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+1000);
 
   let min_nodes = MinSubnetNodes::<Test>::get();
