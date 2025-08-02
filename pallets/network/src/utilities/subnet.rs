@@ -356,4 +356,47 @@ impl<T: Config> Pallet<T> {
     LastRegistrationCost::<T>::put(cost);
     LastRegistrationBlock::<T>::put(block);
   }
+
+  /// Update bootnode set
+  ///
+  /// subnet_id: Subnet ID of bootnode set
+  /// add: Bootnodes to add to set
+  /// remove: Bootnodes to remove from set
+  pub fn update_bootnodes(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    add: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>, 
+    remove: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>
+  ) -> DispatchResult {
+    let account_id: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id), Error::<T>::InvalidSubnet);
+
+    let max_bootnodes = MaxBootnodes::<T>::get();
+    
+    SubnetBootnodes::<T>::try_mutate(subnet_id, |bootnodes| -> DispatchResult {
+      for item in remove.iter() {
+        bootnodes.remove(item);
+      }
+
+      for item in add.iter() {
+        // Check in the for loop for length in case some inserts are false
+        ensure!(
+          bootnodes.len() < max_bootnodes as usize,
+          Error::<T>::TooManyBootnodes
+        );
+        bootnodes.insert(item.clone());
+      }
+
+      Ok(())
+    })?;
+
+    Self::deposit_event(Event::BootnodesUpdated {
+      subnet_id,
+      added: add,
+      removed: remove,
+    });
+
+    Ok(())
+  }
 }

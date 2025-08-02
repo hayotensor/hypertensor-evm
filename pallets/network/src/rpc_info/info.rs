@@ -109,8 +109,9 @@ impl<T: Config> Pallet<T> {
       coldkey: coldkey.clone(),
       hotkey: subnet_node.hotkey.clone(),
       peer_id: subnet_node.peer_id,
-      bootstrap_peer_id: subnet_node.bootstrap_peer_id,
+      bootnode_peer_id: subnet_node.bootnode_peer_id,
       client_peer_id: subnet_node.client_peer_id,
+      bootnode: subnet_node.bootnode,
       identity: ColdkeyIdentity::<T>::get(&coldkey),
       classification: subnet_node.classification,
       delegate_reward_rate: subnet_node.delegate_reward_rate,
@@ -162,29 +163,12 @@ impl<T: Config> Pallet<T> {
       })
   }
 
-  // id is consensus ID
   pub fn get_consensus_data(
     subnet_id: u32,
     epoch: u32
   ) -> Option<ConsensusData<T::AccountId>> {
     let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
     Some(data?)
-  }
-
-  // pub fn get_incentives_data(
-  //   subnet_id: u32,
-  //   epoch: u32
-  // ) -> Option<ConsensusData<T::AccountId>> {
-  //   let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
-  //   Some(data?)
-  // }
-
-  pub fn get_minimum_subnet_nodes(memory_mb: u128) -> u32 {
-    MinSubnetNodes::<T>::get()
-  }
-
-  pub fn get_minimum_delegate_stake(memory_mb: u128) -> u128 {
-    Self::get_min_subnet_delegate_stake_balance()
   }
 
   pub fn get_subnet_node_stake_by_peer_id(subnet_id: u32, peer_id: PeerId) -> u128 {
@@ -197,7 +181,6 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  // TODO: Make this only return true is Validator subnet node
   pub fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
     match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id)) {
       Ok(_) => true,
@@ -205,7 +188,7 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  pub fn is_subnet_node_by_bootstrap_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
+  pub fn is_subnet_node_by_bootnode_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
     match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id)) {
       Ok(_) => true,
       Err(()) => false,
@@ -247,7 +230,7 @@ impl<T: Config> Pallet<T> {
   ///
   /// # Options
   ///
-  /// - Can use either a subnet node ID or peer ID, or bootstrap peer ID
+  /// - Can use either a subnet node ID or peer ID, or bootnode peer ID
   ///
   /// The most secure way to call this function is by peer ID with signatures
   ///
@@ -261,82 +244,106 @@ impl<T: Config> Pallet<T> {
   /// * `subnet_id` - Subnet ID.
   /// * `subnet_node_id` - Subnet node ID
   /// * `peer_id` - Subnet node peer ID
-  /// * `require_active` - Require that the subnet node is currently active (not registered or deactivated)
+  /// * `min_class` - Minimum required class
+  ///     * A subnet may likely require Registered or Idle to enter subnet
   ///
+  // pub fn proof_of_stake(
+  //   subnet_id: u32, 
+  //   peer_id: Vec<u8>,
+  //   min_class: &SubnetNodeClass
+  // ) -> bool {
+  //   if !SubnetsData::<T>::contains_key(subnet_id) {
+  //     return false
+  //   }
+
+  //   let mut is_staked = false;
+
+  //   let current_epoch = Self::get_current_epoch_as_u32();
+
+  //   // --- Use peer ID
+  //   is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
+  //         Err(()) => false
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   };
+
+  //   if is_staked {
+  //     return true
+  //   }
+
+  //   // --- Use peer ID, check bootnode peer ID
+  //   is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
+  //         Err(()) => false
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   };
+
+  //   if is_staked {
+  //     return true
+  //   }
+
+  //   // --- Use peer ID, check client peer ID
+  //   is_staked = match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(subnet_node_id) => {
+  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
+  //         Err(()) => false
+  //       }
+  //     },
+  //     Err(()) => false,
+  //   };
+
+  //   if is_staked {
+  //     return true
+  //   }
+
+  //   // --- Check overwatch node
+  //   match PeerIdOverwatchNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //     Ok(_) => true,
+  //     Err(()) => false,
+  //   }
+  // }
   pub fn proof_of_stake(
     subnet_id: u32, 
     peer_id: Vec<u8>,
-    require_active: bool
+    min_class: &SubnetNodeClass
   ) -> bool {
     if !SubnetsData::<T>::contains_key(subnet_id) {
-      return false
+        return false;
     }
 
-    let mut is_staked = false;
+    let current_epoch = Self::get_current_epoch_as_u32();
+    let peer_id = PeerId(peer_id);
 
-    // --- Use peer ID
-    is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-      Ok(subnet_node_id) => {
-        if require_active {
-          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-            Ok(_) => true,
-            Err(()) => false
-          }
-        } else {
-          true
-        }
-      },
-      Err(()) => false,
+    // Helper closure to check a peer_id lookup mapping
+    let check_mapping = |mapping: fn(u32, PeerId) -> Result<u32, ()>| -> bool {
+      mapping(subnet_id, peer_id.clone())
+        .ok()
+        .and_then(|subnet_node_id| SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id).ok())
+        .map(|subnet_node| subnet_node.has_classification(min_class, current_epoch))
+        .unwrap_or(false)
     };
 
-    if is_staked {
-      return true
+    // Check the three possible peer-id → subnet-node mappings
+    if check_mapping(PeerIdSubnetNodeId::<T>::try_get)
+      || check_mapping(BootstrapPeerIdSubnetNodeId::<T>::try_get)
+      || check_mapping(ClientPeerIdSubnetNode::<T>::try_get)
+    {
+      return true;
     }
 
-    // --- Use peer ID, check bootstrap peer ID
-    is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-      Ok(subnet_node_id) => {
-        if require_active {
-          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-            Ok(_) => true,
-            Err(()) => false
-          }
-        } else {
-          true
-        }
-      },
-      Err(()) => false,
-    };
-
-    if is_staked {
-      return true
-    }
-
-    // --- Use peer ID, check client peer ID
-    is_staked = match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-      Ok(subnet_node_id) => {
-        if require_active {
-          match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-            Ok(_) => true,
-            Err(()) => false
-          }
-        } else {
-          true
-        }
-      },
-      Err(()) => false,
-    };
-
-    if is_staked {
-      return true
-    }
-
-    // --- Check overwatch node
-    match PeerIdOverwatchNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-      Ok(_) => true,
-      Err(()) => false,
-    }
+    // Finally, check overwatch node
+    PeerIdOverwatchNode::<T>::try_get(subnet_id, peer_id).is_ok()
   }
+
   // pub fn proof_of_stake(
   //   subnet_id: u32, 
   //   subnet_node_id: u32,
@@ -348,6 +355,7 @@ impl<T: Config> Pallet<T> {
   //   }
 
   //   let mut is_staked = false;
+  //   let peer_id = PeerId(peer_id);
 
   //   // --- Use subnet node ID
   //   if subnet_node_id > 0 {
@@ -367,7 +375,7 @@ impl<T: Config> Pallet<T> {
   //   }
 
   //   // --- Use peer ID
-  //   is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //   is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id.clone()) {
   //     Ok(subnet_node_id) => {
   //       if require_active {
   //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -385,8 +393,8 @@ impl<T: Config> Pallet<T> {
   //     return true
   //   }
 
-  //   // --- Use peer ID, check bootstrap peer ID
-  //   is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //   // --- Use peer ID, check bootnode peer ID
+  //   is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id.clone()) {
   //     Ok(subnet_node_id) => {
   //       if require_active {
   //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -405,7 +413,7 @@ impl<T: Config> Pallet<T> {
   //   }
 
   //   // --- Use peer ID, check client peer ID
-  //   match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //   match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id.clone()) {
   //     Ok(subnet_node_id) => {
   //       if require_active {
   //         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
@@ -428,7 +436,7 @@ impl<T: Config> Pallet<T> {
   ///
   /// # Options
   ///
-  /// - Can use either a subnet node ID or peer ID, or bootstrap peer ID
+  /// - Can use either a subnet node ID or peer ID, or bootnode peer ID
   ///
   /// The most secure way to call this function is by peer ID with signatures
   ///
@@ -459,4 +467,16 @@ impl<T: Config> Pallet<T> {
     }
   }
 
+  pub fn get_bootnodes(
+    subnet_id: u32
+  ) -> BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> {
+    let mut bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> = SubnetBootnodes::<T>::get(subnet_id);
+
+    bootnodes.extend(
+      SubnetNodesData::<T>::iter_prefix(subnet_id)
+        .filter_map(|(_, node)| node.bootnode)
+    );
+
+    bootnodes
+  }
 }

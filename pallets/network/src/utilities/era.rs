@@ -85,6 +85,7 @@ impl<T: Config> Pallet<T> {
     let subnet_activation_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
     let min_subnet_nodes = MinSubnetNodes::<T>::get();
     let max_subnets = MaxSubnets::<T>::get();
+    let max_pause_epochs = MaxSubnetPauseEpochs::<T>::get();
 
     weight = weight.saturating_add(db_weight.reads(5));
 
@@ -158,7 +159,7 @@ impl<T: Config> Pallet<T> {
       }
 
       if is_paused {
-        if data.start_epoch < epoch {
+        if data.start_epoch + max_pause_epochs < epoch {
           // Automatic Expiry / Force Unpause
           // - Increase penalty count
           // - Check if should remove
@@ -178,15 +179,16 @@ impl<T: Config> Pallet<T> {
             );
             // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
             continue
-          } else {
-            SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
-              if let Some(data) = maybe_data {
-                data.state = SubnetState::Active;
-                data.start_epoch = epoch + 1;
-              }
-            });
-            continue
-          }
+          } 
+          // else {
+          //   SubnetsData::<T>::mutate(subnet_id, |maybe_data| {
+          //     if let Some(data) = maybe_data {
+          //       data.state = SubnetState::Active;
+          //       data.start_epoch = epoch + 1;
+          //     }
+          //   });
+          //   continue
+          // }
         }
       }
 

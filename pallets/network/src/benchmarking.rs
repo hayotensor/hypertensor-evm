@@ -161,6 +161,7 @@ fn build_activated_subnet<T: Config>(
 				hotkey.clone(),
         peer(subnets*max_subnet_nodes+_n),
 				peer(subnets*max_subnet_nodes+_n),
+				None,
 				0,
         amount,
         None,
@@ -627,7 +628,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn calculate_rewards_v2() {
+	fn calculate_rewards() {
 		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
@@ -705,7 +706,7 @@ mod benchmarks {
 		let (consensus_submission_data, _) = result.unwrap();
 
 		// ⸺ Calculate subnet distribution of rewards
-		let (rewards_data, rewards_weight) = Network::<T>::calculate_rewards_v2(
+		let (rewards_data, rewards_weight) = Network::<T>::calculate_rewards(
 			subnet_id, 
 			subnet_emission_weights.validator_emissions, 
 			*subnet_weight.unwrap()
@@ -988,7 +989,8 @@ mod benchmarks {
 				subnet_id, 
 				challenger_hotkey.clone(),
 				peer(subnets*max_subnet_nodes+_n), 
-				peer(subnets*max_subnet_nodes+_n), 
+				peer(subnets*max_subnet_nodes+_n),
+				None,
 				0,
 				DEFAULT_SUBNET_NODE_STAKE,
 				None,

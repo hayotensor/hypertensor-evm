@@ -47,7 +47,7 @@ interface Subnet  {
     uint256 subnetId,
     address hotkey,
     string memory peer_id,
-    string memory bootstrap_peer_id,
+    string memory bootnode_peer_id,
     uint256 delegate_reward_rate,
     uint256 stake_to_be_added
   ) external payable;
@@ -56,7 +56,7 @@ interface Subnet  {
     uint256 subnetId,
     address hotkey,
     string memory peer_id,
-    string memory bootstrap_peer_id,
+    string memory bootnode_peer_id,
     uint256 delegate_reward_rate,
     uint256 stake_to_be_added
   ) external payable;

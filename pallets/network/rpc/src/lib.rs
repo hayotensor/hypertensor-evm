@@ -24,10 +24,6 @@ pub trait NetworkCustomApi<BlockHash> {
 	fn get_subnet_nodes_validator(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getConsensusData")]
 	fn get_consensus_data(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
-	#[method(name = "network_getMinimumSubnetNodes")]
-	fn get_minimum_subnet_nodes(&self, memory_mb: u128, at: Option<BlockHash>) -> RpcResult<u32>;
-	#[method(name = "network_getMinimumDelegateStake")]
-	fn get_minimum_delegate_stake(&self, memory_mb: u128, at: Option<BlockHash>) -> RpcResult<u128>;
 	#[method(name = "network_getSubnetNodesInfo")]
 	fn get_subnet_nodes_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_isSubnetNodeByPeerId")]
@@ -37,7 +33,9 @@ pub trait NetworkCustomApi<BlockHash> {
 	#[method(name = "network_isSubnetNodeByA")]
 	fn is_subnet_node_by_a(&self, subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>, at: Option<BlockHash>) -> RpcResult<bool>;
 	#[method(name = "network_getElectedValidatorNode")]
-	fn get_elected_validator_node(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<bool>;
+	fn get_elected_validator_node(&self, subnet_id: u32, epoch: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
+	#[method(name = "network_proofOfStake")]
+	fn proof_of_stake(&self, subnet_id: u32, peer_id: Vec<u8>, min_class: &SubnetNodeClass, at: Option<BlockHash>) -> RpcResult<bool>;
 }
 
 /// A struct that implements the `NetworkCustomApi`.
@@ -114,20 +112,6 @@ where
 			Error::RuntimeError(format!("Unable to get consensus data: {:?}", e)).into()
 		})
 	}
-	fn get_minimum_subnet_nodes(&self, memory_mb: u128, at: Option<<Block as BlockT>::Hash>) -> RpcResult<u32> {
-		let api = self.client.runtime_api();
-		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_minimum_subnet_nodes(at, memory_mb).map_err(|e| {
-			Error::RuntimeError(format!("Unable to get minimum subnet nodes: {:?}", e)).into()
-		})
-	}
-	fn get_minimum_delegate_stake(&self, memory_mb: u128, at: Option<<Block as BlockT>::Hash>) -> RpcResult<u128> {
-		let api = self.client.runtime_api();
-		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_minimum_delegate_stake(at, memory_mb).map_err(|e| {
-			Error::RuntimeError(format!("Unable to minimuum delegate stake: {:?}", e)).into()
-		})
-	}
 	fn get_subnet_nodes_info(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
@@ -159,7 +143,14 @@ where
 	fn get_elected_validator_node(&self, subnet_id: u32, epoch: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
-		api.get_elected_validator_node(at, subnet_id, a).map_err(|e| {
+		api.get_elected_validator_node(at, subnet_id, epoch).map_err(|e| {
+			Error::RuntimeError(format!("Unable to get subnet nodes by a parameter: {:?}", e)).into()
+		})
+	}
+	fn proof_of_stake(&self, subnet_id: u32, peer_id: Vec<u8>, min_class: &SubnetNodeClass, at: Option<<Block as BlockT>::Hash>) -> RpcResult<bool> {
+		let api = self.client.runtime_api();
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
+		api.proof_of_stake(at, subnet_id, peer_id, min_class).map_err(|e| {
 			Error::RuntimeError(format!("Unable to get subnet nodes by a parameter: {:?}", e)).into()
 		})
 	}

@@ -336,6 +336,7 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         hotkey.clone(),
         peer(subnet_id*total_subnet_nodes+1),
         peer(subnet_id*total_subnet_nodes+1),
+        None,
         0,
         amount,
         None,
@@ -524,7 +525,7 @@ fn test_register_try_removing_all_stake() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
 
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -535,7 +536,8 @@ fn test_register_try_removing_all_stake() {
         subnet_id,
         hotkey.clone(),
         peer_id,
-        bootstrap_peer_id,
+        bootnode_peer_id,
+        None,
         0,
         amount,
         None,

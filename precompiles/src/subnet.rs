@@ -308,7 +308,7 @@ where
     subnet_id: U256,
     hotkey: Address,
     peer_id: BoundedString<ConstU32<64>>,
-    bootstrap_peer_id: BoundedString<ConstU32<64>>,
+    bootnode_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
     // a: BoundedVec<u8, DefaultMaxVectorLength>,
@@ -318,7 +318,7 @@ where
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
     let peer_id = OpaquePeerId(peer_id.as_bytes().to_vec());
-    let bootstrap_peer_id = OpaquePeerId(bootstrap_peer_id.as_bytes().to_vec());
+    let bootnode_peer_id = OpaquePeerId(bootnode_peer_id.as_bytes().to_vec());
     let delegate_reward_rate: u128 = delegate_reward_rate.unique_saturated_into();
     let stake_to_be_added: u128 = stake_to_be_added.unique_saturated_into();
 
@@ -328,7 +328,8 @@ where
       subnet_id,
       hotkey,
       peer_id,
-      bootstrap_peer_id,
+      bootnode_peer_id,
+      bootnode: None,
       delegate_reward_rate,
       stake_to_be_added,
       a: None,
@@ -348,7 +349,7 @@ where
     subnet_id: U256,
     hotkey: Address,
     peer_id: BoundedString<ConstU32<64>>,
-    bootstrap_peer_id: BoundedString<ConstU32<64>>,
+    bootnode_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
     // a: BoundedVec<u8, DefaultMaxVectorLength>,
@@ -358,7 +359,7 @@ where
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
     let peer_id = OpaquePeerId(peer_id.as_bytes().to_vec());
-    let bootstrap_peer_id = OpaquePeerId(bootstrap_peer_id.as_bytes().to_vec());
+    let bootnode_peer_id = OpaquePeerId(bootnode_peer_id.as_bytes().to_vec());
     let delegate_reward_rate: u128 = delegate_reward_rate.unique_saturated_into();
     let stake_to_be_added: u128 = stake_to_be_added.unique_saturated_into();
 
@@ -368,7 +369,8 @@ where
       subnet_id,
       hotkey,
       peer_id,
-      bootstrap_peer_id,
+      bootnode_peer_id,
+      bootnode: None,
       delegate_reward_rate,
       stake_to_be_added,
       a: None,

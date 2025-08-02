@@ -61,7 +61,7 @@ fn test_register_remove_claim_stake_unbondings() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -73,7 +73,8 @@ fn test_register_remove_claim_stake_unbondings() {
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id.clone(),
+        bootnode_peer_id.clone(),
+        None,
         0,
         amount,
         None,
@@ -167,7 +168,7 @@ fn test_register_activate_remove_claim_stake_unbondings() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -179,7 +180,8 @@ fn test_register_activate_remove_claim_stake_unbondings() {
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id.clone(),
+        bootnode_peer_id.clone(),
+        None,
         0,
         amount,
         None,
@@ -292,7 +294,7 @@ fn test_remove_stake_twice_in_epoch() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -304,7 +306,8 @@ fn test_remove_stake_twice_in_epoch() {
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id.clone(),
+        bootnode_peer_id.clone(),
+        None,
         0,
         amount,
         None,
@@ -433,7 +436,7 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -445,7 +448,8 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id.clone(),
+        bootnode_peer_id.clone(),
+        None,
         0,
         amount,
         None,
@@ -491,7 +495,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
     let coldkey = get_coldkey(subnets, max_subnet_nodes, end+1);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end+1);
     let peer_id = peer(subnets*max_subnet_nodes+end+1);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+end+1);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+end+1);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
     let starting_balance = Balances::free_balance(&coldkey.clone());
@@ -502,7 +506,8 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id.clone(),
+        bootnode_peer_id.clone(),
+        None,
         0,
         amount*2,
         None,

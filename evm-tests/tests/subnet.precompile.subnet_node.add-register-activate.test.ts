@@ -190,7 +190,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             const subnetNodeDataHuman = subnetNodeDataOpt.toHuman() as any;
             expect(wallet1.address).to.be.equal(subnetNodeDataHuman.hotkey);
             expect(peer1).to.be.equal(subnetNodeDataHuman.peerId);
-            expect(peer1).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
+            expect(peer1).to.be.equal(subnetNodeDataHuman.bootnodePeerId);
             expect("Validator").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);
 
@@ -237,7 +237,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             const subnetNodeDataHuman = subnetNodeDataOpt.toHuman() as any;
             expect(wallet2.address).to.be.equal(subnetNodeDataHuman.hotkey);
             expect(peer2).to.be.equal(subnetNodeDataHuman.peerId);
-            expect(peer2).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
+            expect(peer2).to.be.equal(subnetNodeDataHuman.bootnodePeerId);
             expect("Registered").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);
 
@@ -293,7 +293,7 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
             const subnetNodeDataHuman = subnetNodeDataOpt.toHuman() as any;
             expect(wallet3.address).to.be.equal(subnetNodeDataHuman.hotkey);
             expect(peer3).to.be.equal(subnetNodeDataHuman.peerId);
-            expect(peer3).to.be.equal(subnetNodeDataHuman.bootstrapPeerId);
+            expect(peer3).to.be.equal(subnetNodeDataHuman.bootnodePeerId);
             // Will be "Validator" since subnet is still registering
             expect("Validator").to.be.equal(subnetNodeDataHuman.classification.node_class);
             expect(delegateRewardRate).to.be.equal(subnetNodeDataHuman.delegateRewardRate);

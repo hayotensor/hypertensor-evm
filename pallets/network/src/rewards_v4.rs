@@ -112,6 +112,11 @@ impl<T: Config> Pallet<T> {
         // Not included in consensus, increase
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
         weight = weight.saturating_add(db_weight.writes(1));
+
+        if subnet_node.classification.node_class == SubnetNodeClass::Included {
+          SubnetNodeConsecutiveIncludedEpochs::<T>::insert(subnet_id, subnet_node.id, 0);
+          weight = weight.saturating_add(db_weight.writes(1));
+        }
         continue
       } else if penalties != 0 {
         // Is in consensus data, decrease
@@ -120,6 +125,10 @@ impl<T: Config> Pallet<T> {
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| n.saturating_dec());
         weight = weight.saturating_add(db_weight.writes(1));
       }
+
+      //
+      // --- Consensus formed on node
+      //
 
       // Safely unwrap node_weight, we already confirmed it's not None
       let node_weight = subnet_node_data_find.unwrap().score;
@@ -136,12 +145,19 @@ impl<T: Config> Pallet<T> {
       }
 
       if subnet_node.classification.node_class == SubnetNodeClass::Included {
+        SubnetNodeConsecutiveIncludedEpochs::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+        let cons_included_epochs = SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node.id);
         // --- Upgrade to Validator if no penalties and included in weights
-        if _penalties == 0 && subnet_node.classification.start_epoch + included_epochs < current_epoch {
+        // if _penalties == 0 && subnet_node.classification.start_epoch + included_epochs < current_epoch {
+        if _penalties == 0 && cons_included_epochs >= included_epochs {
           if Self::graduate_class(subnet_id, subnet_node.id, current_epoch) {
             // --- Insert into election slot
             Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
             // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
+
+            // reset
+            SubnetNodeConsecutiveIncludedEpochs::<T>::insert(subnet_id, subnet_node.id, 0);
+            weight = weight.saturating_add(db_weight.writes(1));
           }
         }
         // SubnetNodeClass::Included does not get rewards yet, they must pass the gauntlet 

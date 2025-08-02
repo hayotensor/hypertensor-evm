@@ -166,7 +166,7 @@ export async function addSubnetNode(
   subnetId: string,
   hotkey: string,
   peerId: string,
-  bootstrapPeerId: string,
+  bootnodePeerId: string,
   delegateRewardRate: string,
   stakeToBeAdded: bigint,
 ) {
@@ -174,7 +174,7 @@ export async function addSubnetNode(
     subnetId,
     hotkey,
     peerId,
-    bootstrapPeerId,
+    bootnodePeerId,
     delegateRewardRate,
     stakeToBeAdded,
     { value: stakeToBeAdded }
@@ -188,7 +188,7 @@ export async function registerSubnetNode(
   subnetId: string,
   hotkey: string,
   peerId: string,
-  bootstrapPeerId: string,
+  bootnodePeerId: string,
   delegateRewardRate: string,
   stakeToBeAdded: bigint,
 ) {
@@ -196,7 +196,7 @@ export async function registerSubnetNode(
     subnetId,
     hotkey,
     peerId,
-    bootstrapPeerId,
+    bootnodePeerId,
     delegateRewardRate,
     stakeToBeAdded,
     { value: stakeToBeAdded }

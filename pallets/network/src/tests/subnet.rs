@@ -377,7 +377,7 @@ fn test_activate_subnet() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -385,7 +385,8 @@ fn test_activate_subnet() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,
@@ -489,7 +490,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -497,7 +498,8 @@ fn test_activate_subnet_invalid_subnet_id_error() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,
@@ -577,7 +579,7 @@ fn test_activate_subnet_already_activated_err() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -585,7 +587,8 @@ fn test_activate_subnet_already_activated_err() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,
@@ -690,7 +693,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -698,7 +701,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,
@@ -813,7 +817,7 @@ fn test_activate_subnet_initializing_error() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -821,7 +825,8 @@ fn test_activate_subnet_initializing_error() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,
@@ -990,7 +995,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
       let peer_id = peer(subnets*max_subnet_nodes+_n);
-      let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+      let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
       assert_ok!(
         Network::add_subnet_node(
@@ -998,7 +1003,8 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
           subnet_id,
           hotkey.clone(),
           peer_id.clone(),
-          bootstrap_peer_id.clone(),
+          bootnode_peer_id.clone(),
+          None,
           0,
           amount,
           None,

@@ -35,7 +35,7 @@ use core::marker::PhantomData;
 pub trait WeightInfo {
 	fn get_epoch_emissions() -> Weight;
 	fn precheck_consensus_submission() -> Weight;
-	fn calculate_rewards_v2() -> Weight;
+	fn calculate_rewards() -> Weight;
 	fn distribute_rewards() -> Weight;
 	fn elect_validator_v3() -> Weight;
 	fn calculate_subnet_weights() -> Weight;
@@ -79,7 +79,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn calculate_rewards_v2() -> Weight {
+	fn calculate_rewards() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `118490`
 		//  Estimated: `121955`
@@ -320,7 +320,7 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn calculate_rewards_v2() -> Weight {
+	fn calculate_rewards() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `118490`
 		//  Estimated: `121955`

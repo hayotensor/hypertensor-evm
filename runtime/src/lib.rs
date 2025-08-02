@@ -1353,14 +1353,6 @@ impl_runtime_apis! {
 	// 		let result = Network::get_consensus_data(subnet_id, epoch);
 	// 		result.encode()
 	// 	}
-	// 	fn get_minimum_subnet_nodes(memory_mb: u128) -> u32 {
-	// 		let result = Network::get_minimum_subnet_nodes(memory_mb);
-	// 		result
-	// 	}
-	// 	fn get_minimum_delegate_stake(memory_mb: u128) -> u128 {
-	// 		let result = Network::get_minimum_delegate_stake(memory_mb);
-	// 		result
-	// 	}
 	// 	fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8> {
 	// 		let result = Network::get_subnet_nodes_info(subnet_id);
 	// 		result.encode()

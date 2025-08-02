@@ -31,7 +31,6 @@ impl<T: Config> Pallet<T> {
     );
 
     let epoch = Self::get_current_epoch_as_u32();
-    let max_pause_epochs = MaxSubnetPauseEpochs::<T>::get();
 
     SubnetsData::<T>::try_mutate_exists(
       subnet_id,
@@ -41,9 +40,8 @@ impl<T: Config> Pallet<T> {
         // Update state
         params.state = SubnetState::Paused;
 
-        // When paused, the start_epoch is used as the max pause epoch
-        // The subnet will automatically unpause unless owner unpauses before
-        params.start_epoch = epoch + max_pause_epochs;
+        params.start_epoch = epoch;
+        // params.start_epoch = epoch + max_pause_epochs;
 
         Ok(())
       }
@@ -75,6 +73,22 @@ impl<T: Config> Pallet<T> {
       subnet_id,
       |maybe_params| -> DispatchResult {
         let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
+
+        let pause_epoch = params.start_epoch;
+        
+        // Epochs the subnet was paused for
+        let delta = epoch.saturating_sub(pause_epoch).saturating_add(1);
+
+        // Update each registration queued node
+        for (subnet_id, uid, _) in RegisteredSubnetNodesData::<T>::iter() {
+          RegisteredSubnetNodesData::<T>::mutate(subnet_id, uid, |subnet_node| {
+            let curr_start_epoch = subnet_node.classification.start_epoch;
+            log::error!("curr_start_epoch {:?}", curr_start_epoch);
+            log::error!("pause_epoch      {:?}", pause_epoch);
+            log::error!("delta            {:?}", delta);
+            subnet_node.classification.start_epoch = curr_start_epoch.saturating_add(delta);
+          });
+        }
 
         // Update state
         params.state = SubnetState::Active;
@@ -438,20 +452,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_update_node_removal_system(origin: T::RuntimeOrigin, subnet_id: u32, value: NodeRemovalSystem) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-      Error::<T>::NotSubnetOwner
-    );
-
-    SubnetNodeRemovalSystem::<T>::insert(subnet_id, value);
-
-    Ok(())
-  }
-
-  pub fn do_owner_update_key_type(origin: T::RuntimeOrigin, subnet_id: u32, value: BTreeSet<KeyType>) -> DispatchResult {
+  pub fn do_owner_update_key_types(origin: T::RuntimeOrigin, subnet_id: u32, value: BTreeSet<KeyType>) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -464,7 +465,21 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn set_node_removal_policy(
+
+  // pub fn do_owner_update_node_removal_system(origin: T::RuntimeOrigin, subnet_id: u32, value: NodeRemovalSystem) -> DispatchResult {
+  //   let coldkey: T::AccountId = ensure_signed(origin)?;
+
+  //   ensure!(
+  //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+  //     Error::<T>::NotSubnetOwner
+  //   );
+
+  //   SubnetNodeRemovalSystem::<T>::insert(subnet_id, value);
+
+  //   Ok(())
+  // }
+
+  pub fn do_owner_update_node_removal_policy(
     origin: T::RuntimeOrigin,
     subnet_id: u32,
     policy: NodeRemovalPolicy,
@@ -481,59 +496,59 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_owner_update_node_removal_stake_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
+  // pub fn do_owner_update_node_removal_stake_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+  //   let coldkey: T::AccountId = ensure_signed(origin)?;
 
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-      Error::<T>::NotSubnetOwner
-    );
+  //   ensure!(
+  //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+  //     Error::<T>::NotSubnetOwner
+  //   );
 
-    ensure!(
-      value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidNodeRemovalStakePercentageDelta
-    );
+  //   ensure!(
+  //     value <= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidNodeRemovalStakePercentageDelta
+  //   );
 
-    NodeRemovalStakePercentageDelta::<T>::insert(subnet_id, value);
+  //   NodeRemovalStakePercentageDelta::<T>::insert(subnet_id, value);
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
-  pub fn do_owner_update_node_removal_reputation_score_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
+  // pub fn do_owner_update_node_removal_reputation_score_percentage_delta(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+  //   let coldkey: T::AccountId = ensure_signed(origin)?;
 
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-      Error::<T>::NotSubnetOwner
-    );
+  //   ensure!(
+  //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+  //     Error::<T>::NotSubnetOwner
+  //   );
 
-    ensure!(
-      value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
-    );
+  //   ensure!(
+  //     value <= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
+  //   );
 
-    NodeRemovalReputationScorePercentageDelta::<T>::insert(subnet_id, value);
+  //   NodeRemovalReputationScorePercentageDelta::<T>::insert(subnet_id, value);
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
-  pub fn do_owner_update_node_removal_reputation_score_min(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
+  // pub fn do_owner_update_node_removal_reputation_score_min(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
+  //   let coldkey: T::AccountId = ensure_signed(origin)?;
 
-    ensure!(
-      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-      Error::<T>::NotSubnetOwner
-    );
+  //   ensure!(
+  //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+  //     Error::<T>::NotSubnetOwner
+  //   );
 
-    ensure!(
-      value <= Self::percentage_factor_as_u128(),
-      Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
-    );
+  //   ensure!(
+  //     value <= Self::percentage_factor_as_u128(),
+  //     Error::<T>::InvalidNodeRemovalReputationScorePercentageDelta
+  //   );
 
-    NodeRemovalReputationScoreMin::<T>::insert(subnet_id, value);
+  //   NodeRemovalReputationScoreMin::<T>::insert(subnet_id, value);
 
-    Ok(())
-  }
+  //   Ok(())
+  // }
 
   pub fn do_owner_activate_subnet_node(
     origin: T::RuntimeOrigin, 
@@ -541,7 +556,7 @@ impl<T: Config> Pallet<T> {
     activate_subnet_node_id: u32,
     remove_subnet_node_id: u32
   ) -> DispatchResult {
-    // must have EnableOwnerActivation
+    // must have EnableOwnerActivation?
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
     ensure!(
@@ -701,7 +716,7 @@ impl<T: Config> Pallet<T> {
     );
 
     ensure!(
-    	value >= MinMaxRegisteredNodes::<T>::get(),
+    	value >= MinMaxRegisteredNodes::<T>::get() && value <= MaxMaxRegisteredNodes::<T>::get(),
     	Error::<T>::InvalidMaxRegisteredNodes
     );
 
@@ -782,5 +797,45 @@ impl<T: Config> Pallet<T> {
     PendingSubnetOwner::<T>::remove(subnet_id);
 
     Ok(())
+  }
+
+  pub fn do_owner_add_bootnode_access(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    new_account: T::AccountId
+  ) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetBootnodeAccess::<T>::try_mutate(subnet_id, |access_list| {
+      if !access_list.insert(new_account) {
+        return Err(Error::<T>::InAccessList.into());
+      }
+      Ok(())
+    })
+  }
+
+  pub fn do_owner_remove_bootnode_access(
+    origin: T::RuntimeOrigin, 
+    subnet_id: u32, 
+    remove_account: T::AccountId
+  ) -> DispatchResult {
+    let coldkey: T::AccountId = ensure_signed(origin)?;
+
+    ensure!(
+      Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+      Error::<T>::NotSubnetOwner
+    );
+
+    SubnetBootnodeAccess::<T>::try_mutate(subnet_id, |access_list| {
+      if !access_list.remove(&remove_account) {
+        return Err(Error::<T>::NotInAccessList.into());
+      }
+      Ok(())
+    })
   }
 }

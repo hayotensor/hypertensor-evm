@@ -77,7 +77,7 @@ impl<T: Config> Pallet<T> {
 
     // Remove all subnet node elements
     PeerIdSubnetNodeId::<T>::remove(subnet_id, &peer_id);
-    BootstrapPeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
+    BootstrapPeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
     HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
     SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
 
@@ -223,8 +223,9 @@ impl<T: Config> Pallet<T> {
           coldkey: coldkey.clone(),
           hotkey: subnet_node.hotkey.clone(),
           peer_id: subnet_node.peer_id,
-          bootstrap_peer_id: subnet_node.bootstrap_peer_id,
+          bootnode_peer_id: subnet_node.bootnode_peer_id,
           client_peer_id: subnet_node.client_peer_id,
+          bootnode: subnet_node.bootnode,
           identity: ColdkeyIdentity::<T>::get(&coldkey),
           classification: subnet_node.classification,
           delegate_reward_rate: subnet_node.delegate_reward_rate,
@@ -332,7 +333,7 @@ impl<T: Config> Pallet<T> {
   }
 
   /// Check if subnet node is owner of a peer ID
-  /// Main, bootstrap, and client peer IDs must be unique so we check all of them to ensure
+  /// Main, bootnode, and client peer IDs must be unique so we check all of them to ensure
   /// that no one else owns them
   /// Returns True is no owner or the peer ID is ownerless and available
   pub fn is_owner_of_peer_or_ownerless(
@@ -352,8 +353,8 @@ impl<T: Config> Pallet<T> {
     };
 
     is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
-      Ok(bootstrap_subnet_node_id) => {
-        if bootstrap_subnet_node_id == subnet_node_id {
+      Ok(bootnode_subnet_node_id) => {
+        if bootnode_subnet_node_id == subnet_node_id {
           return true
         }
         false

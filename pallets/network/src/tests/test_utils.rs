@@ -54,6 +54,8 @@ use crate::{
   MaxSubnets,
   ConsensusData,
   SubnetNode,
+  SubnetNodeElectionSlots,
+  RegisteredSubnetNodesData,
 };
 use sp_std::collections::btree_map::BTreeMap;
 use frame_support::traits::{OnInitialize, Currency};
@@ -162,7 +164,7 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
     let peer_id = peer(subnets*max_subnet_nodes+_n);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
     amount_staked += amount;
     assert_ok!(
@@ -171,7 +173,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id,
+        bootnode_peer_id,
+        None,
         0,
         amount,
         None,
@@ -196,6 +199,9 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     let subnet_node_id_hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, hotkey_subnet_node_id).unwrap();
     assert_eq!(subnet_node_id_hotkey, hotkey.clone());
 
+    // Is activated, registered element is removed
+    assert_eq!(RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id), Err(()));
+
     let subnet_node_data = SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).unwrap();
     assert_eq!(subnet_node_data.hotkey, hotkey.clone());
 
@@ -213,6 +219,14 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
 
     let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, amount);
+
+    let mut is_electable = false;
+    for node_id in SubnetNodeElectionSlots::<Test>::get(subnet_id).iter() {
+      if *node_id == hotkey_subnet_node_id {
+        is_electable = true;
+      }
+    }
+    assert!(is_electable);
   }
 
   let total_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
@@ -338,7 +352,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
     let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
     let peer_id = peer(subnets*max_subnet_nodes+_n);
-    let bootstrap_peer_id = peer(subnets*max_subnet_nodes+_n);
+    let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
 
     let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
     amount_staked += amount;
@@ -348,7 +362,8 @@ pub fn build_activated_subnet_with_delegator_rewards(
         subnet_id,
         hotkey.clone(),
         peer_id.clone(),
-        bootstrap_peer_id,
+        bootnode_peer_id,
+        None,
         0,
         amount,
         None,
@@ -788,6 +803,7 @@ pub fn add_subnet_node(
     account(account_id),
     peer(peer_id),
     peer(peer_id),
+    None,
     0,
     amount,
     None,
