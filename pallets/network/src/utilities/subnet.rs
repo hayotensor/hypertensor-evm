@@ -321,7 +321,7 @@ impl<T: Config> Pallet<T> {
     let min_price = MinRegistrationCost::<T>::get();
     let last_updated = LastRegistrationBlock::<T>::get();
     let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
-    let alpha = RegistrationCostIncreaseAlpha::<T>::get();
+    let alpha = RegistrationCostAlpha::<T>::get();
 
     let delta_blocks = block.saturating_sub(last_updated);
 
@@ -352,17 +352,24 @@ impl<T: Config> Pallet<T> {
     decayed.max(min_price)
   }
 
-  pub fn update_last_registration_cost(cost: u128, block: u32) {
-    LastRegistrationCost::<T>::put(cost);
+  pub fn update_last_registration_cost(current_cost: u128, block: u32) {
+    let new_cost = Self::percent_mul(current_cost, NewRegistrationCostMultiplier::<T>::get());
+    LastRegistrationCost::<T>::put(new_cost);
     LastRegistrationBlock::<T>::put(block);
   }
 
   /// Update bootnode set
   ///
+  /// Allows accessible (set by owner) to set the official bootnodes
+  ///
+  /// These are used for new nodes and overwatch nodes
+  ///
+  /// * Note: Each subnet node can have a bootnode and Overwatchers will check those as well
+  ///
   /// subnet_id: Subnet ID of bootnode set
   /// add: Bootnodes to add to set
   /// remove: Bootnodes to remove from set
-  pub fn update_bootnodes(
+  pub fn do_update_bootnodes(
     origin: T::RuntimeOrigin, 
     subnet_id: u32, 
     add: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>, 
@@ -370,7 +377,9 @@ impl<T: Config> Pallet<T> {
   ) -> DispatchResult {
     let account_id: T::AccountId = ensure_signed(origin)?;
 
-    ensure!(SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id), Error::<T>::InvalidSubnet);
+    ensure!(SubnetsData::<T>::contains_key(subnet_id), Error::<T>::InvalidSubnetId);
+
+    ensure!(SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id), Error::<T>::InvalidAccess);
 
     let max_bootnodes = MaxBootnodes::<T>::get();
     

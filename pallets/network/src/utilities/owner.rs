@@ -46,6 +46,8 @@ impl<T: Config> Pallet<T> {
         Ok(())
       }
     )?;
+    
+    Self::deposit_event(Event::SubnetPaused { subnet_id: subnet_id });
 
     Ok(())
   }
@@ -83,9 +85,6 @@ impl<T: Config> Pallet<T> {
         for (subnet_id, uid, _) in RegisteredSubnetNodesData::<T>::iter() {
           RegisteredSubnetNodesData::<T>::mutate(subnet_id, uid, |subnet_node| {
             let curr_start_epoch = subnet_node.classification.start_epoch;
-            log::error!("curr_start_epoch {:?}", curr_start_epoch);
-            log::error!("pause_epoch      {:?}", pause_epoch);
-            log::error!("delta            {:?}", delta);
             subnet_node.classification.start_epoch = curr_start_epoch.saturating_add(delta);
           });
         }
@@ -98,6 +97,8 @@ impl<T: Config> Pallet<T> {
         Ok(())
       }
     )?;
+
+    Self::deposit_event(Event::SubnetUnpaused { subnet_id: subnet_id });
 
     Ok(())
   }
@@ -114,6 +115,8 @@ impl<T: Config> Pallet<T> {
       subnet_id,
       SubnetRemovalReason::Owner,
     ).map_err(|e| e)?;
+
+    // do_remove_subnet emits deposit event
 
     Ok(())
   }
@@ -419,6 +422,12 @@ impl<T: Config> Pallet<T> {
       accounts_set.extend(coldkeys.iter().cloned());
     });
 
+    Self::deposit_event(Event::AddSubnetRegistrationInitialColdkeys { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      coldkeys: coldkeys 
+    });
+
     Ok(())
   }
 
@@ -449,6 +458,12 @@ impl<T: Config> Pallet<T> {
       }
     });
 
+    Self::deposit_event(Event::RemoveSubnetRegistrationInitialColdkeys { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      coldkeys: coldkeys 
+    });
+
     Ok(())
   }
 
@@ -460,7 +475,13 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    SubnetKeyTypes::<T>::insert(subnet_id, value);
+    SubnetKeyTypes::<T>::insert(subnet_id, &value);
+
+    Self::deposit_event(Event::SubnetKeyTypesUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value
+    });
 
     Ok(())
   }
@@ -491,8 +512,14 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    NodeRemovalSystemV2::<T>::insert(subnet_id, policy);
+    NodeRemovalSystemV2::<T>::insert(subnet_id, &policy);
     
+    Self::deposit_event(Event::NodeRemovalSystemV2Update { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: policy 
+    });
+
     Ok(())
   }
 
@@ -550,6 +577,22 @@ impl<T: Config> Pallet<T> {
   //   Ok(())
   // }
 
+  /// Owner activates to remove subnet node from its subnet
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// This pushes a registered node to the front of the queue and activates them on the following epoch
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `activate_subnet_node_id`: The ID of the subnet node to activate.
+  /// - `remove_subnet_node_id`: The ID of the subnet node to remove.
+  ///       - Only removes node if the subnet is at maximum node slots.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - [`SubnetNotActive`]: Subnet must be active.
   pub fn do_owner_activate_subnet_node(
     origin: T::RuntimeOrigin, 
     subnet_id: u32, 
@@ -571,7 +614,6 @@ impl<T: Config> Pallet<T> {
 
     let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
 
-    // Node must register within the grace period if subnet activated
     ensure!(
       subnet.state == SubnetState::Active,
       Error::<T>::SubnetNotActive
@@ -585,7 +627,7 @@ impl<T: Config> Pallet<T> {
       // --- Ensure node exists
       let subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, remove_subnet_node_id) {
 				Ok(subnet_node) => subnet_node,
-				Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+				Err(()) => return Err(Error::<T>::InvalidSubnetNodeId.into()),
 			};
       // --- Remove node
       Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id);
@@ -605,6 +647,18 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  /// Owner calls to remove subnet node from its subnet
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `subnet_node_id`: The ID of the subnet node.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - See `perform_remove_subnet_node`
   pub fn do_owner_remove_subnet_node(origin: T::RuntimeOrigin, subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -618,6 +672,19 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
+  /// Update minimum stake balance per subnet node
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `value`: *.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - [`InvalidSubnetMinStake`]: Value is not in allowable range.
+  /// - [`InvalidSubnetStakeParameters`]: Min stake `value` is greater than max stake value, min must be less than max.
   pub fn do_owner_update_min_stake(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -639,9 +706,29 @@ impl<T: Config> Pallet<T> {
 
     SubnetMinStakeBalance::<T>::insert(subnet_id, value);
 
+        
+    Self::deposit_event(Event::SubnetMinStakeBalanceUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
     Ok(())
   }
 
+  /// Update maximum stake balance per subnet node
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `value`: *.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - [`InvalidSubnetMinStake`]: Value is not in allowable range.
+  /// - [`InvalidSubnetStakeParameters`]: Max stake `value` is less than min stake value, max must be greater than min.
   pub fn do_owner_update_max_stake(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -653,7 +740,7 @@ impl<T: Config> Pallet<T> {
     ensure!(
     	value >= MinSubnetMaxStake::<T>::get() &&
     	value <= MaxSubnetMaxStake::<T>::get(),
-    	Error::<T>::InvalidSubnetMinStake
+    	Error::<T>::InvalidSubnetMaxStake
     );
 
     ensure!(
@@ -663,9 +750,29 @@ impl<T: Config> Pallet<T> {
 
     SubnetMaxStakeBalance::<T>::insert(subnet_id, value);
 
+    Self::deposit_event(Event::SubnetMaxStakeBalanceUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
     Ok(())
   }
 
+  /// Update delegate stake percentage
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `value`: The new percentage (1e18 = 1.0) share of rewards to delegate stakers.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - [`DelegateStakePercentageUpdateTooSoon`]: Updated too soon.
+  /// - [`DelegateStakePercentageAbsDiffTooLarge`]: Value change too large.
+  /// - [`InvalidDelegateStakePercentage`]: Value is not in allowable range.
   pub fn do_owner_update_delegate_stake_percentage(origin: T::RuntimeOrigin, subnet_id: u32, value: u128) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -700,9 +807,27 @@ impl<T: Config> Pallet<T> {
 
     SubnetDelegateStakeRewardsPercentage::<T>::insert(subnet_id, value);
 
+    Self::deposit_event(Event::SubnetDelegateStakeRewardsPercentageUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
     Ok(())
   }
 
+  /// Update maximum registered nodes
+  ///
+  /// This function can only be called by the current owner of the subnet.  
+  ///
+  /// # Parameters
+  /// - `origin`: The caller, must be the current subnet owner.
+  /// - `subnet_id`: The ID of the subnet.
+  /// - `value`: The new number maximum registered nodes.
+  ///
+  /// # Errors
+  /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
+  /// - [`InvalidMaxRegisteredNodes`]: Value is not in allowable range.
   pub fn do_owner_update_max_registered_nodes(
     origin: T::RuntimeOrigin, 
     subnet_id: u32, 
@@ -722,6 +847,12 @@ impl<T: Config> Pallet<T> {
 
     MaxRegisteredNodes::<T>::insert(subnet_id, value);
 
+    Self::deposit_event(Event::MaxRegisteredNodesUpdate { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      value: value 
+    });
+
     Ok(())
   }
 
@@ -734,7 +865,7 @@ impl<T: Config> Pallet<T> {
   ///
   /// # Parameters
   /// - `origin`: The caller, must be the current subnet owner.
-  /// - `subnet_id`: The ID of the subnet being transferred.
+  /// - `subnet_id`: The ID of the subnet.
   /// - `new_owner`: The `AccountId` of the new proposed owner.
   ///
   /// # Undoing a Transfer
@@ -751,7 +882,13 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
-    PendingSubnetOwner::<T>::insert(subnet_id, new_owner);
+    PendingSubnetOwner::<T>::insert(subnet_id, &new_owner);
+
+    Self::deposit_event(Event::TransferPendingSubnetOwner { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      new_owner: new_owner 
+    });
 
     Ok(())
   }
@@ -796,6 +933,11 @@ impl<T: Config> Pallet<T> {
 
     PendingSubnetOwner::<T>::remove(subnet_id);
 
+    Self::deposit_event(Event::AcceptPendingSubnetOwner { 
+      subnet_id: subnet_id,
+      new_owner: coldkey 
+    });
+
     Ok(())
   }
 
@@ -810,6 +952,12 @@ impl<T: Config> Pallet<T> {
       Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
+
+    Self::deposit_event(Event::AddSubnetBootnodeAccess { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      new_account: new_account.clone()
+    });
 
     SubnetBootnodeAccess::<T>::try_mutate(subnet_id, |access_list| {
       if !access_list.insert(new_account) {
@@ -830,6 +978,12 @@ impl<T: Config> Pallet<T> {
       Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
       Error::<T>::NotSubnetOwner
     );
+
+    Self::deposit_event(Event::RemoveSubnetBootnodeAccess { 
+      subnet_id: subnet_id,
+      owner: coldkey, 
+      remove_account: remove_account.clone()
+    });
 
     SubnetBootnodeAccess::<T>::try_mutate(subnet_id, |access_list| {
       if !access_list.remove(&remove_account) {

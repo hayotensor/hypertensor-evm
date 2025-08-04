@@ -273,14 +273,14 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     )
   );
 
-  increase_epochs(2);
-
   assert_eq!(
     *network_events().last().unwrap(),
     Event::SubnetActivated {
       subnet_id: subnet_id, 
     }
   );
+
+  increase_epochs(2);
 
   // --- Check validator chosen on activation
   // let next_epoch = System::block_number() / epoch_length + 1;
@@ -309,7 +309,10 @@ pub fn build_activated_subnet_with_delegator_rewards(
   let owner_coldkey = account(subnets*max_subnets*max_subnet_nodes);
   let owner_hotkey = account(subnets*max_subnets*max_subnet_nodes+1);
 
-  let cost = Network::registration_cost(0);
+  // let cost = Network::registration_cost(0);
+  // let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+1000);
+  // let cost = Network::registration_cost(epoch);
+  let cost = Network::get_current_registration_cost(block_number);
   let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+1000);
 
   let min_nodes = MinSubnetNodes::<Test>::get();

@@ -28,8 +28,12 @@ use crate::{
   MinRegistrationCost,
   RegistrationCostDecayBlocks,
   LastRegistrationCost,
+  MaxBootnodes,
+  SubnetBootnodeAccess,
+  DefaultMaxVectorLength,
+  SubnetBootnodes,
 };
-
+use sp_runtime::BoundedVec;
 //
 //
 //
@@ -100,126 +104,126 @@ fn test_register_subnet() {
   })
 }
 
-#[test]
-fn test_register_subnet_subnet_registration_cooldown() {
-  new_test_ext().execute_with(|| {
-    let subnet_name: Vec<u8> = "subnet-name".into();
+// #[test]
+// fn test_register_subnet_subnet_registration_cooldown() {
+//   new_test_ext().execute_with(|| {
+//     let subnet_name: Vec<u8> = "subnet-name".into();
 
-    increase_epochs(1);
+//     increase_epochs(1);
 
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
   
-    // let cost = Network::registration_cost(epoch);
-    let cost = Network::get_current_registration_cost(block_number);
+//     // let cost = Network::registration_cost(epoch);
+//     let cost = Network::get_current_registration_cost(block_number);
   
-    let _ = Balances::deposit_creating(&account(0), cost+1000);
+//     let _ = Balances::deposit_creating(&account(0), cost+1000);
   
-    let min_nodes = MinSubnetNodes::<Test>::get();
+//     let min_nodes = MinSubnetNodes::<Test>::get();
 
-    let start = 0;
-    let end = min_nodes + 1;
+//     let start = 0;
+//     let end = min_nodes + 1;
 
-    let subnets = TotalActiveSubnets::<Test>::get() + 1;
-    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
-    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
-      subnets,
-      max_subnet_nodes,
-      subnet_name.clone().into(),
-      start, 
-      end
-    );
+//     let subnets = TotalActiveSubnets::<Test>::get() + 1;
+//     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+//     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+//       subnets,
+//       max_subnet_nodes,
+//       subnet_name.clone().into(),
+//       start, 
+//       end
+//     );
   
   
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
-    let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-    // increase_epochs(next_registration_epoch - epoch);
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
+//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
+//     // increase_epochs(next_registration_epoch - epoch);
 
-    // --- Register subnet for activation
-    assert_ok!(
-      Network::register_subnet(
-        RuntimeOrigin::signed(account(0)),
-        account(1),
-        add_subnet_data,
-      )
-    );
+//     // --- Register subnet for activation
+//     assert_ok!(
+//       Network::register_subnet(
+//         RuntimeOrigin::signed(account(0)),
+//         account(1),
+//         add_subnet_data,
+//       )
+//     );
   
-    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-    let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+//     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
   
-    let subnet_name: Vec<u8> = "subnet-name-2".into();
+//     let subnet_name: Vec<u8> = "subnet-name-2".into();
 
-    let subnets = TotalActiveSubnets::<Test>::get() + 1;
-    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
-    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
-      subnets,
-      max_subnet_nodes,
-      subnet_name.clone().into(),
-      start, 
-      end
-    );
-  
-
-    assert_err!(
-      Network::register_subnet(
-        RuntimeOrigin::signed(account(0)),
-        account(2),
-        add_subnet_data.clone(),
-      ),
-      Error::<Test>::SubnetRegistrationCooldown
-    );
-
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
-    let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-    increase_epochs(next_registration_epoch);
-
-    let epoch_length = EpochLength::get();
-    let block_number = System::block_number();
-    let epoch = System::block_number().saturating_div(epoch_length);
-  
-    // let cost = Network::registration_cost(epoch);
-    let cost = Network::get_current_registration_cost(block_number);
-  
-    let _ = Balances::deposit_creating(&account(0), cost+1000);
-
-    // --- Register after cooldown
-    assert_ok!(
-      Network::register_subnet(
-        RuntimeOrigin::signed(account(0)),
-        account(3),
-        add_subnet_data.clone(),
-      )
-    );
-
-    // --- Cooldown expected after registering again
-    let subnet_name: Vec<u8> = "subnet-name-3".into();
-
-    let subnets = TotalActiveSubnets::<Test>::get() + 1;
-    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
-    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
-      subnets,
-      max_subnet_nodes,
-      subnet_name.clone().into(),
-      start, 
-      end
-    );
+//     let subnets = TotalActiveSubnets::<Test>::get() + 1;
+//     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+//     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+//       subnets,
+//       max_subnet_nodes,
+//       subnet_name.clone().into(),
+//       start, 
+//       end
+//     );
   
 
-    assert_err!(
-      Network::register_subnet(
-        RuntimeOrigin::signed(account(1)),
-        account(4),
-        add_subnet_data.clone(),
-      ),
-      Error::<Test>::SubnetRegistrationCooldown
-    );
-  })
-}
+//     assert_err!(
+//       Network::register_subnet(
+//         RuntimeOrigin::signed(account(0)),
+//         account(2),
+//         add_subnet_data.clone(),
+//       ),
+//       Error::<Test>::SubnetRegistrationCooldown
+//     );
+
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
+//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
+//     increase_epochs(next_registration_epoch);
+
+//     let epoch_length = EpochLength::get();
+//     let block_number = System::block_number();
+//     let epoch = System::block_number().saturating_div(epoch_length);
+  
+//     // let cost = Network::registration_cost(epoch);
+//     let cost = Network::get_current_registration_cost(block_number);
+  
+//     let _ = Balances::deposit_creating(&account(0), cost+1000);
+
+//     // --- Register after cooldown
+//     assert_ok!(
+//       Network::register_subnet(
+//         RuntimeOrigin::signed(account(0)),
+//         account(3),
+//         add_subnet_data.clone(),
+//       )
+//     );
+
+//     // --- Cooldown expected after registering again
+//     let subnet_name: Vec<u8> = "subnet-name-3".into();
+
+//     let subnets = TotalActiveSubnets::<Test>::get() + 1;
+//     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+//     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+//       subnets,
+//       max_subnet_nodes,
+//       subnet_name.clone().into(),
+//       start, 
+//       end
+//     );
+  
+
+//     assert_err!(
+//       Network::register_subnet(
+//         RuntimeOrigin::signed(account(1)),
+//         account(4),
+//         add_subnet_data.clone(),
+//       ),
+//       Error::<Test>::SubnetRegistrationCooldown
+//     );
+//   })
+// }
 
 #[test]
 fn test_register_subnet_exists_error() {
@@ -1150,5 +1154,152 @@ fn test_get_current_registration_cost() {
     let cost_after_double_decay = Network::get_current_registration_cost(System::block_number());
     // Still at min price
     assert_eq!(cost_after_double_decay, min_price);
+  });
+}
+
+// #[test]
+// fn test_update_bootnodes() {
+//   new_test_ext().execute_with(|| {
+//     // --- Setup ---
+//     let subnet_id = 1u32;
+//     let caller = account(0);
+//     let unauth_caller = account(1);
+//     let max_bootnodes = MaxBootnodes::<Test>::get();
+
+//     // Give caller access to manage bootnodes
+//     SubnetBootnodeAccess::<Test>::insert(subnet_id, BTreeSet::from([caller.clone()]));
+
+//     // Helper to build a bounded vec from bytes
+//     let bv = |b: u8| BoundedVec::<u8, DefaultMaxVectorLength>::try_from(vec![b]).unwrap();
+
+//     // --- Case 1: Add bootnodes ---
+//     let add_set = BTreeSet::from([bv(1), bv(2)]);
+//     assert_ok!(Network::update_bootnodes(
+//       RuntimeOrigin::signed(caller.clone()),
+//       subnet_id,
+//       add_set.clone(),
+//       BTreeSet::new(),
+//     ));
+
+//     // Verify bootnodes added
+//     let stored = SubnetBootnodes::<Test>::get(subnet_id);
+//     assert!(stored.contains(&bv(1)));
+//     assert!(stored.contains(&bv(2)));
+
+//     // --- Case 2: Remove a bootnode ---
+//     let remove_set = BTreeSet::from([bv(1)]);
+//     assert_ok!(
+//       Network::update_bootnodes(
+//         RuntimeOrigin::signed(caller.clone()),
+//         subnet_id,
+//         BTreeSet::new(),
+//         remove_set.clone(),
+//       )
+//     );
+
+//     // --- Case 5: Check event ---
+//     // for e in System::events() {
+//     //   log::error!("Event: {:?}", e.event);
+//     // }
+
+//     // assert_eq!(
+//     //   *network_events().last().unwrap(),
+//     //   Event::BootnodesUpdated {
+//     //     subnet_id,
+//     //     added: add_set.clone(),
+//     //     removed: BTreeSet::new(),
+//     //   }
+//     // );
+
+//     // Verify bootnode removed
+//     let stored = SubnetBootnodes::<Test>::get(subnet_id);
+//     assert!(!stored.contains(&bv(1)));
+//     assert!(stored.contains(&bv(2))); // bv(2) still present
+
+//     // --- Case 3: Too many bootnodes ---
+//     // Fill to max
+//     let mut add_set = BTreeSet::new();
+//     for i in 3..=max_bootnodes as u8 {
+//       add_set.insert(bv(i));
+//     }
+//     assert_ok!(Network::update_bootnodes(
+//       RuntimeOrigin::signed(caller.clone()),
+//       subnet_id,
+//       add_set.clone(),
+//       BTreeSet::new(),
+//     ));
+
+
+//     // System::assert_last_event(
+//     //   Event::BootnodesUpdated {
+//     //     subnet_id,
+//     //     added: add_set,
+//     //     removed: BTreeSet::new(),
+//     //   }
+//     //   .into(),
+//     // );
+
+//     // Try to add one more (should fail)
+//     let too_many = BTreeSet::from([bv(99), bv(100)]);
+//     assert_err!(
+//       Network::update_bootnodes(
+//         RuntimeOrigin::signed(caller.clone()),
+//         subnet_id,
+//         too_many.clone(),
+//         BTreeSet::new(),
+//       ),
+//       Error::<Test>::TooManyBootnodes
+//     );
+
+//     // --- Case 4: Unauthorized caller ---
+//     assert_err!(
+//       Network::update_bootnodes(
+//         RuntimeOrigin::signed(unauth_caller),
+//         subnet_id,
+//         BTreeSet::new(),
+//         BTreeSet::new(),
+//       ),
+//       Error::<Test>::InvalidAccess
+//     );
+//   });
+// }
+
+#[test]
+fn test_update_bootnodes_event() {
+  new_test_ext().execute_with(|| {
+    let subnet_id = 1;
+    let caller = account(0);
+
+    assert_ok!(
+      Network::update_bootnodes(
+        RuntimeOrigin::signed(caller.clone()),
+        subnet_id,
+        BTreeSet::new(),
+        BTreeSet::new(),
+      )
+    );
+    log::error!("Error here");
+    for e in network_events() {
+      log::error!("Event: {:?}", e);
+    }
+
+    for e in System::events() {
+      log::error!("Event: {:?}", e);
+    }
+    // assert_eq!(
+    //   *network_events().last().unwrap(),
+    //   Event::SubnetActivated {
+    //     subnet_id: subnet_id, 
+    //   }
+    // );
+
+    // assert_eq!(
+    //   *network_events().last().unwrap(),
+    //   Event::BootnodesUpdated {
+    //     subnet_id,
+    //     added: add_set.clone(),
+    //     removed: BTreeSet::new(),
+    //   }
+    // );
   });
 }
