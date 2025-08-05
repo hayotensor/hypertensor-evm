@@ -482,7 +482,9 @@ impl<T: Config> Pallet<T> {
     let mut stake_weight_sum: f64 = 0.0;
     let mut total_subnet_reads = 0u64;
 
-    let (overwatch_subnet_weights, _, overwatch_block_weight) = Self::calculate_overwatch_rewards_v2(epoch);
+    let (overwatch_subnet_weights, _, overwatch_block_weight) = Self::calculate_overwatch_rewards_v2(
+      Self::get_current_overwatch_epoch_as_u32()
+    );
     weight = weight.saturating_add(overwatch_block_weight);
 
     for (subnet_id, data) in SubnetsData::<T>::iter() {
@@ -547,7 +549,9 @@ impl<T: Config> Pallet<T> {
     let total_electable_nodes: f64 = TotalElectableNodes::<T>::get() as f64;
     let mut total_subnet_reads = 0u64;
 
-    let (overwatch_subnet_weights, _, overwatch_block_weight) = Self::calculate_overwatch_rewards_v2(epoch);
+    let (overwatch_subnet_weights, _, overwatch_block_weight) = Self::calculate_overwatch_rewards_v2(
+      Self::get_current_overwatch_epoch_as_u32()
+    );
     weight = weight.saturating_add(overwatch_block_weight);
 
 

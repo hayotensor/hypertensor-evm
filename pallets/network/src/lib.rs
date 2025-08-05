@@ -651,6 +651,10 @@ pub mod pallet {
 		NotInAccessList,
 		TooManyBootnodes,
 		InvalidAccess,
+		/// Not in the commit period of the epoch
+		NotCommitPeriod,
+		/// Not in the reveal period of the epoch
+		NotRevealPeriod,
 	}
 	
 	/// Subnet data
@@ -1249,6 +1253,15 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultMaxOverwatchNodes() -> u32 {
 		64
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchInterval() -> u32 {
+		16
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchCommitCutoff() -> u128 {
+		// 80%
+		800000000000000000
 	}
 	#[pallet::type_value]
 	pub fn DefaultMaxOverwatchNodePenalties() -> u32 {
@@ -2829,6 +2842,23 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type TotalOverwatchNodeUids<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+	
+	// Overwatch epoch multipler vs T::EpochLength
+	// i.e. Overwatch nodes submit data every /x/ epochs
+	#[pallet::storage]
+	pub type OverwatchEpochLengthMultiplier<T: Config> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
+
+	// The interval overwatch nodes submit weights
+	// i.e. every 10 epochs
+	#[pallet::storage]
+	pub type OverwatchInterval<T: Config> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
+
+	// The percent progress of the overwatch interval where the node can:
+	// - no longer commit
+	// - can reveal
+	// i.e. Node can commit for 80% of the period, and reveal in the latter 20% of the period
+	#[pallet::storage]
+	pub type OverwatchCommitCutoff<T: Config> = StorageValue<_, u128, ValueQuery, DefaultOverwatchCommitCutoff>;
 
 	// Hotkey => OverwatchNode
 	#[pallet::storage]
@@ -3410,20 +3440,8 @@ pub mod pallet {
 			add: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>, 
 			remove: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>
 		) -> DispatchResult {
-			let account_id: T::AccountId = ensure_signed(origin)?;
-
-			ensure!(true, Error::<T>::InvalidAccess);
-
-			// Self::is_paused()?;
-			// Self::do_update_bootnodes(origin, subnet_id, add, remove)
-			Self::deposit_event(Event::SubnetActivated { subnet_id: subnet_id });
-			// Self::deposit_event(Event::BootnodesUpdated {
-			// 	subnet_id: subnet_id,
-			// 	added: add,
-			// 	removed: remove,
-			// });
-
-			Ok(())
+			Self::is_paused()?;
+			Self::do_update_bootnodes(origin, subnet_id, add, remove)
 		}
 
 		/// Add a Subnet Node to the subnet by registering and activating in one call
@@ -5369,6 +5387,17 @@ pub mod pallet {
 			T::MajorityCollectiveOrigin::ensure_origin(origin)?;
 			Self::do_set_sigmoid_steepness(value)
 		}
+
+		#[pallet::call_index(84)]
+		#[pallet::weight({0})]
+		pub fn set_overwatch_epoch_length_multiplier(
+			origin: OriginFor<T>, 
+			value: u32
+		) -> DispatchResult {
+			T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+			Self::do_set_overwatch_epoch_length_multiplier(value)
+		}
+
 	}
 
 	impl<T: Config> Pallet<T> {

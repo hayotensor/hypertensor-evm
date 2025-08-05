@@ -13,6 +13,7 @@ use crate::{
   MinSubnetNodes, 
   TotalSubnetNodes,
   SubnetsData,
+  SubnetData,
   RegistrationSubnetData,
   SubnetRemovalReason,
   SubnetActivationEnactmentEpochs,
@@ -1157,149 +1158,122 @@ fn test_get_current_registration_cost() {
   });
 }
 
-// #[test]
-// fn test_update_bootnodes() {
-//   new_test_ext().execute_with(|| {
-//     // --- Setup ---
-//     let subnet_id = 1u32;
-//     let caller = account(0);
-//     let unauth_caller = account(1);
-//     let max_bootnodes = MaxBootnodes::<Test>::get();
-
-//     // Give caller access to manage bootnodes
-//     SubnetBootnodeAccess::<Test>::insert(subnet_id, BTreeSet::from([caller.clone()]));
-
-//     // Helper to build a bounded vec from bytes
-//     let bv = |b: u8| BoundedVec::<u8, DefaultMaxVectorLength>::try_from(vec![b]).unwrap();
-
-//     // --- Case 1: Add bootnodes ---
-//     let add_set = BTreeSet::from([bv(1), bv(2)]);
-//     assert_ok!(Network::update_bootnodes(
-//       RuntimeOrigin::signed(caller.clone()),
-//       subnet_id,
-//       add_set.clone(),
-//       BTreeSet::new(),
-//     ));
-
-//     // Verify bootnodes added
-//     let stored = SubnetBootnodes::<Test>::get(subnet_id);
-//     assert!(stored.contains(&bv(1)));
-//     assert!(stored.contains(&bv(2)));
-
-//     // --- Case 2: Remove a bootnode ---
-//     let remove_set = BTreeSet::from([bv(1)]);
-//     assert_ok!(
-//       Network::update_bootnodes(
-//         RuntimeOrigin::signed(caller.clone()),
-//         subnet_id,
-//         BTreeSet::new(),
-//         remove_set.clone(),
-//       )
-//     );
-
-//     // --- Case 5: Check event ---
-//     // for e in System::events() {
-//     //   log::error!("Event: {:?}", e.event);
-//     // }
-
-//     // assert_eq!(
-//     //   *network_events().last().unwrap(),
-//     //   Event::BootnodesUpdated {
-//     //     subnet_id,
-//     //     added: add_set.clone(),
-//     //     removed: BTreeSet::new(),
-//     //   }
-//     // );
-
-//     // Verify bootnode removed
-//     let stored = SubnetBootnodes::<Test>::get(subnet_id);
-//     assert!(!stored.contains(&bv(1)));
-//     assert!(stored.contains(&bv(2))); // bv(2) still present
-
-//     // --- Case 3: Too many bootnodes ---
-//     // Fill to max
-//     let mut add_set = BTreeSet::new();
-//     for i in 3..=max_bootnodes as u8 {
-//       add_set.insert(bv(i));
-//     }
-//     assert_ok!(Network::update_bootnodes(
-//       RuntimeOrigin::signed(caller.clone()),
-//       subnet_id,
-//       add_set.clone(),
-//       BTreeSet::new(),
-//     ));
-
-
-//     // System::assert_last_event(
-//     //   Event::BootnodesUpdated {
-//     //     subnet_id,
-//     //     added: add_set,
-//     //     removed: BTreeSet::new(),
-//     //   }
-//     //   .into(),
-//     // );
-
-//     // Try to add one more (should fail)
-//     let too_many = BTreeSet::from([bv(99), bv(100)]);
-//     assert_err!(
-//       Network::update_bootnodes(
-//         RuntimeOrigin::signed(caller.clone()),
-//         subnet_id,
-//         too_many.clone(),
-//         BTreeSet::new(),
-//       ),
-//       Error::<Test>::TooManyBootnodes
-//     );
-
-//     // --- Case 4: Unauthorized caller ---
-//     assert_err!(
-//       Network::update_bootnodes(
-//         RuntimeOrigin::signed(unauth_caller),
-//         subnet_id,
-//         BTreeSet::new(),
-//         BTreeSet::new(),
-//       ),
-//       Error::<Test>::InvalidAccess
-//     );
-//   });
-// }
-
 #[test]
-fn test_update_bootnodes_event() {
+fn test_update_bootnodes() {
   new_test_ext().execute_with(|| {
-    let subnet_id = 1;
+    increase_epochs(1);
+    // --- Setup ---
     let caller = account(0);
+    let unauth_caller = account(1);
+    let max_bootnodes = MaxBootnodes::<Test>::get();
+    let subnet_id = 1u32;
 
-    assert_ok!(
+    assert_err!(
       Network::update_bootnodes(
         RuntimeOrigin::signed(caller.clone()),
         subnet_id,
         BTreeSet::new(),
         BTreeSet::new(),
+      ),
+      Error::<Test>::InvalidSubnetId
+    );
+
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    let subnet_data = SubnetData {
+      id: subnet_id,
+      name: subnet_name.clone(),
+      repo: subnet_name.clone(),
+      description: subnet_name.clone(),
+      misc: subnet_name.clone(),
+      state: SubnetState::Registered,
+      start_epoch: u32::MAX,
+    };
+
+    // Store subnet data
+    SubnetsData::<Test>::insert(subnet_id, &subnet_data);
+
+
+    // Give caller access to manage bootnodes
+    SubnetBootnodeAccess::<Test>::insert(subnet_id, BTreeSet::from([caller.clone()]));
+
+    // Helper to build a bounded vec from bytes
+    let bv = |b: u8| BoundedVec::<u8, DefaultMaxVectorLength>::try_from(vec![b]).unwrap();
+
+    // --- Case 1: Add bootnodes ---
+    let add_set = BTreeSet::from([bv(1), bv(2)]);
+    assert_ok!(Network::update_bootnodes(
+      RuntimeOrigin::signed(caller.clone()),
+      subnet_id,
+      add_set.clone(),
+      BTreeSet::new(),
+    ));
+
+    // Verify bootnodes added
+    let stored = SubnetBootnodes::<Test>::get(subnet_id);
+    assert!(stored.contains(&bv(1)));
+    assert!(stored.contains(&bv(2)));
+
+    // --- Case 2: Remove a bootnode ---
+    let remove_set = BTreeSet::from([bv(1)]);
+    assert_ok!(
+      Network::update_bootnodes(
+        RuntimeOrigin::signed(caller.clone()),
+        subnet_id,
+        BTreeSet::new(),
+        remove_set.clone(),
       )
     );
-    log::error!("Error here");
-    for e in network_events() {
-      log::error!("Event: {:?}", e);
-    }
 
-    for e in System::events() {
-      log::error!("Event: {:?}", e);
-    }
-    // assert_eq!(
-    //   *network_events().last().unwrap(),
-    //   Event::SubnetActivated {
-    //     subnet_id: subnet_id, 
-    //   }
-    // );
+    // Verify bootnode removed
+    let stored = SubnetBootnodes::<Test>::get(subnet_id);
+    assert!(!stored.contains(&bv(1)));
+    assert!(stored.contains(&bv(2))); // bv(2) still present
 
-    // assert_eq!(
-    //   *network_events().last().unwrap(),
-    //   Event::BootnodesUpdated {
-    //     subnet_id,
-    //     added: add_set.clone(),
-    //     removed: BTreeSet::new(),
-    //   }
-    // );
+    // --- Case 3: Too many bootnodes ---
+    // Fill to max
+    let mut add_set = BTreeSet::new();
+    for i in 3..=max_bootnodes as u8 {
+      add_set.insert(bv(i));
+    }
+    assert_ok!(Network::update_bootnodes(
+      RuntimeOrigin::signed(caller.clone()),
+      subnet_id,
+      add_set.clone(),
+      BTreeSet::new(),
+    ));
+
+
+    // Try to add one more (should fail)
+    let too_many = BTreeSet::from([bv(99), bv(100)]);
+    assert_err!(
+      Network::update_bootnodes(
+        RuntimeOrigin::signed(caller.clone()),
+        subnet_id,
+        too_many.clone(),
+        BTreeSet::new(),
+      ),
+      Error::<Test>::TooManyBootnodes
+    );
+
+    // --- Case 4: Unauthorized caller ---
+    assert_err!(
+      Network::update_bootnodes(
+        RuntimeOrigin::signed(unauth_caller),
+        subnet_id,
+        BTreeSet::new(),
+        BTreeSet::new(),
+      ),
+      Error::<Test>::InvalidAccess
+    );
+
+    // --- Case 5: Check event ---
+    assert_eq!(
+      *network_events().last().unwrap(),
+      Event::BootnodesUpdated {
+        subnet_id,
+        added: add_set.clone(),
+        removed: BTreeSet::new(),
+      }
+    );
   });
 }

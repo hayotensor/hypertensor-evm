@@ -48,7 +48,7 @@ fn test_commit_and_reveal_weights_success() {
     let hotkey: AccountId = account(2);
     let overwatch_node_id = 1;
     let subnet_id = 99;
-    let epoch = 0;
+    let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
 
     // Setup: assign ownership and create subnet
     let subnet_data = SubnetData {
@@ -81,32 +81,30 @@ fn test_commit_and_reveal_weights_success() {
     let commit_hash = make_commit(weight, salt.clone());
 
     // Commit
-    assert_ok!(Network::do_commit_ow_weights(
-        RuntimeOrigin::signed(hotkey.clone()),
-        overwatch_node_id,
-        vec![OverwatchCommit {
-            subnet_id,
-            weight: commit_hash
-        }]
+    assert_ok!(Network::perform_commit_ow_weights(
+      overwatch_node_id,
+      vec![OverwatchCommit {
+        subnet_id,
+        weight: commit_hash
+      }]
     ));
 
     // Ensure it's stored
-    let stored = OverwatchCommits::<Test>::get((epoch, overwatch_node_id, subnet_id)).unwrap();
+    let stored = OverwatchCommits::<Test>::get((overwatch_epoch, overwatch_node_id, subnet_id)).unwrap();
     assert_eq!(stored, commit_hash);
 
     // Reveal
-    assert_ok!(Network::do_reveal_ow_weights(
-        RuntimeOrigin::signed(hotkey.clone()),
-        overwatch_node_id,
-        vec![OverwatchReveal {
-            subnet_id,
-            weight,
-            salt
-        }]
+    assert_ok!(Network::perform_reveal_ow_weights(
+      overwatch_node_id,
+      vec![OverwatchReveal {
+        subnet_id,
+        weight,
+        salt
+      }]
     ));
 
     // Ensure revealed weight is correct
-    let revealed = OverwatchReveals::<Test>::get((epoch, subnet_id, overwatch_node_id)).unwrap();
+    let revealed = OverwatchReveals::<Test>::get((overwatch_epoch, subnet_id, overwatch_node_id)).unwrap();
     assert_eq!(revealed, weight);
   });
 }

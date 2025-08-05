@@ -186,4 +186,9 @@ impl<T: Config> Pallet<T> {
     SigmoidSteepness::<T>::put(value);
     Ok(())
   }
+
+  pub fn do_set_overwatch_epoch_length_multiplier(value: u32) -> DispatchResult {
+    OverwatchEpochLengthMultiplier::<T>::put(value);
+    Ok(())
+  }
 }

@@ -48,6 +48,35 @@ impl<T: Config> Pallet<T> {
     current_block.saturating_div(epoch_length)
   }
 
+  pub fn get_current_overwatch_epoch_as_u32() -> u32 {
+    let current_block = Self::get_current_block_as_u32();
+    let epoch_length: u32 = T::EpochLength::get();
+    let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
+    current_block.saturating_div(epoch_length.saturating_mul(multiplier))
+  }
+
+  pub fn in_overwatch_commit_period() -> bool {
+    let current_block = Self::get_current_block_as_u32();
+    let epoch_length: u32 = T::EpochLength::get();
+    let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
+    let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
+    let current_epoch = current_block.saturating_div(overwatch_epoch_length);
+    let cutoff_percentage = OverwatchCommitCutoff::<T>::get();
+    let block_increase_cutoff = Self::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
+    // start_block + cutoff blocks
+    let epoch_cutoff_block = overwatch_epoch_length * current_epoch + block_increase_cutoff as u32;
+    current_block < epoch_cutoff_block
+  }
+
+  /// Return epoch, overwatch epoch
+  pub fn get_current_epochs_as_u32() -> (u32, u32) {
+    let current_block = Self::get_current_block_as_u32();
+    let epoch_length: u32 = T::EpochLength::get();
+    let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
+    let epoch = current_block.saturating_div(epoch_length);
+    (epoch, current_block.saturating_div(epoch_length.saturating_mul(multiplier)))
+  }
+
   pub fn get_current_epoch_with_block_as_u32(current_block: u32) -> u32 {
     let epoch_length: u32 = T::EpochLength::get();
     current_block.saturating_div(epoch_length)
@@ -283,5 +312,9 @@ impl<T: Config> Pallet<T> {
       // --- Insert validator for next epoch
       SubnetElectedValidator::<T>::insert(subnet_id, epoch, subnet_node_id.unwrap());
     }
+  }
+
+  fn get_last_overwatch_epoch(current_epoch: u32, submit_interval: u32) -> u32 {
+    current_epoch - (current_epoch % submit_interval)
   }
 }
