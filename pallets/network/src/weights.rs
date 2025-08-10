@@ -34,7 +34,7 @@ use core::marker::PhantomData;
 /// Weight functions needed for `pallet_network`.
 pub trait WeightInfo {
 	fn get_epoch_emissions() -> Weight;
-	fn precheck_consensus_submission() -> Weight;
+	fn precheck_subnet_consensus_submission() -> Weight;
 	fn calculate_rewards() -> Weight;
 	fn distribute_rewards() -> Weight;
 	fn elect_validator_v3() -> Weight;
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn precheck_consensus_submission() -> Weight {
+	fn precheck_subnet_consensus_submission() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `119002`
 		//  Estimated: `122467`
@@ -379,7 +379,7 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Network::SubnetConsensusSubmission` (r:1 w:0)
 	/// Proof: `Network::SubnetConsensusSubmission` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn precheck_consensus_submission() -> Weight {
+	fn precheck_subnet_consensus_submission() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `119002`
 		//  Estimated: `122467`

@@ -22,6 +22,7 @@ impl<T: Config> Pallet<T> {
     subnet_id: u32,
     block: u32,
     current_epoch: u32,
+    current_subnet_epoch: u32,
     consensus_submission_data: ConsensusSubmissionData<T::AccountId>, 
     rewards_data: RewardsData, 
     min_attestation_percentage: u128,
@@ -96,9 +97,9 @@ impl<T: Config> Pallet<T> {
         // Idle classified nodes can't be included in consensus data and can't have penalties
         // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
-        if subnet_node.classification.start_epoch + idle_epochs < current_epoch {
+        if subnet_node.classification.start_epoch + idle_epochs < current_subnet_epoch {
           // Increase class if they exist
-          Self::graduate_class(subnet_id, subnet_node.id, current_epoch);
+          Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch);
           // weight = weight.saturating_add(T::WeightInfo::graduate_class());
         }
         continue
@@ -149,9 +150,9 @@ impl<T: Config> Pallet<T> {
         SubnetNodeConsecutiveIncludedEpochs::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
         let cons_included_epochs = SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node.id);
         // --- Upgrade to Validator if no penalties and included in weights
-        // if _penalties == 0 && subnet_node.classification.start_epoch + included_epochs < current_epoch {
+        // if _penalties == 0 && subnet_node.classification.start_epoch + included_epochs < current_subnet_epoch {
         if _penalties == 0 && cons_included_epochs >= included_epochs {
-          if Self::graduate_class(subnet_id, subnet_node.id, current_epoch) {
+          if Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch) {
             // --- Insert into election slot
             Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
             // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());

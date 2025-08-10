@@ -144,7 +144,6 @@ fn build_activated_subnet<T: Config>(
   }
 
   let epoch = get_current_block_as_u32::<T>() / epoch_length;
-
 	let deposit_amount: u128 = NetworkMinStakeBalance::<T>::get() + 10000;
 
   // --- Add subnet nodes
@@ -603,7 +602,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn precheck_consensus_submission() {
+	fn precheck_subnet_consensus_submission() {
 		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
 		build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
@@ -623,7 +622,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch)
+			let result = Network::<T>::precheck_subnet_consensus_submission(subnet_id, epoch)
 				.ok_or(DispatchError::Other("Precheck consensus failed"));
 
 			assert!(result.is_ok(), "Precheck consensus failed");
@@ -663,7 +662,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch - 1)
+			let result = Network::<T>::precheck_subnet_consensus_submission(subnet_id, epoch - 1)
 				.ok_or(DispatchError::Other("Precheck consensus failed"));
 
 			assert!(result.is_ok(), "Precheck consensus failed");
@@ -703,7 +702,7 @@ mod benchmarks {
 		// submit data for the previous epoch
 		SubnetConsensusSubmission::<T>::insert(subnet_id, epoch - 1, consensus_data);
 
-		let result = Network::<T>::precheck_consensus_submission(subnet_id, epoch - 1)
+		let result = Network::<T>::precheck_subnet_consensus_submission(subnet_id, epoch - 1)
 			.ok_or(DispatchError::Other("Precheck consensus failed"));
 
 		assert!(result.is_ok(), "Precheck consensus failed");
@@ -737,6 +736,7 @@ mod benchmarks {
 			let _ = Network::<T>::distribute_rewards(
 				subnet_id,
 				block,
+				epoch,
 				epoch,
 				consensus_submission_data,
 				rewards_data,

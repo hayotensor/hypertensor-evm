@@ -575,7 +575,7 @@ fn test_distribute_rewards() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -605,14 +605,16 @@ fn test_distribute_rewards() {
 
     let epoch = Network::get_current_epoch_as_u32();
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
-    let block_number = System::block_number();
 
+    let block_number = System::block_number();
     let dstake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -699,7 +701,7 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -737,10 +739,13 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -857,7 +862,7 @@ fn test_distribute_rewards_remove_node_at_max_penalties() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -879,10 +884,13 @@ fn test_distribute_rewards_remove_node_at_max_penalties() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -1019,7 +1027,7 @@ fn test_distribute_rewards_graduate_idle_to_included() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1051,10 +1059,13 @@ fn test_distribute_rewards_graduate_idle_to_included() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -1158,7 +1169,7 @@ fn test_distribute_rewards_no_score_submitted_increase_penalties() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1194,10 +1205,13 @@ fn test_distribute_rewards_no_score_submitted_increase_penalties() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -1297,7 +1311,7 @@ fn test_attest_decrease_penalties_when_included() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1333,10 +1347,13 @@ fn test_attest_decrease_penalties_when_included() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -1485,7 +1502,7 @@ fn test_attest_decrease_penalties_when_included() {
 //     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 //     let epoch = Network::get_current_epoch_as_u32();
 
-//     let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+//     let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 // 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1517,17 +1534,20 @@ fn test_attest_decrease_penalties_when_included() {
 //     set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //     let block_number = System::block_number();
 
-//     Network::distribute_rewards(
-//       subnet_id,
-//       block_number,
-//       epoch,
-//       consensus_submission_data,
-//       rewards_data,
-//       min_attestation_percentage,
-//       reputation_increase_factor,
-//       reputation_decrease_factor,
-//       min_vast_majority_attestation_percentage
-//     );
+    // let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+    // Network::distribute_rewards(
+    //   subnet_id,
+    //   block_number,
+    //   epoch,
+    //   subnet_epoch,
+    //   consensus_submission_data,
+    //   rewards_data,
+    //   min_attestation_percentage,
+    //   reputation_increase_factor,
+    //   reputation_decrease_factor,
+    //   min_vast_majority_attestation_percentage
+    // );
 
 //     for n in 0..end {
 // 			let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, n+1);
@@ -1612,7 +1632,7 @@ fn test_attest_decrease_penalties_when_included() {
 //     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 //     let epoch = Network::get_current_epoch_as_u32();
 
-//     let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+//     let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 // 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1644,17 +1664,20 @@ fn test_attest_decrease_penalties_when_included() {
 //     set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //     let block_number = System::block_number();
 
-//     Network::distribute_rewards(
-//       subnet_id,
-//       block_number,
-//       epoch,
-//       consensus_submission_data,
-//       rewards_data,
-//       min_attestation_percentage,
-//       reputation_increase_factor,
-//       reputation_decrease_factor,
-//       min_vast_majority_attestation_percentage
-//     );
+    // let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+    // Network::distribute_rewards(
+    //   subnet_id,
+    //   block_number,
+    //   epoch,
+    //   subnet_epoch,
+    //   consensus_submission_data,
+    //   rewards_data,
+    //   min_attestation_percentage,
+    //   reputation_increase_factor,
+    //   reputation_decrease_factor,
+    //   min_vast_majority_attestation_percentage
+    // );
 
 //     for n in 0..end {
 // 			let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, n+1);
@@ -1797,7 +1820,7 @@ fn test_distribute_rewards_graduate_included_to_validator() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1829,10 +1852,13 @@ fn test_distribute_rewards_graduate_included_to_validator() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,
@@ -1922,7 +1948,7 @@ fn test_distribute_rewards_graduate_included_to_validator() {
       let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
       let epoch = Network::get_current_epoch_as_u32();
 
-      let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+      let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
       assert!(result.is_some(), "Precheck consensus failed");
 
@@ -1954,10 +1980,13 @@ fn test_distribute_rewards_graduate_included_to_validator() {
       set_block_to_subnet_slot_epoch(epoch, subnet_id);
       let block_number = System::block_number();
 
+      let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
       Network::distribute_rewards(
         subnet_id,
         block_number,
         epoch,
+        subnet_epoch,
         consensus_submission_data,
         rewards_data,
         min_attestation_percentage,
@@ -2077,7 +2106,7 @@ fn test_distribute_rewards_node_delegate_stake() {
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
-    let result = Network::precheck_consensus_submission(subnet_id, epoch - 1);
+    let result = Network::precheck_subnet_consensus_submission(subnet_id, epoch - 1);
 
 		assert!(result.is_some(), "Precheck consensus failed");
 
@@ -2111,10 +2140,13 @@ fn test_distribute_rewards_node_delegate_stake() {
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
     let block_number = System::block_number();
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::distribute_rewards(
       subnet_id,
       block_number,
       epoch,
+      subnet_epoch,
       consensus_submission_data,
       rewards_data,
       min_attestation_percentage,

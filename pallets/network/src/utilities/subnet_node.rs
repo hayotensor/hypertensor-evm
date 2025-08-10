@@ -179,32 +179,32 @@ impl<T: Config> Pallet<T> {
   pub fn get_classified_subnet_node_ids<C>(
     subnet_id: u32,
     classification: &SubnetNodeClass,
-    epoch: u32,
+    subnet_epoch: u32,
   ) -> C
     where
       C: FromIterator<u32>,
   {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, epoch))
+      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, subnet_epoch))
       .map(|(subnet_node_id, _)| subnet_node_id)
       .collect()
   }
   
   /// Get subnet nodes by classification
-  pub fn get_classified_subnet_nodes(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNode<T::AccountId>> {
+  pub fn get_classified_subnet_nodes(subnet_id: u32, classification: &SubnetNodeClass, subnet_epoch: u32) -> Vec<SubnetNode<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix_values(subnet_id)
-      .filter(|subnet_node| subnet_node.has_classification(classification, epoch))
+      .filter(|subnet_node| subnet_node.has_classification(classification, subnet_epoch))
       .collect()
   }
 
   pub fn get_classified_subnet_nodes_map(
     subnet_id: u32,
     classification: &SubnetNodeClass,
-    epoch: u32,
+    subnet_epoch: u32,
   ) -> BTreeMap<u32, SubnetNode<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
       .filter_map(|(subnet_node_id, subnet_node)| {
-        if subnet_node.has_classification(classification, epoch) {
+        if subnet_node.has_classification(classification, subnet_epoch) {
           Some((subnet_node_id, subnet_node))
         } else {
           None
@@ -213,9 +213,9 @@ impl<T: Config> Pallet<T> {
       .collect()
   }
 
-  pub fn get_classified_subnet_nodes_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
+  pub fn get_classified_subnet_nodes_info(subnet_id: u32, classification: &SubnetNodeClass, subnet_epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(subnet_node_id, subnet_node)| subnet_node.has_classification(classification, epoch))
+      .filter(|(subnet_node_id, subnet_node)| subnet_node.has_classification(classification, subnet_epoch))
       .map(|(subnet_node_id, subnet_node)| {
         let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
         SubnetNodeInfo {
@@ -246,13 +246,13 @@ impl<T: Config> Pallet<T> {
   pub fn get_classified_hotkeys<C>(
     subnet_id: u32,
     classification: &SubnetNodeClass,
-    epoch: u32,
+    subnet_epoch: u32,
   ) -> C
     where
       C: FromIterator<T::AccountId>,
   {
     SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, epoch))
+      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, subnet_epoch))
       .map(|(_, subnet_node)| subnet_node.hotkey)
       .collect()
   }

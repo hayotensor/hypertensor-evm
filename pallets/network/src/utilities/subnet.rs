@@ -128,6 +128,7 @@ impl<T: Config> Pallet<T> {
     current_epoch >= Self::get_next_registration_epoch(current_epoch)
   }
 
+  // Get the next registration epoch based on an epoch
   pub fn get_next_registration_epoch(current_epoch: u32) -> u32 {
     let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<T>::get();
     let interval: u32 = SubnetRegistrationInterval::<T>::get();
@@ -141,72 +142,42 @@ impl<T: Config> Pallet<T> {
     ((last_registration_epoch / interval) + 1) * interval
   }
 
-  // /// Get the next registration epoch based on an epoch
-  // pub fn get_next_registration_epoch(current_epoch: u32) -> u32 {
-  //   let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<T>::get();
-  //   // --- Handle genesis
-  //   if last_registration_epoch == 0 {
-  //     return 0
-  //   }
-
-  //   let interval: u32 = SubnetRegistrationInterval::<T>::get();
-
-  //   let offset = current_epoch % interval;
-
-
-  //   last_registration_epoch.saturating_add(
-  //     interval.saturating_sub(last_registration_epoch % interval)
-  //   )
-  // }
-
   // Check if the subnet state is registered, and if it's in the registration period
   pub fn is_subnet_registering(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
-    let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
-    let is_registering: bool = state == SubnetState::Registered;
+    // Only Registered state can be in registration period
+    if state != SubnetState::Registered {
+      return false
+    }
 
-    match SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
-      Ok(registered_epoch) => {
-        let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
-        if is_registering && epoch <= max_registration_epoch {
-          return true
-        }
-        false
-      },
-      Err(()) => false,
+    let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
+
+    if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
+      let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
+      epoch <= max_registration_epoch
+    } else {
+      false
     }
   }
 
   // Check if the subnet state is registered, and if it's in the enactment period
   pub fn is_subnet_in_enactment(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
+    // Only Registered subnets can be in enactment period
+    if state != SubnetState::Registered {
+      return false
+    }
+
     let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
     let subnet_activation_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
 
-    let is_registering: bool = state == SubnetState::Registered;
+    if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
+      let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
+      let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_activation_enactment_epochs);
 
-    match SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
-      Ok(registered_epoch) => {
-        let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
-        let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_activation_enactment_epochs);
-    
-        if is_registering && epoch <= max_registration_epoch {
-          return false
-        } else if is_registering && epoch <= max_enactment_epoch {
-          return true
-        }
-        false
-      },
-      Err(()) => false,
+      // Must be past registration but within enactment
+      epoch > max_registration_epoch && epoch <= max_enactment_epoch
+    } else {
+      false
     }
-    // let registered_epoch: u32 = subnet_data.registered;
-    // let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
-    // let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_activation_enactment_epochs);
-
-    // if is_registering && epoch <= max_registration_epoch {
-    //   return false
-    // } else if is_registering && epoch <= max_enactment_epoch {
-    //   return true
-    // }
-    // false
   }
 
   pub fn is_subnet_active(subnet_id: u32) -> Option<bool> {
@@ -229,92 +200,6 @@ impl<T: Config> Pallet<T> {
       Err(()) => None,
     }
   }
-
-  // pub fn get_current_registration_cost() -> u128 {
-  //   let last_registration_cost = LastRegistrationCost::<T>::get();
-  //   let min_price = MinRegistrationCost::<T>::get();
-  //   let last_updated = LastRegistrationBlock::<T>::get();
-  //   let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
-  //   log::error!("last_registration_cost {:?}", last_registration_cost);
-  //   log::error!("min_price              {:?}", min_price);
-  //   log::error!("last_updated           {:?}", last_updated);
-  //   log::error!("decay_blocks           {:?}", decay_blocks);
-
-  //   let current_block = Self::get_current_block_as_u32();
-  //   let delta_blocks = current_block.saturating_sub(last_updated);
-  //   log::error!("current_block          {:?}", current_block);
-  //   log::error!("delta_blocks           {:?}", delta_blocks);
-
-  //   if decay_blocks == 0 || last_registration_cost <= min_price {
-  //     return last_registration_cost.max(min_price);
-  //   }
-
-  //   let diff = last_registration_cost.saturating_sub(min_price);
-  //   log::error!("diff                   {:?}", diff);
-
-  //   // Calculate decay exponent: delta_blocks / decay_blocks
-  //   // This is in fixed point
-  //   let ratio = FixedU128::saturating_from_rational(delta_blocks as u128, decay_blocks as u128);
-  //   log::error!("ratio                  {:?}", ratio);
-
-  //   // Approximate e^(-ratio) using pow-based approximation
-  //   // For small x, (1 - x / n)^n ~ e^-x. We'll pick n = 64 for reasonable accuracy.
-  //   let n: u128 = 64;
-  //   // Divide ratio by integer n:
-  //   let n_fixed = FixedU128::from_inner(n * 1000000000000000000);
-  //   log::error!("n_fixed                {:?}", n_fixed);
-
-  //   let base_factor = match ratio.const_checked_div(n_fixed) {
-  //     Some(v) => v,
-  //     None => FixedU128::one()
-  //   };
-  //   log::error!("base_factor            {:?}", base_factor);
-
-  //   let base = FixedU128::one().saturating_sub(base_factor);
-    
-  //   // decay_factor = base ^ n
-  //   let decay_factor = base.saturating_pow(n as usize);
-
-  //   log::error!("base                   {:?}", base);
-  //   log::error!("decay_factor           {:?}", decay_factor);
-
-  //   let decayed = min_price.saturating_add(
-  //     decay_factor.saturating_mul_int(diff)
-  //   );
-  //   log::error!("decayed                {:?}", decayed);
-  //   log::error!("decayed                {:?}", decayed.max(min_price));
-
-  //   decayed.max(min_price)
-  // }
-
-  // pub fn get_current_registration_cost() -> u128 {
-  //   let last_registration_cost = LastRegistrationCost::<T>::get();
-  //   let min_price = MinRegistrationCost::<T>::get();
-  //   let last_updated = LastRegistrationBlock::<T>::get();
-  //   let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
-  //   log::error!("decay_blocks           {:?}", decay_blocks);
-
-  //   let current_block = Self::get_current_block_as_u32();
-  //   let delta_blocks = current_block.saturating_sub(last_updated);
-  //   log::error!("current_block          {:?}", current_block);
-  //   log::error!("delta_blocks           {:?}", delta_blocks);
-
-  //   // Already at min or no decay period
-  //   if decay_blocks == 0 || last_registration_cost <= min_price {
-  //     return last_registration_cost.max(min_price);
-  //   }
-
-  //   let diff = last_registration_cost.saturating_sub(min_price);
-  //   log::error!("diff                   {:?}", diff);
-
-  //   // Linear decay: factor = 1 - delta / decay_blocks
-  //   let factor = decay_blocks.saturating_sub(delta_blocks) as u128;
-  //   let decayed = min_price.saturating_add(diff.saturating_mul(factor) / decay_blocks as u128);
-  //   log::error!("factor                 {:?}", factor);
-  //   log::error!("decayed                {:?}", decayed);
-
-  //   decayed.max(min_price)
-  // }
 
   pub fn get_current_registration_cost(block: u32) -> u128 {
     let last_registration_cost = LastRegistrationCost::<T>::get();

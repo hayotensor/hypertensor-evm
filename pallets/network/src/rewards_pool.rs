@@ -21,7 +21,7 @@ impl<T: Config> Pallet<T> {
   pub fn distribute_rewards(
     subnet_id: u32,
     block: u32,
-    current_epoch: u32,
+    current_subnet_epoch: u32,
     consensus_submission_data: ConsensusSubmissionData<T::AccountId>, 
     rewards_data: RewardsData, 
     min_attestation_percentage: u128,
@@ -54,7 +54,7 @@ impl<T: Config> Pallet<T> {
         consensus_submission_data.attestation_ratio,
         min_attestation_percentage,
         reputation_decrease_factor,
-        current_epoch
+        current_subnet_epoch
       );
       return weight.saturating_add(slash_validator_weight);
     }
@@ -98,9 +98,9 @@ impl<T: Config> Pallet<T> {
         // Idle classified nodes can't be included in consensus data and can't have penalties
         // so we check the class immediately.
         // --- Upgrade to Included if past the queue epochs
-        if subnet_node.classification.start_epoch + queue_epochs > current_epoch {
+        if subnet_node.classification.start_epoch + queue_epochs > current_subnet_epoch {
           // Increase class if they exist
-          Self::graduate_class(subnet_id, subnet_node.id, current_epoch);
+          Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch);
           // weight = weight.saturating_add(T::WeightInfo::graduate_class());
         }
         continue
@@ -125,8 +125,8 @@ impl<T: Config> Pallet<T> {
 
       if subnet_node.classification.node_class == SubnetNodeClass::Included {
         // --- Upgrade to Validator if no penalties
-        if penalties == 0 && subnet_node.classification.start_epoch + included_epochs > current_epoch {
-          if Self::graduate_class(subnet_id, subnet_node.id, current_epoch) {
+        if penalties == 0 && subnet_node.classification.start_epoch + included_epochs > current_subnet_epoch {
+          if Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch) {
             // --- Insert into election slot
             Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
             // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
@@ -160,7 +160,7 @@ impl<T: Config> Pallet<T> {
               consensus_submission_data.attestation_ratio, 
               min_attestation_percentage, 
               reputation_increase_factor,
-              current_epoch
+              current_subnet_epoch
             );
             // weight = weight.saturating_add(T::WeightInfo::increase_coldkey_reputation());
           },

@@ -125,7 +125,6 @@ parameter_types! {
   pub const DelegateStakeCooldownEpochs: u32 = 100;
 	pub const NodeDelegateStakeCooldownEpochs: u32 = 100; 
   pub const StakeCooldownEpochs: u32 = 100;
-	pub const DelegateStakeEpochsRemovalWindow: u32 = 10;
   pub const MaxDelegateStakeUnlockings: u32 = 32;
   pub const MaxStakeUnlockings: u32 = 32;
 	pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
@@ -146,7 +145,6 @@ impl pallet_network::Config for Test {
   type DelegateStakeCooldownEpochs = DelegateStakeCooldownEpochs;
 	type NodeDelegateStakeCooldownEpochs = NodeDelegateStakeCooldownEpochs; 
   type StakeCooldownEpochs = DelegateStakeCooldownEpochs;
-	type DelegateStakeEpochsRemovalWindow = DelegateStakeEpochsRemovalWindow;
   type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
   type MaxStakeUnlockings = MaxStakeUnlockings;
   type MinProposalStake = MinProposalStake;

@@ -286,70 +286,6 @@ impl<T: Config> Pallet<T> {
   /// * `min_class` - Minimum required class
   ///     * A subnet may likely require Registered or Idle to enter subnet
   ///
-  // pub fn proof_of_stake(
-  //   subnet_id: u32, 
-  //   peer_id: Vec<u8>,
-  //   min_class: &SubnetNodeClass
-  // ) -> bool {
-  //   if !SubnetsData::<T>::contains_key(subnet_id) {
-  //     return false
-  //   }
-
-  //   let mut is_staked = false;
-
-  //   let current_epoch = Self::get_current_epoch_as_u32();
-
-  //   // --- Use peer ID
-  //   is_staked = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-  //     Ok(subnet_node_id) => {
-  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
-  //         Err(()) => false
-  //       }
-  //     },
-  //     Err(()) => false,
-  //   };
-
-  //   if is_staked {
-  //     return true
-  //   }
-
-  //   // --- Use peer ID, check bootnode peer ID
-  //   is_staked = match BootstrapPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-  //     Ok(subnet_node_id) => {
-  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
-  //         Err(()) => false
-  //       }
-  //     },
-  //     Err(()) => false,
-  //   };
-
-  //   if is_staked {
-  //     return true
-  //   }
-
-  //   // --- Use peer ID, check client peer ID
-  //   is_staked = match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-  //     Ok(subnet_node_id) => {
-  //       match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-  //         Ok(subnet_node) => subnet_node.has_classification(min_class, current_epoch),
-  //         Err(()) => false
-  //       }
-  //     },
-  //     Err(()) => false,
-  //   };
-
-  //   if is_staked {
-  //     return true
-  //   }
-
-  //   // --- Check overwatch node
-  //   match PeerIdOverwatchNode::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-  //     Ok(_) => true,
-  //     Err(()) => false,
-  //   }
-  // }
   pub fn proof_of_stake(
     subnet_id: u32, 
     peer_id: Vec<u8>,
@@ -359,7 +295,7 @@ impl<T: Config> Pallet<T> {
         return false;
     }
 
-    let current_epoch = Self::get_current_epoch_as_u32();
+    let current_subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
     let peer_id = PeerId(peer_id);
 
     // Helper closure to check a peer_id lookup mapping
@@ -367,7 +303,7 @@ impl<T: Config> Pallet<T> {
       mapping(subnet_id, peer_id.clone())
         .ok()
         .and_then(|subnet_node_id| SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id).ok())
-        .map(|subnet_node| subnet_node.has_classification(min_class, current_epoch))
+        .map(|subnet_node| subnet_node.has_classification(min_class, current_subnet_epoch))
         .unwrap_or(false)
     };
 

@@ -158,6 +158,8 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
   let epoch_length = EpochLength::get();
   let epoch = System::block_number() / epoch_length;
 
+  let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
   // --- Add subnet nodes
   let block_number = System::block_number();
   let mut amount_staked = 0;
@@ -214,7 +216,7 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
 
     // --- Is ``Validator`` if registered before subnet activation
     assert_eq!(subnet_node_data.classification.node_class, SubnetNodeClass::Validator);
-    assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, epoch));
+    assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, subnet_epoch));
 
     let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer_id.clone());
     assert_eq!(subnet_node_account, hotkey_subnet_node_id);
