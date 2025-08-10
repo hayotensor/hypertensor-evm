@@ -94,8 +94,8 @@ impl<T: Config> Pallet<T> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return Vec::new();
     }
-    let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, epoch)
+    let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch)
   }
 
   pub fn get_subnet_nodes_included(
@@ -104,8 +104,8 @@ impl<T: Config> Pallet<T> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return Vec::new();
     }
-    let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch)
+    let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, subnet_epoch)
   }
 
   pub fn get_subnet_nodes_validator(
@@ -114,8 +114,8 @@ impl<T: Config> Pallet<T> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return Vec::new();
     }
-    let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Validator, epoch)
+    let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+    Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Validator, subnet_epoch)
   }
 
   pub fn get_subnet_nodes_info(
@@ -124,8 +124,8 @@ impl<T: Config> Pallet<T> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return Vec::new();
     }
-    let epoch: u32 = Self::get_current_epoch_as_u32();
-    Self::get_classified_subnet_nodes_info(subnet_id, &SubnetNodeClass::Validator, epoch)
+    let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+    Self::get_classified_subnet_nodes_info(subnet_id, &SubnetNodeClass::Validator, subnet_epoch)
   }
 
   pub fn get_subnet_node_info(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
@@ -164,8 +164,8 @@ impl<T: Config> Pallet<T> {
     return Some(info)
   }
 
-  pub fn get_elected_validator_info(subnet_id: u32, epoch: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
-    match SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
+  pub fn get_elected_validator_info(subnet_id: u32, subnet_epoch: u32) -> Option<SubnetNodeInfo<T::AccountId>> {
+    match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
       Ok(subnet_node_id) => {
         Self::get_subnet_node_info(subnet_id, subnet_node_id)
       },
@@ -173,8 +173,8 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  pub fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Option<SubnetNode<T::AccountId>> {
-    match SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
+  pub fn get_elected_validator_node(subnet_id: u32, subnet_epoch: u32) -> Option<SubnetNode<T::AccountId>> {
+    match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
       Ok(subnet_node_id) => {
         match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
           Ok(data) => {
@@ -204,9 +204,9 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_consensus_data(
     subnet_id: u32,
-    epoch: u32
+    subnet_epoch: u32
   ) -> Option<ConsensusData<T::AccountId>> {
-    let data = SubnetConsensusSubmission::<T>::get(subnet_id, epoch);
+    let data = SubnetConsensusSubmission::<T>::get(subnet_id, subnet_epoch);
     Some(data?)
   }
 

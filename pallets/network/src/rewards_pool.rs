@@ -21,6 +21,7 @@ impl<T: Config> Pallet<T> {
   pub fn distribute_rewards(
     subnet_id: u32,
     block: u32,
+    current_epoch: u32,
     current_subnet_epoch: u32,
     consensus_submission_data: ConsensusSubmissionData<T::AccountId>, 
     rewards_data: RewardsData, 
@@ -54,7 +55,7 @@ impl<T: Config> Pallet<T> {
         consensus_submission_data.attestation_ratio,
         min_attestation_percentage,
         reputation_decrease_factor,
-        current_subnet_epoch
+        current_epoch
       );
       return weight.saturating_add(slash_validator_weight);
     }

@@ -475,8 +475,6 @@ fn test_deactivate_try_removing_all_stake() {
 
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-    let epoch = get_epoch();
-
     assert_ok!(
       Network::deactivate_subnet_node(
         RuntimeOrigin::signed(coldkey.clone()),

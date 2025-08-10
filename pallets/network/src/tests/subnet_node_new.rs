@@ -561,9 +561,9 @@ fn test_get_classification_subnet_nodes() {
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
     let epoch_length = EpochLength::get();
-    let epoch = System::block_number() / epoch_length;
-  
-    let submittable = Network::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Validator, epoch);
+    let subnet_epoch: u32 = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+    let submittable = Network::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Validator, subnet_epoch);
 
     assert_eq!(submittable.len() as u32, total_subnet_nodes);
   })
@@ -1017,7 +1017,7 @@ fn test_remove_subnet_node() {
 
     let block_number = System::block_number();
     let epoch_length = EpochLength::get();
-    let epoch = block_number / epoch_length;
+    let subnet_epoch: u32 = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     for n in 0..remove_n_peers {
       let _n = n + 1;
@@ -1035,7 +1035,7 @@ fn test_remove_subnet_node() {
       assert_eq!(subnet_node_data, Err(()));
     }
 
-    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, epoch);
+    let node_set: BTreeSet<<Test as frame_system::Config>::AccountId> = Network::get_classified_hotkeys(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
 
     assert_eq!(node_set.len(), (total_subnet_nodes - remove_n_peers) as usize);
     assert_eq!(Network::total_stake(), amount_staked);
@@ -1251,7 +1251,6 @@ fn test_deactivate_subnet_node_reactivate() {
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);    
 
-    let epoch = get_epoch();
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     assert_ok!(
@@ -1271,7 +1270,6 @@ fn test_deactivate_subnet_node_reactivate() {
 
     increase_epochs(1);
 
-    let epoch = get_epoch();
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     assert_ok!(

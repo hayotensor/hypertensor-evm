@@ -258,12 +258,12 @@ impl<T: Config> Pallet<T> {
 
   pub fn elect_validator_v3(
     subnet_id: u32,
-    epoch: u32,
+    subnet_epoch: u32,
     block: u32
   ) {
     // Redundant
     // If validator already chosen, then return
-    if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
+    if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
       return
     }
 
@@ -281,7 +281,7 @@ impl<T: Config> Pallet<T> {
 
     if subnet_node_id.is_some() {
       // --- Insert validator for next epoch
-      SubnetElectedValidator::<T>::insert(subnet_id, epoch, subnet_node_id.unwrap());
+      SubnetElectedValidator::<T>::insert(subnet_id, subnet_epoch, subnet_node_id.unwrap());
     }
   }
 

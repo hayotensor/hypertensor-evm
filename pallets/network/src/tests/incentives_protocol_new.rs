@@ -105,7 +105,7 @@ fn test_validate() {
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -176,10 +176,11 @@ fn test_validate_after_slot_error() {
     let epoch = block_number / epoch_length;
 
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -227,10 +228,11 @@ fn test_validate_invalid_validator() {
     let epoch = block_number / epoch_length;
 
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -281,10 +283,11 @@ fn test_attest() {
     let epoch = block_number / epoch_length;
 
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -362,10 +365,11 @@ fn test_attest_no_submission_err() {
     let epoch = block_number / epoch_length;
 
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -410,10 +414,11 @@ fn test_attest_already_attested_err() {
     let epoch = block_number / epoch_length;
 
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -530,10 +535,11 @@ fn test_distribute_rewards() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -670,10 +676,11 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -807,10 +814,11 @@ fn test_distribute_rewards_remove_node_at_max_penalties() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -982,10 +990,11 @@ fn test_distribute_rewards_graduate_idle_to_included() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -1123,10 +1132,11 @@ fn test_distribute_rewards_no_score_submitted_increase_penalties() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -1266,10 +1276,11 @@ fn test_attest_decrease_penalties_when_included() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -1457,12 +1468,13 @@ fn test_attest_decrease_penalties_when_included() {
 
 //     // ⸺ Submit consnesus data
 //     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    // let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//     Network::elect_validator_v3(
-//       subnet_id,
-//       epoch,
-//       block_number
-//     );
+    // Network::elect_validator_v3(
+    //   subnet_id,
+    //   subnet_epoch,
+    //   block_number
+    // );
 
 //     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
 //     assert!(validator_id != None, "Validator is None");
@@ -1585,10 +1597,11 @@ fn test_attest_decrease_penalties_when_included() {
 
 //     // ⸺ Submit consnesus data
 //     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    // let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
 //     Network::elect_validator_v3(
 //       subnet_id,
-//       epoch,
+//       subnet_epoch,
 //       block_number
 //     );
 
@@ -1775,10 +1788,11 @@ fn test_distribute_rewards_graduate_included_to_validator() {
 
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -1901,10 +1915,11 @@ fn test_distribute_rewards_graduate_included_to_validator() {
 
       // ⸺ Submit consnesus data
       set_block_to_subnet_slot_epoch(epoch, subnet_id);
+      let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
       Network::elect_validator_v3(
         subnet_id,
-        epoch,
+        subnet_epoch,
         block_number
       );
 
@@ -2062,9 +2077,11 @@ fn test_distribute_rewards_node_delegate_stake() {
     // ⸺ Submit consnesus data
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
 
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
     Network::elect_validator_v3(
       subnet_id,
-      epoch,
+      subnet_epoch,
       block_number
     );
 
@@ -2074,7 +2091,6 @@ fn test_distribute_rewards_node_delegate_stake() {
 
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
 
-    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
     let epoch = Network::get_current_epoch_as_u32();
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);

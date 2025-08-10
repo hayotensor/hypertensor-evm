@@ -41,7 +41,6 @@ impl<T: Config> Pallet<T> {
         params.state = SubnetState::Paused;
 
         params.start_epoch = epoch;
-        // params.start_epoch = epoch + max_pause_epochs;
 
         Ok(())
       }

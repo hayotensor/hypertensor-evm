@@ -17,6 +17,15 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
+  /// Increase coldkey reptuation
+	///
+	/// # Arguments
+	///
+	/// * `coldkey` - Nodes coldkey
+	/// * `attestation_percentage` - The attestation ratio of the validator nodes consensus
+	/// * `min_attestation_percentage` - Blockchains minimum attestation percentage (66%)
+	/// * `decrease_weight_factor` - `ReputationIncreaseFactor`.
+  /// * `epoch`: The blockchains general epoch
   pub fn increase_coldkey_reputation(
     coldkey: T::AccountId,
     attestation_percentage: u128,
@@ -91,6 +100,15 @@ impl<T: Config> Pallet<T> {
     ColdkeyReputation::<T>::insert(&coldkey, coldkey_reputation);
   }
 
+  /// Decrease coldkey reptuation
+	///
+	/// # Arguments
+	///
+	/// * `coldkey` - Nodes coldkey
+	/// * `attestation_percentage` - The attestation ratio of the validator nodes consensus
+	/// * `min_attestation_percentage` - Blockchains minimum attestation percentage (66%)
+	/// * `decrease_weight_factor` - `ReputationDecreaseFactor`.
+  /// * `epoch`: The blockchains general epoch
   pub fn decrease_coldkey_reputation(
     coldkey: T::AccountId,
     attestation_percentage: u128,
