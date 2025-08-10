@@ -327,17 +327,17 @@ impl<T: Config> Pallet<T> {
 
     // Already at min or no decay period
     if decay_blocks == 0 || last_registration_cost <= min_price {
-      return last_registration_cost.max(min_price);
+      return last_registration_cost.max(min_price)
     }
 
     // Fully decayed: exactly min price
     if delta_blocks >= decay_blocks {
-      return min_price;
+      return min_price
     }
 
     let diff = last_registration_cost.saturating_sub(min_price);
 
-    let remaining_frac = Self::percent_div((decay_blocks - delta_blocks) as u128, decay_blocks as u128);
+    let remaining_frac = Self::percent_div((decay_blocks.saturating_sub(delta_blocks)) as u128, decay_blocks as u128);
 
     // Apply concave exponential: exponent α < 1
     // e.g., α = 0.5 = sqrt (concave)
@@ -345,11 +345,21 @@ impl<T: Config> Pallet<T> {
     let concave_factor = Self::pow(Self::get_percent_as_f64(remaining_frac), Self::get_percent_as_f64(alpha));
 
     // price = min_price + diff * concave_factor
-    let decayed = min_price.saturating_add(
-      (diff as f64 * concave_factor) as u128
-    );
+    // let addend: u128 = (diff as f64 * concave_factor)
+    //   .clamp(0.0, u128::MAX as f64)   // clamp the float
+    //   as u128;                        // now safe to cast
 
-    decayed.max(min_price)
+    let safe_diff_f64 = (diff as f64).min(u128::MAX as f64 / concave_factor); // prevent inf
+    let addend = (safe_diff_f64 * concave_factor)
+      .clamp(0.0, u128::MAX as f64) as u128;
+
+    let decayed = min_price.saturating_add(addend);
+
+    // let decayed = min_price.saturating_add(
+    //   (diff as f64 * concave_factor) as u128
+    // );
+
+    decayed.min(u128::MAX).max(min_price)
   }
 
   pub fn update_last_registration_cost(current_cost: u128, block: u32) {

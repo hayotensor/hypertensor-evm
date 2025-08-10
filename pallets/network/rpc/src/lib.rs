@@ -16,6 +16,10 @@ use pallet_network::DefaultMaxVectorLength;
 
 #[rpc(client, server)]
 pub trait NetworkCustomApi<BlockHash> {
+	#[method(name = "network_getSubnetInfo")]
+	fn get_subnet_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
+	#[method(name = "network_getAllSubnetsInfo")]
+	fn get_subnet_info(&self, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getSubnetNodes")]
 	fn get_subnet_nodes(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 	#[method(name = "network_getSubnetNodesIncluded")]
@@ -84,6 +88,20 @@ where
 	C: ProvideRuntimeApi<Block> + HeaderBackend<Block> + Send + Sync + 'static,
 	C::Api: NetworkRuntimeApi<Block>,
 {
+	fn get_subnet_info(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
+		let api = self.client.runtime_api();
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
+		api.get_subnet_info(at, subnet_id).map_err(|e| {
+			Error::RuntimeError(format!("Unable to get subnet info: {:?}", e)).into()
+		})
+	}
+	fn get_all_subnets_info(&self, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
+		let api = self.client.runtime_api();
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
+		api.get_all_subnets_info(at).map_err(|e| {
+			Error::RuntimeError(format!("Unable to get all subnets info: {:?}", e)).into()
+		})
+	}
 	fn get_subnet_nodes(&self, subnet_id: u32, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
 		let api = self.client.runtime_api();
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);

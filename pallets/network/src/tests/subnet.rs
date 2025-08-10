@@ -33,8 +33,11 @@ use crate::{
   SubnetBootnodeAccess,
   DefaultMaxVectorLength,
   SubnetBootnodes,
+  MaxSubnetPenaltyCount,
+  MaxSubnetPauseEpochs,
+  SubnetPenaltyCount,
 };
-use sp_runtime::BoundedVec;
+use sp_runtime::{BoundedVec, Weight};
 //
 //
 //
@@ -1275,5 +1278,172 @@ fn test_update_bootnodes() {
         removed: BTreeSet::new(),
       }
     );
+  });
+}
+
+// #[test]
+// fn test_registration_period_no_removal() {
+//   new_test_ext().execute_with(|| {
+//     insert_subnet(1, SubnetState::Registered, 0);
+//     set_registration_epoch(1, 10);
+//     set_active_nodes(1, 5);
+//     set_delegate_stake(1, 1_000);
+
+//     // epoch inside registration period
+//     let epoch = 12; 
+//     let weight = Network::do_epoch_preliminaries(0, epoch);
+//     // Subnet should remain registered, no removal
+//     assert_eq!(SubnetsData::<Test>::contains_key(1), true);
+//     // Weight should be nonzero due to DB reads
+//     assert_ne!(weight, Weight::zero());
+//   });
+// }
+
+#[test]
+fn test_enactment_period_insufficient_nodes_removal() {
+  new_test_ext().execute_with(|| {
+    insert_subnet(2, SubnetState::Registered, 0);
+    set_registration_epoch(2, 5);
+
+    let subnet_registration_epochs = SubnetRegistrationEpochs::<Test>::get();
+    let subnet_enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
+
+    let min_subnet_nodes = MinSubnetNodes::<Test>::get();
+
+    // Set epoch inside enactment period
+    let epoch = 5 + subnet_registration_epochs + 1;
+    set_active_nodes(min_subnet_nodes - 1, 0);
+
+    // Run preliminaries - subnet should be removed due to insufficient nodes
+    Network::do_epoch_preliminaries(0, epoch);
+    assert!(!SubnetsData::<Test>::contains_key(2));
+  });
+}
+
+#[test]
+fn test_out_of_enactment_period_removal() {
+  new_test_ext().execute_with(|| {
+    insert_subnet(3, SubnetState::Registered, 0);
+    set_registration_epoch(3, 0);
+
+    let subnet_registration_epochs = SubnetRegistrationEpochs::<Test>::get();
+    let subnet_enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
+
+    // epoch after enactment period
+    let epoch = 0 + subnet_registration_epochs + subnet_enactment_epochs + 1;
+
+    // Should be removed
+    Network::do_epoch_preliminaries(0, epoch);
+    assert!(!SubnetsData::<Test>::contains_key(3));
+  });
+}
+
+#[test]
+fn test_paused_subnet_penalties_and_removal() {
+  new_test_ext().execute_with(|| {
+    insert_subnet(4, SubnetState::Paused, 0);
+    set_penalties(4, MaxSubnetPenaltyCount::<Test>::get()); // at max
+
+    let max_pause_epochs = MaxSubnetPauseEpochs::<Test>::get();
+    let epoch = max_pause_epochs + 10;
+
+    // Set start_epoch to trigger pause penalty increment
+    SubnetsData::<Test>::mutate(4, |d| d.as_mut().unwrap().start_epoch = 0);
+
+    // Penalty count should increase and subnet removed
+    Network::do_epoch_preliminaries(0, epoch);
+    assert!(!SubnetsData::<Test>::contains_key(4));
+  });
+}
+
+#[test]
+fn test_activated_subnet_delegate_stake_removal() {
+  new_test_ext().execute_with(|| {
+    // mint tokens so min delegate stake increases > 0
+    let _ = Balances::deposit_creating(&account(0), 1_000_000_000_000_000);
+
+    insert_subnet(5, SubnetState::Active, 0);
+    let min_dstake = Network::get_min_subnet_delegate_stake_balance_v2(5);
+    set_delegate_stake(5, min_dstake - 1); // below min delegate stake
+
+    // Epoch after start_epoch
+    let epoch = 10;
+    SubnetsData::<Test>::mutate(5, |d| d.as_mut().unwrap().start_epoch = 0);
+
+    Network::do_epoch_preliminaries(0, epoch);
+
+    // Should be removed due to low delegate stake
+    assert!(!SubnetsData::<Test>::contains_key(5));
+  });
+}
+
+#[test]
+fn test_activated_subnet_min_nodes_penalty_increment() {
+  new_test_ext().execute_with(|| {
+    insert_subnet(6, SubnetState::Active, 0);
+    set_active_nodes(6, 0); // below min nodes
+    set_penalties(6, 0);
+
+    // Ensure delegate stake is sufficient
+    set_delegate_stake(6, 1_000_000);
+
+    // Epoch after start_epoch
+    let epoch = 10;
+    SubnetsData::<Test>::mutate(6, |d| d.as_mut().unwrap().start_epoch = 0);
+
+    Network::do_epoch_preliminaries(0, epoch);
+
+    // Penalties should increase by 1
+    assert_eq!(SubnetPenaltyCount::<Test>::get(6), 1);
+    // Subnet should remain (no removal yet)
+    assert!(SubnetsData::<Test>::contains_key(6));
+  });
+}
+
+#[test]
+fn test_activated_subnet_max_penalties_removal() {
+  new_test_ext().execute_with(|| {
+    insert_subnet(7, SubnetState::Active, 0);
+    set_penalties(7, MaxSubnetPenaltyCount::<Test>::get() + 1);
+
+    // Ensure delegate stake & nodes are sufficient so penalty doesn't increase this call
+    set_delegate_stake(7, 1_000_000);
+    set_active_nodes(7, 10);
+
+    // Epoch after start_epoch
+    let epoch = 10;
+    SubnetsData::<Test>::mutate(7, |d| d.as_mut().unwrap().start_epoch = 0);
+
+    Network::do_epoch_preliminaries(0, epoch);
+
+    // Should be removed due to max penalties
+    assert!(!SubnetsData::<Test>::contains_key(7));
+  });
+}
+
+#[test]
+fn test_excess_subnet_removal_lowest_delegate_stake() {
+  new_test_ext().execute_with(|| {
+    // Assume max_subnets = 1 for test
+    MaxSubnets::<Test>::put(1);
+
+    // Insert two active subnets
+    insert_subnet(8, SubnetState::Active, 0);
+    insert_subnet(9, SubnetState::Active, 0);
+
+    set_delegate_stake(8, 500);
+    set_delegate_stake(9, 1000);
+
+    // Both started before epoch
+    SubnetsData::<Test>::mutate(8, |d| d.as_mut().unwrap().start_epoch = 0);
+    SubnetsData::<Test>::mutate(9, |d| d.as_mut().unwrap().start_epoch = 0);
+
+    let epoch = 10;
+
+    Network::do_epoch_preliminaries(0, epoch);
+
+    // The subnet with id 8 (lowest stake) should be removed
+    assert!(!SubnetsData::<Test>::contains_key(8));
+    assert!(SubnetsData::<Test>::contains_key(9));
   });
 }

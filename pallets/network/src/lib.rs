@@ -837,11 +837,15 @@ pub mod pallet {
 		pub max_node_penalties: u32,
 		pub initial_coldkeys: Option<BTreeSet<AccountId>>,
 		pub max_registered_nodes: u32,
-		pub owner: AccountId,
-		pub registration_epoch: u32,
+		pub owner: Option<AccountId>,
+		pub registration_epoch: Option<u32>,
 		pub node_removal_system: NodeRemovalSystem,
 		pub key_types: BTreeSet<KeyType>,
-		pub slot_index: u32,
+		pub slot_index: Option<u32>,
+		pub penalty_count: u32,
+		pub total_nodes: u32,
+		pub total_active_nodes: u32,
+		pub total_electable_nodes: u32,
 		// TODO: Add ID (non-uid between min-max subnets)
 	}
 
@@ -877,6 +881,11 @@ pub mod pallet {
 		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 	}
 
+	/// Subnet Node Info
+	/// 
+	/// # Arguments
+	///
+	/// *
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct SubnetNodeInfo<AccountId> {
 		pub subnet_node_id: u32,
@@ -894,6 +903,9 @@ pub mod pallet {
 		pub b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		pub stake_balance: u128,
+		pub node_delegate_stake_balance: u128,
+		pub penalties: u32,
+		pub reputation: Reputation,
 	}
 
 	/// Subnet node classes
@@ -1032,6 +1044,16 @@ pub mod pallet {
 
 	// Overwatch nodes
 
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	pub struct OverwatchNodeInfo<AccountId> {
+		pub overwatch_node_id: u32,
+		pub coldkey: AccountId,
+		pub hotkey: AccountId,
+		pub peer_ids: Vec<PeerId>,
+		pub penalties: u32,
+		pub reputation: Reputation,
+	}
+
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
 	pub struct OverwatchNode<AccountId> {
 		pub id: u32,
@@ -1143,7 +1165,7 @@ pub mod pallet {
 		pub complete: bool,
 	}
 
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 	pub struct Reputation {
     /// Epoch when the node first elected subnet validator node to submit consensus.
     pub start_epoch: u32,
@@ -1978,7 +2000,7 @@ pub mod pallet {
 
 	#[pallet::type_value]
 	pub fn DefaultLastRegistrationCost() -> u128 {
-		1000000000000000000000
+		10000000000000000000
 	}
 
 	#[pallet::storage]
@@ -1986,7 +2008,8 @@ pub mod pallet {
 
 	#[pallet::type_value]
 	pub fn DefaultMinRegistrationCost() -> u128 {
-		10000000000000000000
+		// Always should be less than `LastRegistrationCost`
+		1000000000000000000
 	}
 
 	#[pallet::storage]
@@ -2793,35 +2816,6 @@ pub mod pallet {
 	// Inflation helpers elements
 	//
 
-	// // Factor of subnet utilization helper to get the overall inflation on an epoch
-	// // *This works alongside Subnet Node utilization factor
-	// //		*Subnet node utilization will be 1.0-SubnetInflationFactor
-	// #[pallet::storage]
-	// pub type SubnetInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationFactor>;
-
-	// // Factor that is used as the pow against the utilization factors `SubnetInflationFactor` and subet node inflation factor
-	// #[pallet::storage]
-	// pub type InflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultInflationAdjFactor>;
-
-	// // Exponent used for subnet utilization
-	// #[pallet::storage]
-	// pub type SubnetInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetInflationAdjFactor>;
-
-	// // Exponent used for Subnet Node utilization
-	// #[pallet::storage]
-	// pub type SubnetNodeInflationAdjFactor<T> = StorageValue<_, u128, ValueQuery, DefaultSubnetNodeInflationAdjFactor>;
-
-	// #[pallet::storage]
-	// pub type TerminalInflationFactor<T> = StorageValue<_, u128, ValueQuery, DefaultTerminalInflationFactor>;
-
-	// /// Lower bound of inflation factor
-	// #[pallet::storage]
-	// pub type UtilizationLowerBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationLowerBound>;
-
-	// /// Upper bound of inflation factor
-	// #[pallet::storage]
-	// pub type UtilizationUpperBound<T> = StorageValue<_, u128, ValueQuery, DefaultUtilizationUpperBound>;
-
 	/// Inflation grpah midpoint (sigmoid)
 	#[pallet::storage]
 	pub type SigmoidMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
@@ -2960,6 +2954,7 @@ pub mod pallet {
 	pub type MaxOverwatchNodePenalties<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
 
 	/// Finalized calculated subnet weights from overwatch nodes
+	// Subnet ID => Weight
 	#[pallet::storage]
 	pub type OverwatchSubnetWeights<T: Config> = StorageMap<
 		_,
@@ -5499,7 +5494,7 @@ pub mod pallet {
 					Self::can_remove_balance_from_coldkey_account(&owner, cost_as_balance.unwrap()),
 					Error::<T>::NotEnoughBalanceToRegisterSubnet
 				);
-				
+
 				// Send funds to Treasury and revert if failed
 				Self::send_to_treasury(&owner, cost_as_balance.unwrap())?;
 			}
@@ -6355,6 +6350,10 @@ pub mod pallet {
 				let step_weight = Self::do_epoch_preliminaries(block, current_epoch);
 				return weight.saturating_add(step_weight)
 			} else if (block - 1) >= epoch_length && (block - 1) % epoch_length == 0 {
+				// Calculate Overwatch Node Weights
+				let step_weight = Self::calculate_overwatch_rewards_v3();
+				return weight.saturating_add(step_weight)
+			} else if (block - 2) >= epoch_length && (block - 2) % epoch_length == 0 {
 				// Calculate rewards
 				// Distribute foundation
 				// Calculate emissions based on subnet weights (delegate stake based)

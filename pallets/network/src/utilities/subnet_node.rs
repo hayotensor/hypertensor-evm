@@ -233,7 +233,10 @@ impl<T: Config> Pallet<T> {
           a: subnet_node.a,
           b: subnet_node.b,
           c: subnet_node.c,
-          stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id)
+          stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
+          node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
+          penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),
+          reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
         }
       })
       .collect()

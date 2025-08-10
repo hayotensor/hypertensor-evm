@@ -69,8 +69,10 @@ fn funded_initializer<T: Config>(name: &'static str, index: u32) -> T::AccountId
 	let caller: T::AccountId = account(name, index, SEED);
 	// Give the account half of the maximum value of the `Balance` type.
 	// Otherwise some transfers will fail with an overflow error.
-	let deposit_amount: u128 = Network::<T>::registration_cost(0) + 1000000;
-	T::Currency::deposit_creating(&caller, deposit_amount.try_into().ok().expect("REASON"));
+	// let deposit_amount: u128 = Network::<T>::registration_cost(0) + 1000000;
+	let block_number = get_current_block_as_u32::<T>();
+	let cost = Network::<T>::get_current_registration_cost(block_number) + 1000;
+	T::Currency::deposit_creating(&caller, cost.try_into().ok().expect("REASON"));
 	caller
 }
 
@@ -207,7 +209,7 @@ fn build_activated_subnet<T: Config>(
   assert_eq!(total_subnet_stake, amount_staked);
 
 
-	let min_subnet_delegate_stake = Network::<T>::get_min_subnet_delegate_stake_balance() + (1000e+18 as u128 * subnets as u128);
+	let min_subnet_delegate_stake = Network::<T>::get_min_subnet_delegate_stake_balance_v2(subnet_id) + (1000e+18 as u128 * subnets as u128);
   // --- Add the minimum required delegate stake balance to activate the subnet
 
 	let delegate_staker_account: T::AccountId = funded_account::<T>("delegate_staker", 1);
@@ -235,6 +237,9 @@ fn build_activated_subnet<T: Config>(
       subnet_id,
     )
   );
+
+	let subnet = SubnetsData::<T>::get(subnet_id).unwrap();
+  assert_eq!(subnet.state, SubnetState::Active);
 
 	increase_epochs::<T>(2);
 }
@@ -1017,6 +1022,77 @@ mod benchmarks {
 		}
 	}
 
+	// Max possible weight at max subnets, clean with no issues
+	#[benchmark]
+	fn do_epoch_preliminaries() {
+		let max_subnets: u32 = Network::<T>::max_subnets();
+		let max_subnet_nodes: u32 = Network::<T>::max_subnet_nodes();
+
+		for s in 0..max_subnets {
+			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
+			build_activated_subnet::<T>(
+				subnet_name.clone().into(), 
+				0, 
+				max_subnet_nodes, 
+				DEFAULT_DEPOSIT_AMOUNT, 
+				DEFAULT_SUBNET_NODE_STAKE
+			);
+		}
+
+		let block_number = get_current_block_as_u32::<T>();
+		let epoch_length = T::EpochLength::get();
+		let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+		#[block]
+		{
+			Network::<T>::do_epoch_preliminaries(
+				block_number, 
+				epoch as u32, 
+			);
+		}
+	}
+
+	// All registered subnets
+	// #[benchmark]
+	// fn do_epoch_preliminaries() {
+	// 	let max_subnets: u32 = Network::<T>::max_subnets();
+	// 	let max_subnet_nodes: u32 = Network::<T>::max_subnet_nodes();
+
+	// 	for s in 0..max_subnets {
+	// 		let subnet_name: Vec<u8> = format!("subnet-name").into(); 
+	// 		build_activated_subnet::<T>(
+	// 			subnet_name.clone().into(), 
+	// 			0, 
+	// 			max_subnet_nodes, 
+	// 			DEFAULT_DEPOSIT_AMOUNT, 
+	// 			DEFAULT_SUBNET_NODE_STAKE
+	// 		);
+	// 	}
+
+	// 	let block_number = get_current_block_as_u32::<T>();
+	// 	let epoch_length = T::EpochLength::get();
+	// 	let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
+
+	// 	#[block]
+	// 	{
+	// 		Network::<T>::do_epoch_preliminaries(
+	// 			block_number, 
+	// 			epoch as u32, 
+	// 		);
+	// 	}
+	// }
+
+
+
+
+
+
+
+
+
+
+
+
 	// #[benchmark]
 	// fn emission_step() {
 	// 	let max_subnets = MaxSubnets::<T>::get();
@@ -1490,7 +1566,7 @@ mod benchmarks {
 
 	// 	// --- Add the minimum required delegate stake balance to activate the subnet
 	// 	// Add 100e18 to account for block increase on activation
-	// 	let min_subnet_delegate_stake = Network::<T>::get_min_subnet_delegate_stake_balance() + 100e+18 as u128;
+	// 	let min_subnet_delegate_stake = Network::<T>::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
 	
 	// 	let delegate_staker_account: T::AccountId = funded_account::<T>("subnet_node_account", 1);
 	// 	T::Currency::deposit_creating(&delegate_staker_account, min_subnet_delegate_stake.try_into().ok().expect("REASON"));

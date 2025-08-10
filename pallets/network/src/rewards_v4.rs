@@ -113,6 +113,7 @@ impl<T: Config> Pallet<T> {
         SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
         weight = weight.saturating_add(db_weight.writes(1));
 
+        // Break count of consecutive epochs of being included in in-consensus data
         if subnet_node.classification.node_class == SubnetNodeClass::Included {
           SubnetNodeConsecutiveIncludedEpochs::<T>::insert(subnet_id, subnet_node.id, 0);
           weight = weight.saturating_add(db_weight.writes(1));
@@ -156,7 +157,7 @@ impl<T: Config> Pallet<T> {
             // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
 
             // reset
-            SubnetNodeConsecutiveIncludedEpochs::<T>::insert(subnet_id, subnet_node.id, 0);
+            SubnetNodeConsecutiveIncludedEpochs::<T>::remove(subnet_id, subnet_node.id);
             weight = weight.saturating_add(db_weight.writes(1));
           }
         }

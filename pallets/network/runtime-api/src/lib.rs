@@ -24,6 +24,8 @@ use pallet_network::DefaultMaxVectorLength;
 
 sp_api::decl_runtime_apis! {
   pub trait NetworkRuntimeApi {
+    fn get_subnet_info(subnet_id: u32) -> Vec<u8>;
+    fn get_all_subnets_info() -> Vec<u8>;
     fn get_subnet_nodes(subnet_id: u32) -> Vec<u8>;
     fn get_subnet_nodes_included(subnet_id: u32) -> Vec<u8>;
     fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8>;

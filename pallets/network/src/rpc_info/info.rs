@@ -17,39 +17,75 @@ use super::*;
 
 impl<T: Config> Pallet<T> {
   pub fn get_subnet_info(subnet_id: u32) -> Option<SubnetInfo<T::AccountId>> {
-    if !SubnetsData::<T>::contains_key(subnet_id) {
-      return None
+    let subnet_data = SubnetsData::<T>::try_get(subnet_id).ok()?;
+
+    Some(SubnetInfo {
+        id: subnet_data.id,
+        name: subnet_data.name,
+        repo: subnet_data.repo,
+        description: subnet_data.description,
+        misc: subnet_data.misc,
+        state: subnet_data.state,
+        start_epoch: subnet_data.start_epoch,
+        churn_limit: ChurnLimit::<T>::get(subnet_id),
+        min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
+        max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
+        delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
+        registration_queue_epochs: RegistrationQueueEpochs::<T>::get(subnet_id),
+        activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
+        queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
+        included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
+        max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
+        initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
+        max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
+        owner: Some(SubnetOwner::<T>::get(subnet_id)?),
+        registration_epoch: Some(SubnetRegistrationEpoch::<T>::get(subnet_id)?),
+        node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
+        key_types: SubnetKeyTypes::<T>::get(subnet_id),
+        slot_index: Some(SubnetSlot::<T>::get(subnet_id)?),
+        penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
+        total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
+        total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
+        total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
+    })
+  }
+
+  pub fn get_all_subnets_info() -> Vec<SubnetInfo<T::AccountId>> {
+    let mut infos: Vec<SubnetInfo<T::AccountId>> = Vec::new();
+
+    for (subnet_id, subnet_data) in SubnetsData::<T>::iter() {
+      infos.push(SubnetInfo {
+          id: subnet_data.id,
+          name: subnet_data.name,
+          repo: subnet_data.repo,
+          description: subnet_data.description,
+          misc: subnet_data.misc,
+          state: subnet_data.state,
+          start_epoch: subnet_data.start_epoch,
+          churn_limit: ChurnLimit::<T>::get(subnet_id),
+          min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
+          max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
+          delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
+          registration_queue_epochs: RegistrationQueueEpochs::<T>::get(subnet_id),
+          activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
+          queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
+          included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
+          max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
+          initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
+          max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
+          owner: SubnetOwner::<T>::get(subnet_id),
+          registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
+          node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
+          key_types: SubnetKeyTypes::<T>::get(subnet_id),
+          slot_index: SubnetSlot::<T>::get(subnet_id),
+          penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
+          total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
+          total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
+          total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
+      })
     }
 
-    let subnet_data = SubnetsData::<T>::get(subnet_id).unwrap();
-
-    let subnet_info = SubnetInfo {
-      id: subnet_data.id,
-      name: subnet_data.name,
-      repo: subnet_data.repo,
-      description: subnet_data.description,
-      misc: subnet_data.misc,
-      state: subnet_data.state,
-      start_epoch: subnet_data.start_epoch,
-      churn_limit: ChurnLimit::<T>::get(subnet_id),
-      min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
-      max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
-      delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
-      registration_queue_epochs: RegistrationQueueEpochs::<T>::get(subnet_id),
-      activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
-      queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
-      included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
-      max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
-      initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
-      max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
-      owner: SubnetOwner::<T>::get(subnet_id)?,
-      registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id)?,
-      node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
-      key_types: SubnetKeyTypes::<T>::get(subnet_id),
-      slot_index: SubnetSlot::<T>::get(subnet_id)?,
-    };
-
-    Some(subnet_info)
+    infos
   }
 
   pub fn get_subnet_nodes(
@@ -119,7 +155,10 @@ impl<T: Config> Pallet<T> {
       a: subnet_node.a,
       b: subnet_node.b,
       c: subnet_node.c,
-      stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id)
+      stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
+      node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
+      penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),
+      reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
     };
 
     return Some(info)

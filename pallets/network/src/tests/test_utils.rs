@@ -56,6 +56,8 @@ use crate::{
   SubnetNode,
   SubnetNodeElectionSlots,
   RegisteredSubnetNodesData,
+  SubnetState,
+  SubnetData,
 };
 use sp_std::collections::btree_map::BTreeMap;
 use frame_support::traits::{OnInitialize, Currency};
@@ -279,6 +281,9 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
       subnet_id: subnet_id, 
     }
   );
+
+  let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+  assert_eq!(subnet.state, SubnetState::Active);
 
   increase_epochs(2);
 
@@ -858,4 +863,42 @@ pub fn submit_weight(
   weight: u128
 ) {
   OverwatchReveals::<Test>::insert((epoch, subnet_id, node_id), weight);
+}
+
+pub fn new_subnet_data(id: u32, state: SubnetState, start_epoch: u32) -> SubnetData {
+  SubnetData {
+    id,
+    name: vec![],
+    repo: vec![],
+    description: vec![],
+    misc: vec![],
+    state,
+    start_epoch,
+  }
+}
+
+// Helper to set up a subnet in storage
+pub fn insert_subnet(id: u32, state: SubnetState, start_epoch: u32) {
+  let data = new_subnet_data(id, state, start_epoch);
+  SubnetsData::<Test>::insert(id, data);
+}
+
+// Helper to set registration epoch
+pub fn set_registration_epoch(id: u32, epoch: u32) {
+  SubnetRegistrationEpoch::<Test>::insert(id, epoch);
+}
+
+// Helper to set active nodes count
+pub fn set_active_nodes(id: u32, count: u32) {
+  TotalActiveSubnetNodes::<Test>::insert(id, count);
+}
+
+// Helper to set delegate stake balance
+pub fn set_delegate_stake(id: u32, stake: u128) {
+  TotalSubnetDelegateStakeBalance::<Test>::insert(id, stake);
+}
+
+// Helper to set penalties count
+pub fn set_penalties(id: u32, count: u32) {
+  SubnetPenaltyCount::<Test>::insert(id, count);
 }

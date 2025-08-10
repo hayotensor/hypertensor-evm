@@ -43,7 +43,8 @@ impl<T: Config> Pallet<T> {
     let result = x * y / Self::PERCENTAGE_FACTOR;
 
     if result > U256::from(u128::MAX) {
-      return 0
+      // return 0
+      return u128::MAX
     }
 
     result.try_into().unwrap_or(u128::MAX)

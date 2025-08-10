@@ -89,7 +89,7 @@ fn percent_mul_overflow_protection() {
     let big_value = u128::MAX;
     let big_percent = pf * 2; // 200%
     let result = Network::percent_mul(big_value, big_percent);
-    assert_eq!(result, 0); // now this should pass
+    assert_eq!(result, u128::MAX); // now this should pass
   });
 }
 
