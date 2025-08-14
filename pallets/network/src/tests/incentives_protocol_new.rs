@@ -953,7 +953,6 @@ fn test_distribute_rewards_graduate_idle_to_included() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -1431,7 +1430,6 @@ fn test_attest_decrease_penalties_when_included() {
 //         amount,
 //         None,
 //         None,
-//         None,
 //       )
 //     );
 
@@ -1749,7 +1747,6 @@ fn test_distribute_rewards_graduate_included_to_validator() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )

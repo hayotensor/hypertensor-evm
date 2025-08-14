@@ -54,4 +54,11 @@ impl<T: Config> Pallet<T> {
 
     Ok(())
   }
+
+  pub fn do_remove_identity(
+    coldkey: T::AccountId,
+  ) -> DispatchResult {
+    ColdkeyIdentity::<T>::remove(&coldkey);
+    Ok(())
+  }
 }

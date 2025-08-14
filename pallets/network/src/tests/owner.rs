@@ -165,9 +165,9 @@ fn test_owner_unpause_subnet() {
         node_class: SubnetNodeClass::Validator,
         start_epoch: start_epoch,
       },
-      a: Some(BoundedVec::new()),
-      b: Some(BoundedVec::new()),
-      c: Some(BoundedVec::new()),
+      unique: Some(BoundedVec::new()),
+      non_unique: Some(BoundedVec::new()),
+      // c: Some(BoundedVec::new()),
     });
 
     // Transfer to new owner

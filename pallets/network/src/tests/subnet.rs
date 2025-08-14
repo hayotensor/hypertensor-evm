@@ -399,7 +399,6 @@ fn test_activate_subnet() {
           amount,
           None,
           None,
-          None,
         ) 
       );
     }
@@ -512,7 +511,6 @@ fn test_activate_subnet_invalid_subnet_id_error() {
           amount,
           None,
           None,
-          None,
         ) 
       );
     }
@@ -599,7 +597,6 @@ fn test_activate_subnet_already_activated_err() {
           None,
           0,
           amount,
-          None,
           None,
           None,
         ) 
@@ -712,7 +709,6 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
           None,
           0,
           amount,
-          None,
           None,
           None,
         ) 
@@ -835,7 +831,6 @@ fn test_activate_subnet_initializing_error() {
           None,
           0,
           amount,
-          None,
           None,
           None,
         ) 
@@ -1012,7 +1007,6 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
           None,
           0,
           amount,
-          None,
           None,
           None,
         ) 

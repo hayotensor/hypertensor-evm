@@ -594,6 +594,8 @@ pub mod pallet {
 		NotKeyOwner,
 		/// Not owner of hotkey that owns Subnet Node
 		NotSubnetNodeOwner,
+		/// Not the coldkey identity owner
+		NotColdkeyIdentityOwner,
 		/// Subnet Node param A must be unique
 		SubnetNodeUniqueParamTaken,
 		/// Subnet node param A is already set
@@ -858,9 +860,8 @@ pub mod pallet {
 	/// * classification: SubnetNodeClassification
 	/// * delegate_reward_rate: Delegate stakers reward rate
 	/// * last_delegate_reward_rate_update: Last block rate was updated
-	/// * a: Miscellaneous data
-	/// * b: Miscellaneous data
-	/// * c: Miscellaneous data
+	/// * unique: A unique variable
+	/// * non_unique: Miscellaneous data
 	///
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, PartialOrd, Ord, scale_info::TypeInfo)]
 	pub struct SubnetNode<AccountId> {
@@ -873,9 +874,8 @@ pub mod pallet {
 		pub classification: SubnetNodeClassification,
 		pub delegate_reward_rate: u128,
 		pub last_delegate_reward_rate_update: u32,
-		pub a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-		pub b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 	}
 
 	/// Subnet Node Info
@@ -896,9 +896,8 @@ pub mod pallet {
 		pub classification: SubnetNodeClassification,
 		pub delegate_reward_rate: u128,
 		pub last_delegate_reward_rate_update: u32,
-		pub a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-		pub b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-		pub c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+		pub non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		pub stake_balance: u128,
 		pub node_delegate_stake_balance: u128,
 		pub penalties: u32,
@@ -1260,9 +1259,8 @@ pub mod pallet {
 			},
 			delegate_reward_rate: 0,
 			last_delegate_reward_rate_update: 0,
-			a: Some(BoundedVec::new()),
-			b: Some(BoundedVec::new()),
-      c: Some(BoundedVec::new()),
+			unique: Some(BoundedVec::new()),
+			non_unique: Some(BoundedVec::new()),
 		};
 	}
 	#[pallet::type_value]
@@ -3454,7 +3452,6 @@ pub mod pallet {
 		/// * `stake_to_be_added` - The balance to add to stake.
 		/// * `a` - A Subnet Node parameter unique to each subnet.
 		/// * `b` - A non-unique parameter.
-		/// * `c` - A non-unique parameter.
 		///
 		/// # Requirements
 		/// 
@@ -3472,9 +3469,8 @@ pub mod pallet {
 			bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -3488,9 +3484,8 @@ pub mod pallet {
 				// client_peer_id,
 				delegate_reward_rate,
 				stake_to_be_added,
-				a,
-				b,
-				c,
+				unique,
+				non_unique,
 			).map_err(|e| e)?;
 
 			let subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone())
@@ -3519,7 +3514,6 @@ pub mod pallet {
 		/// * `stake_to_be_added` - The balance to add to stake.
 		/// * `a` - A Subnet Node parameter unique to each subnet.
 		/// * `b` - A non-unique parameter.
-		/// * `c` - A non-unique parameter.
 		///
 		/// # Requirements
 		/// 
@@ -3536,9 +3530,8 @@ pub mod pallet {
 			bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -3551,9 +3544,8 @@ pub mod pallet {
 				bootnode,
 				delegate_reward_rate,
 				stake_to_be_added,
-				a,
-				b,
-				c,
+				unique,
+				non_unique,
 			)
 		}
 
@@ -3721,11 +3713,10 @@ pub mod pallet {
 
 		#[pallet::call_index(37)]
 		#[pallet::weight({0})]
-		pub fn transfer_identity(origin: OriginFor<T>, new_owner: T::AccountId) -> DispatchResult {
+		pub fn remove_identity(origin: OriginFor<T>) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin)?;
 
-			let coldkey_identity = ColdkeyIdentity::<T>::get(&coldkey);
-			// PendingIdentityOwner::<T>::insert(coldkey_identity, new_owner);
+			Self::do_remove_identity(coldkey);
 
 			Ok(())
 		}
@@ -4592,11 +4583,11 @@ pub mod pallet {
 		/// 
 		#[pallet::call_index(59)]
 		#[pallet::weight({0})]
-		pub fn register_subnet_node_a_parameter(
+		pub fn update_unique(
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			subnet_node_id: u32,
-			a: BoundedVec<u8, DefaultMaxVectorLength>,
+			unique: BoundedVec<u8, DefaultMaxVectorLength>,
 		) -> DispatchResult {
 			Self::is_paused()?;
 
@@ -4612,7 +4603,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				!SubnetNodeUniqueParam::<T>::contains_key(subnet_id, &a),
+				!SubnetNodeUniqueParam::<T>::contains_key(subnet_id, &unique),
 				Error::<T>::SubnetNodeUniqueParamTaken
 			);
 
@@ -4622,33 +4613,31 @@ pub mod pallet {
 				|maybe_params| -> DispatchResult {
 					let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
 					ensure!(
-						params.a.is_none(),
+						params.unique.is_none(),
 						Error::<T>::SubnetNodeUniqueParamIsSet
 					);
-					SubnetNodeUniqueParam::<T>::insert(subnet_id, &a, &params.peer_id);
-					params.a = Some(a);
+					SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique, &params.peer_id);
+					params.unique = Some(unique);
 					Ok(())
 				}
 			)
 		}
 
-		/// Register non-unique Subnet Node parameter `b` or `c`
+		/// Register non-unique Subnet Node parameter `b`
 		///
 		/// # Arguments
 		///
 		/// * `subnet_id` - Subnet ID.
 		/// * `subnet_node_id` - Callers Subnet Node ID
 		/// * `b` (Optional) - The non-unique parameter
-		/// * `c` (Optional) - The non-unique parameter
 		/// 
 		#[pallet::call_index(60)]
 		#[pallet::weight({0})]
-		pub fn set_subnet_node_non_unique_parameter(
+		pub fn update_non_unique(
 			origin: OriginFor<T>, 
 			subnet_id: u32,
 			subnet_node_id: u32,
-			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			let key: T::AccountId = ensure_signed(origin)?;
 
@@ -4674,7 +4663,7 @@ pub mod pallet {
 			);
 
 			ensure!(
-				b.is_some() || c.is_some(),
+				non_unique.is_some(),
 				Error::<T>::SubnetNodeNonUniqueParamMustBeSome
 			);
 
@@ -4684,12 +4673,8 @@ pub mod pallet {
 				|maybe_params| -> DispatchResult {
 					let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetNodeId)?;
 
-					if b.is_some() {
-						params.b = Some(b.clone().unwrap());
-					}
-
-					if c.is_some() {
-						params.c = Some(c.clone().unwrap());
+					if non_unique.is_some() {
+						params.non_unique = Some(non_unique.clone().unwrap());
 					}
 
 					SubnetNodeNonUniqueParamLastSet::<T>::insert(subnet_id, subnet_node_id, epoch);
@@ -5776,9 +5761,8 @@ pub mod pallet {
 			bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 			delegate_reward_rate: u128,
 			stake_to_be_added: u128,
-			a: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-			c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+			non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
 		) -> DispatchResult {
 			let coldkey: T::AccountId = ensure_signed(origin.clone())?;
 
@@ -5845,14 +5829,14 @@ pub mod pallet {
 				},
 			};
 
-			// Unique ``a``
+			// Unique ``unique``
 			// [here]
-			if a.is_some() {
+			if unique.is_some() {
 				ensure!(
-					!SubnetNodeUniqueParam::<T>::contains_key(subnet_id, a.clone().unwrap()),
+					!SubnetNodeUniqueParam::<T>::contains_key(subnet_id, unique.clone().unwrap()),
 					Error::<T>::SubnetNodeUniqueParamTaken
 				);
-				SubnetNodeUniqueParam::<T>::insert(subnet_id, a.clone().unwrap(), &peer_id);
+				SubnetNodeUniqueParam::<T>::insert(subnet_id, unique.clone().unwrap(), &peer_id);
 			}
 
 			// Validate peer_id
@@ -5965,9 +5949,8 @@ pub mod pallet {
 				classification: classification,
 				delegate_reward_rate: delegate_reward_rate,
 				last_delegate_reward_rate_update: last_delegate_reward_rate_update,
-				a: a,
-				b: b,
-				c: c,
+				unique: unique,
+				non_unique: non_unique,
 			};
 
 			// Insert RegisteredSubnetNodesData
@@ -6586,9 +6569,8 @@ pub mod pallet {
 			// 		classification: classification,
 			// 		delegate_reward_rate: 0,
 			// 		last_delegate_reward_rate_update: 0,
-			// 		a: Some(bounded_peer_id),
-			// 		b: Some(BoundedVec::new()),
-			// 		c: Some(BoundedVec::new()),
+			// 		unique: Some(bounded_peer_id),
+			// 		non_unique: Some(BoundedVec::new()),
 			// 	};
 	
 

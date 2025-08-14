@@ -152,9 +152,8 @@ impl<T: Config> Pallet<T> {
       classification: subnet_node.classification,
       delegate_reward_rate: subnet_node.delegate_reward_rate,
       last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
-      a: subnet_node.a,
-      b: subnet_node.b,
-      c: subnet_node.c,
+      unique: subnet_node.unique,
+      non_unique: subnet_node.non_unique,
       stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
       node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
       penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),
@@ -189,7 +188,7 @@ impl<T: Config> Pallet<T> {
 
   pub fn get_subnet_node_by_params(
     subnet_id: u32,
-    a: BoundedVec<u8, DefaultMaxVectorLength>,
+    unique: BoundedVec<u8, DefaultMaxVectorLength>,
   ) -> Option<SubnetNode<T::AccountId>> {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return None
@@ -197,8 +196,8 @@ impl<T: Config> Pallet<T> {
 
     SubnetNodesData::<T>::iter_prefix_values(subnet_id)
       .find(|x| {
-        // Find by ``a``, a unique parameter
-        x.a == Some(a.clone())
+        // Find by ``unique``, a unique parameter
+        x.unique == Some(unique.clone())
       })
   }
 
@@ -248,16 +247,16 @@ impl<T: Config> Pallet<T> {
     subnet_nodes
   }
 
-  /// If subnet node exists under unique subnet node parameter ``a``
+  /// If subnet node exists under unique subnet node parameter ``unique``
   pub fn is_subnet_node_by_a(
     subnet_id: u32, 
-    a: BoundedVec<u8, DefaultMaxVectorLength>
+    unique: BoundedVec<u8, DefaultMaxVectorLength>
   ) -> bool {
     if !SubnetsData::<T>::contains_key(subnet_id) {
       return false
     }
 
-    match SubnetNodeUniqueParam::<T>::try_get(subnet_id, a) {
+    match SubnetNodeUniqueParam::<T>::try_get(subnet_id, unique) {
       Ok(_) => true,
       Err(()) => false,
     }

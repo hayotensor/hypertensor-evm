@@ -342,7 +342,6 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -538,7 +537,6 @@ fn test_register_try_removing_all_stake() {
         None,
         0,
         stake_amount,
-        None,
         None,
         None,
       )

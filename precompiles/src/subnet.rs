@@ -311,9 +311,8 @@ where
     bootnode_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
-    // a: BoundedVec<u8, DefaultMaxVectorLength>,
-    // b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-    // c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    // unique: BoundedVec<u8, DefaultMaxVectorLength>,
+    // non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
   ) -> EvmResult<()> {
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
@@ -332,9 +331,8 @@ where
       bootnode: None,
       delegate_reward_rate,
       stake_to_be_added,
-      a: None,
-      b: None,
-      c: None,
+      unique: None,
+      non_unique: None,
     };
 
     RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;
@@ -352,9 +350,8 @@ where
     bootnode_peer_id: BoundedString<ConstU32<64>>,
     delegate_reward_rate: U256,
     stake_to_be_added: U256,
-    // a: BoundedVec<u8, DefaultMaxVectorLength>,
-    // b: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-    // c: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    // unique: BoundedVec<u8, DefaultMaxVectorLength>,
+    // non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
   ) -> EvmResult<()> {
     let subnet_id = try_u256_to_u32(subnet_id)?;
     let hotkey = R::AddressMapping::into_account_id(hotkey.into());
@@ -373,9 +370,8 @@ where
       bootnode: None,
       delegate_reward_rate,
       stake_to_be_added,
-      a: None,
-      b: None,
-      c: None,
+      unique: None,
+      non_unique: None,
     };
 
     RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 148)?;

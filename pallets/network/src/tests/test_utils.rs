@@ -207,7 +207,6 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
         amount,
         None,
         None,
-        None,
       ) 
     );
 
@@ -410,7 +409,6 @@ pub fn build_activated_subnet_with_delegator_rewards(
         amount,
         None,
         None,
-        None,
       ) 
     );
 
@@ -541,7 +539,6 @@ pub fn default_registration_subnet_data(
 //         peer(n),
 //         0,
 //         amount,
-//         None,
 //         None,
 //         None,
 //       ) 
@@ -848,7 +845,6 @@ pub fn add_subnet_node(
     None,
     0,
     amount,
-    None,
     None,
     None,
   )

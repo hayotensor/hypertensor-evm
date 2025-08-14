@@ -83,7 +83,6 @@ fn test_register_subnet_node() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -451,7 +450,6 @@ fn test_register_subnet_node_subnet_registering_or_activated_error() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::SubnetMustBeRegisteringOrActivated
     );
@@ -515,7 +513,6 @@ fn test_register_subnet_node_then_activate() {
         amount,
         None,
         None,
-        None,
       ),
     );
 
@@ -559,7 +556,6 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -640,7 +636,6 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
 //         amount,
 //         None,
 //         None,
-//         None,
 //       )
 //     );
 
@@ -685,7 +680,6 @@ fn test_register_subnet_node_activate_subnet_node() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -796,7 +790,6 @@ fn test_add_subnet_node_subnet_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::InvalidSubnet
     );
@@ -812,7 +805,6 @@ fn test_add_subnet_node_subnet_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -872,7 +864,6 @@ fn test_add_subnet_node_not_exists_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::InvalidSubnetNodeId
     );
@@ -892,7 +883,6 @@ fn test_add_subnet_node_not_exists_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::PeerIdExist
     );
@@ -910,7 +900,6 @@ fn test_add_subnet_node_not_exists_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -952,7 +941,6 @@ fn test_add_subnet_node_stake_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::MinStakeNotReached
     );
@@ -987,7 +975,6 @@ fn test_add_subnet_node_stake_not_enough_balance_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -1025,7 +1012,6 @@ fn test_add_subnet_node_invalid_peer_id_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -1110,7 +1096,6 @@ fn test_add_subnet_node_remove_readd() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -1147,7 +1132,6 @@ fn test_add_subnet_node_remove_readd() {
         amount,
         None,
         None,
-        None,
       )
     );
   });
@@ -1181,7 +1165,6 @@ fn test_add_subnet_node_not_key_owner() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -1231,7 +1214,6 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -1255,7 +1237,6 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -1292,7 +1273,6 @@ fn test_add_subnet_node_remove_stake_partial_readd() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -1342,7 +1322,6 @@ fn test_add_subnet_node_remove_stake_partial_readd() {
         amount,
         None,
         None,
-        None,
       ) 
     );
   });
@@ -1374,7 +1353,6 @@ fn test_add_subnet_node_remove_stake_readd() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -1420,7 +1398,6 @@ fn test_add_subnet_node_remove_stake_readd() {
         amount,
         None,
         None,
-        None,
       ) 
     );
   });
@@ -1443,8 +1420,8 @@ fn test_register_subnet_node_with_a_param() {
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
 
-    let a: Vec<u8> = "a".into();
-    let bounded_a: BoundedVec<u8, DefaultMaxVectorLength> = a.try_into().expect("String too long");
+    let unique: Vec<u8> = "a".into();
+    let bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> = unique.try_into().expect("String too long");
 
     assert_ok!(
       Network::register_subnet_node(
@@ -1456,8 +1433,7 @@ fn test_register_subnet_node_with_a_param() {
         None,
         0,
         amount,
-        Some(bounded_a.clone()),
-        None,
+        Some(bounded_unique.clone()),
         None,
       )
     );
@@ -1465,7 +1441,7 @@ fn test_register_subnet_node_with_a_param() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, Some(bounded_a.clone()));
+    assert_eq!(subnet_node.unique, Some(bounded_a.clone()));
   })
 }
 
@@ -1498,49 +1474,48 @@ fn test_register_subnet_node_and_then_update_a_param() {
         amount,
         None,
         None,
-        None,
       )
     );
 
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, None);
+    assert_eq!(subnet_node.unique, None);
 
     
-    let a: Vec<u8> = "a".into();
-    let bounded_a: BoundedVec<u8, DefaultMaxVectorLength> = a.try_into().expect("String too long");
+    let unique: Vec<u8> = "a".into();
+    let bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> = unique.try_into().expect("String too long");
 
     assert_ok!(
-      Network::register_subnet_node_a_parameter(
+      Network::update_unique(
         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
         subnet_id,
         subnet_node_id,
-        bounded_a.clone(),
+        bounded_unique.clone(),
       )
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, Some(bounded_a.clone()));
+    assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
 
     assert_err!(
-      Network::register_subnet_node_a_parameter(
+      Network::update_unique(
         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
         subnet_id,
         subnet_node_id,
-        bounded_a.clone(),
+        bounded_unique.clone(),
       ),
       Error::<Test>::SubnetNodeUniqueParamTaken
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, Some(bounded_a.clone()));
+    assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
 
     let a_v2: Vec<u8> = "a_v2".into();
     let bounded_a_v2: BoundedVec<u8, DefaultMaxVectorLength> = a_v2.try_into().expect("String too long");
 
     assert_err!(
-      Network::register_subnet_node_a_parameter(
+      Network::update_unique(
         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
         subnet_id,
         subnet_node_id,
@@ -1550,7 +1525,7 @@ fn test_register_subnet_node_and_then_update_a_param() {
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, Some(bounded_a.clone()));
+    assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
 
   })
 }
@@ -1572,11 +1547,8 @@ fn test_register_subnet_node_with_non_unique_param() {
 
     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), deposit_amount);
 
-    let b: Vec<u8> = "b".into();
-    let bounded_b: BoundedVec<u8, DefaultMaxVectorLength> = b.try_into().expect("String too long");
-
-    let c: Vec<u8> = "c".into();
-    let bounded_c: BoundedVec<u8, DefaultMaxVectorLength> = c.try_into().expect("String too long");
+    let non_unique: Vec<u8> = "b".into();
+    let bounded_non_unique: BoundedVec<u8, DefaultMaxVectorLength> = non_unique.try_into().expect("String too long");
 
     assert_ok!(
       Network::register_subnet_node(
@@ -1589,17 +1561,15 @@ fn test_register_subnet_node_with_non_unique_param() {
         0,
         amount,
         None,
-        Some(bounded_b.clone()),
-        Some(bounded_c.clone()),
+        Some(bounded_non_unique.clone()),
       )
     );
 
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(total_subnet_nodes+1)).unwrap();
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-    assert_eq!(subnet_node.a, None);
-    assert_eq!(subnet_node.b, Some(bounded_b.clone()));
-    assert_eq!(subnet_node.c, Some(bounded_c.clone()));
+    assert_eq!(subnet_node.unique, None);
+    assert_eq!(subnet_node.b, Some(bounded_non_unique.clone()));
   })
 }
 
@@ -1622,19 +1592,16 @@ fn test_update_subnet_node_with_non_unique_param() {
     let b: Vec<u8> = "b".into();
     let bounded_b: BoundedVec<u8, DefaultMaxVectorLength> = b.try_into().expect("String too long");
 
-    let c: Vec<u8> = "c".into();
-    let bounded_c: BoundedVec<u8, DefaultMaxVectorLength> = c.try_into().expect("String too long");
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     increase_epochs(1);
 
     assert_ok!(
-      Network::set_subnet_node_non_unique_parameter(
+      Network::update_non_unique(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
         Some(bounded_b.clone()),
-        Some(bounded_c.clone()),
       )
     );
 
@@ -1642,10 +1609,9 @@ fn test_update_subnet_node_with_non_unique_param() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.b, Some(bounded_b.clone()));
-    assert_eq!(subnet_node.c, Some(bounded_c.clone()));
 
     assert_err!(
-      Network::set_subnet_node_non_unique_parameter(
+      Network::update_non_unique(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -1658,7 +1624,7 @@ fn test_update_subnet_node_with_non_unique_param() {
     increase_epochs(1);
 
     assert_err!(
-      Network::set_subnet_node_non_unique_parameter(
+      Network::update_non_unique(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -1671,22 +1637,17 @@ fn test_update_subnet_node_with_non_unique_param() {
     let b2: Vec<u8> = "b".into();
     let bounded_b2: BoundedVec<u8, DefaultMaxVectorLength> = b2.try_into().expect("String too long");
 
-    let c2: Vec<u8> = "c".into();
-    let bounded_c2: BoundedVec<u8, DefaultMaxVectorLength> = c2.try_into().expect("String too long");
-
     assert_ok!(
-      Network::set_subnet_node_non_unique_parameter(
+      Network::update_non_unique(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
         Some(bounded_b2.clone()),
-        Some(bounded_c2.clone()),
       )
     );
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.b, Some(bounded_b2.clone()));
-    assert_eq!(subnet_node.c, Some(bounded_c2.clone()));
 
   })
 }
@@ -1836,7 +1797,6 @@ fn test_remove_peer_unstake_total_balance() {
         amount,
         None,
         None,
-        None,
       ) 
     );
     // post_successful_add_subnet_node_asserts(0, subnet_id, amount);
@@ -1909,7 +1869,6 @@ fn test_claim_stake_unbondings() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ) 
@@ -2008,7 +1967,6 @@ fn test_remove_stake_twice_in_epoch() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ) 
@@ -2144,7 +2102,6 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
         amount,
         None,
         None,
-        None,
       ) 
     );
 
@@ -2191,7 +2148,6 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
         None,
         0,
         amount*2,
-        None,
         None,
         None,
       ) 

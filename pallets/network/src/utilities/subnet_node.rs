@@ -71,8 +71,8 @@ impl<T: Config> Pallet<T> {
     let hotkey = subnet_node.hotkey;
     let peer_id = subnet_node.peer_id;
 
-    if subnet_node.a.is_some() {
-      SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
+    if subnet_node.unique.is_some() {
+      SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.unique.unwrap())
     }
 
     // Remove all subnet node elements
@@ -230,9 +230,8 @@ impl<T: Config> Pallet<T> {
           classification: subnet_node.classification,
           delegate_reward_rate: subnet_node.delegate_reward_rate,
           last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
-          a: subnet_node.a,
-          b: subnet_node.b,
-          c: subnet_node.c,
+          unique: subnet_node.unique,
+          non_unique: subnet_node.non_unique,
           stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
           node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
           penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),

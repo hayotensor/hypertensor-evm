@@ -105,7 +105,6 @@ fn test_register_subnet_node_post_subnet_activation() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -185,7 +184,6 @@ fn test_activate_subnet_node_post_subnet_activation() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -253,7 +251,6 @@ fn test_register_after_activate_with_same_keys() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -289,7 +286,6 @@ fn test_register_after_activate_with_same_keys() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -344,7 +340,6 @@ fn test_register_after_deactivate_with_same_keys() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::HotkeyHasOwner
     );
@@ -389,7 +384,6 @@ fn test_activate_subnet_node_not_start_epoch() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -462,7 +456,6 @@ fn test_register_subnet_node_and_remove() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -520,7 +513,6 @@ fn test_add_subnet_node_subnet_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::InvalidSubnet
     );
@@ -536,7 +528,6 @@ fn test_add_subnet_node_subnet_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -607,7 +598,6 @@ fn test_add_subnet_node_not_exists_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::HotkeyHasOwner
     );
@@ -624,7 +614,6 @@ fn test_add_subnet_node_not_exists_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -674,7 +663,6 @@ fn test_add_subnet_node_stake_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::MinStakeNotReached
     );
@@ -718,7 +706,6 @@ fn test_add_subnet_node_stake_not_enough_balance_err() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       ),
@@ -768,7 +755,6 @@ fn test_add_subnet_node_invalid_peer_id_err() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::InvalidPeerId
     );
@@ -813,7 +799,6 @@ fn test_add_subnet_node_remove_readd_new_hotkey() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -852,7 +837,6 @@ fn test_add_subnet_node_remove_readd_new_hotkey() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -896,7 +880,6 @@ fn test_add_subnet_node_not_key_owner() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -955,7 +938,6 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
         amount,
         None,
         None,
-        None,
       )
     );
 
@@ -979,7 +961,6 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
     //     None,
     //     0,
     //     amount,
-    //     None,
     //     None,
     //     None,
     //   ),
@@ -1595,7 +1576,6 @@ fn test_subnet_overwatch_node_unique_hotkeys() {
         amount,
         None,
         None,
-        None,
       ),
       Error::<Test>::HotkeyHasOwner
     );
@@ -1610,7 +1590,6 @@ fn test_subnet_overwatch_node_unique_hotkeys() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -1658,7 +1637,6 @@ fn test_defer_node() {
         None,
         0,
         amount,
-        None,
         None,
         None,
       )
@@ -1721,9 +1699,9 @@ fn test_get_removing_node_respects_policy() {
         node_class: SubnetNodeClass::Validator,
         start_epoch: 100,
       },
-      a: Some(BoundedVec::new()),
-      b: Some(BoundedVec::new()),
-      c: Some(BoundedVec::new()),
+      unique: Some(BoundedVec::new()),
+      non_unique: Some(BoundedVec::new()),
+      // c: Some(BoundedVec::new()),
     });
 
     ColdkeyReputation::<Test>::insert(&challenger_coldkey, Reputation { 
@@ -1756,9 +1734,9 @@ fn test_get_removing_node_respects_policy() {
         node_class: SubnetNodeClass::Validator,
         start_epoch: 50,
       },
-      a: Some(BoundedVec::new()),
-      b: Some(BoundedVec::new()),
-      c: Some(BoundedVec::new()),
+      unique: Some(BoundedVec::new()),
+      non_unique: Some(BoundedVec::new()),
+      // c: Some(BoundedVec::new()),
     });
     ColdkeyReputation::<Test>::insert(&candidate_coldkey, Reputation {
       score: 700000000000000000, 
@@ -1790,9 +1768,9 @@ fn test_get_removing_node_respects_policy() {
         node_class: SubnetNodeClass::Validator,
         start_epoch: 30,
       },
-      a: Some(BoundedVec::new()),
-      b: Some(BoundedVec::new()),
-      c: Some(BoundedVec::new()),
+      unique: Some(BoundedVec::new()),
+      non_unique: Some(BoundedVec::new()),
+      // c: Some(BoundedVec::new()),
     });
     ColdkeyReputation::<Test>::insert(&other_coldkey, Reputation {
       score: 950000000000000000,

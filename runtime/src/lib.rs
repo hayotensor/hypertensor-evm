@@ -1363,8 +1363,8 @@ impl_runtime_apis! {
 	// 		let result = Network::are_subnet_nodes_by_peer_id(subnet_id, peer_ids);
 	// 		result.encode()
 	// 	}
-	// 	fn is_subnet_node_by_a(subnet_id: u32, a: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
-	// 		let result = Network::is_subnet_node_by_a(subnet_id, a);
+	// 	fn is_subnet_node_by_a(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
+	// 		let result = Network::is_subnet_node_by_unique(subnet_id, unique);
 	// 		result
 	// 	}
 	// 	fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Vec<u8> {
