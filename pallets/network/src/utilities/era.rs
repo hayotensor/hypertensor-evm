@@ -218,6 +218,9 @@ impl<T: Config> Pallet<T> {
 
       // Remove if below delegate stake requirement
       if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
+        // log::error!("min_subnet_delegate_stake_balance {:?}",min_subnet_delegate_stake_balance);
+        // log::error!("subnet_delegate_stake_balance     {:?}", subnet_delegate_stake_balance);
+
         Self::do_remove_subnet(*subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
         // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
         continue

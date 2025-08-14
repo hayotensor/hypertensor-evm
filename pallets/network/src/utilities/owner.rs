@@ -110,10 +110,15 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotSubnetOwner
     );
 
+    ensure!(
+      SubnetsData::<T>::contains_key(subnet_id),
+      Error::<T>::InvalidSubnet
+    );
+
     Self::do_remove_subnet(
       subnet_id,
       SubnetRemovalReason::Owner,
-    ).map_err(|e| e)?;
+    );
 
     // do_remove_subnet emits deposit event
 

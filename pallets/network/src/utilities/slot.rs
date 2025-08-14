@@ -517,10 +517,10 @@ impl<T: Config> Pallet<T> {
     let db_weight = T::DbWeight::get();
 
     // Get all subnet weights calculated at the start of the blockchains epoch
-    if let Ok(subnet_emission_weights) = FinalSubnetEmissionWeights::<T>::try_get(current_subnet_epoch) {
+    if let Ok(subnet_emission_weights) = FinalSubnetEmissionWeights::<T>::try_get(current_epoch) {
       weight = weight.saturating_add(db_weight.reads(1));
 
-      // Get weight of subnet_id
+      // Get weight of subnet_id from calculated weights
       if let Some(&subnet_weight) = subnet_emission_weights.weights.get(&subnet_id) {
         // Get elected consensus submission
         if let Some((consensus_submission_data, consensus_submission_weight)) =
@@ -759,6 +759,14 @@ impl<T: Config> Pallet<T> {
     (subnet_weights_normalized, weight)
   }
 
+  /// Calculate emissions distribution weights
+  ///
+  /// # Based On
+  /// - Delegate stake weight
+  /// - Node count weight
+  /// - Overwatch weight
+  ///
+  ///
   pub fn calculate_subnet_weights_v3(epoch: u32) -> (BTreeMap<u32, u128>, Weight) {
     let mut weight = Weight::zero();
     let db_weight = T::DbWeight::get();
@@ -836,7 +844,8 @@ impl<T: Config> Pallet<T> {
     (subnet_weights_normalized, weight)
   }
 
-
+  /// Compile consensus data from the previous epochs submission and attestations
+  ///
   pub fn precheck_subnet_consensus_submission(
     subnet_id: u32,
     subnet_epoch: u32

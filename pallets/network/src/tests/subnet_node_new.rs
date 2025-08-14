@@ -993,7 +993,6 @@ fn test_remove_subnet_node() {
   new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
-    let amount: u128 = 1000000000000000000000;
 
     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
     let max_subnets = MaxSubnets::<Test>::get();
@@ -1055,7 +1054,7 @@ fn test_remove_subnet_node() {
       assert_eq!(subnet_node_account, Err(()));
   
       let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
-      assert_eq!(account_subnet_stake, amount);
+      assert_eq!(account_subnet_stake, stake_amount);
     }
 
     let total_subnet_stake = TotalSubnetStake::<Test>::get(subnet_id);

@@ -1300,7 +1300,7 @@ pub mod pallet {
 	}
 	#[pallet::type_value]
 	pub fn DefaultNetworkMinStakeBalance() -> u128 {
-		1000e+18 as u128
+		100e+18 as u128
 	}
 	#[pallet::type_value]
 	pub fn DefaultMinActiveNodeStakeEpochs() -> u32 {
@@ -1308,7 +1308,7 @@ pub mod pallet {
 	}
 	#[pallet::type_value]
 	pub fn DefaultSubnetMinStakeBalance() -> u128 {
-		100+18 as u128
+		100e+18 as u128
 	}
 	#[pallet::type_value]
 	pub fn DefaultSubnetMaxStakeBalance() -> u128 {
@@ -1424,9 +1424,9 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultMinSubnetNodes() -> u32 {
 		// development and mainnet
-		// 3
+		3
 		// local && testnet
-		1
+		// 1
 	}
 	#[pallet::type_value]
 	pub fn DefaultMinSubnetRegistrationBlocks() -> u32 {
@@ -1997,7 +1997,7 @@ pub mod pallet {
 
 	#[pallet::type_value]
 	pub fn DefaultLastRegistrationCost() -> u128 {
-		10000000000000000000
+		1000000000000000000
 	}
 
 	#[pallet::storage]
@@ -2006,7 +2006,7 @@ pub mod pallet {
 	#[pallet::type_value]
 	pub fn DefaultMinRegistrationCost() -> u128 {
 		// Always should be less than `LastRegistrationCost`
-		1000000000000000000
+		100000000000000000
 	}
 
 	#[pallet::storage]
@@ -3106,14 +3106,14 @@ pub mod pallet {
           // subnet.name,
 					subnet_id,
           SubnetRemovalReason::MaxPenalties,
-        ).map_err(|e| e)?;
+        );
 			} else if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
 				// --- If the delegate stake balance is below minimum threshold, remove it
         Self::do_remove_subnet(
           // subnet.name,
 					subnet_id,
           SubnetRemovalReason::MinSubnetDelegateStake,
-        ).map_err(|e| e)?;
+        );
 			}
 
 			// --- If we make it to here, fail the extrinsic
@@ -5605,32 +5605,35 @@ pub mod pallet {
 
 			// --- If subnet not activated yet and is outside the enactment period, remove subnet
 			if Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch) == false {
-				return Self::do_remove_subnet(
+				Self::do_remove_subnet(
 					subnet_id,
 					SubnetRemovalReason::EnactmentPeriod,
-				)
+				);
+				return Ok(())
 			}
 
 			// --- 1. Ensure minimum nodes are activated
 			let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
 
 			if total_nodes < MinSubnetNodes::<T>::get() {
-				return Self::do_remove_subnet(
+				Self::do_remove_subnet(
 					subnet_id,
 					SubnetRemovalReason::MinSubnetNodes,
-				)
+				);
+				return Ok(())
 			}
 
 			// --- 2. Ensure minimum delegate stake achieved 
 			let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-			let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance();
+			let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
 
 			// --- Ensure delegate stake balance is below minimum threshold required
 			if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
-				return Self::do_remove_subnet(
+				Self::do_remove_subnet(
 					subnet_id,
 					SubnetRemovalReason::MinSubnetDelegateStake,
-				)
+				);
+				return Ok(())
 			}
 
 			// ===============
@@ -5666,10 +5669,16 @@ pub mod pallet {
 		pub fn do_remove_subnet(
 			subnet_id: u32,
 			reason: SubnetRemovalReason,
-		) -> DispatchResult {
+		) {
+			log::error!("removing subnet {:?}", reason);
+			log::info!("removing subnet {:?}", reason);
+			// let subnet = match SubnetsData::<T>::try_get(subnet_id) {
+      //   Ok(subnet) => subnet,
+      //   Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+			// };
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
-        Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+        Err(()) => return,
 			};
 
 			// Remove unique name
@@ -5698,16 +5707,14 @@ pub mod pallet {
 			Self::clean_subnet_nodes(subnet_id);
 	
 			Self::deposit_event(Event::SubnetDeactivated { subnet_id: subnet_id, reason: reason });
-
-			Ok(())
 		}
 
 		pub fn clean_subnet_nodes(
 			subnet_id: u32,
-		) -> DispatchResult {
+		) {
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
-        Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+        Err(()) => return,
 			};
 
 			let _ = TotalSubnetNodes::<T>::remove(subnet_id);
@@ -5729,8 +5736,6 @@ pub mod pallet {
 			// Remove consensus data
 			let _ = SubnetElectedValidator::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetConsensusSubmission::<T>::clear_prefix(subnet_id, u32::MAX, None);
-
-			Ok(())
 		}
 
 		pub fn do_remove_subnet_node(
@@ -6332,10 +6337,10 @@ pub mod pallet {
 		///
 		/// At the start of each epoch
 		///
-		/// 1. Epoch prelims (removing or penalizing subnets)
-		/// 2. Calculate overwatch subnet weights
-		/// 3. Calculate subnet emissions distribution
-		/// 4. Handle subnet slots
+		/// 1. Epoch prelims (removing or penalizing subnets) (block)
+		/// 2. Calculate overwatch subnet weights (block - 1)
+		/// 3. Calculate subnet emissions distribution (block - 2)
+		/// 4. Handle subnet slots (slot)
 		///		* Distribute rewards
 		/// 	* Elect validator
 		///

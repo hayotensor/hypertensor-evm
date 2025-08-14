@@ -390,29 +390,6 @@ impl<T: Config> Pallet<T> {
     let prev_registration_epoch = 10;
     0
   }
-
-  /// Get the subnets minimum delegate stake multipler based on the current electable nodes count
-  pub fn get_subnet_min_delegate_staking_multiplier(electable_node_count: u32) -> u128 {
-    let min_nodes = MinSubnetNodes::<T>::get();
-    let max_nodes = MaxSubnetNodes::<T>::get();
-    let min_multiplier = Self::percentage_factor_as_u128(); // 100%
-    let max_multiplier = MaxMinDelegateStakeMultiplier::<T>::get();
-
-    if electable_node_count <= min_nodes {
-      return min_multiplier;
-    } else if electable_node_count >= max_nodes {
-      return max_multiplier;
-    }
-
-    let node_delta = electable_node_count - min_nodes;
-    let range = max_nodes - min_nodes;
-
-    let ratio = Self::percent_div(node_delta as u128, range as u128);
-    let delta = max_multiplier.saturating_sub(min_multiplier);
-
-    min_multiplier.saturating_add(Self::percent_mul(ratio, delta))
-  }
-
   
   pub fn get_lowest_stake_balance_node(subnet_id: u32, hotkey: &T::AccountId) -> Option<u32> {
     // Get calling nodes stake balance

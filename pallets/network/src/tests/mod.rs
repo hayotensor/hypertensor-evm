@@ -23,3 +23,4 @@ mod reputation;
 mod commit_reveal;
 mod overwatch_nodes;
 mod identity;
+mod on_initialize;

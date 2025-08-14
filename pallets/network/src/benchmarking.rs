@@ -838,6 +838,7 @@ mod benchmarks {
 				DEFAULT_DEPOSIT_AMOUNT, 
 				DEFAULT_SUBNET_NODE_STAKE
 			);
+			// TODO: Ensure subnets are active
 		}
 
 		let current_block_number = get_current_block_as_u32::<T>();

@@ -50,6 +50,11 @@ impl<T: Config> Pallet<T> {
     let total_staked: u128 = TotalStake::<T>::get();
     let total_delegate_staked: u128 = TotalDelegateStake::<T>::get();
     let total_node_delegate_staked: u128 = TotalNodeDelegateStake::<T>::get();
+    // log::error!("total_issuance             {:?}", total_issuance);
+    // log::error!("total_staked               {:?}", total_staked);
+    // log::error!("total_delegate_staked      {:?}", total_delegate_staked);
+    // log::error!("total_node_delegate_staked {:?}", total_node_delegate_staked);
+
     total_issuance
       .saturating_add(total_staked)
       .saturating_add(total_delegate_staked)

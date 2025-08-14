@@ -35,7 +35,7 @@ fn test_calculate_emission_weights() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -58,7 +58,7 @@ fn test_emission_step() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -81,7 +81,7 @@ fn test_handle_subnet_emission_weights() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -104,7 +104,7 @@ fn test_calculate_subnet_weights() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -140,7 +140,7 @@ fn test_calculate_subnet_weights_v2() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -180,7 +180,7 @@ fn test_precheck_consensus_submission() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 
@@ -203,7 +203,7 @@ fn test_calculate_rewards() {
 
     for s in 0..max_subnets {
 			let subnet_name: Vec<u8> = format!("subnet-name-{s}").into(); 
-			build_activated_subnet(
+			build_activated_subnet_new(
 				subnet_name.clone().into(), 
 				0, 
 				max_subnet_nodes, 

@@ -157,7 +157,6 @@ fn test_add_to_stake() {
   new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 1000000000000000000000000;
-    let amount: u128 = 1000000000000000000000;
 
     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
@@ -182,19 +181,21 @@ fn test_add_to_stake() {
 
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), stake_amount);
+
     assert_ok!(
       Network::add_to_stake(
         RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         subnet_node_id,
         hotkey.clone(),
-        amount,
+        stake_amount,
       ) 
     );
 
-    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount + amount);
-    assert_eq!(Network::total_stake(), amount_staked + amount);
-    assert_eq!(Network::total_subnet_stake(subnet_id), amount_staked + amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), stake_amount + stake_amount);
+    assert_eq!(Network::total_stake(), amount_staked + stake_amount);
+    assert_eq!(Network::total_subnet_stake(subnet_id), amount_staked + stake_amount);
   });
 }
 
@@ -282,11 +283,11 @@ fn test_remove_stake() {
         subnet_id,
         subnet_node_id,
         hotkey.clone(),
-        amount,
+        stake_amount,
       ) 
     );
 
-    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount + amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), stake_amount + stake_amount);
 
     // remove amount ontop
     assert_ok!(
@@ -294,11 +295,11 @@ fn test_remove_stake() {
         RuntimeOrigin::signed(coldkey.clone()),
         subnet_id,
         hotkey.clone(),
-        amount,
+        stake_amount,
       )
     );
 
-    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), amount);
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), stake_amount);
     // assert_eq!(Network::total_account_stake(account(account_n)), amount);
   });
 }
@@ -506,7 +507,6 @@ fn test_register_try_removing_all_stake() {
     let subnet_name: Vec<u8> = "subnet-name".into();
     
     let deposit_amount: u128 = 10000000000000000000000;
-    let amount: u128 = 1000000000000000000000;
 
     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
     let end = 12;
@@ -537,7 +537,7 @@ fn test_register_try_removing_all_stake() {
         bootnode_peer_id,
         None,
         0,
-        amount,
+        stake_amount,
         None,
         None,
         None,

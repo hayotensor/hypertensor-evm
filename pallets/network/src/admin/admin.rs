@@ -150,7 +150,8 @@ impl<T: Config> Pallet<T> {
     Self::do_remove_subnet(
       subnet_id,
       SubnetRemovalReason::Council,
-    )
+    );
+    Ok(())
   }
 
   pub fn do_collective_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {

@@ -118,7 +118,7 @@ fn test_validate() {
     //   );
     // }
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
 
     let hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -186,7 +186,7 @@ fn test_validate_after_slot_error() {
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
 
     let hotkey = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -238,7 +238,7 @@ fn test_validate_invalid_validator() {
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
 
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
@@ -293,7 +293,7 @@ fn test_attest() {
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -321,7 +321,7 @@ fn test_attest() {
       }
       assert_ok!(
         Network::attest(
-          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)), 
+          RuntimeOrigin::signed(attestor.clone()), 
           subnet_id,
         )
       );
@@ -376,7 +376,7 @@ fn test_attest_no_submission_err() {
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     // --- Get validator
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -424,7 +424,7 @@ fn test_attest_already_attested_err() {
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -480,7 +480,7 @@ fn test_attest_already_attested_err() {
       }
       assert_err!(
         Network::attest(
-          RuntimeOrigin::signed(account(subnets*max_subnet_nodes+n)), 
+          RuntimeOrigin::signed(hotkey.clone()), 
           subnet_id,
         ),
         Error::<Test>::AlreadyAttested
@@ -543,7 +543,7 @@ fn test_distribute_rewards() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -684,7 +684,7 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -822,7 +822,7 @@ fn test_distribute_rewards_remove_node_at_max_penalties() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -998,7 +998,7 @@ fn test_distribute_rewards_graduate_idle_to_included() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1140,7 +1140,7 @@ fn test_distribute_rewards_no_score_submitted_increase_penalties() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1284,7 +1284,7 @@ fn test_attest_decrease_penalties_when_included() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1476,7 +1476,7 @@ fn test_attest_decrease_penalties_when_included() {
     //   block_number
     // );
 
-//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //     assert!(validator_id != None, "Validator is None");
 //     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1605,7 +1605,7 @@ fn test_attest_decrease_penalties_when_included() {
 //       block_number
 //     );
 
-//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+//     let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //     assert!(validator_id != None, "Validator is None");
 //     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1796,7 +1796,7 @@ fn test_distribute_rewards_graduate_included_to_validator() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
@@ -1923,7 +1923,7 @@ fn test_distribute_rewards_graduate_included_to_validator() {
         block_number
       );
 
-      let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+      let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
       assert!(validator_id != None, "Validator is None");
       assert!(validator_id != Some(0), "Validator is 0");
 
@@ -2025,8 +2025,6 @@ fn test_distribute_rewards_graduate_included_to_validator() {
     }
 
     let node_included_epochs = SubnetNodeConsecutiveIncludedEpochs::<Test>::get(subnet_id, hotkey_subnet_node_id);
-    log::error!("node_included_epochs {:?}", node_included_epochs);
-    
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
     assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);
   });
@@ -2075,6 +2073,7 @@ fn test_distribute_rewards_node_delegate_stake() {
 		assert!(subnet_weight.is_some());
 
     // ⸺ Submit consnesus data
+    // run_subnet_consensus_step(subnet_id);
     set_block_to_subnet_slot_epoch(epoch, subnet_id);
 
     let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
@@ -2085,15 +2084,15 @@ fn test_distribute_rewards_node_delegate_stake() {
       block_number
     );
 
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     assert!(validator_id != None, "Validator is None");
     assert!(validator_id != Some(0), "Validator is 0");
 
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
 
-    let epoch = Network::get_current_epoch_as_u32();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-    let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
+    let subnet_node_data_vec = get_subnet_node_consensus_data(subnet_id, max_subnet_nodes, 0, total_subnet_nodes);
 
     assert_ok!(
       Network::validate(
@@ -2106,7 +2105,7 @@ fn test_distribute_rewards_node_delegate_stake() {
 
     for n in 0..total_subnet_nodes {
       let _n = n + 1;
-      let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
+      let hotkey = get_hotkey(subnet_id, max_subnet_nodes, max_subnets, _n);
       if hotkey.clone() == validator.clone() {
         continue
       }

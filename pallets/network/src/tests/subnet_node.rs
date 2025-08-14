@@ -2364,10 +2364,11 @@ fn test_deactivation_ledger_as_attestor() {
 
     let epoch_length = EpochLength::get();
     let epoch = System::block_number() / epoch_length;
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
     // insert node as validator to place them into the ledger
     SubnetElectedValidator::<Test>::insert(subnet_id, epoch, 1);
-    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, epoch);
+    let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
     let mut validator = SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
 
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);

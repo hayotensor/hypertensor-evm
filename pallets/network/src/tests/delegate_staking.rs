@@ -23,6 +23,7 @@ use crate::{
   TotalNodeDelegateStakeShares,
   NetworkMinStakeBalance,
   TotalActiveSubnets,
+  SubnetsData,
 };
 use codec::Decode;
 use sp_runtime::traits::TrailingZeroInput;
@@ -337,13 +338,18 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
       (delegate_balance < amount)
     );
 
-    assert_ok!(
-      Network::do_remove_subnet(
-        // subnet_name.clone().into(),
-        subnet_id,
-        SubnetRemovalReason::MinSubnetDelegateStake,
-      )
+    // assert_ok!(
+    //   Network::do_remove_subnet( 
+    //     subnet_id,
+    //     SubnetRemovalReason::MinSubnetDelegateStake,
+    //   )
+    // );
+    Network::do_remove_subnet( 
+      subnet_id,
+      SubnetRemovalReason::MinSubnetDelegateStake,
     );
+
+    assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 
     let epoch = System::block_number() / EpochLength::get();
 
@@ -1081,13 +1087,18 @@ fn test_remove_delegate_stake_after_subnet_remove() {
     let epoch_length = EpochLength::get();
     let cooldown_epochs = DelegateStakeCooldownEpochs::get();
 
-    assert_ok!(
-      Network::do_remove_subnet( 
-        // subnet_name.clone().into(),
-        subnet_id,
-        SubnetRemovalReason::MinSubnetDelegateStake,
-      )
+    // assert_ok!(
+    //   Network::do_remove_subnet( 
+    //     subnet_id,
+    //     SubnetRemovalReason::MinSubnetDelegateStake,
+    //   )
+    // );
+    Network::do_remove_subnet( 
+      subnet_id,
+      SubnetRemovalReason::MinSubnetDelegateStake,
     );
+
+    assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 
     // System::set_block_number(System::block_number() + epoch_length * cooldown_epochs);
 
