@@ -2926,17 +2926,17 @@ pub mod pallet {
 		OptionQuery
 	>;
 	
-	// Epoch >>> Subnet ID
-	#[pallet::storage]
-	pub type OverwatchWeights<T: Config> = StorageDoubleMap<
-    _, 
-    Identity, 
-		u32, 
-    Identity, 
-		u32,
-    Vec<u8>, 
-		OptionQuery
-	>;
+	// // Epoch >>> Subnet ID
+	// #[pallet::storage]
+	// pub type OverwatchWeights<T: Config> = StorageDoubleMap<
+  //   _, 
+  //   Identity, 
+	// 	u32, 
+  //   Identity, 
+	// 	u32,
+  //   Vec<u8>, 
+	// 	OptionQuery
+	// >;
 	
 	// ow ID -> penalties count
 	#[pallet::storage]
@@ -2952,13 +2952,15 @@ pub mod pallet {
 	pub type MaxOverwatchNodePenalties<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
 
 	/// Finalized calculated subnet weights from overwatch nodes
-	// Subnet ID => Weight
+	// Epoch => Subnet ID => Weight
 	#[pallet::storage]
-	pub type OverwatchSubnetWeights<T: Config> = StorageMap<
-		_,
-		Identity,
-		u32,
-		u128,
+	pub type OverwatchSubnetWeights<T: Config> = StorageDoubleMap<
+    _, 
+    Identity, 
+		u32,  	// Epoch
+    Identity, 
+		u32, 		// Subnet ID
+    u128, 	// Weight
 		OptionQuery
 	>;
 	
