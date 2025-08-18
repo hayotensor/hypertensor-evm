@@ -453,6 +453,9 @@ pub mod pallet {
 		/// Wallet doesn't have enough balance to register subnet
 		NotEnoughBalanceToRegisterSubnet,
 
+		///
+		SubnetActivationConditionsNotMet,
+
 		/// Cannot deactivate node if current epochs validator
 		IsValidatorCannotDeactivate,
 
@@ -654,6 +657,9 @@ pub mod pallet {
 		NotCommitPeriod,
 		/// Not in the reveal period of the epoch
 		NotRevealPeriod,
+
+		/// Not qualified to be an overwatch node, see ColdkeyReputation
+		ColdkeyNotOverwatchQualified,
 	}
 	
 	/// Subnet data
@@ -1268,23 +1274,6 @@ pub mod pallet {
 		512
 	}
 	#[pallet::type_value]
-	pub fn DefaultMaxOverwatchNodes() -> u32 {
-		64
-	}
-	#[pallet::type_value]
-	pub fn DefaultOverwatchInterval() -> u32 {
-		16
-	}
-	#[pallet::type_value]
-	pub fn DefaultOverwatchCommitCutoff() -> u128 {
-		// 80%
-		800000000000000000
-	}
-	#[pallet::type_value]
-	pub fn DefaultMaxOverwatchNodePenalties() -> u32 {
-		10
-	}
-	#[pallet::type_value]
 	pub fn DefaultAccountTake() -> u128 {
 		0
 	}
@@ -1843,8 +1832,45 @@ pub mod pallet {
 		0
 	}
 	#[pallet::type_value]
+	pub fn DefaultMaxOverwatchNodes() -> u32 {
+		64
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchInterval() -> u32 {
+		16
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchCommitCutoffPercent() -> u128 {
+		// 80%
+		800000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultMaxOverwatchNodePenalties() -> u32 {
+		10
+	}
+	#[pallet::type_value]
 	pub fn DefaultOverwatchMinStakeBalance() -> u128 {
 		100e+18 as u128
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchMinDiversificationRatio() -> u128 {
+		// 25%
+		250000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchMinRepScore() -> u128 {
+		// 75%
+		750000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchMinAvgAttestationRatio() -> u128 {
+		// 75%
+		720000000000000000
+	}
+	#[pallet::type_value]
+	pub fn DefaultOverwatchMinAge<T: Config>() -> u32 {
+		// ~3 months
+		T::EpochLength::get() / 4
 	}
 	#[pallet::type_value]
 	pub fn DefaulMaxMinDelegateStakeMultiplier() -> u128 {
@@ -1858,8 +1884,6 @@ pub mod pallet {
 	}
 
 
-
-	
 	// 
 	// Subnet elements
 	//
@@ -1988,6 +2012,9 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetRegistrationInterval<T> = StorageValue<_, u32, ValueQuery, DefaultSubnetRegistrationInterval>;
 
+	/// Set of coldkeys
+	#[pallet::storage]
+	pub type SubnetColdkeys<T: Config> = StorageMap<_, Identity, u32, BTreeSet<T::AccountId>, ValueQuery>;
 
 	//
 	// Registration fees
@@ -2339,6 +2366,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ColdkeyHotkeys<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<T::AccountId>, ValueQuery>;
 
+	// Coldkey => {SID: SNID}
+	#[pallet::storage]
+	pub type ColdkeySubnetNodes<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32,BTreeSet<u32>>, ValueQuery>;
+
 	// Subnet ID => Hotkey => Subnet Node ID
 	#[pallet::storage]
 	pub type HotkeySubnetNodeId<T: Config> = StorageDoubleMap<_, Identity, u32, Blake2_128Concat, T::AccountId, u32, OptionQuery>;
@@ -2605,6 +2636,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ColdkeySubnets<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<u32>, ValueQuery>;
 
+	/// coldkey => { subnet ID: node ID }
+	#[pallet::storage]
+	pub type ColdkeySubnetsV2<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u32>, ValueQuery>;
+
 	// Attestion percentage required to increment a nodes penalty count up
 	#[pallet::storage]
 	pub type NodeAttestationRemovalThreshold<T> = StorageValue<_, u128, ValueQuery, DefaultNodeAttestationRemovalThreshold>;
@@ -2827,30 +2862,30 @@ pub mod pallet {
 	//
 	
 	#[pallet::storage]
-	pub type MaxOverwatchNodes<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodes>;
+	pub type MaxOverwatchNodes<T> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodes>;
 
 	#[pallet::storage]
-	pub type TotalOverwatchNodes<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+	pub type TotalOverwatchNodes<T> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 
 	#[pallet::storage]
-	pub type TotalOverwatchNodeUids<T: Config> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+	pub type TotalOverwatchNodeUids<T> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 	
 	// Overwatch epoch multipler vs T::EpochLength
 	// i.e. Overwatch nodes submit data every /x/ epochs
 	#[pallet::storage]
-	pub type OverwatchEpochLengthMultiplier<T: Config> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
+	pub type OverwatchEpochLengthMultiplier<T> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
 
 	// The interval overwatch nodes submit weights
 	// i.e. every 10 epochs
 	#[pallet::storage]
-	pub type OverwatchInterval<T: Config> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
+	pub type OverwatchInterval<T> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
 
 	// The percent progress of the overwatch interval where the node can:
 	// - no longer commit
 	// - can reveal
 	// i.e. Node can commit for 80% of the period, and reveal in the latter 20% of the period
 	#[pallet::storage]
-	pub type OverwatchCommitCutoff<T: Config> = StorageValue<_, u128, ValueQuery, DefaultOverwatchCommitCutoff>;
+	pub type OverwatchCommitCutoffPercent<T> = StorageValue<_, u128, ValueQuery, DefaultOverwatchCommitCutoffPercent>;
 
 	// Hotkey => OverwatchNode
 	#[pallet::storage]
@@ -2882,7 +2917,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage] // subnet_id --> peer_id --> overwatch_node_id
-	pub type PeerIdOverwatchNode<T: Config> = StorageDoubleMap<
+	pub type PeerIdOverwatchNode<T> = StorageDoubleMap<
 		_,
 		Identity,
 		u32,
@@ -2892,13 +2927,14 @@ pub mod pallet {
 		ValueQuery,
 		DefaultZeroU32,
 	>;
-
+	
+	// Overwatch node peer Ids mapping {subnet ID: PeerId}
 	#[pallet::storage]
-	pub type OverwatchNodeIndex<T: Config> = StorageMap<
+	pub type OverwatchNodeIndex<T> = StorageMap<
 		_,
 		Identity,
 		u32, // overwatch_node_id
-		BTreeMap<u32, PeerId>,
+		BTreeMap<u32, PeerId>, 
 		ValueQuery,
 	>;
 
@@ -2915,7 +2951,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub type OverwatchReveals<T: Config> = StorageNMap<
+	pub type OverwatchReveals<T> = StorageNMap<
 		_,
 		(
 			NMapKey<Identity, u32>, // Epoch
@@ -2925,22 +2961,10 @@ pub mod pallet {
 		u128, // Reveal
 		OptionQuery
 	>;
-	
-	// // Epoch >>> Subnet ID
-	// #[pallet::storage]
-	// pub type OverwatchWeights<T: Config> = StorageDoubleMap<
-  //   _, 
-  //   Identity, 
-	// 	u32, 
-  //   Identity, 
-	// 	u32,
-  //   Vec<u8>, 
-	// 	OptionQuery
-	// >;
-	
+		
 	// ow ID -> penalties count
 	#[pallet::storage]
-	pub type OverwatchNodePenalties<T: Config> = StorageMap<
+	pub type OverwatchNodePenalties<T> = StorageMap<
 		_,
 		Identity,
 		u32,
@@ -2949,12 +2973,12 @@ pub mod pallet {
 	>;
 	
 	#[pallet::storage]
-	pub type MaxOverwatchNodePenalties<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
+	pub type MaxOverwatchNodePenalties<T> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
 
 	/// Finalized calculated subnet weights from overwatch nodes
 	// Epoch => Subnet ID => Weight
 	#[pallet::storage]
-	pub type OverwatchSubnetWeights<T: Config> = StorageDoubleMap<
+	pub type OverwatchSubnetWeights<T> = StorageDoubleMap<
     _, 
     Identity, 
 		u32,  	// Epoch
@@ -2966,7 +2990,7 @@ pub mod pallet {
 	
 	/// Overwatch node scores
 	#[pallet::storage]
-	pub type OverwatchNodeWeights<T: Config> = StorageDoubleMap<
+	pub type OverwatchNodeWeights<T> = StorageDoubleMap<
     _, 
     Identity, 
 		u32,  	// Epoch
@@ -2975,6 +2999,27 @@ pub mod pallet {
     u128, 	// Weight
 		OptionQuery
 	>;
+	
+	//
+	// Overwatch reputation conditional requirements
+	//
+	
+	/// The percentage of subnets a coldkey must be in  to become an Overwatch Node
+	// i.e. if there are 100 subnets and the ratio is 51%, they must be in at least 51 subnets as a subnet node
+	#[pallet::storage]
+	pub type OverwatchMinDiversificationRatio<T> = StorageValue<_, u128, ValueQuery, DefaultOverwatchMinDiversificationRatio>;
+
+	/// The minimum coldkey reputation score
+	#[pallet::storage]
+	pub type OverwatchMinRepScore<T> = StorageValue<_, u128, ValueQuery, DefaultOverwatchMinRepScore>;
+	
+	/// The minimum coldkey reputation attestation ratio
+	#[pallet::storage]
+	pub type OverwatchMinAvgAttestationRatio<T> = StorageValue<_, u128, ValueQuery, DefaultOverwatchMinAvgAttestationRatio>;
+
+	/// The minimum coldkey reputation time in network based on general blockchain epochs
+	#[pallet::storage]
+	pub type OverwatchMinAge<T: Config> = StorageValue<_, u32, ValueQuery, DefaultOverwatchMinAge<T>>;
 
 	//
 	// Overwatch staking
@@ -3088,33 +3133,39 @@ pub mod pallet {
         Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
 			};
 			
-			// --- Ensure the subnet has passed it's required period to begin consensus submissions
-			ensure!(
-				subnet.state != SubnetState::Registered,
-				Error::<T>::SubnetInitializing
-			);
-
 			let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
 
 			let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
 			// let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance();
 			let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
 
-			if penalties > MaxSubnetPenaltyCount::<T>::get() {
+			let epoch: u32 = Self::get_current_epoch_as_u32();
+
+			let in_registration_period = Self::is_subnet_registering(subnet_id, subnet.state, epoch);
+			let in_enactment_period = Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch);
+
+			if !in_registration_period && penalties > MaxSubnetPenaltyCount::<T>::get() {
 				// --- If the subnet has reached max penalty, remove it
         Self::do_remove_subnet(
-          // subnet.name,
 					subnet_id,
           SubnetRemovalReason::MaxPenalties,
         );
-			} else if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
+				return Ok(())
+			} else if !in_registration_period && subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
 				// --- If the delegate stake balance is below minimum threshold, remove it
         Self::do_remove_subnet(
-          // subnet.name,
 					subnet_id,
           SubnetRemovalReason::MinSubnetDelegateStake,
         );
+				return Ok(())
+			} else if subnet.state == SubnetState::Registered && !in_registration_period && !in_enactment_period {
+				Self::do_remove_subnet(
+					subnet_id,
+					SubnetRemovalReason::EnactmentPeriod,
+				);
+				return Ok(())
 			}
+
 
 			// --- If we make it to here, fail the extrinsic
 			Err(Error::<T>::InvalidSubnetRemoval.into())
@@ -4023,6 +4074,29 @@ pub mod pallet {
 				Err(()) => false,
 			};
 
+			// --- If subnet doesn't exist, clean up the nodes storage elements that may not have been cleaned
+			// In a situation when a subnet is removed with existing subnet nodes, a few storage elements are not cleaned up
+			// In any case, any existing nodes must at some point remove stake and this will clean those up
+			match SubnetsData::<T>::try_get(subnet_id) {
+        Ok(_) => (),
+        Err(()) => {
+					HotkeySubnetId::<T>::remove(&hotkey);
+					match HotkeyOwner::<T>::try_get(&hotkey) {
+						Ok(coldkey) => {
+							// ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+							// 	rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+							// });
+						},
+						Err(()) => ()
+					};
+
+					let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+					hotkeys.remove(&hotkey);
+					ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+				},
+			};
+
+
 			// Remove stake
 			// 		is_subnet_node: cannot remove stake below minimum required stake
 			// 		else: can remove total stake balance
@@ -4733,6 +4807,10 @@ pub mod pallet {
 						ColdkeyReputation::<T>::swap(&curr_coldkey, &new_coldkey);
 						ColdkeySubnets::<T>::swap(&curr_coldkey, &new_coldkey);
 
+						ColdkeySubnetsV2::<T>::swap(&curr_coldkey, &new_coldkey);
+
+						ColdkeySubnetNodes::<T>::swap(&curr_coldkey, &new_coldkey);
+
 						Ok(())
 					},
 					// --- Revert from here if not exist
@@ -4836,7 +4914,6 @@ pub mod pallet {
 
 			// Iterate each subnet and update node and stake balance
 			// Each nodes hotkey is unique to each subnet, so iterating here will land on one subnet only
-			// TODO: Add hotkey -> subnet_id to avoid this iteration here
 			if let Some(subnet_id) = HotkeySubnetId::<T>::take(&old_hotkey) {
 				let subnet_node_owner: (bool, u32) = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &old_hotkey) {
 					Ok(subnet_node_id) => (true, subnet_node_id),
@@ -4854,6 +4931,9 @@ pub mod pallet {
 				}
 
 				HotkeyOverwatchNodeId::<T>::insert(&new_hotkey, subnet_id);
+
+				// --- Insert new hotkey
+				HotkeySubnetId::<T>::insert(&new_hotkey, subnet_id);
 			}
 
 			// for (subnet_id, _) in SubnetsData::<T>::iter() {
@@ -5077,7 +5157,7 @@ pub mod pallet {
 			stake_to_be_added: u128,
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_register_ow(
+			Self::do_register_overwatch_node(
 				origin,
 				hotkey,
 				stake_to_be_added,
@@ -5089,33 +5169,27 @@ pub mod pallet {
 		pub fn remove_overwatch_node(
 			origin: OriginFor<T>,
 			overwatch_node_id: u32,
-			stake_to_be_added: u128,
 		) -> DispatchResult {
 			let key: T::AccountId = ensure_signed(origin.clone())?;
 
 			Self::is_paused()?;
 
-			ensure!(
-				Self::is_overwatch_node_keys_owner(
-					overwatch_node_id, 
-					key, 
-				),
-				Error::<T>::NotKeyOwner
-			);
-
-			Ok(())
+			Self::do_remove_ow(
+				key,
+				overwatch_node_id
+			)
 		}
 
 		#[pallet::call_index(69)]
 		#[pallet::weight({0})]
-		pub fn set_overwatch_peer_id(
+		pub fn set_overwatch_node_peer_id(
 			origin: OriginFor<T>,
 			subnet_id: u32,
 			overwatch_node_id: u32,
 			peer_id: PeerId
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_set_ow_peer_id(
+			Self::do_set_overwatch_node_peer_id(
 				origin,
 				subnet_id,
 				overwatch_node_id,
@@ -5123,30 +5197,62 @@ pub mod pallet {
 			)
 		}
 
+		/// Commit overwatch subnet weight weight
+		///
+		/// # Requirements
+		///
+		/// * Must be an overwatch node
+		/// * Must be in the commit period/phase of the overwatch epoch
+		///
+		/// # Note
+		///
+		/// This can be called multiple times in the commit phase of the overwatch epoch
+		///
+		/// # Arguments
+		///
+		/// * `overwatch_node_id` - Caller Overwatch Node ID.
+		/// * `mut commit_weights` - Vector of hashed subnet commits, see `OverwatchCommit`.
+		/// 
 		#[pallet::call_index(70)]
 		#[pallet::weight({0})]
-		pub fn commit_ow_weights(
+		pub fn commit_overwatch_subnet_weights(
 			origin: OriginFor<T>,
 			overwatch_node_id: u32,
 			mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_commit_ow_weights(
+			Self::do_commit_overwatch_subnet_weights(
 				origin,
 				overwatch_node_id,
 				commit_weights,
 			)
 		}
 
+		/// Reveal overwatch subnet weight weight
+		///
+		/// # Requirements
+		///
+		/// * Must be an overwatch node
+		/// * Every reveal must match every commit
+		///
+		/// # Note
+		///
+		/// This can be called multiple times in the reveal phase of the overwatch epoch
+		///
+		/// # Arguments
+		///
+		/// * `overwatch_node_id` - Caller Overwatch Node ID.
+		/// * `reveals` - Vector of commit reveals, see `OverwatchReveal`.
+		/// 
 		#[pallet::call_index(71)]
 		#[pallet::weight({0})]
-		pub fn reveal_ow_weights(
+		pub fn reveal_overwatch_subnet_weights(
 			origin: OriginFor<T>,
 			overwatch_node_id: u32,
 			reveals: Vec<OverwatchReveal>,
 		) -> DispatchResult {
 			Self::is_paused()?;
-			Self::do_reveal_ow_weights(
+			Self::do_reveal_overwatch_subnet_weights(
 				origin,
 				overwatch_node_id,
 				reveals,
@@ -5567,7 +5673,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Activate subnet or remove registering subnet if doesn't meet requirements
+		/// Activate subnet or remove registering subnet if doesn't meet activation conditions
+		///
+		/// If in registration period
+		/// - A subnet cannot be removed from registration until it is in the enactment period
+		///
+		///
+		///
 		pub fn do_activate_subnet(subnet_id: u32) -> DispatchResult {
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
@@ -5580,18 +5692,37 @@ pub mod pallet {
 			);
 
 			let epoch: u32 = Self::get_current_epoch_as_u32();
+			
+			// --- Has subnet met activation epochs
+			let (can_subnet_be_active, reason) = Self::can_subnet_be_active(subnet_id);
 
-			let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
-	
-			// --- Ensure the subnet has passed it's required period to begin consensus submissions
-			// --- Ensure the subnet is within the enactment period
-			ensure!(
-				Self::is_subnet_registering(subnet_id, subnet.state, epoch) == false,
-				Error::<T>::SubnetInitializing
-			);
+			let in_registration_period = Self::is_subnet_registering(subnet_id, subnet.state, epoch);
 
-			// --- If subnet not activated yet and is outside the enactment period, remove subnet
-			if Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch) == false {
+			// --- Allow accidently activating in the registration period if activation conditions are not met yet
+			if !can_subnet_be_active && in_registration_period {
+				return Err(Error::<T>::SubnetActivationConditionsNotMet.into())
+			}
+
+			let in_enactment_period = Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch);
+
+			// If can't be activated, and in enactment period, remove subnet
+			if !can_subnet_be_active && in_enactment_period {
+				Self::do_remove_subnet(
+					subnet_id,
+					reason.unwrap(),
+				);
+				return Ok(())
+			} else if !can_subnet_be_active {
+				// Any time past the enactment period, give the correct error on why
+				Self::do_remove_subnet(
+					subnet_id,
+					reason.unwrap(),
+				);
+				return Ok(())
+			}
+
+			// --- If past the enactment period and not yet activated, remove
+			if !in_registration_period && !in_enactment_period {
 				Self::do_remove_subnet(
 					subnet_id,
 					SubnetRemovalReason::EnactmentPeriod,
@@ -5599,29 +5730,47 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			// --- 1. Ensure minimum nodes are activated
-			let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+			// Otherwise, once subnet hits the subnet conditions, it can be activated
 
-			if total_nodes < MinSubnetNodes::<T>::get() {
-				Self::do_remove_subnet(
-					subnet_id,
-					SubnetRemovalReason::MinSubnetNodes,
-				);
-				return Ok(())
-			}
+			// // --- Ensure the subnet has passed it's required period to begin consensus submissions
+			// // --- Ensure the subnet is within the enactment period
+			// ensure!(
+			// 	Self::is_subnet_registering(subnet_id, subnet.state, epoch) == false,
+			// 	Error::<T>::SubnetInitializing
+			// );
 
-			// --- 2. Ensure minimum delegate stake achieved 
-			let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-			let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+			// // --- If subnet not activated yet and is outside the enactment period, remove subnet
+			// if Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch) == false {
+			// 	Self::do_remove_subnet(
+			// 		subnet_id,
+			// 		SubnetRemovalReason::EnactmentPeriod,
+			// 	);
+			// 	return Ok(())
+			// }
 
-			// --- Ensure delegate stake balance is below minimum threshold required
-			if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
-				Self::do_remove_subnet(
-					subnet_id,
-					SubnetRemovalReason::MinSubnetDelegateStake,
-				);
-				return Ok(())
-			}
+			// // --- 1. Ensure minimum nodes are activated
+			// let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+
+			// if total_nodes < MinSubnetNodes::<T>::get() {
+			// 	Self::do_remove_subnet(
+			// 		subnet_id,
+			// 		SubnetRemovalReason::MinSubnetNodes,
+			// 	);
+			// 	return Ok(())
+			// }
+
+			// // --- 2. Ensure minimum delegate stake achieved 
+			// let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+			// let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+
+			// // --- Ensure delegate stake balance is below minimum threshold required
+			// if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
+			// 	Self::do_remove_subnet(
+			// 		subnet_id,
+			// 		SubnetRemovalReason::MinSubnetDelegateStake,
+			// 	);
+			// 	return Ok(())
+			// }
 
 			// ===============
 			// Gauntlet passed
@@ -5657,12 +5806,6 @@ pub mod pallet {
 			subnet_id: u32,
 			reason: SubnetRemovalReason,
 		) {
-			log::error!("removing subnet {:?}", reason);
-			log::info!("removing subnet {:?}", reason);
-			// let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-      //   Ok(subnet) => subnet,
-      //   Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
-			// };
 			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
         Ok(subnet) => subnet,
         Err(()) => return,
@@ -5684,11 +5827,6 @@ pub mod pallet {
 				TotalActiveSubnets::<T>::mutate(|n: &mut u32| n.saturating_dec());
 			}
 
-			// Remove all subnet nodes data
-			let _ = SubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
-			let total_nodes = TotalActiveSubnetNodes::<T>::take(subnet_id);
-			TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_reduce(total_nodes));
-
 			// We have removed all of the data required to assist in blockchain logic
 			// `clean_subnet_nodes` cleans up non-required data
 			Self::clean_subnet_nodes(subnet_id);
@@ -5696,13 +5834,15 @@ pub mod pallet {
 			Self::deposit_event(Event::SubnetDeactivated { subnet_id: subnet_id, reason: reason });
 		}
 
+		// Only called from `do_remove_subnet`
+		// If we call this anywhere else, must include a way to ensure subnet exists
 		pub fn clean_subnet_nodes(
 			subnet_id: u32,
 		) {
-			let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-        Ok(subnet) => subnet,
-        Err(()) => return,
-			};
+			// Remove all subnet nodes data
+			let _ = SubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
+			let total_nodes = TotalActiveSubnetNodes::<T>::take(subnet_id);
+			TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_reduce(total_nodes));
 
 			let _ = TotalSubnetNodes::<T>::remove(subnet_id);
 			let _ = TotalSubnetNodeUids::<T>::remove(subnet_id);
@@ -5713,6 +5853,7 @@ pub mod pallet {
 			let _ = SubnetNodeIdHotkey::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetNodeNonUniqueParamLastSet::<T>::clear_prefix(subnet_id, u32::MAX, None);
 			let _ = SubnetNodePenalties::<T>::clear_prefix(subnet_id, u32::MAX, None);
+			// let _ = SubnetColdkeys::<T>::remove(subnet_id);
 
 			let electable_nodes = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
 			TotalElectableNodes::<T>::mutate(|mut n| n.saturating_sub(electable_nodes));
@@ -5965,6 +6106,13 @@ pub mod pallet {
 			// Add subnet Id to coldkey subnets set
 			ColdkeySubnets::<T>::mutate(&coldkey, |subnets| {
 				subnets.insert(subnet_id);
+			});
+
+			ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
+				node_map
+					.entry(subnet_id)
+					.or_insert_with(BTreeSet::new)
+					.insert(current_uid);
 			});
 
 			Self::deposit_event(

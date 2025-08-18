@@ -48,6 +48,9 @@ use crate::{
   Reputation,
   SubnetNodeClassification,
   DefaultMaxVectorLength,
+  ColdkeySubnetNodes,
+  SubnetState,
+  SubnetsData,
 };
 use sp_core::U256;
 ///
@@ -1556,6 +1559,8 @@ fn test_subnet_overwatch_node_unique_hotkeys() {
 
     let _ = Balances::deposit_creating(&free_coldkey, deposit_amount);
 
+    make_overwatch_qualified(subnet_id*total_subnet_nodes+1);
+
     assert_ok!(
       Network::register_overwatch_node(
         RuntimeOrigin::signed(free_coldkey.clone()),
@@ -1796,3 +1801,176 @@ fn test_get_removing_node_respects_policy() {
     assert_eq!(maybe_uid, Some(1));
   });
 }
+
+#[test]
+fn test_clean_coldkey_subnet_nodes() {
+  new_test_ext().execute_with(|| {
+      insert_subnet(1, SubnetState::Active, 0);
+      insert_subnet(2, SubnetState::Active, 0);
+
+      // Seed data
+      let coldkey = account(1);
+      let mut subnet_nodes: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
+
+      // Subnet 1: Valid subnet with valid and invalid nodes
+      insert_subnet_node(
+        1, 
+        100, // node id
+        1, // coldkey
+        2, // hotkey
+        2, // peer
+        SubnetNodeClass::Validator, 
+        0
+      );
+      let mut node_ids1 = BTreeSet::new();
+      node_ids1.insert(100); // Valid node
+      // insert nodes for subnet 1
+      subnet_nodes.insert(1, node_ids1);
+
+      // Subnet 2: Valid subnet with only valid nodes
+      insert_subnet_node(
+        2, 
+        200, // node id
+        1, // coldkey
+        3, // hotkey
+        3, // peer
+        SubnetNodeClass::Validator, 
+        0
+      );
+      let mut node_ids2 = BTreeSet::new();
+      node_ids2.insert(200); // Valid node
+      // insert nodes for subnet 2
+      subnet_nodes.insert(2, node_ids2);
+
+      // Subnet 3: Invalid subnet
+      let mut node_ids3 = BTreeSet::new();
+      node_ids3.insert(300); // Valid node
+      node_ids3.insert(301); // Invalid node
+      // insert nodes for subnet 3
+      subnet_nodes.insert(3, node_ids3);
+
+      // Insert seed data into storage
+      ColdkeySubnetNodes::<Test>::insert(coldkey.clone(), subnet_nodes);
+
+      // Verify initial state
+      let initial = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+      assert_eq!(initial.len(), 3);
+      assert_eq!(initial.get(&1).unwrap().len(), 1);
+      assert_eq!(initial.get(&2).unwrap().len(), 1);
+
+      // Subnet doesn't exist, both will be removed later
+      assert_eq!(initial.get(&3).unwrap().len(), 2);
+
+      // Call the function to clean invalid subnets and nodes
+      Network::clean_coldkey_subnet_nodes(coldkey.clone());
+
+      // Verify final state
+      let final_state = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+      log::error!("final_state {:?}", final_state);
+
+      assert_eq!(final_state.len(), 2, "Invalid subnet 3 should be removed");
+
+      assert_eq!(
+        final_state.get(&1).unwrap().len(),
+        1,
+        "Invalid node 101 should be removed from subnet 1"
+      );
+
+      assert!(final_state.get(&1).unwrap().contains(&100));
+      assert!(final_state.get(&1).unwrap().contains(&101) == false);
+
+      assert_eq!(
+        final_state.get(&2).unwrap().len(),
+        1,
+        "Subnet 2 should remain unchanged"
+      );
+      assert!(final_state.get(&2).unwrap().contains(&200));
+      assert!(final_state.get(&3).is_none(), "Subnet 3 should be gone");
+  })
+}
+
+// #[test]
+// fn test_clean_coldkey_subnet_nodes() {
+//   new_test_ext().execute_with(|| {
+//       insert_subnet(1, SubnetState::Active, 0);
+//       insert_subnet(2, SubnetState::Active, 0);
+
+//       // Seed data
+//       let coldkey = account(1);
+//       let mut subnet_nodes: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
+
+//       // Subnet 1: Valid subnet with valid and invalid nodes
+//       insert_subnet_node(
+//         1, 
+//         100, // node id
+//         1, // coldkey
+//         2, // hotkey
+//         2, // peer
+//         SubnetNodeClass::Validator, 
+//         0
+//       );
+//       let mut nodes1 = BTreeSet::new();
+//       nodes1.insert(100); // Valid node
+//       nodes1.insert(101); // Invalid node
+//       // insert nodes for subnet 1
+//       subnet_nodes.insert(1, nodes1);
+
+//       // Subnet 2: Valid subnet with only valid nodes
+//       insert_subnet_node(
+//         2, 
+//         200, // node id
+//         1, // coldkey
+//         3, // hotkey
+//         3, // peer
+//         SubnetNodeClass::Validator, 
+//         0
+//       );
+//       let mut nodes2 = BTreeSet::new();
+//       nodes2.insert(200); // Valid node
+//       // insert nodes for subnet 2
+//       subnet_nodes.insert(2, nodes2);
+
+//       // Subnet 3: Invalid subnet
+//       let mut nodes3 = BTreeSet::new();
+//       nodes3.insert(300); // Valid node
+//       nodes3.insert(301); // Invalid node
+//       // insert nodes for subnet 3
+//       subnet_nodes.insert(3, nodes3);
+
+//       // Insert seed data into storage
+//       ColdkeySubnetNodes::<Test>::insert(coldkey.clone(), subnet_nodes);
+
+//       // Verify initial state
+//       let initial = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+//       assert_eq!(initial.len(), 3);
+//       assert_eq!(initial.get(&1).unwrap().len(), 2);
+//       assert_eq!(initial.get(&2).unwrap().len(), 1);
+//       assert_eq!(initial.get(&3).unwrap().len(), 2);
+
+//       // Call the function to clean invalid subnets and nodes
+//       Network::clean_coldkey_subnet_nodes(coldkey.clone());
+
+//       // Verify final state
+//       let final_state = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+//       log::error!("final_state {:?}", final_state);
+
+//       assert_eq!(final_state.len(), 2, "Invalid subnet 3 should be removed");
+
+//       assert_eq!(
+//         final_state.get(&1).unwrap().len(),
+//         1,
+//         "Invalid node 102 should be removed from subnet 1"
+//       );
+
+//       assert!(final_state.get(&1).unwrap().contains(&100));
+//       assert!(final_state.get(&1).unwrap().contains(&101) == false);
+
+//       assert_eq!(
+//         final_state.get(&2).unwrap().len(),
+//         1,
+//         "Subnet 2 should remain unchanged"
+//       );
+//       assert!(final_state.get(&2).unwrap().contains(&200));
+//       assert!(final_state.get(&3).is_none(), "Subnet 3 should be gone");
+//   })
+// }

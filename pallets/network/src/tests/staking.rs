@@ -24,6 +24,8 @@ use crate::{
   RegisteredSubnetNodesData,
   TotalSubnetNodeUids,
   MaxSubnets,
+  SubnetRemovalReason,
+  SubnetsData,
 };
 
 // ///
@@ -300,7 +302,6 @@ fn test_remove_stake() {
     );
 
     assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), stake_amount);
-    // assert_eq!(Network::total_account_stake(account(account_n)), amount);
   });
 }
 
@@ -322,8 +323,6 @@ fn test_remove_stake_min_active_node_stake_epochs() {
 
     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
-
-    let subnet_name: Vec<u8> = "subnet-name".into();
 
     let coldkey = account(subnet_id*total_subnet_nodes+1);
     let hotkey = account(max_subnet_nodes+end*subnets+2);
@@ -406,48 +405,167 @@ fn test_remove_stake_min_active_node_stake_epochs() {
   });
 }
 
-// #[test]
-// fn test_remove_stake_after_remove_subnet_node() {
-//   new_test_ext().execute_with(|| {
-//     let subnet_name: Vec<u8> = "subnet-name".into();
-//     let deposit_amount: u128 = 1000000000000000000000000;
-//     let amount: u128 = 1000000000000000000000;
+#[test]
+fn test_remove_stake_after_remove_subnet_node() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    let deposit_amount: u128 = 1000000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
 
-//     build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, amount);
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    let end = 11;
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-//     let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
-//     let _ = Balances::deposit_creating(&account(1), deposit_amount);
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
 
-//     assert_ok!(
-//       Network::remove_subnet_node(
-//         RuntimeOrigin::signed(account(1)),
-//         subnet_id,
-//       )
-//     );
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
 
-//     let epoch_length = EpochLength::get();
-//     let min_required_unstake_epochs = StakeCooldownEpochs::get();
-//     System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+    let hotkey_subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-//     // remove amount ontop
-//     assert_ok!(
-//       Network::remove_stake(
-//         RuntimeOrigin::signed(account(1)),
-//         account(1),
-//         subnet_id,
-//         amount,
-//       )
-//     );
+    assert_ok!(
+      Network::remove_subnet_node(
+        RuntimeOrigin::signed(hotkey.clone()),
+        subnet_id,
+        hotkey_subnet_node_id,
+      )
+    );
 
-//     assert_eq!(Network::account_subnet_stake(account(1), 1), 0);
-//     assert_eq!(Network::total_account_stake(account(1)), 0);
-//     assert_eq!(Network::total_stake(), 0);
-//     assert_eq!(Network::total_subnet_stake(1), 0);
-//   });
-// }
+    let epoch_length = EpochLength::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
 
+    // remove amount ontop
+    assert_ok!(
+      Network::remove_stake(
+        RuntimeOrigin::signed(coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        stake_amount,
+      )
+    );
+
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), 0);
+
+    // assert_eq!(Network::account_subnet_stake(account(1), 1), 0);
+    // assert_eq!(Network::total_account_stake(account(1)), 0);
+    // assert_eq!(Network::total_stake(), 0);
+    // assert_eq!(Network::total_subnet_stake(1), 0);
+  });
+}
+
+#[test]
+fn test_remove_stake_after_remove_subnet() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    let deposit_amount: u128 = 1000000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    let end = 11;
+
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+
+    Network::do_remove_subnet( 
+      subnet_id,
+      SubnetRemovalReason::MinSubnetDelegateStake,
+    );
+
+    assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
+    assert_eq!(HotkeySubnetNodeId::<Test>::try_get(subnet_id, &hotkey) , Err(()));
+    
+    let epoch_length = EpochLength::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
+
+    // remove amount ontop
+    assert_ok!(
+      Network::remove_stake(
+        RuntimeOrigin::signed(coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        stake_amount,
+      )
+    );
+
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), 0);
+  });
+}
+
+#[test]
+fn test_remove_stake_after_remove_subnet_twice() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    let deposit_amount: u128 = 1000000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+
+    let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+    let end = 11;
+
+    build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+
+    let coldkey = get_coldkey(subnets, max_subnet_nodes, end);
+    let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+    let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+
+    Network::do_remove_subnet( 
+      subnet_id,
+      SubnetRemovalReason::MinSubnetDelegateStake,
+    );
+
+    assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
+    assert_eq!(HotkeySubnetNodeId::<Test>::try_get(subnet_id, &hotkey) , Err(()));
+    
+    let epoch_length = EpochLength::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
+
+    // remove amount ontop
+    assert_ok!(
+      Network::remove_stake(
+        RuntimeOrigin::signed(coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        stake_amount / 2,
+      )
+    );
+
+    assert_ok!(
+      Network::remove_stake(
+        RuntimeOrigin::signed(coldkey.clone()),
+        subnet_id,
+        hotkey.clone(),
+        stake_amount / 2,
+      )
+    );
+
+    assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), 0);
+  });
+}
 
 #[test]
 fn test_deactivate_try_removing_all_stake() {

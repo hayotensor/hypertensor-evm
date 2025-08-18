@@ -24,13 +24,13 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn get_min_subnet_delegate_stake_balance_v2(subnet_id: u32) -> u128 {
-    let total_network_issuance = Self::get_total_network_issuance();
-    let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
+    let total_network_issuance = Self::get_total_network_issuance(); // 4
+    let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get(); // 1
     let base_min = Self::percent_mul(total_network_issuance, factor);
     // base_min
 
-    let electable_node_count = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
-    let multiplier = Self::get_subnet_min_delegate_staking_multiplier(electable_node_count);
+    let electable_node_count = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32; // 1
+    let multiplier = Self::get_subnet_min_delegate_staking_multiplier(electable_node_count); // 3
     
     Self::percent_mul(base_min, multiplier)
   }

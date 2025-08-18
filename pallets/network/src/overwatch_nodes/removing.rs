@@ -18,8 +18,17 @@ use sp_runtime::Saturating;
 
 impl<T: Config> Pallet<T> {
   pub fn do_remove_ow(
+    key: T::AccountId,
     overwatch_node_id: u32,
   ) -> DispatchResult {
+    ensure!(
+      Self::is_overwatch_node_keys_owner(
+        overwatch_node_id, 
+        key, 
+      ),
+      Error::<T>::NotKeyOwner
+    );
+
     let overwatch_node = match OverwatchNodes::<T>::try_get(overwatch_node_id) {
       Ok(overwatch_node) => overwatch_node,
       Err(()) => return Err(Error::<T>::InvalidOverwatchNode.into()),

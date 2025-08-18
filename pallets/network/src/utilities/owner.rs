@@ -40,6 +40,9 @@ impl<T: Config> Pallet<T> {
         // Update state
         params.state = SubnetState::Paused;
 
+        // We use the current epoch as the `start_epoch` when pausing
+        // This enables us to know the delta when reactivating for updating the node registration pool node start epochs
+        // see `do_owner_unpause_subnet`
         params.start_epoch = epoch;
 
         Ok(())

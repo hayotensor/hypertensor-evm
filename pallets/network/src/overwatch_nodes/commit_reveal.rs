@@ -2,7 +2,7 @@ use super::*;
 use sp_runtime::traits::Hash;
 
 impl<T: Config> Pallet<T> {
-  pub fn do_commit_ow_weights(
+  pub fn do_commit_overwatch_subnet_weights(
     origin: T::RuntimeOrigin,
     overwatch_node_id: u32,
     mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
@@ -23,13 +23,13 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotCommitPeriod
     );
 
-    Self::perform_commit_ow_weights(
+    Self::perform_commit_overwatch_subnet_weights(
       overwatch_node_id,
       commit_weights,
     )
   }
 
-  pub fn perform_commit_ow_weights(
+  pub fn perform_commit_overwatch_subnet_weights(
     overwatch_node_id: u32,
     mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
   ) -> DispatchResult {
@@ -63,7 +63,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_reveal_ow_weights(
+  pub fn do_reveal_overwatch_subnet_weights(
     origin: T::RuntimeOrigin,
     overwatch_node_id: u32,
     reveals: Vec<OverwatchReveal>,
@@ -84,13 +84,13 @@ impl<T: Config> Pallet<T> {
       Error::<T>::NotRevealPeriod
     );
 
-    Self::perform_reveal_ow_weights(
+    Self::perform_reveal_overwatch_subnet_weights(
       overwatch_node_id,
       reveals,
     )
   }
 
-  pub fn perform_reveal_ow_weights(
+  pub fn perform_reveal_overwatch_subnet_weights(
     overwatch_node_id: u32,
     reveals: Vec<OverwatchReveal>,
   ) -> DispatchResult {

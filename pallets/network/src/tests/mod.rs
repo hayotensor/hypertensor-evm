@@ -20,7 +20,7 @@ mod keys;
 mod staking_utils;
 mod reputation;
 // mod emissions_stake_weight;
-mod commit_reveal;
+mod overwatch_nodes_commit_reveal;
 mod overwatch_nodes;
 mod identity;
 mod on_initialize;

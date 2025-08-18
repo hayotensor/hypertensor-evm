@@ -80,12 +80,21 @@ impl<T: Config> Pallet<T> {
     BootstrapPeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
     HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
     SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
+    HotkeySubnetId::<T>::remove(&hotkey);
 
     // Remove subnet ID from set
     match HotkeyOwner::<T>::try_get(&hotkey) {
       Ok(coldkey) => {
         ColdkeySubnets::<T>::mutate(&coldkey, |subnets| {
           subnets.remove(&subnet_id);
+        });
+        ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
+          if let Some(nodes) = node_map.get_mut(&subnet_id) {
+            nodes.remove(&subnet_node_id);
+            if nodes.is_empty() {
+              node_map.remove(&subnet_id);
+            }
+          }
         });
       },
       Err(()) => ()
@@ -136,6 +145,15 @@ impl<T: Config> Pallet<T> {
       Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
     } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
       Some(DeactivatedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+    } else {
+      None
+    }
+  }
+
+  /// Get any subnet node that has been activated (not including registered nodes)
+  pub fn get_active_subnet_node(subnet_id: u32, subnet_node_id: u32) -> Option<SubnetNode<T::AccountId>> {
+    if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+      Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
     } else {
       None
     }
@@ -664,4 +682,62 @@ impl<T: Config> Pallet<T> {
       },
     }
   }
+
+  pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
+    ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
+      // Collect subnet_ids to remove (invalid subnets)
+      let mut subnets_to_remove: Vec<u32> = colkey_map
+        .keys()
+        .filter(|&subnet_id| !Self::subnet_exists(*subnet_id))
+        .copied()
+        .collect();
+
+      // Remove invalid subnets
+      for subnet_id in &subnets_to_remove {
+        colkey_map.remove(subnet_id);
+      }
+      // Note: We don't check for node IDs because this is handled in `perform_remove_subnet_node`
+    });
+  }
+
+  // pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
+  //   ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
+  //     // Collect subnet_ids to remove (invalid subnets)
+  //     let mut subnets_to_remove: Vec<u32> = colkey_map
+  //       .keys()
+  //       .filter(|&subnet_id| !Self::subnet_exists(*subnet_id))
+  //       .copied()
+  //       .collect();
+
+  //     // Remove invalid subnets
+  //     for subnet_id in &subnets_to_remove {
+  //       colkey_map.remove(subnet_id);
+  //     }
+
+  //     // Now clean up node IDs in remaining subnets
+  //     for (subnet_id, nodes) in colkey_map.iter_mut() {
+  //       // Collect invalid node_ids
+  //       let invalid_nodes: Vec<u32> = nodes
+  //         .iter()
+  //         .filter(|&&subnet_node_id| Self::get_subnet_node(*subnet_id, subnet_node_id).is_none())
+  //         .copied()
+  //         .collect();
+
+  //       // Remove invalid nodes
+  //       for node_id in invalid_nodes {
+  //         nodes.remove(&node_id);
+  //       }
+
+  //       // Mark subnet for removal if its BTreeSet is now empty
+  //       if nodes.is_empty() {
+  //         subnets_to_remove.push(*subnet_id);
+  //       }
+  //     }
+
+  //     // Remove any newly empty subnets
+  //     for subnet_id in subnets_to_remove {
+  //       colkey_map.remove(&subnet_id);
+  //     }
+  //   });
+  // }
 }

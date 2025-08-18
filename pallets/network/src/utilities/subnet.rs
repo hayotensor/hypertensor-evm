@@ -180,6 +180,13 @@ impl<T: Config> Pallet<T> {
     }
   }
 
+  pub fn subnet_exists(subnet_id: u32) -> bool {
+    match SubnetsData::<T>::try_get(subnet_id) {
+      Ok(_) => true,
+      Err(()) => false,
+    }
+  }
+
   pub fn is_subnet_active(subnet_id: u32) -> Option<bool> {
     match SubnetsData::<T>::try_get(subnet_id) {
       Ok(subnet) => Some(subnet.state == SubnetState::Active),
@@ -302,5 +309,28 @@ impl<T: Config> Pallet<T> {
     });
 
     Ok(())
+  }
+
+  pub fn can_subnet_be_active(subnet_id: u32) -> (bool, Option<SubnetRemovalReason>) {
+    let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
+
+    if penalties > MaxSubnetPenaltyCount::<T>::get() {
+      return (false, Some(SubnetRemovalReason::MaxPenalties))
+    }
+
+    let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+
+    if total_nodes < MinSubnetNodes::<T>::get() {
+      return (false, Some(SubnetRemovalReason::MinSubnetNodes))
+    }
+
+    let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+    let min_subnet_delegate_stake_balance = Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+
+    if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
+      return (false, Some(SubnetRemovalReason::MinSubnetDelegateStake))
+    }
+
+    (true, None)
   }
 }

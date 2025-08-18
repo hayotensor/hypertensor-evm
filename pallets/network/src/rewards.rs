@@ -347,7 +347,7 @@
 //       let subnet_penalty_count = SubnetPenaltyCount::<T>::get(subnet_id);
 //       if subnet_penalty_count > max_subnet_penalty_count {
 //         Self::do_remove_subnet(
-//           data.name,
+//           subnet_id,
 //           SubnetRemovalReason::MaxPenalties,
 //         );
 //       }

@@ -39,6 +39,7 @@ use crate::{
   SubnetOwner,
   SubnetRegistrationEpoch,
   TotalActiveSubnetNodes,
+  TotalActiveNodes,
   TotalActiveSubnets,
   SubnetSlot,
   NodeRemovalSystem,
@@ -58,6 +59,15 @@ use crate::{
   RegisteredSubnetNodesData,
   SubnetState,
   SubnetData,
+  HotkeySubnetId,
+  SubnetNodeClassification,
+  ColdkeyReputation,
+  Reputation,
+  OverwatchMinAge,
+  ColdkeySubnetNodes,
+  TotalSubnetUids,
+  OverwatchEpochLengthMultiplier,
+  OverwatchCommitCutoffPercent,
 };
 use sp_std::collections::btree_map::BTreeMap;
 use frame_support::traits::{OnInitialize, Currency, ExistenceRequirement};
@@ -83,8 +93,12 @@ pub fn get_coldkey(subnets: u32, max_subnet_nodes: u32, n: u32) -> AccountIdOf<T
   account(subnets*max_subnet_nodes+n)
 }
 
+pub fn get_hotkey_n(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> u32 {
+  subnets*max_subnets*max_subnet_nodes+n
+}
+
 pub fn get_hotkey(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> AccountIdOf<Test> {
-  account(subnets*max_subnets*max_subnet_nodes+n)
+  account(get_hotkey_n(subnets,max_subnets,max_subnet_nodes,n))
 }
 
 // it is possible to use `use libp2p::PeerId;` with `PeerId::random()`
@@ -132,7 +146,6 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
   // let cost = Network::registration_cost(epoch);
   let cost = Network::get_current_registration_cost(block_number);
   // let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+500);
-  log::error!("cost {:?}", cost);
   assert_ok!(
     Balances::transfer(
       &account(0), // alice
@@ -246,6 +259,9 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
     let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, amount);
 
+    let hotkey_subnet_id = HotkeySubnetId::<Test>::get(hotkey.clone());
+    assert_eq!(hotkey_subnet_id, Some(subnet_id));
+
     let mut is_electable = false;
     for node_id in SubnetNodeElectionSlots::<Test>::get(subnet_id).iter() {
       if *node_id == hotkey_subnet_node_id {
@@ -253,6 +269,9 @@ pub fn build_activated_subnet_new(subnet_name: Vec<u8>, start: u32, mut end: u32
       }
     }
     assert!(is_electable);
+
+    let coldkey_subnet_nodes = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+    assert!(coldkey_subnet_nodes.get(&subnet_id).unwrap().contains(&hotkey_subnet_node_id))
   }
 
   let total_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
@@ -695,6 +714,21 @@ pub fn set_block_to_subnet_slot_epoch(epoch: u32, subnet_id: u32) {
   System::set_block_number(block);
 }
 
+pub fn set_overwatch_epoch(epoch: u32) {
+  let epoch_length = EpochLength::get();
+  let multiplier = OverwatchEpochLengthMultiplier::<Test>::get();
+  System::set_block_number(epoch * multiplier* epoch_length);
+}
+
+pub fn set_block_to_overwatch_reveal_block(epoch: u32) {
+  let epoch_length = EpochLength::get();
+  let multiplier = OverwatchEpochLengthMultiplier::<Test>::get();
+  let cutoff_percentage = OverwatchCommitCutoffPercent::<Test>::get();
+  let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
+  let block_increase_cutoff = Network::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
+  System::set_block_number(epoch * multiplier * epoch_length + block_increase_cutoff as u32);
+}
+
 // pub fn get_subnet_node_consensus_data(
 //   subnets: u32,
 //   max_subnet_nodes: u32,
@@ -913,6 +947,33 @@ pub fn insert_subnet(id: u32, state: SubnetState, start_epoch: u32) {
   SubnetsData::<Test>::insert(id, data);
 }
 
+pub fn insert_subnet_node(
+  subnet_id: u32, 
+  node_id: u32,
+  coldkey_n: u32, 
+  hotkey_n: u32, 
+  peer_n: u32,
+  class: SubnetNodeClass, 
+  start_epoch: u32
+) {
+  SubnetNodesData::<Test>::insert(subnet_id, node_id, SubnetNode {
+    id: node_id,
+    hotkey: account(hotkey_n),
+    peer_id: peer(peer_n),
+    bootnode_peer_id: peer(peer_n),
+    client_peer_id: peer(peer_n),
+    bootnode: None,
+    delegate_reward_rate: 0,
+    last_delegate_reward_rate_update: 0,
+    classification: SubnetNodeClassification {
+      node_class: class,
+      start_epoch: 0,
+    },
+    unique: Some(BoundedVec::new()),
+    non_unique: Some(BoundedVec::new()),
+  });
+}
+
 // Helper to set registration epoch
 pub fn set_registration_epoch(id: u32, epoch: u32) {
   SubnetRegistrationEpoch::<Test>::insert(id, epoch);
@@ -939,16 +1000,8 @@ pub fn run_subnet_consensus_step(subnet_id: u32) {
 
   let block_number = Network::get_current_block_as_u32();
   let epoch = Network::get_current_epoch_as_u32();
-  
-  // set_block_to_subnet_slot_epoch(epoch, subnet_id);
 
   let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
-
-  // Network::elect_validator_v3(
-  //   subnet_id,
-  //   subnet_epoch,
-  //   block_number
-  // );
 
   let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
   assert!(validator_id != None, "Validator is None");
@@ -998,4 +1051,52 @@ pub fn run_subnet_consensus_step(subnet_id: u32) {
       assert_eq!(submission.attests.get(&(subnet_node_id)), Some(&System::block_number()));
     }
   }
+}
+
+/// Force overwatch node qualified
+// This only works in non network simulations
+pub fn make_overwatch_qualified(coldkey_n: u32) {
+  let max_subnets = MaxSubnets::<Test>::get();
+  let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+  
+  let mut subnet_nodes: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
+  for n in 0..max_subnets-1 {
+    let mut node_ids = BTreeSet::new();
+    let _n = n + 1;
+    let hotkey_n = get_hotkey_n(_n, max_subnet_nodes, max_subnets, _n);
+    insert_subnet(_n, SubnetState::Active, 0);
+    insert_subnet_node(
+      _n, 
+      1, // node id
+      coldkey_n, // coldkey
+      hotkey_n, // hotkey
+      hotkey_n, // peer
+      SubnetNodeClass::Validator, 
+      0
+    );
+    node_ids.insert(1);
+    subnet_nodes.insert(_n, node_ids);
+
+    TotalSubnetUids::<Test>::mutate(|n: &mut u32| *n += 1);
+    TotalActiveSubnets::<Test>::mutate(|n: &mut u32| *n += 1);
+  }
+
+  ColdkeySubnetNodes::<Test>::insert(account(coldkey_n), subnet_nodes);
+
+  // max reputation
+  ColdkeyReputation::<Test>::insert(account(coldkey_n), Reputation {
+    start_epoch: 0,
+    score: 1_000_000_000_000_000_000,
+    lifetime_node_count: max_subnets * max_subnet_nodes,
+    total_active_nodes: max_subnets * max_subnet_nodes,
+    total_increases: 999,
+    total_decreases: 0,
+    average_attestation: 1_000_000_000_000_000_000,
+    last_validator_epoch: 0,
+    ow_score: 1_000_000_000_000_000_000,
+  });
+
+  let min_age = OverwatchMinAge::<Test>::get();
+  increase_epochs(min_age + 1);
 }

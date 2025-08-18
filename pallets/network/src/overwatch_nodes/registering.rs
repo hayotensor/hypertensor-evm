@@ -17,7 +17,7 @@ use super::*;
 use sp_runtime::Saturating;
 
 impl<T: Config> Pallet<T> {
-  pub fn do_register_ow(
+  pub fn do_register_overwatch_node(
     origin: T::RuntimeOrigin,
     hotkey: T::AccountId,
     stake_to_be_added: u128,
@@ -43,6 +43,7 @@ impl<T: Config> Pallet<T> {
     );
 
     let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+    // Redundant
     ensure!(
       !hotkeys.contains(&hotkey),
       Error::<T>::HotkeyAlreadyRegisteredToColdkey
@@ -54,6 +55,11 @@ impl<T: Config> Pallet<T> {
 
     // ⸺ Ensure qualifies via reputation
     let reputation = ColdkeyReputation::<T>::get(&coldkey);
+    
+    ensure!(
+      Self::is_overwatch_node_qualified(&coldkey),
+      Error::<T>::ColdkeyNotOverwatchQualified
+    );
 
     // ⸺ Stake
     Self::do_add_overwatch_stake(
@@ -82,7 +88,7 @@ impl<T: Config> Pallet<T> {
     Ok(())
   }
 
-  pub fn do_set_ow_peer_id(
+  pub fn do_set_overwatch_node_peer_id(
     origin: T::RuntimeOrigin,
     subnet_id: u32,
     overwatch_node_id: u32,
@@ -122,5 +128,73 @@ impl<T: Config> Pallet<T> {
     });
 
     Ok(())
+  }
+
+  pub fn is_overwatch_node_qualified(coldkey: &T::AccountId) -> bool {
+
+    let reputation = match ColdkeyReputation::<T>::try_get(coldkey) {
+      Ok(value) => value,
+      Err(_) => return false,
+    };
+    let min_diversification_ratio = OverwatchMinDiversificationRatio::<T>::get();
+    let min_score = OverwatchMinRepScore::<T>::get();
+    let min_avg_attestation = OverwatchMinAvgAttestationRatio::<T>::get();
+    let min_age = OverwatchMinAge::<T>::get();
+
+    let current_epoch = Self::get_current_epoch_as_u32();
+
+    // - No one can be an Overwatch Node yet
+    if current_epoch <= min_age {
+      log::error!("current_epoch <= min_age");
+      return false
+    }
+
+    let age = current_epoch.saturating_sub(reputation.start_epoch);
+
+    if age < min_age {
+      log::error!("age < min_age");
+      return false
+    }
+
+    if reputation.score < min_score {
+      log::error!("score < min_score");
+      return false
+    }
+
+    Self::clean_coldkey_subnet_nodes(coldkey.clone());
+
+    // Get number of nodes under coldkey
+    let mut active_node_count = 0;
+    ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
+      for (subnet_id, nodes) in colkey_map.iter_mut() {
+        let node_ids: Vec<u32> = nodes.iter().copied().collect();
+
+        // Process each node_id one by one
+        for node_id in node_ids {
+          if !Self::get_active_subnet_node(*subnet_id, node_id).is_none() {
+            active_node_count += 1;
+            // `break` to next subnet
+            break
+          }
+        }
+      }
+    });
+
+    let diversification = Self::percent_div(active_node_count as u128, TotalActiveSubnets::<T>::get() as u128);
+
+    if diversification < min_diversification_ratio {
+      log::error!("diversification                {:?}", diversification);
+      log::error!("active_node_count              {:?}", active_node_count);
+      log::error!("TotalActiveSubnets::<T>::get() {:?}", TotalActiveSubnets::<T>::get());
+      log::error!("diversification < min_diversification_ratio");
+      return false
+    }
+
+    if reputation.average_attestation < min_avg_attestation {
+      log::error!("average_attestation < min_avg_attestation");
+      return false
+    }
+
+    true
   }
 }

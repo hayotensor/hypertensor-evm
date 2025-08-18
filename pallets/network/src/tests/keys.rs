@@ -33,6 +33,7 @@ use crate::{
   OverwatchNodes,
   MinActiveNodeStakeEpochs,
   MaxSubnets,
+  HotkeySubnetId,
 };
 
 
@@ -473,6 +474,9 @@ fn test_update_hotkey() {
     let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, 0);
 
+    let hotkey_subnet_id = HotkeySubnetId::<Test>::get(&hotkey.clone());
+    assert_eq!(hotkey_subnet_id, None);
+
     //
     // New hotkey
     //
@@ -489,6 +493,9 @@ fn test_update_hotkey() {
 
     let account_subnet_stake = AccountSubnetStake::<Test>::get(new_hotkey.clone(), subnet_id);
     assert_eq!(account_subnet_stake, starting_account_subnet_stake);
+
+    let hotkey_subnet_id = HotkeySubnetId::<Test>::get(&new_hotkey.clone());
+    assert_eq!(hotkey_subnet_id, Some(subnet_id));
 
     // Update overwatch node hotkey
     let ow_new_hotkey = account(2);

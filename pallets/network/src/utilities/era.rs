@@ -61,7 +61,7 @@ impl<T: Config> Pallet<T> {
     let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
     let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
     let current_epoch = current_block.saturating_div(overwatch_epoch_length);
-    let cutoff_percentage = OverwatchCommitCutoff::<T>::get();
+    let cutoff_percentage = OverwatchCommitCutoffPercent::<T>::get();
     let block_increase_cutoff = Self::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
     // start_block + cutoff blocks
     let epoch_cutoff_block = overwatch_epoch_length * current_epoch + block_increase_cutoff as u32;
@@ -159,6 +159,7 @@ impl<T: Config> Pallet<T> {
       // --- Registration logic
       if data.state == SubnetState::Registered {
         if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
+          // --- Do the registration and enactment period math manually instead of using helper functions to avoid duplicate lookups
           let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
           let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_enactment_epochs);
 
@@ -226,7 +227,7 @@ impl<T: Config> Pallet<T> {
         continue
       }
 
-      // Check min nodes
+      // Check min nodes (we don't kick active subnet for this to give them time to recoup)
       let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
       weight = weight.saturating_add(db_weight.reads(1));
 
@@ -258,6 +259,115 @@ impl<T: Config> Pallet<T> {
 
     weight
   }
+
+  // pub fn do_epoch_preliminaries_v2(block: u32, epoch: u32) -> Weight {
+  //   let mut weight = Weight::zero();
+  //   let db_weight = T::DbWeight::get();
+
+  //   let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
+  //   let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
+  //   let subnet_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
+  //   let min_subnet_nodes = MinSubnetNodes::<T>::get();
+  //   let max_subnets = MaxSubnets::<T>::get();
+  //   let max_pause_epochs = MaxSubnetPauseEpochs::<T>::get();
+
+  //   weight = weight.saturating_add(db_weight.reads(6));
+
+  //   let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
+  //   let total_subnets: u32 = subnets.len() as u32;
+  //   weight = weight.saturating_add(db_weight.reads(total_subnets.into()));
+    
+  //   let excess_subnets: bool = total_subnets > max_subnets;
+  //   let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
+
+  //   for (subnet_id, data) in &subnets {
+  //     // --- Registration logic
+  //     if data.state == SubnetState::Registered {
+  //       if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
+  //         let max_registration_epoch = registered_epoch.saturating_add(subnet_registration_epochs);
+  //         let max_enactment_epoch = max_registration_epoch.saturating_add(subnet_enactment_epochs);
+
+  //         if epoch <= max_registration_epoch {
+  //           // --- Registration Period: do nothing
+  //           continue
+  //         }
+
+  //         if epoch <= max_enactment_epoch {
+  //           // --- Enactment Period: check min nodes
+  //           let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+  //           weight = weight.saturating_add(db_weight.reads(1));
+
+  //           if active_nodes < min_subnet_nodes {
+  //             Self::do_remove_subnet(*subnet_id, SubnetRemovalReason::MinSubnetNodes);
+  //             // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
+  //           }
+  //           continue
+  //         }
+
+  //         // --- Out of Enactment Period: not activated → remove
+  //         Self::do_remove_subnet(*subnet_id, SubnetRemovalReason::EnactmentPeriod);
+  //         // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
+  //         continue
+  //       }
+  //       continue
+  //     }
+
+  //     // --- Pause logic
+  //     if data.state == SubnetState::Paused {
+  //       if data.start_epoch + max_pause_epochs < epoch {
+  //         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+  //         weight = weight.saturating_add(db_weight.writes(1));
+
+  //         let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
+  //         weight = weight.saturating_add(db_weight.reads(1));
+
+  //         if penalties > max_subnet_penalty_count {
+  //           // --- Remove (If paused, assume it's because of pause expiration)
+  //           Self::do_remove_subnet(*subnet_id, SubnetRemovalReason::PauseExpired);
+  //           // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
+  //           continue
+  //         } 
+  //       }
+  //       continue
+  //     }
+
+  //     // Ignore if not started yet (after pause check because pause start_epoch is the epoch is paused)
+  //     if data.start_epoch > epoch {
+  //       continue
+  //     }
+
+  //     let (can_subnet_be_active, reason) = Self::can_subnet_be_active(*subnet_id);
+
+  //     if !can_subnet_be_active {
+  //       let reason_unwrapped = reason.unwrap();
+  //       if reason_unwrapped == SubnetRemovalReason::MaxPenalties {
+  //         weight = weight.saturating_add(db_weight.writes(2));
+  //       } else if reason_unwrapped == SubnetRemovalReason::MinSubnetNodes {
+  //         weight = weight.saturating_add(db_weight.writes(4));
+  //       } else if reason_unwrapped == SubnetRemovalReason::MinSubnetDelegateStake {
+  //         weight = weight.saturating_add(db_weight.writes(9));
+  //       }
+  //       Self::do_remove_subnet(*subnet_id, reason_unwrapped);
+  //       continue
+  //     }
+
+  //     // Store delegate stake for possible excess removal
+  //     if excess_subnets {
+  //       let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+  //       weight = weight.saturating_add(db_weight.writes(1));
+  //       subnet_delegate_stake.push((*subnet_id, subnet_delegate_stake_balance));
+  //     }
+  //   }
+
+  //   // --- Excess subnet removal
+  //   if excess_subnets && !subnet_delegate_stake.is_empty() {
+  //     subnet_delegate_stake.sort_by_key(|&(_, value)| value);
+  //     Self::do_remove_subnet(subnet_delegate_stake[0].0.clone(), SubnetRemovalReason::MaxSubnets);
+  //     // weight = weight.saturating_add(T::WeightInfo::do_remove_subnet());
+  //   }
+
+  //   weight
+  // }
 
   pub fn elect_validator_v3(
     subnet_id: u32,
