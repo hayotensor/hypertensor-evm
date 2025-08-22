@@ -6158,6 +6158,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "network-custom-rpc"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "jsonrpsee 0.24.9",
+ "network-custom-rpc-runtime-api",
+ "pallet-network",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "network-custom-rpc-runtime-api"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "pallet-network",
+ "serde",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "network-interface"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10663,6 +10690,8 @@ dependencies = [
  "hex-literal",
  "jsonrpsee 0.24.9",
  "log",
+ "network-custom-rpc",
+ "network-custom-rpc-runtime-api",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -10724,6 +10753,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal",
  "hypertensor-precompiles",
+ "network-custom-rpc-runtime-api",
  "pallet-atomic-swap",
  "pallet-aura",
  "pallet-balances",

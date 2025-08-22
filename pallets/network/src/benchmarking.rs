@@ -267,6 +267,15 @@ fn build_activated_subnet<T: Config>(
 //   amount_staked
 // }
 
+pub fn default_node_removal_policy<T: Config>() {
+	let removal_policy = NodeRemovalPolicy {
+		logic: LogicExpr::And(
+			Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowScore(200))),
+			Box::new(LogicExpr::Condition(NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100))),
+		)
+	};
+}
+
 pub fn default_registration_subnet_data<T: Config>(
   subnets: u32,
   max_subnet_nodes: u32,
@@ -291,7 +300,8 @@ pub fn default_registration_subnet_data<T: Config>(
     max_node_penalties: 3,
     initial_coldkeys: get_initial_coldkeys::<T>(subnets, max_subnet_nodes, start, end),
     max_registered_nodes: 100,
-		node_removal_system: NodeRemovalSystem::Consensus,
+		// node_removal_system: NodeRemovalSystem::Consensus,
+		node_removal_system: default_node_removal_policy::<T>(),
     key_types: BTreeSet::from([KeyType::Rsa]),
   };
   add_subnet_data

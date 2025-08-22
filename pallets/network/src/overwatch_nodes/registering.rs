@@ -24,6 +24,11 @@ impl<T: Config> Pallet<T> {
   ) -> DispatchResult {
     let coldkey: T::AccountId = ensure_signed(origin)?;
 
+    ensure!(
+      Self::get_current_overwatch_epoch_as_u32() > 0,
+      Error::<T>::OverwatchEpochIsZero
+    );
+
     let total_overwatch_nodes = TotalOverwatchNodes::<T>::get();
 
     ensure!(
@@ -131,7 +136,6 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn is_overwatch_node_qualified(coldkey: &T::AccountId) -> bool {
-
     let reputation = match ColdkeyReputation::<T>::try_get(coldkey) {
       Ok(value) => value,
       Err(_) => return false,
@@ -145,34 +149,37 @@ impl<T: Config> Pallet<T> {
 
     // - No one can be an Overwatch Node yet
     if current_epoch <= min_age {
-      log::error!("current_epoch <= min_age");
+      // log::error!("current_epoch <= min_age");
       return false
     }
 
     let age = current_epoch.saturating_sub(reputation.start_epoch);
 
     if age < min_age {
-      log::error!("age < min_age");
+      // log::error!("age < min_age");
       return false
     }
 
     if reputation.score < min_score {
-      log::error!("score < min_score");
+      // log::error!("score < min_score");
       return false
     }
 
     Self::clean_coldkey_subnet_nodes(coldkey.clone());
 
     // Get number of nodes under coldkey
-    let mut active_node_count = 0;
+    let mut active_unique_node_count = 0;
     ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
       for (subnet_id, nodes) in colkey_map.iter_mut() {
         let node_ids: Vec<u32> = nodes.iter().copied().collect();
+        // log::error!("subnet_id {:?}", subnet_id);
+        // log::error!("node_ids {:?}", node_ids);
 
         // Process each node_id one by one
         for node_id in node_ids {
           if !Self::get_active_subnet_node(*subnet_id, node_id).is_none() {
-            active_node_count += 1;
+            // log::error!("get_active_subnet_node");
+            active_unique_node_count += 1;
             // `break` to next subnet
             break
           }
@@ -180,18 +187,23 @@ impl<T: Config> Pallet<T> {
       }
     });
 
-    let diversification = Self::percent_div(active_node_count as u128, TotalActiveSubnets::<T>::get() as u128);
+    // log::error!("active_unique_node_count       {:?}", active_unique_node_count);
+    // log::error!("TotalActiveSubnets::<T>::get() {:?}", TotalActiveSubnets::<T>::get());
+
+    let diversification = match active_unique_node_count >= TotalActiveSubnets::<T>::get() {
+      true => Self::percentage_factor_as_u128(),
+      false => Self::percent_div(active_unique_node_count as u128, TotalActiveSubnets::<T>::get() as u128)
+    };
+    // log::error!("diversification                {:?}", diversification);
 
     if diversification < min_diversification_ratio {
-      log::error!("diversification                {:?}", diversification);
-      log::error!("active_node_count              {:?}", active_node_count);
-      log::error!("TotalActiveSubnets::<T>::get() {:?}", TotalActiveSubnets::<T>::get());
-      log::error!("diversification < min_diversification_ratio");
+      // log::error!("active_unique_node_count       {:?}", active_unique_node_count);
+      // log::error!("diversification < min_diversification_ratio");
       return false
     }
 
     if reputation.average_attestation < min_avg_attestation {
-      log::error!("average_attestation < min_avg_attestation");
+      // log::error!("average_attestation < min_avg_attestation");
       return false
     }
 

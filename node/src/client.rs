@@ -47,7 +47,7 @@ pub trait RuntimeApiCollection<
 	+ sp_consensus_grandpa::GrandpaApi<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-	// + network_custom_rpc_runtime_api::NetworkRuntimeApi<Block>
+	+ network_custom_rpc_runtime_api::NetworkRuntimeApi<Block>
 {
 }
 
@@ -65,6 +65,6 @@ where
 		+ sp_consensus_grandpa::GrandpaApi<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		// + network_custom_rpc_runtime_api::NetworkRuntimeApi<Block>
+		+ network_custom_rpc_runtime_api::NetworkRuntimeApi<Block>
 {
 }

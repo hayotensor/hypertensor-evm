@@ -53,6 +53,13 @@ use frame_support::{
 use pallet_transaction_payment::{ConstFeeMultiplier, FungibleAdapter};
 use sp_genesis_builder::PresetId;
 use frame_support::traits::{InstanceFilter, EqualPrivilegeOnly, LinearStoragePrice, fungible::HoldConsideration};
+use pallet_network::{
+	DefaultMaxVectorLength, 
+	SubnetInfo,
+	SubnetNode,
+	ConsensusData,
+	SubnetNodeInfo,
+};
 // Frontier
 use fp_account::EthereumSignature;
 use fp_evm::weight_per_gas;
@@ -1334,44 +1341,76 @@ impl_runtime_apis! {
 		}
 	}
 
-	// impl network_custom_rpc_runtime_api::NetworkRuntimeApi<Block> for Runtime {
-	// 	fn get_subnet_nodes(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes(subnet_id);
-	// 		result.encode()
-	// 	}
-	// 	fn get_subnet_nodes_included(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes_included(subnet_id);
-	// 		result.encode()
-	// 	}
-	// 	fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes_validator(subnet_id);
-	// 		result.encode()
-	// 	}
-	// 	fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8> {
-	// 		let result = Network::get_consensus_data(subnet_id, epoch);
-	// 		result.encode()
-	// 	}
-	// 	fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8> {
-	// 		let result = Network::get_subnet_nodes_info(subnet_id);
-	// 		result.encode()
-	// 	}
-	// 	fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
-	// 		let result = Network::is_subnet_node_by_peer_id(subnet_id, peer_id);
-	// 		result
-	// 	}	
-	// 	fn are_subnet_nodes_by_peer_id(subnet_id: u32, peer_ids: Vec<Vec<u8>>) -> Vec<u8> {
-	// 		let result = Network::are_subnet_nodes_by_peer_id(subnet_id, peer_ids);
-	// 		result.encode()
-	// 	}
-	// 	fn is_subnet_node_by_a(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
-	// 		let result = Network::is_subnet_node_by_unique(subnet_id, unique);
-	// 		result
-	// 	}
-	// 	fn get_elected_validator_node(subnet_id: u32, epoch: u32) -> Vec<u8> {
-	// 		let result = Network::get_elected_validator_node(subnet_id, epoch);
-	// 		result.encode()
-	// 	}
-	// }
+	impl network_custom_rpc_runtime_api::NetworkRuntimeApi<Block> for Runtime {
+		fn get_subnet_info(subnet_id: u32) -> Vec<u8> {
+			let result = Network::get_subnet_info(subnet_id);
+			result.encode()
+		}
+		fn get_all_subnets_info() -> Vec<u8> {
+			let result = Network::get_all_subnets_info();
+			result.encode()
+		}
+		fn get_subnet_nodes(subnet_id: u32) -> Vec<u8> {
+			let result = Network::get_subnet_nodes(subnet_id);
+			result.encode()
+		}
+		fn get_subnet_nodes_included(subnet_id: u32) -> Vec<u8> {
+			let result = Network::get_subnet_nodes_included(subnet_id);
+			result.encode()
+		}
+		fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8> {
+			let result = Network::get_subnet_nodes_validator(subnet_id);
+			result.encode()
+		}
+		fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8> {
+			let result = Network::get_consensus_data(subnet_id, epoch);
+			result.encode()
+		}
+		fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8> {
+			let result = Network::get_subnet_nodes_info(subnet_id);
+			result.encode()
+		}
+		fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
+			Network::is_subnet_node_by_peer_id(subnet_id, peer_id)
+		}	
+		fn is_subnet_node_by_unique(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
+			Network::is_subnet_node_by_unique(subnet_id, unique)
+		}
+		fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool {
+			Network::proof_of_stake(subnet_id, peer_id, min_class)
+		}
+
+		// fn get_subnet_info(subnet_id: u32) -> Option<SubnetInfo<AccountId>> {
+		// 	Network::get_subnet_info(subnet_id)
+		// }
+		// fn get_all_subnets_info() -> Vec<SubnetInfo<AccountId>> {
+		// 	Network::get_all_subnets_info()
+		// }
+		// fn get_subnet_nodes(subnet_id: u32) -> Vec<SubnetNode<AccountId>> {
+		// 	Network::get_subnet_nodes(subnet_id)
+		// }
+		// fn get_subnet_nodes_included(subnet_id: u32) -> Vec<SubnetNode<AccountId>> {
+		// 	Network::get_subnet_nodes_included(subnet_id)
+		// }
+		// fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<SubnetNode<AccountId>> {
+		// 	Network::get_subnet_nodes_validator(subnet_id)
+		// }
+		// fn get_consensus_data(subnet_id: u32, epoch: u32) -> Option<ConsensusData<AccountId>> {
+		// 	Network::get_consensus_data(subnet_id, epoch)
+		// }
+		// fn get_subnet_nodes_info(subnet_id: u32) -> Vec<SubnetNodeInfo<AccountId>> {
+		// 	Network::get_subnet_nodes_info(subnet_id)
+		// }
+		// fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool {
+		// 	Network::is_subnet_node_by_peer_id(subnet_id, peer_id)
+		// }	
+		// fn is_subnet_node_by_unique(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool {
+		// 	Network::is_subnet_node_by_unique(subnet_id, unique)
+		// }
+		// fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool {
+		// 	Network::proof_of_stake(subnet_id, peer_id, min_class)
+		// }
+	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {

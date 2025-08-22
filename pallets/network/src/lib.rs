@@ -585,6 +585,9 @@ pub mod pallet {
 		/// Score overflow
 		ScoreOverflow,
 
+		InvalidMinSubnetRegistrationEpochs,
+		InvalidSubnetRegistrationEpochs,
+
 
 		ProposalInvalid,
 		NotDefendant,
@@ -649,6 +652,7 @@ pub mod pallet {
 		InvalidWeight,
 		InvalidOverwatchNode,
 		MaxOverwatchNodes,
+		OverwatchEpochIsZero,
 		InAccessList,
 		NotInAccessList,
 		TooManyBootnodes,
@@ -734,7 +738,7 @@ pub mod pallet {
 		pub max_node_penalties: u32,
 		pub initial_coldkeys: BTreeSet<AccountId>,
 		pub max_registered_nodes: u32,
-		pub node_removal_system: NodeRemovalSystem,
+		pub node_removal_system: Option<NodeRemovalPolicy>,
 		pub key_types: BTreeSet<KeyType>,
 	}
 
@@ -823,6 +827,7 @@ pub mod pallet {
 		pub logic: LogicExpr,
 	}
 
+	#[derive(Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo)]
 	pub struct SubnetInfo<AccountId> {
 		pub id: u32,
 		pub name: Vec<u8>,
@@ -844,7 +849,7 @@ pub mod pallet {
 		pub max_registered_nodes: u32,
 		pub owner: Option<AccountId>,
 		pub registration_epoch: Option<u32>,
-		pub node_removal_system: NodeRemovalSystem,
+		pub node_removal_system: Option<NodeRemovalPolicy>,
 		pub key_types: BTreeSet<KeyType>,
 		pub slot_index: Option<u32>,
 		pub penalty_count: u32,
@@ -1441,6 +1446,10 @@ pub mod pallet {
 		T::EpochsPerYear::get() / 52
 	}
 	#[pallet::type_value]
+	pub fn DefaultMinSubnetRegistrationEpochs<T: Config>() -> u32 {
+		T::EpochsPerYear::get() / 365
+	}
+	#[pallet::type_value]
 	pub fn DefaultSubnetActivationEnactmentEpochs<T: Config>() -> u32 {
 		// T::EpochsPerYear::get() / 52
 		T::EpochsPerYear::get() / 104
@@ -1668,10 +1677,10 @@ pub mod pallet {
 	pub fn DefaultRegistrationQueueEpochs() -> u32 {
 		4
 	}
-	#[pallet::type_value]
-	pub fn DefaultSubnetNodeRemovalSystem() -> NodeRemovalSystem {
-		NodeRemovalSystem::Consensus
-	}
+	// #[pallet::type_value]
+	// pub fn DefaultSubnetNodeRemovalSystem() -> NodeRemovalSystem {
+	// 	NodeRemovalSystem::Consensus
+	// }
 	#[pallet::type_value]
 	pub fn DefaultNodeRemovalStakePercentageDelta() -> u128 {
 		0
@@ -1913,6 +1922,7 @@ pub mod pallet {
 	#[pallet::storage] // subnet_id => data struct
 	pub type SubnetsData<T> = StorageMap<_, Identity, u32, SubnetData>;
 
+	// Max bootnodes for a subnet to manage
 	#[pallet::storage]
 	pub type MaxBootnodes<T> = StorageValue<_, u32, ValueQuery, DefaultMaxBootnodes>;
 
@@ -1969,8 +1979,13 @@ pub mod pallet {
 
 	/// Subnet registration blocks
 	/// Total blocks subnet is in registration to reach conditions to activate
+	/// This the also the maximum registration epochs
 	#[pallet::storage]
 	pub type SubnetRegistrationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultSubnetRegistrationEpochs<T>>;
+
+	/// The minimum epochs a subnet much be registered for
+	#[pallet::storage]
+	pub type MinSubnetRegistrationEpochs<T: Config> = StorageValue<_, u32, ValueQuery, DefaultMinSubnetRegistrationEpochs<T>>;
 
 	/// Time period allowable for subnet activation following registration period
 	#[pallet::storage]
@@ -2297,9 +2312,9 @@ pub mod pallet {
 	pub type MaxRegisteredNodes<T> =
 		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMaxRegisteredNodes>;
 
-	#[pallet::storage] // subnet_uid --> u32
-	pub type SubnetNodeRemovalSystem<T> =
-		StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
+	// #[pallet::storage] // subnet_uid --> u32
+	// pub type SubnetNodeRemovalSystem<T> =
+	// 	StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
 
 	#[pallet::storage]
 	pub type NodeRemovalSystemV2<T> = StorageMap<_, Identity, u32, NodeRemovalPolicy, OptionQuery>;
@@ -2307,57 +2322,50 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetKeyTypes<T> = StorageMap<_, Identity, u32, BTreeSet<KeyType>, ValueQuery>;
 
-	/// When subnet utilizes the node removal system Stake
-	/// The percentage delta of the activating node versus the removal node minimum delta
-	/// e.g. If the NodeRemovalStakePercentageDelta is 10% and the activating node has 100, 
-	/// 		 the removing node must have a stake of less than 90
+	// The subnet node weight (score ratio) threshold where a node will get increase penalties
+	// i.e. if the nodes score (and in consensus) is under this value, it will increase their penalties
+	// This is updated by the owner
+	// This can be logically unused if value is 0_u128
 	#[pallet::storage]
-	pub type NodeRemovalStakePercentageDelta<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalStakePercentageDelta>;
+	pub type SubnetNodeScorePenaltyThreshold<T> = StorageMap<
+		_,
+		Identity,
+		u32,
+		u128,
+		ValueQuery,
+		DefaultSubnetNodeScorePenaltyThreshold
+	>;
 
-	// The delta between the activating node and potential removable nodes
-	#[pallet::storage]
-	pub type NodeRemovalReputationScorePercentageDelta<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalReputationScorePercentageDelta>;
+	// /// When subnet utilizes the node removal system Stake
+	// /// The percentage delta of the activating node versus the removal node minimum delta
+	// /// e.g. If the NodeRemovalStakePercentageDelta is 10% and the activating node has 100, 
+	// /// 		 the removing node must have a stake of less than 90
+	// #[pallet::storage]
+	// pub type NodeRemovalStakePercentageDelta<T> =
+	// 	StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalStakePercentageDelta>;
 
-	#[pallet::storage]
-	pub type NodeRemovalStakeBalancePercentageDelta<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalStakeBalancePercentageDelta>;
+	// // The minimum score a node must have to NOT qualify to be removed
+	// #[pallet::storage]
+	// pub type NodeRemovalReputationScoreMin<T> =
+	// 	StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalReputationScoreMin>;
 
-	#[pallet::storage]
-	pub type NodeRemovalDelegateStakeRatePercentageDelta<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalDelegateStakeRatePercentageDelta>;
-
-	#[pallet::storage]
-	pub type NodeRemovalDelegateStakeBalancePercentageDelta<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultZeroU128>;
-
-	// The minimum score a node must have to NOT qualify to be removed
-	#[pallet::storage]
-	pub type NodeRemovalReputationScoreMin<T> =
-		StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeRemovalReputationScoreMin>;
-
-	#[pallet::storage]
-	pub type NodeRemovalImmunityEpochs<T> =
-		StorageMap<_, Identity, u32, u32, ValueQuery, DefaultNodeRemovalImmunityEpochs>;
+	// #[pallet::storage]
+	// pub type NodeRemovalImmunityEpochs<T> =
+	// 	StorageMap<_, Identity, u32, u32, ValueQuery, DefaultNodeRemovalImmunityEpochs>;
 
 	#[pallet::storage] // subnet_id --> u32
 	pub type TotalSubnetNodeUids<T: Config> = StorageMap<_, Identity, u32, u32, ValueQuery>;
-
-	/// Coldkey identities
 
 	/// Coldkey => Public Identity
 	#[pallet::storage] 
 	pub type ColdkeyIdentity<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ColdkeyIdentityData, ValueQuery, DefaultColdkeyIdentity>;
 
-	// /// Public Identity => Pending Owner
-	// #[pallet::storage] 
-	// pub type PendingIdentityOwner<T: Config> = StorageMap<_, Identity, Vec<u8>, T::AccountId, ValueQuery, DefaultAccountId<T>>;
-
 	// Hotkey => Coldkey
 	#[pallet::storage]
 	pub type HotkeyOwner<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::AccountId, ValueQuery, DefaultAccountId<T>>;
 
+	// Hotkey => Subnet ID
+	// This is useful for updating hotkeys in `update_hotkey`
 	#[pallet::storage]
 	pub type HotkeySubnetId<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, u32, OptionQuery>;
 
@@ -2378,10 +2386,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type SubnetNodeIdHotkey<T: Config> = StorageDoubleMap<_, Identity, u32, Identity, u32, T::AccountId, OptionQuery>;
 	
-	// // Subnet ID => PeerId => Hotkey
-	// #[pallet::storage]
-	// pub type PeerIdHotkey<T: Config> = StorageDoubleMap<_, Identity, u32, Blake2_128Concat, PeerId, T::AccountId, OptionQuery>;
-
 	#[pallet::storage] // subnet_id --> uid --> count of epochs in a row
 	pub type SubnetNodeConsecutiveIncludedEpochs<T: Config> = StorageDoubleMap<
 		_,
@@ -2394,7 +2398,7 @@ pub mod pallet {
 		DefaultZeroU32,
 	>;
 
-
+	// Mapping of subnet nodes
 	#[pallet::storage] // subnet_id --> uid --> data
 	pub type SubnetNodesData<T: Config> = StorageDoubleMap<
 		_,
@@ -2483,8 +2487,7 @@ pub mod pallet {
 	>;
 	
 	#[pallet::storage]
-	pub type SubnetNodeNonUniqueParamUpdateInterval<T> = 
-		StorageValue<_, u32, ValueQuery, DefaultSubnetNodeNonUniqueParamUpdateInterval>;
+	pub type SubnetNodeNonUniqueParamUpdateInterval<T> = StorageValue<_, u32, ValueQuery, DefaultSubnetNodeNonUniqueParamUpdateInterval>;
 
 	#[pallet::storage]
 	pub type SubnetNodeNonUniqueParamLastSet<T> = StorageDoubleMap<
@@ -2589,17 +2592,6 @@ pub mod pallet {
 		DefaultMaxSubnetNodePenalties
 	>;
 
-	// The subnet node weight (score ratio) threshold where a node will get increase penalties
-	#[pallet::storage]
-	pub type SubnetNodeScorePenaltyThreshold<T> = StorageMap<
-		_,
-		Identity,
-		u32,
-		u128,
-		ValueQuery,
-		DefaultSubnetNodeScorePenaltyThreshold
-	>;
-
 	// A subnet nodes penalties count
 	// subnet ID -> subnet node ID -> penalties
 	#[pallet::storage]
@@ -2630,23 +2622,25 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type ColdkeyReputation<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Reputation, ValueQuery, DefaultColdkeyReputation>;
 
-	/// Tracks how many unique subnets a coldkey is in
-	/// This is not 100% accurate is a subnet is removed and deleted
-	/// This storage requires confirming the subnet is still active, not removed on subnet removal
-	#[pallet::storage]
-	pub type ColdkeySubnets<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<u32>, ValueQuery>;
+	// /// Tracks how many unique subnets a coldkey is in
+	// /// This is not 100% accurate is a subnet is removed and deleted
+	// /// This storage requires confirming the subnet is still active, not removed on subnet removal
+	// #[pallet::storage]
+	// pub type ColdkeySubnets<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<u32>, ValueQuery>;
 
-	/// coldkey => { subnet ID: node ID }
-	#[pallet::storage]
-	pub type ColdkeySubnetsV2<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u32>, ValueQuery>;
+	// /// coldkey => { subnet ID: node ID }
+	// #[pallet::storage]
+	// pub type ColdkeySubnetsV2<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u32>, ValueQuery>;
 
 	// Attestion percentage required to increment a nodes penalty count up
+	// i.e. If a node doesn't attest and the attestation rate is above `NodeAttestationRemovalThreshold`
+	//	    then we add one penalty to the unattested node
 	#[pallet::storage]
 	pub type NodeAttestationRemovalThreshold<T> = StorageValue<_, u128, ValueQuery, DefaultNodeAttestationRemovalThreshold>;
 
 	//
 	// Staking
-	// 
+	//
 
 	#[pallet::storage] // ( total_stake )
 	#[pallet::getter(fn total_stake)]
@@ -2691,10 +2685,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type MinActiveNodeStakeEpochs<T> = StorageValue<_, u32, ValueQuery, DefaultMinActiveNodeStakeEpochs>;
 
-	// The maximum balance a subnet can require a node to stake to become a node in Hypertensor
-	// #[pallet::storage]
-	// pub type NetworkMaxStakeBalance<T> = StorageValue<_, u128, ValueQuery, DefaultNetworkMaxStakeBalance>;
-
 	//
 	// Delegate Staking
 	// 
@@ -2723,10 +2713,6 @@ pub mod pallet {
 	pub type TotalSubnetDelegateStakeBalance<T> =
 		StorageMap<_, Identity, u32, u128, ValueQuery>;
 
-	// Exponent used to get subnet emissions based on overall network delegate stake weight 
-	#[pallet::storage]
-	pub type DelegateStakeWeightExponent<T> = StorageValue<_, u128, ValueQuery>;
-
 	// An accounts delegate stake per subnet
 	#[pallet::storage] // account --> subnet_id --> u128
 	pub type AccountSubnetDelegateStakeShares<T: Config> = StorageDoubleMap<
@@ -2753,7 +2739,6 @@ pub mod pallet {
 	pub type MaxRewardRateDecrease<T> = StorageValue<_, u128, ValueQuery, DefaultMaxRewardRateDecrease>;
 
 	#[pallet::storage] // ( total_stake )
-	#[pallet::getter(fn total_node_delegate_stake)]
 	pub type TotalNodeDelegateStake<T> = StorageValue<_, u128, ValueQuery>;
 
 	// Total stake sum of shares in specified Subnet Node
@@ -2769,6 +2754,7 @@ pub mod pallet {
 		DefaultAccountTake,
 	>;
 
+	// subnet_id -> subnet node ID -> balance
 	// Total stake sum of balance in specified Subnet Node
 	#[pallet::storage]
 	pub type NodeDelegateStakeBalance<T> = StorageDoubleMap<
@@ -2782,6 +2768,7 @@ pub mod pallet {
 		DefaultAccountTake,
 	>;
 	
+	// Shares a user has under a node it delegate staked to
 	// account_id -> subnet_id -> subnet_node_id -> shares
 	#[pallet::storage] 
 	pub type AccountNodeDelegateStakeShares<T: Config> = StorageNMap<
@@ -2796,7 +2783,7 @@ pub mod pallet {
 	>;
 
 	//
-	// Props
+	// Proposals
 	//
 
 	#[pallet::storage] // subnet => proposal_id => proposal
@@ -2875,11 +2862,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OverwatchEpochLengthMultiplier<T> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
 
-	// The interval overwatch nodes submit weights
-	// i.e. every 10 epochs
-	#[pallet::storage]
-	pub type OverwatchInterval<T> = StorageValue<_, u32, ValueQuery, DefaultOverwatchInterval>;
-
 	// The percent progress of the overwatch interval where the node can:
 	// - no longer commit
 	// - can reveal
@@ -2897,6 +2879,7 @@ pub mod pallet {
 		OptionQuery
 	>;
 
+	// Overwatch node ID => Hotkey
 	#[pallet::storage]
 	pub type OverwatchNodeIdHotkey<T: Config> = StorageMap<
 		_,
@@ -2972,6 +2955,7 @@ pub mod pallet {
 		OptionQuery
 	>;
 	
+	// Max penalties an Overwatch node can have before being removed
 	#[pallet::storage]
 	pub type MaxOverwatchNodePenalties<T> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodePenalties>;
 
@@ -4805,9 +4789,9 @@ pub mod pallet {
 						};
 
 						ColdkeyReputation::<T>::swap(&curr_coldkey, &new_coldkey);
-						ColdkeySubnets::<T>::swap(&curr_coldkey, &new_coldkey);
+						// ColdkeySubnets::<T>::swap(&curr_coldkey, &new_coldkey);
 
-						ColdkeySubnetsV2::<T>::swap(&curr_coldkey, &new_coldkey);
+						// ColdkeySubnetsV2::<T>::swap(&curr_coldkey, &new_coldkey);
 
 						ColdkeySubnetNodes::<T>::swap(&curr_coldkey, &new_coldkey);
 
@@ -5653,7 +5637,7 @@ pub mod pallet {
 			// Store unique name
 			SubnetName::<T>::insert(&subnet_data.name, subnet_id);
 			SubnetRepo::<T>::insert(&subnet_data.repo, subnet_id);
-			SubnetNodeRemovalSystem::<T>::insert(subnet_id, subnet_registration_data.node_removal_system);
+			// SubnetNodeRemovalSystem::<T>::insert(subnet_id, subnet_registration_data.node_removal_system);
 			SubnetKeyTypes::<T>::insert(subnet_id, subnet_registration_data.key_types);
 			// Update latest registration epoch for all subnets
 			// This is used for one subnet per registration phase
@@ -6042,12 +6026,12 @@ pub mod pallet {
 			// --- Start the UIDs at 1
 			// TODO: Make one UID element for all subnets
 			TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-			let current_uid = TotalSubnetNodeUids::<T>::get(subnet_id);
+			let subnet_node_id = TotalSubnetNodeUids::<T>::get(subnet_id);
 
-			HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, current_uid);
+			HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, subnet_node_id);
 
 			// Insert Subnet Node ID -> hotkey
-			SubnetNodeIdHotkey::<T>::insert(subnet_id, current_uid, &hotkey);
+			SubnetNodeIdHotkey::<T>::insert(subnet_id, subnet_node_id, &hotkey);
 
 			// Insert unique hotkey to subnet ID mapping
 			// This is used for updating hotkeys that have subnet_id keys
@@ -6064,13 +6048,13 @@ pub mod pallet {
 			// This ensures others cannot claim to own a PeerId they are not the owner of
 
 			// Insert subnet peer and bootnode peer to keep peer_ids unique within subnets
-			PeerIdSubnetNodeId::<T>::insert(subnet_id, &peer_id, current_uid);
-			BootstrapPeerIdSubnetNodeId::<T>::insert(subnet_id, &bootnode_peer_id, current_uid);
+			PeerIdSubnetNodeId::<T>::insert(subnet_id, &peer_id, subnet_node_id);
+			BootstrapPeerIdSubnetNodeId::<T>::insert(subnet_id, &bootnode_peer_id, subnet_node_id);
 
 			// Add to registration queue
 			let start_epoch = Self::get_registration_queue_start_epoch(
 				subnet_id,
-				current_uid,
+				subnet_node_id,
 				subnet_epoch
 			);
 
@@ -6083,7 +6067,7 @@ pub mod pallet {
 			};
 
 			let subnet_node: SubnetNode<T::AccountId> = SubnetNode {
-				id: current_uid,
+				id: subnet_node_id,
 				hotkey: hotkey.clone(),
 				peer_id: peer_id.clone(),
 				bootnode_peer_id: bootnode_peer_id.clone(),
@@ -6097,28 +6081,28 @@ pub mod pallet {
 			};
 
 			// Insert RegisteredSubnetNodesData
-			RegisteredSubnetNodesData::<T>::insert(subnet_id, current_uid, subnet_node);
+			RegisteredSubnetNodesData::<T>::insert(subnet_id, subnet_node_id, subnet_node);
 
 			// Increase total subnet nodes
 			TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 			TotalNodes::<T>::mutate(|n: &mut u32| *n += 1);
 
-			// Add subnet Id to coldkey subnets set
-			ColdkeySubnets::<T>::mutate(&coldkey, |subnets| {
-				subnets.insert(subnet_id);
-			});
+			// // Add subnet Id to coldkey subnets set
+			// ColdkeySubnets::<T>::mutate(&coldkey, |subnets| {
+			// 	subnets.insert(subnet_id);
+			// });
 
 			ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
 				node_map
 					.entry(subnet_id)
 					.or_insert_with(BTreeSet::new)
-					.insert(current_uid);
+					.insert(subnet_node_id);
 			});
 
 			Self::deposit_event(
 				Event::SubnetNodeRegistered { 
 					subnet_id: subnet_id, 
-					subnet_node_id: current_uid,
+					subnet_node_id: subnet_node_id,
 					coldkey: coldkey,
 					hotkey: hotkey, 
 					peer_id: peer_id,

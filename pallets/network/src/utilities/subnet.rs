@@ -20,21 +20,24 @@ use frame_support::pallet_prelude::One;
 
 impl<T: Config> Pallet<T> {
   pub fn assign_subnet_slot(subnet_id: u32) -> Result<u32, DispatchError> {
-    let max_slots = T::EpochLength::get();
+    let epoch_length = T::EpochLength::get();
+    let max_slots = epoch_length - 3;
     // Max slots must always be > 2
 
     // Get currently assigned slots
     let mut assigned_slots = AssignedSlots::<T>::get();
 
     ensure!(
-      (assigned_slots.len() as u32) < max_slots - 2,
+      (assigned_slots.len() as u32) < max_slots,
       Error::<T>::NoAvailableSlots
     );
 
-    // Find first free slot [2..max_slots)
+    // Find first free slot [3..epoch_length)
     // Slot 1: Electing validators
-    // Slot 2: Generating weights
-    let free_slot = (2..max_slots)
+    // Slot 2: Overwatch weights
+    // Slot 3: Generating weights
+    // See `on_initialize`
+    let free_slot = (3..epoch_length)
       .find(|slot| !assigned_slots.contains(slot))
       .ok_or(Error::<T>::NoAvailableSlots)?;
 
@@ -312,6 +315,11 @@ impl<T: Config> Pallet<T> {
   }
 
   pub fn can_subnet_be_active(subnet_id: u32) -> (bool, Option<SubnetRemovalReason>) {
+    if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
+      let min_epochs = MinSubnetRegistrationEpochs::<T>::get();
+      
+    }
+
     let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
 
     if penalties > MaxSubnetPenaltyCount::<T>::get() {

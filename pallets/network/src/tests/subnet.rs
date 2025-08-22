@@ -1216,13 +1216,14 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
 fn test_assign_subnet_slot_success() {
 	new_test_ext().execute_with(|| {
 		let subnet_id = 1;
+    let first_slot = 3;
 
 		let slot = Network::assign_subnet_slot(subnet_id).unwrap();
-		assert_eq!(slot, 2); // Should assign slot 2, since 0-1 is skipped
+		assert_eq!(slot, first_slot); // Should assign slot 3, since 0-1-2 is skipped
 
-		assert_eq!(SubnetSlot::<Test>::get(subnet_id), Some(2));
-		assert_eq!(SlotAssignment::<Test>::get(2), Some(subnet_id));
-		assert!(AssignedSlots::<Test>::get().contains(&2));
+		assert_eq!(SubnetSlot::<Test>::get(subnet_id), Some(first_slot));
+		assert_eq!(SlotAssignment::<Test>::get(first_slot), Some(subnet_id));
+		assert!(AssignedSlots::<Test>::get().contains(&first_slot));
 	});
 }
 
@@ -1230,9 +1231,10 @@ fn test_assign_subnet_slot_success() {
 fn test_assign_all_slots_and_fail() {
 	new_test_ext().execute_with(|| {
 		let max_slots = EpochLength::get();
+    let first_slot = 3;
 
 		// Fill all slots from 1..max_slots
-		for i in 2..max_slots {
+		for i in 3..max_slots {
 			let subnet_id = i;
 			assert_ok!(Network::assign_subnet_slot(subnet_id));
 		}
@@ -1240,6 +1242,10 @@ fn test_assign_all_slots_and_fail() {
 		// Now this call should fail with NoAvailableSlots
 		let result = Network::assign_subnet_slot(999);
 		assert_noop!(result, Error::<Test>::NoAvailableSlots);
+
+    let result = Network::assign_subnet_slot(first_slot);
+		assert_noop!(result, Error::<Test>::NoAvailableSlots);
+
 	});
 }
 
@@ -1279,14 +1285,16 @@ fn test_assign_and_free_reassigns_correctly() {
 		let subnet1 = 1;
 		let subnet2 = 2;
 
+    let first_slot = 3;
+
 		let slot1 = Network::assign_subnet_slot(subnet1).unwrap();
-		assert_eq!(slot1, 2);
+		assert_eq!(slot1, first_slot);
 
 		Network::free_slot_of_subnet(subnet1);
 
-		// Should now reuse slot 2
+		// Should now reuse slot `first_slot`
 		let slot2 = Network::assign_subnet_slot(subnet2).unwrap();
-		assert_eq!(slot2, 2);
+		assert_eq!(slot2, first_slot);
 	});
 }
 

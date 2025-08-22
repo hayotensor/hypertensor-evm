@@ -17,7 +17,7 @@ serde = { features = [
 ], workspace = true }
 sp-std.workspace = true
 
-pallet-network = { version = "4.0.0-dev", path = "../../network", default-features = false }
+pallet-network.workspace = true
 
 [features]
 default = ["std"]

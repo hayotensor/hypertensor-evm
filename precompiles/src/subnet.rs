@@ -151,7 +151,7 @@ where
       max_node_penalties,
       initial_coldkeys,
       max_registered_nodes,
-      node_removal_system,
+      node_removal_system: None,
       key_types
     };
 

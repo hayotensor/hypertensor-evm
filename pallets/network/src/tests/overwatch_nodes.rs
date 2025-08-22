@@ -42,6 +42,7 @@ use frame_support::{
 	assert_noop, assert_ok, assert_err
 };
 use sp_runtime::traits::Hash;
+use sp_std::collections::btree_map::BTreeMap;
 
 //
 //
@@ -106,6 +107,8 @@ fn test_register_overwatch_node_errors() {
 
     let coldkey = account(1);
     let hotkey = account(2);
+
+    set_overwatch_epoch(1);
 
     TotalOverwatchNodes::<Test>::set(MaxOverwatchNodes::<Test>::get());
     assert_err!(
@@ -549,7 +552,27 @@ fn test_equal_stake_equal_weights_v3() {
     submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
     submit_weight(epoch, subnet_id, node_id_2, 500000000000000000);
 
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let block_weight = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id);
 
     assert_eq!(subnet_weight, Some(500000000000000000_u128));
@@ -586,7 +609,27 @@ fn test_stake_no_dampening_effect() {
     submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
     submit_weight(epoch, subnet_id, node_id_2, 500000000000000000);
 
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let block_weight = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id);
 
     // Both users submitted the same score, subnet should be the score
@@ -622,7 +665,27 @@ fn test_two_noces_same_stake_dif_weights_v3() {
     submit_weight(epoch, subnet_id, node_id_1, 500000000000000000);
     submit_weight(epoch, subnet_id, node_id_2, 100);
 
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let block_weight = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id);
 
     assert_eq!(subnet_weight, Some((500000000000000000 + 100) / 2));
@@ -663,7 +726,27 @@ fn test_multiple_subnets_score_accumulation_v3() {
     submit_weight(epoch, subnet_id_2, node_id_1, 500000000000000000);
     submit_weight(epoch, subnet_id_2, node_id_2, 600000000000000000); // Node 2 slightly deviates
 
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let block_weight = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight_1 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_1);
     let subnet_weight_2 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_2);
 
@@ -707,7 +790,27 @@ fn test_multiple_subnets_score_accumulation_v3_2() {
     submit_weight(epoch, subnet_id_2, node_id_1, 500000000000000000);
     submit_weight(epoch, subnet_id_2, node_id_2, 600000000000000000); // Node 2 slightly deviates
 
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let block_weight = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..2 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight_1 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_1);
     let subnet_weight_2 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_2);
 
@@ -803,7 +906,28 @@ fn test_multiple_subnets_check_percent_acccuracy() {
     submit_weight(epoch, subnet_id_5, node_id_7, 900000000000000000);
     submit_weight(epoch, subnet_id_5, node_id_8, 600000000000000000);
 
+
+    let mut ostake_snapshot: BTreeMap<<Test as frame_system::Config>::AccountId, u128> = BTreeMap::new();
+    for n in 0..8 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+      assert_ne!(overwatch_stake, 0);
+      ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
+    }
+
     let _ = Network::calculate_overwatch_rewards_v3();
+
+    for n in 0..8 {
+      let hotkey = account(n + 1);
+      let overwatch_stake = AccountOverwatchStake::<Test>::get(hotkey.clone());
+
+      if let Some(old_stake) = ostake_snapshot.get(&hotkey) {
+        assert!(overwatch_stake > *old_stake);
+      } else {
+        assert!(false); // auto-fail
+      }
+    }
+
     let subnet_weight_1 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_1);
     let subnet_weight_2 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_2);
     let subnet_weight_3 = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id_3);

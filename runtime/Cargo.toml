@@ -41,6 +41,7 @@ pallet-multisig.workspace = true
 pallet-tx-pause.workspace = true
 pallet-collective.workspace = true
 pallet-network.workspace = true
+network-custom-rpc-runtime-api.workspace = true
 
 scale-info = { features = ["derive", "serde"], workspace = true }
 serde_json = { workspace = true, default-features = false, features = ["alloc"] }
@@ -120,6 +121,7 @@ std = [
 	"pallet-tx-pause/std",
 	"pallet-collective/std",
 	"pallet-network/std",
+	"network-custom-rpc-runtime-api/std",
 	"hypertensor-precompiles/std",
 	"scale-info/std",
 	"serde_json/std",

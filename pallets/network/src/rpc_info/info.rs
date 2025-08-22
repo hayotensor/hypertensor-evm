@@ -40,7 +40,7 @@ impl<T: Config> Pallet<T> {
         max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
         owner: Some(SubnetOwner::<T>::get(subnet_id)?),
         registration_epoch: Some(SubnetRegistrationEpoch::<T>::get(subnet_id)?),
-        node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
+        node_removal_system: Some(NodeRemovalSystemV2::<T>::get(subnet_id)?),
         key_types: SubnetKeyTypes::<T>::get(subnet_id),
         slot_index: Some(SubnetSlot::<T>::get(subnet_id)?),
         penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
@@ -75,7 +75,7 @@ impl<T: Config> Pallet<T> {
           max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
           owner: SubnetOwner::<T>::get(subnet_id),
           registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
-          node_removal_system: SubnetNodeRemovalSystem::<T>::get(subnet_id),
+          node_removal_system: NodeRemovalSystemV2::<T>::get(subnet_id),
           key_types: SubnetKeyTypes::<T>::get(subnet_id),
           slot_index: SubnetSlot::<T>::get(subnet_id),
           penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
@@ -233,22 +233,22 @@ impl<T: Config> Pallet<T> {
     }
   }
 
-  pub fn are_subnet_nodes_by_peer_id(subnet_id: u32, peer_ids: Vec<Vec<u8>>) -> BTreeMap<Vec<u8>, bool> {
-    let mut subnet_nodes: BTreeMap<Vec<u8>, bool> = BTreeMap::new();
+  // pub fn are_subnet_nodes_by_peer_id(subnet_id: u32, peer_ids: Vec<Vec<u8>>) -> BTreeMap<Vec<u8>, bool> {
+  //   let mut subnet_nodes: BTreeMap<Vec<u8>, bool> = BTreeMap::new();
 
-    for peer_id in peer_ids.iter() {
-      let is = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
-        Ok(_) => true,
-        Err(()) => false,
-      };
-      subnet_nodes.insert(peer_id.clone(), is);
-    }
+  //   for peer_id in peer_ids.iter() {
+  //     let is = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id.clone())) {
+  //       Ok(_) => true,
+  //       Err(()) => false,
+  //     };
+  //     subnet_nodes.insert(peer_id.clone(), is);
+  //   }
 
-    subnet_nodes
-  }
+  //   subnet_nodes
+  // }
 
   /// If subnet node exists under unique subnet node parameter ``unique``
-  pub fn is_subnet_node_by_a(
+  pub fn is_subnet_node_by_unique(
     subnet_id: u32, 
     unique: BoundedVec<u8, DefaultMaxVectorLength>
   ) -> bool {
@@ -288,12 +288,17 @@ impl<T: Config> Pallet<T> {
   pub fn proof_of_stake(
     subnet_id: u32, 
     peer_id: Vec<u8>,
-    min_class: &SubnetNodeClass
+    min_class: u8
   ) -> bool {
     if !SubnetsData::<T>::contains_key(subnet_id) {
-        return false;
+      return false
     }
 
+    let class = SubnetNodeClass::from_repr(min_class.into());
+    if class.is_none() {
+      return false
+    }
+    let min_stake = SubnetMinStakeBalance::<T>::get(subnet_id);
     let current_subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
     let peer_id = PeerId(peer_id);
 
@@ -302,7 +307,10 @@ impl<T: Config> Pallet<T> {
       mapping(subnet_id, peer_id.clone())
         .ok()
         .and_then(|subnet_node_id| SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id).ok())
-        .map(|subnet_node| subnet_node.has_classification(min_class, current_subnet_epoch))
+        .map(|subnet_node| {
+          subnet_node.has_classification(&class.unwrap(), current_subnet_epoch) &&
+          AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id) >= min_stake
+        })
         .unwrap_or(false)
     };
 
@@ -311,7 +319,7 @@ impl<T: Config> Pallet<T> {
       || check_mapping(BootstrapPeerIdSubnetNodeId::<T>::try_get)
       || check_mapping(ClientPeerIdSubnetNode::<T>::try_get)
     {
-      return true;
+      return true
     }
 
     // Finally, check overwatch node

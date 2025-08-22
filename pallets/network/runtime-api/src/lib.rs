@@ -20,7 +20,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use sp_std::vec::Vec;
 use frame_support::BoundedVec;
-use pallet_network::DefaultMaxVectorLength;
+use pallet_network::{
+	DefaultMaxVectorLength, 
+	SubnetInfo,
+	SubnetNode,
+	ConsensusData,
+	SubnetNodeInfo,
+};
+// use fp_account::AccountId20;
 
 sp_api::decl_runtime_apis! {
   pub trait NetworkRuntimeApi {
@@ -32,8 +39,18 @@ sp_api::decl_runtime_apis! {
     fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8>;
     fn get_subnet_nodes_info(subnet_id: u32) -> Vec<u8>;
     fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool;
-    fn are_subnet_nodes_by_peer_id(subnet_id: u32, peer_ids: Vec<Vec<u8>>) -> Vec<u8>;
-    fn is_subnet_node_by_a(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool;
-    fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: &SubnetNodeClass) -> bool;
+    fn is_subnet_node_by_unique(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool;
+    fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool;
+
+    // fn get_subnet_info(subnet_id: u32) -> Option<SubnetInfo<AccountId20>>;
+    // fn get_all_subnets_info() -> Vec<SubnetInfo<AccountId20>>;
+    // fn get_subnet_nodes(subnet_id: u32) -> Vec<SubnetNode<AccountId20>>;
+    // fn get_subnet_nodes_included(subnet_id: u32) -> Vec<SubnetNode<AccountId20>>;
+    // fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<SubnetNode<AccountId20>>;
+    // fn get_consensus_data(subnet_id: u32, epoch: u32) -> Option<ConsensusData<AccountId20>>;
+    // fn get_subnet_nodes_info(subnet_id: u32) -> Vec<SubnetNodeInfo<AccountId20>>;
+    // fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool;
+    // fn is_subnet_node_by_unique(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool;
+    // fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool;
   }
 }
