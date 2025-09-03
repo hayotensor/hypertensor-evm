@@ -1,6 +1,6 @@
 //! Benchmarking setup for pallet-template
 
-// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_template" 
+// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_template"
 
 // cargo build --release --features runtime-benchmarks
 // cargo test --release --features runtime-benchmarks
@@ -14,27 +14,27 @@ use frame_system::RawOrigin;
 
 #[benchmarks]
 mod benchmarks {
-	use super::*;
+    use super::*;
 
-	#[benchmark]
-	fn do_something() {
-		let value = 100u32;
-		let caller: T::AccountId = whitelisted_caller();
-		#[extrinsic_call]
-		do_something(RawOrigin::Signed(caller), value);
+    #[benchmark]
+    fn do_something() {
+        let value = 100u32;
+        let caller: T::AccountId = whitelisted_caller();
+        #[extrinsic_call]
+        do_something(RawOrigin::Signed(caller), value);
 
-		assert_eq!(Something::<T>::get(), Some(value));
-	}
+        assert_eq!(Something::<T>::get(), Some(value));
+    }
 
-	#[benchmark]
-	fn cause_error() {
-		Something::<T>::put(100u32);
-		let caller: T::AccountId = whitelisted_caller();
-		#[extrinsic_call]
-		cause_error(RawOrigin::Signed(caller));
+    #[benchmark]
+    fn cause_error() {
+        Something::<T>::put(100u32);
+        let caller: T::AccountId = whitelisted_caller();
+        #[extrinsic_call]
+        cause_error(RawOrigin::Signed(caller));
 
-		assert_eq!(Something::<T>::get(), Some(101u32));
-	}
+        assert_eq!(Something::<T>::get(), Some(101u32));
+    }
 
-	impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
+    impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
 }

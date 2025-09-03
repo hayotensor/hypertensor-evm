@@ -34,7 +34,7 @@ impl<T: Config> Pallet<T> {
     // --- Ensure subnet exists
     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
       Ok(subnet) => subnet,
-      Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+      Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
     };
 
     let block: u32 = Self::get_current_block_as_u32();
@@ -46,7 +46,7 @@ impl<T: Config> Pallet<T> {
       subnet_node_id
     ) {
       Ok(subnet_node) => subnet_node.has_classification(&SubnetNodeClass::Validator, epoch),
-      Err(()) => return Err(Error::<T>::InvalidSubnet.into()),
+      Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
     };
 
     // Unique subnet_id -> PeerId

@@ -187,7 +187,7 @@ where
 
   #[precompile::public("increaseDelegateStake(uint256,uint256)")]
   #[precompile::payable]
-  fn increase_delegate_stake(
+  fn donate_delegate_stake(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     amount: U256,
@@ -197,7 +197,7 @@ where
     let subnet_id = try_u256_to_u32(subnet_id)?;
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    let call = pallet_network::Call::<R>::increase_delegate_stake {
+    let call = pallet_network::Call::<R>::donate_delegate_stake {
       subnet_id,
       amount,
     };
@@ -291,7 +291,7 @@ where
 
   #[precompile::public("increaseNodeDelegateStake(uint256,uint256,uint256)")]
   #[precompile::payable]
-  fn increase_node_delegate_stake(
+  fn donate_node_delegate_stake(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     subnet_node_id: U256,
@@ -304,7 +304,7 @@ where
     let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    let call = pallet_network::Call::<R>::increase_node_delegate_stake {
+    let call = pallet_network::Call::<R>::donate_node_delegate_stake {
       subnet_id,
       subnet_node_id,
       amount,

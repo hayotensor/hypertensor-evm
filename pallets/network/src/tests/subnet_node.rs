@@ -1,11 +1,9 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
-use crate::Event;
 use frame_support::{
-	assert_noop, assert_ok, assert_err
+	assert_ok, assert_err
 };
-use log::info;
-use frame_support::traits::{OnInitialize, Currency};
+use frame_support::traits::Currency;
 use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use frame_support::BoundedVec;
 use sp_core::OpaquePeerId as PeerId;
@@ -791,7 +789,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::InvalidSubnet
+      Error::<Test>::InvalidSubnetId
     );
 
     let subnet_id = 1;
@@ -808,7 +806,7 @@ fn test_add_subnet_node_subnet_err() {
         None,
         None,
       ),
-      Error::<Test>::InvalidSubnet
+      Error::<Test>::InvalidSubnetId
     );
   })
 }
@@ -1526,7 +1524,6 @@ fn test_register_subnet_node_and_then_update_a_param() {
 
     let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
     assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
-
   })
 }
 
@@ -2330,10 +2327,11 @@ fn test_deactivation_ledger_as_attestor() {
     let subnet_node_data_vec = get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
     assert_ok!(
-      Network::validate(
+      Network::propose_attestation(
         RuntimeOrigin::signed(account(1)), 
         subnet_id,
         subnet_node_data_vec.clone(),
+        None,
         None,
       )
     );
@@ -2347,6 +2345,7 @@ fn test_deactivation_ledger_as_attestor() {
         Network::attest(
           RuntimeOrigin::signed(account(n)), 
           subnet_id,
+          None,
         )
       );
     }

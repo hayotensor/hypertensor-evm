@@ -17,45 +17,39 @@ use super::*;
 use sp_runtime::Saturating;
 
 impl<T: Config> Pallet<T> {
-  pub fn do_remove_ow(
-    key: T::AccountId,
-    overwatch_node_id: u32,
-  ) -> DispatchResult {
-    ensure!(
-      Self::is_overwatch_node_keys_owner(
-        overwatch_node_id, 
-        key, 
-      ),
-      Error::<T>::NotKeyOwner
-    );
+    pub fn do_remove_ow(key: T::AccountId, overwatch_node_id: u32) -> DispatchResult {
+        ensure!(
+            Self::is_overwatch_node_keys_owner(overwatch_node_id, key),
+            Error::<T>::NotKeyOwner
+        );
 
-    let overwatch_node = match OverwatchNodes::<T>::try_get(overwatch_node_id) {
-      Ok(overwatch_node) => overwatch_node,
-      Err(()) => return Err(Error::<T>::InvalidOverwatchNode.into()),
-    };
+        let overwatch_node = match OverwatchNodes::<T>::try_get(overwatch_node_id) {
+            Ok(overwatch_node) => overwatch_node,
+            Err(()) => return Err(Error::<T>::InvalidOverwatchNode.into()),
+        };
 
-    Self::perform_remove_ow(overwatch_node_id);
-    
-    Ok(())
-  }
+        Self::perform_remove_ow(overwatch_node_id);
 
-  pub fn perform_remove_ow(overwatch_node_id: u32) {
-    if OverwatchNodes::<T>::contains_key(overwatch_node_id) {
-      OverwatchNodes::<T>::remove(overwatch_node_id)
-    } else {
-      return
+        Ok(())
     }
 
-    if let Some(hotkey) = OverwatchNodeIdHotkey::<T>::take(overwatch_node_id) {
-      HotkeyOverwatchNodeId::<T>::remove(&hotkey);
-    };
+    pub fn perform_remove_ow(overwatch_node_id: u32) {
+        if OverwatchNodes::<T>::contains_key(overwatch_node_id) {
+            OverwatchNodes::<T>::remove(overwatch_node_id)
+        } else {
+            return;
+        }
 
-    // Remove all peer IDs in all subnets
-    let map = OverwatchNodeIndex::<T>::take(overwatch_node_id);
-    for (subnet_id, peer_id) in map {
-      PeerIdOverwatchNode::<T>::remove(subnet_id, peer_id);
+        if let Some(hotkey) = OverwatchNodeIdHotkey::<T>::take(overwatch_node_id) {
+            HotkeyOverwatchNodeId::<T>::remove(&hotkey);
+        };
+
+        // Remove all peer IDs in all subnets
+        let map = OverwatchNodeIndex::<T>::take(overwatch_node_id);
+        for (subnet_id, peer_id) in map {
+            PeerIdOverwatchNode::<T>::remove(subnet_id, peer_id);
+        }
+
+        TotalOverwatchNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
     }
-
-    TotalOverwatchNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-  }
 }

@@ -130,7 +130,7 @@ export function convertPublicKeyToMultiAddress(publicKey: Uint8Array, ss58Format
   return encodeAddress(publicKey, ss58Format);
 }
 
-export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx: Transaction<{}, string, string, void>, signer: PolkadotSigner,) {
+export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx: Transaction<{}, string, string, void>, signer: PolkadotSigner) {
     const transactionPromise = await getTransactionWatchPromise(tx, signer)
     return transactionPromise
 
@@ -146,7 +146,7 @@ export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx
     // })
 }
 
-export async function getTransactionWatchPromise(tx: Transaction<{}, string, string, void>, signer: PolkadotSigner,) {
+export async function getTransactionWatchPromise(tx: Transaction<{}, string, string, void>, signer: PolkadotSigner) {
     return new Promise<void>((resolve, reject) => {
         // store the txHash, then use it in timeout. easier to know which tx is not finalized in time
         let txHash = ""
@@ -223,7 +223,7 @@ export async function waitForFinalizedBlock(api: TypedApi<typeof dev>) {
 }
 
 // second solution to wait for transaction finalization. pass the raw data to avoid the complex transaction type definition
-export async function waitForTransactionCompletion2(api: TypedApi<typeof dev>, raw: Binary, signer: PolkadotSigner,) {
+export async function waitForTransactionCompletion2(api: TypedApi<typeof dev>, raw: Binary, signer: PolkadotSigner) {
     const tx = await api.txFromCallData(raw);
     return new Promise<void>((resolve, reject) => {
         const subscription = tx.signSubmitAndWatch(signer).subscribe({

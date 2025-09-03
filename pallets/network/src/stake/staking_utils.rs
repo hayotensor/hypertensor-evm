@@ -17,178 +17,245 @@ use super::*;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  /// Min liquidity/shares in any pool
-  /// Used to mint dead shares on first deposit
-  pub const MIN_LIQUIDITY: u128 = 1000;
-  
-  pub fn add_balance_to_unbonding_ledger(
-    coldkey: &T::AccountId,
-    amount: u128,
-    cooldown_epoch_length: u32,
-    block: u32,
-  ) -> DispatchResult {
-    let epoch = Self::get_current_epoch_as_u32();
-    let claim_epoch = cooldown_epoch_length.saturating_add(epoch);
+    /// Min liquidity/shares in any pool
+    /// Used to mint dead shares on first deposit
+    pub const MIN_LIQUIDITY: u128 = 1000;
 
-    let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
+    pub fn add_balance_to_unbonding_ledger(
+        coldkey: &T::AccountId,
+        amount: u128,
+        cooldown_epoch_length: u32,
+        block: u32,
+    ) -> DispatchResult {
+        let epoch = Self::get_current_epoch_as_u32();
+        let claim_epoch = cooldown_epoch_length.saturating_add(epoch);
 
-    // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
-    if unbondings.len() as u32 == T::MaxStakeUnlockings::get() {
-      Self::do_claim_unbondings(&coldkey);
+        let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
+
+        // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
+        if unbondings.len() as u32 == T::MaxStakeUnlockings::get() {
+            Self::do_claim_unbondings(&coldkey);
+        }
+
+        // --- Get updated unbondings after claiming unbondings
+        let mut unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
+
+        // We're about to add another unbonding to the ledger - it must be n-1
+        ensure!(
+            unbondings.len() < T::MaxStakeUnlockings::get() as usize,
+            Error::<T>::MaxUnlockingsReached
+        );
+
+        StakeUnbondingLedger::<T>::mutate(&coldkey, |ledger| {
+            ledger
+                .entry(claim_epoch)
+                .and_modify(|v| v.saturating_accrue(amount))
+                .or_insert(amount);
+        });
+
+        Ok(())
     }
 
-    // --- Get updated unbondings after claiming unbondings
-    let mut unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
+    pub fn do_claim_unbondings(coldkey: &T::AccountId) -> u32 {
+        let epoch = Self::get_current_epoch_as_u32();
+        let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
 
-    // We're about to add another unbonding to the ledger - it must be n-1
-    ensure!(
-      unbondings.len() < T::MaxStakeUnlockings::get() as usize,
-      Error::<T>::MaxUnlockingsReached
-    );
+        let mut unbondings_copy = unbondings.clone();
 
-    StakeUnbondingLedger::<T>::mutate(&coldkey, |ledger| {
-      ledger.entry(claim_epoch).and_modify(|v| v.saturating_accrue(amount)).or_insert(amount);
-    });
+        let mut successful_unbondings = 0;
 
-    Ok(())
-  }
+        for (unbonding_epoch, amount) in unbondings.iter() {
+            if epoch < *unbonding_epoch {
+                continue;
+            }
 
-  pub fn do_claim_unbondings(coldkey: &T::AccountId) -> u32 {
-    let epoch = Self::get_current_epoch_as_u32();
-    let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
+            let stake_to_be_added_as_currency = Self::u128_to_balance(*amount);
+            if !stake_to_be_added_as_currency.is_some() {
+                // Redundant
+                unbondings_copy.remove(&unbonding_epoch);
+                continue;
+            }
 
-    let mut unbondings_copy = unbondings.clone();
+            unbondings_copy.remove(&unbonding_epoch);
+            Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency.unwrap());
+            successful_unbondings += 1;
+        }
 
-    let mut successful_unbondings = 0;
-
-    for (unbonding_epoch, amount) in unbondings.iter() {
-      if epoch <= *unbonding_epoch {
-        continue
-      }
-
-      let stake_to_be_added_as_currency = Self::u128_to_balance(*amount);
-      if !stake_to_be_added_as_currency.is_some() {
-        // Redundant
-        unbondings_copy.remove(&unbonding_epoch);
-        continue
-      }
-      
-      unbondings_copy.remove(&unbonding_epoch);
-      Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency.unwrap());
-      successful_unbondings += 1;
+        if unbondings.len() != unbondings_copy.len() {
+            StakeUnbondingLedger::<T>::insert(&coldkey, unbondings_copy);
+        }
+        successful_unbondings
     }
 
-    if unbondings.len() != unbondings_copy.len() {
-      StakeUnbondingLedger::<T>::insert(&coldkey, unbondings_copy);
+    pub fn add_balance_to_unbonding_ledger_v2(
+        coldkey: &T::AccountId,
+        amount: u128,
+        cooldown_blocks: u32,
+        block: u32,
+    ) -> DispatchResult {
+        let claim_block = block.saturating_add(cooldown_blocks);
+
+        let unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+
+        // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
+        if unbondings.len() as u32 == T::MaxStakeUnlockings::get() {
+            Self::do_claim_unbondings(&coldkey);
+        }
+
+        // --- Get updated unbondings after claiming unbondings
+        let mut unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+
+        // We're about to add another unbonding to the ledger - it must be n-1
+        ensure!(
+            unbondings.len() < T::MaxStakeUnlockings::get() as usize,
+            Error::<T>::MaxUnlockingsReached
+        );
+
+        StakeUnbondingLedgerV2::<T>::mutate(&coldkey, |ledger| {
+            ledger
+                .entry(claim_block)
+                .and_modify(|v| v.saturating_accrue(amount))
+                .or_insert(amount);
+        });
+
+        Ok(())
     }
-    successful_unbondings
-  }
 
-  pub fn can_remove_balance_from_coldkey_account(
-    coldkey: &T::AccountId,
-    amount: <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-  ) -> bool {
-    let current_balance = Self::get_coldkey_balance(coldkey);
-    if amount > current_balance {
-      return false;
+    pub fn do_claim_unbondings_v2(coldkey: &T::AccountId) -> u32 {
+        let block = Self::get_current_block_as_u32();
+        let unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+
+        let mut unbondings_copy = unbondings.clone();
+
+        let mut successful_unbondings = 0;
+
+        for (unbonding_block, amount) in unbondings.iter() {
+            if block < *unbonding_block {
+                continue;
+            }
+
+            let stake_to_be_added_as_currency = Self::u128_to_balance(*amount);
+            if !stake_to_be_added_as_currency.is_some() {
+                // Redundant
+                unbondings_copy.remove(&unbonding_block);
+                continue;
+            }
+
+            unbondings_copy.remove(&unbonding_block);
+            Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency.unwrap());
+            successful_unbondings += 1;
+        }
+
+        if unbondings.len() != unbondings_copy.len() {
+            StakeUnbondingLedgerV2::<T>::insert(&coldkey, unbondings_copy);
+        }
+        successful_unbondings
     }
 
-    let new_potential_balance = current_balance - amount;
-    let can_withdraw = T::Currency::ensure_can_withdraw(
-      &coldkey,
-      amount,
-      WithdrawReasons::except(WithdrawReasons::TIP),
-      new_potential_balance,
-    )
-    .is_ok();
-    can_withdraw
-  }
+    pub fn can_remove_balance_from_coldkey_account(
+        coldkey: &T::AccountId,
+        amount: <<T as pallet::Config>::Currency as Currency<
+            <T as frame_system::Config>::AccountId,
+        >>::Balance,
+    ) -> bool {
+        let current_balance = Self::get_coldkey_balance(coldkey);
+        if amount > current_balance {
+            return false;
+        }
 
-  pub fn remove_balance_from_coldkey_account(
-    coldkey: &T::AccountId,
-    amount: <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-  ) -> bool {
-    return match T::Currency::withdraw(
-      &coldkey,
-      amount,
-      WithdrawReasons::except(WithdrawReasons::TIP),
-      ExistenceRequirement::KeepAlive,
+        let new_potential_balance = current_balance - amount;
+        let can_withdraw = T::Currency::ensure_can_withdraw(
+            &coldkey,
+            amount,
+            WithdrawReasons::except(WithdrawReasons::TIP),
+            new_potential_balance,
+        )
+        .is_ok();
+        can_withdraw
+    }
+
+    pub fn remove_balance_from_coldkey_account(
+        coldkey: &T::AccountId,
+        amount: <<T as pallet::Config>::Currency as Currency<
+            <T as frame_system::Config>::AccountId,
+        >>::Balance,
+    ) -> bool {
+        return match T::Currency::withdraw(
+            &coldkey,
+            amount,
+            WithdrawReasons::except(WithdrawReasons::TIP),
+            ExistenceRequirement::KeepAlive,
+        ) {
+            Ok(_result) => true,
+            Err(_error) => false,
+        };
+    }
+
+    pub fn add_balance_to_coldkey_account(
+        coldkey: &T::AccountId,
+        amount: <<T as pallet::Config>::Currency as Currency<
+            <T as frame_system::Config>::AccountId,
+        >>::Balance,
     ) {
-      Ok(_result) => true,
-      Err(_error) => false,
-    };
-  }
+        T::Currency::deposit_creating(&coldkey, amount);
+    }
 
-  pub fn add_balance_to_coldkey_account(
-    coldkey: &T::AccountId,
-    amount: <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-  ) {
-    T::Currency::deposit_creating(&coldkey, amount);
-  }
-
-  pub fn get_coldkey_balance(
-    coldkey: &T::AccountId,
-  ) -> <<T as pallet::Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance {
-    return T::Currency::free_balance(&coldkey);
-  }
+    pub fn get_coldkey_balance(
+        coldkey: &T::AccountId,
+    ) -> <<T as pallet::Config>::Currency as Currency<<T as system::Config>::AccountId>>::Balance
+    {
+        return T::Currency::free_balance(&coldkey);
+    }
 
   pub fn u128_to_balance(
     input: u128,
   ) -> Option<
     <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
-  > {
-    input.try_into().ok()
-  }
-  
-  /// Convert TENSOR balance to shares in vault
-  ///
-  /// # Arguments
-  ///
-  /// * `balance` - Amount of TENSOR to convert to shares.
-  /// * `total_shares` - Total shares in the vault.
-  /// * `total_balance` - Total balance of TENSOR in the vault.
-  ///
-  pub fn convert_to_shares(
-    balance: u128,
-    total_shares: u128,
-    total_balance: u128,
-  ) -> u128 {
-    if total_shares == 0 {
-      return balance;
+    >{
+        input.try_into().ok()
     }
-  
-    let balance = U256::from(balance);
-    let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
-    let total_balance = U256::from(total_balance) + U256::from(1);
-  
-    Self::checked_mul_div(balance, total_shares, total_balance)
-      .and_then(|res| res.try_into().ok())
-      .unwrap_or(u128::MAX)
-  }
-  
-  /// Convert vault shares to TENSOR balance
-  ///
-  /// # Arguments
-  ///
-  /// * `shares` - Amount of shares to convert to TENSOR.
-  /// * `total_shares` - Total shares in the vault.
-  /// * `total_balance` - Total balance of TENSOR in the vault.
-  ///
-  pub fn convert_to_balance(
-    shares: u128,
-    total_shares: u128,
-    total_balance: u128,
-  ) -> u128 {
-    if total_shares == 0 {
-      return shares;
+
+    /// Convert TENSOR balance to shares in vault
+    ///
+    /// # Arguments
+    ///
+    /// * `balance` - Amount of TENSOR to convert to shares.
+    /// * `total_shares` - Total shares in the vault.
+    /// * `total_balance` - Total balance of TENSOR in the vault.
+    ///
+    pub fn convert_to_shares(balance: u128, total_shares: u128, total_balance: u128) -> u128 {
+        if total_shares == 0 {
+            return balance;
+        }
+
+        let balance = U256::from(balance);
+        let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
+        let total_balance = U256::from(total_balance) + U256::from(1);
+
+        Self::checked_mul_div(balance, total_shares, total_balance)
+            .and_then(|res| res.try_into().ok())
+            .unwrap_or(u128::MAX)
     }
-  
-    let shares = U256::from(shares);
-    let total_balance = U256::from(total_balance) + U256::from(1);
-    let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
-  
-    Self::checked_mul_div(shares, total_balance, total_shares)
-      .and_then(|res| res.try_into().ok())
-      .unwrap_or(u128::MAX)
-  }
+
+    /// Convert vault shares to TENSOR balance
+    ///
+    /// # Arguments
+    ///
+    /// * `shares` - Amount of shares to convert to TENSOR.
+    /// * `total_shares` - Total shares in the vault.
+    /// * `total_balance` - Total balance of TENSOR in the vault.
+    ///
+    pub fn convert_to_balance(shares: u128, total_shares: u128, total_balance: u128) -> u128 {
+        if total_shares == 0 {
+            return shares;
+        }
+
+        let shares = U256::from(shares);
+        let total_balance = U256::from(total_balance) + U256::from(1);
+        let total_shares = U256::from(total_shares) + U256::from(10_u128.pow(1));
+
+        Self::checked_mul_div(shares, total_balance, total_shares)
+            .and_then(|res| res.try_into().ok())
+            .unwrap_or(u128::MAX)
+    }
 }

@@ -17,146 +17,138 @@ use super::*;
 use sp_runtime::Saturating;
 
 impl<T: Config> Pallet<T> {
-  pub fn do_add_overwatch_stake(
-    coldkey: T::AccountId,
-    hotkey: T::AccountId,
-    stake_to_be_added: u128,
-  ) -> DispatchResult {
-    let stake_as_balance = Self::u128_to_balance(stake_to_be_added);
+    pub fn do_add_overwatch_stake(
+        coldkey: T::AccountId,
+        hotkey: T::AccountId,
+        stake_to_be_added: u128,
+    ) -> DispatchResult {
+        let stake_as_balance = Self::u128_to_balance(stake_to_be_added);
 
-    ensure!(
-      stake_as_balance.is_some(),
-      Error::<T>::CouldNotConvertToBalance
-    );
+        ensure!(
+            stake_as_balance.is_some(),
+            Error::<T>::CouldNotConvertToBalance
+        );
 
-    let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
-  
-    ensure!(
-      account_stake_balance.saturating_add(stake_to_be_added) >= OverwatchMinStakeBalance::<T>::get(),
-      Error::<T>::MinStakeNotReached
-    );
+        let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
 
-    // --- Ensure the callers coldkey has enough stake to perform the transaction.
-    ensure!(
-      Self::can_remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()),
-      Error::<T>::NotEnoughBalanceToStake
-    );
-  
-    // --- Ensure the remove operation from the coldkey is a success.
-    ensure!(
-      Self::remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()) == true,
-      Error::<T>::BalanceWithdrawalError
-    );
-  
-    Self::increase_account_overwatch_stake(
-      &hotkey,
-      stake_to_be_added,
-    );
+        ensure!(
+            account_stake_balance.saturating_add(stake_to_be_added)
+                >= OverwatchMinStakeBalance::<T>::get(),
+            Error::<T>::MinStakeNotReached
+        );
 
-    // Self::deposit_event(Event::StakeAdded(subnet_id, coldkey, hotkey, stake_to_be_added));
+        // --- Ensure the callers coldkey has enough stake to perform the transaction.
+        ensure!(
+            Self::can_remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()),
+            Error::<T>::NotEnoughBalanceToStake
+        );
 
-    Ok(())
-  }
+        // --- Ensure the remove operation from the coldkey is a success.
+        ensure!(
+            Self::remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()) == true,
+            Error::<T>::BalanceWithdrawalError
+        );
 
-  pub fn do_remove_overwatch_stake(
-    origin: T::RuntimeOrigin, 
-    hotkey: T::AccountId,
-    is_overwatch_node: bool,
-    stake_to_be_removed: u128,
-  ) -> DispatchResult {
-    let coldkey: T::AccountId = ensure_signed(origin)?;
+        Self::increase_account_overwatch_stake(&hotkey, stake_to_be_added);
 
-    // --- Ensure that the stake amount to be removed is above zero.
-    ensure!(
-      stake_to_be_removed > 0,
-      Error::<T>::NotEnoughStakeToWithdraw
-    );
+        // Self::deposit_event(Event::StakeAdded(subnet_id, coldkey, hotkey, stake_to_be_added));
 
-    let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
-
-    // --- Ensure that the account has enough stake to withdraw.
-    ensure!(
-      account_stake_balance >= stake_to_be_removed,
-      Error::<T>::NotEnoughStakeToWithdraw
-    );
-    
-    // if user is still an overwatch node they must keep the required minimum balance
-    if is_overwatch_node {
-      ensure!(
-        account_stake_balance.saturating_sub(stake_to_be_removed) >= OverwatchMinStakeBalance::<T>::get(),
-        Error::<T>::MinStakeNotReached
-      );  
+        Ok(())
     }
-  
-    // --- Ensure that we can convert this u128 to a balance.
-    let stake_to_be_removed_as_currency = Self::u128_to_balance(stake_to_be_removed);
-    ensure!(
-      stake_to_be_removed_as_currency.is_some(),
-        Error::<T>::CouldNotConvertToBalance
-    );
 
-    let block: u32 = Self::get_current_block_as_u32();
+    pub fn do_remove_overwatch_stake(
+        origin: T::RuntimeOrigin,
+        hotkey: T::AccountId,
+        is_overwatch_node: bool,
+        stake_to_be_removed: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
 
-    // --- 7. We remove the balance from the hotkey.
-    Self::decrease_account_overwatch_stake(&hotkey, stake_to_be_removed);
+        // --- Ensure that the stake amount to be removed is above zero.
+        ensure!(
+            stake_to_be_removed > 0,
+            Error::<T>::NotEnoughStakeToWithdraw
+        );
 
-    // --- 9. We add the balancer to the coldkey.  If the above fails we will not credit this coldkey.
-    Self::add_balance_to_unbonding_ledger(
-      &coldkey, 
-      stake_to_be_removed, 
-      T::StakeCooldownEpochs::get(),
-      block
-    ).map_err(|e| e)?;
+        let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
 
-    // Self::deposit_event(Event::StakeRemoved(subnet_id, coldkey, hotkey, stake_to_be_removed));
+        // --- Ensure that the account has enough stake to withdraw.
+        ensure!(
+            account_stake_balance >= stake_to_be_removed,
+            Error::<T>::NotEnoughStakeToWithdraw
+        );
 
-    Ok(())
-  }
+        // if user is still an overwatch node they must keep the required minimum balance
+        if is_overwatch_node {
+            ensure!(
+                account_stake_balance.saturating_sub(stake_to_be_removed)
+                    >= OverwatchMinStakeBalance::<T>::get(),
+                Error::<T>::MinStakeNotReached
+            );
+        }
 
-  pub fn do_swap_overwatch_hotkey_balance(
-    old_hotkey: &T::AccountId,
-    new_hotkey: &T::AccountId,
-  ) {
-    Self::swap_account_overwatch_stake(
-      old_hotkey,
-      new_hotkey,
-    )
-  }
+        // --- Ensure that we can convert this u128 to a balance.
+        let stake_to_be_removed_as_currency = Self::u128_to_balance(stake_to_be_removed);
+        ensure!(
+            stake_to_be_removed_as_currency.is_some(),
+            Error::<T>::CouldNotConvertToBalance
+        );
 
-  pub fn increase_account_overwatch_stake(
-    hotkey: &T::AccountId,
-    amount: u128,
-  ) {
-    // -- increase account overwatch staking balance
-    AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_accrue(amount));
+        let block: u32 = Self::get_current_block_as_u32();
 
-    // -- increase total overwatch stake
-    TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_accrue(amount));
-   }
-  
-  pub fn decrease_account_overwatch_stake(
-    hotkey: &T::AccountId,
-    amount: u128,
-  ) {
-    // -- decrease account overwatch staking balance
-    AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_reduce(amount));
+        // --- 7. We remove the balance from the hotkey.
+        Self::decrease_account_overwatch_stake(&hotkey, stake_to_be_removed);
 
-    // -- decrease total overwatch stake
-    TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_reduce(amount));
-  }
+        // --- 9. We add the balancer to the coldkey.  If the above fails we will not credit this coldkey.
+        // Self::add_balance_to_unbonding_ledger(
+        //   &coldkey,
+        //   stake_to_be_removed,
+        //   T::StakeCooldownEpochs::get(),
+        //   block
+        // ).map_err(|e| e)?;
 
-  fn swap_account_overwatch_stake(
-    old_hotkey: &T::AccountId,
-    new_hotkey: &T::AccountId,
-  ) {
-    // --- swap old_hotkey overwatch staking balance
-    let old_hotkey_stake_balance = AccountOverwatchStake::<T>::take(old_hotkey);
-    // --- Redundant take of new hotkeys stake balance
-    // --- New hotkey is always checked before updating
-    let new_hotkey_stake_balance = AccountOverwatchStake::<T>::take(new_hotkey);
-    AccountOverwatchStake::<T>::insert(
-      new_hotkey, 
-      old_hotkey_stake_balance.saturating_add(new_hotkey_stake_balance)
-    );
-  }
+        let result = Self::add_balance_to_unbonding_ledger_v2(
+            &coldkey,
+            stake_to_be_removed,
+            T::StakeCooldownEpochs::get() * T::EpochLength::get(),
+            block,
+        )
+        .map_err(|e| e)?;
+
+        // Self::deposit_event(Event::StakeRemoved(subnet_id, coldkey, hotkey, stake_to_be_removed));
+
+        Ok(())
+    }
+
+    pub fn do_swap_overwatch_hotkey_balance(old_hotkey: &T::AccountId, new_hotkey: &T::AccountId) {
+        Self::swap_account_overwatch_stake(old_hotkey, new_hotkey)
+    }
+
+    pub fn increase_account_overwatch_stake(hotkey: &T::AccountId, amount: u128) {
+        // -- increase account overwatch staking balance
+        AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_accrue(amount));
+
+        // -- increase total overwatch stake
+        TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_accrue(amount));
+    }
+
+    pub fn decrease_account_overwatch_stake(hotkey: &T::AccountId, amount: u128) {
+        // -- decrease account overwatch staking balance
+        AccountOverwatchStake::<T>::mutate(hotkey, |mut n| n.saturating_reduce(amount));
+
+        // -- decrease total overwatch stake
+        TotalOverwatchStake::<T>::mutate(|mut n| n.saturating_reduce(amount));
+    }
+
+    fn swap_account_overwatch_stake(old_hotkey: &T::AccountId, new_hotkey: &T::AccountId) {
+        // --- swap old_hotkey overwatch staking balance
+        let old_hotkey_stake_balance = AccountOverwatchStake::<T>::take(old_hotkey);
+        // --- Redundant take of new hotkeys stake balance
+        // --- New hotkey is always checked before updating
+        let new_hotkey_stake_balance = AccountOverwatchStake::<T>::take(new_hotkey);
+        AccountOverwatchStake::<T>::insert(
+            new_hotkey,
+            old_hotkey_stake_balance.saturating_add(new_hotkey_stake_balance),
+        );
+    }
 }

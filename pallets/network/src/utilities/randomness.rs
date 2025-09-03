@@ -16,83 +16,83 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
-	pub fn get_random_number(seed: u32) -> u32 {
-		let mut random_number = Self::generate_random_number(seed);
+    pub fn get_random_number(seed: u32) -> u32 {
+        let mut random_number = Self::generate_random_number(seed);
 
-		// Best effort attempt to remove bias from modulus operator.
-		let mut i = 1;
-		let mut found = false;
-		while !found {
-			if random_number < u32::MAX {
-				found = true;
-				break
-			}
+        // Best effort attempt to remove bias from modulus operator.
+        let mut i = 1;
+        let mut found = false;
+        while !found {
+            if random_number < u32::MAX {
+                found = true;
+                break;
+            }
 
-			random_number = Self::generate_random_number(i);
+            random_number = Self::generate_random_number(i);
 
-			i += 1;
-		}
+            i += 1;
+        }
 
-		random_number
-	}
+        random_number
+    }
 
-	pub fn get_random_number_v2(seed: u32) -> u32 {
-		let mut random_number = Self::generate_random_number(seed);
+    pub fn get_random_number_v2(seed: u32) -> u32 {
+        let mut random_number = Self::generate_random_number(seed);
 
-		// Best effort attempt to remove bias from modulus operator.
-		let mut i = 1;
-		let mut found = false;
-		while !found {
-			if random_number < u32::MAX {
-				found = true;
-				break
-			}
+        // Best effort attempt to remove bias from modulus operator.
+        let mut i = 1;
+        let mut found = false;
+        while !found {
+            if random_number < u32::MAX {
+                found = true;
+                break;
+            }
 
-			random_number = Self::generate_random_number(i);
+            random_number = Self::generate_random_number(i);
 
-			i += 1;
-		}
+            i += 1;
+        }
 
-		random_number
-	}
+        random_number
+    }
 
-	// If using len() for `max`, avoid overflow by `-1` 
-	pub fn get_random_number_with_max(mut max: u32, seed: u32) -> u32 {
-		if max == 0 {
-			return 0
-		}
-		
-		let mut random_number = Self::generate_random_number(seed);
+    // If using len() for `max`, avoid overflow by `-1`
+    pub fn get_random_number_with_max(mut max: u32, seed: u32) -> u32 {
+        if max == 0 {
+            return 0;
+        }
 
-		// Best effort attempt to remove bias from modulus operator.
-		let mut i = 1;
-		let mut found = false;
-		while !found {
-			if random_number < u32::MAX - u32::MAX % max {
-				found = true;
-				break
-			}
+        let mut random_number = Self::generate_random_number(seed);
 
-			random_number = Self::generate_random_number(i);
+        // Best effort attempt to remove bias from modulus operator.
+        let mut i = 1;
+        let mut found = false;
+        while true {
+            if random_number < u32::MAX - u32::MAX % max {
+                found = true;
+                break;
+            }
 
-			i += 1;
-		}
+            random_number = Self::generate_random_number(i);
 
-		random_number % max
-	}
+            i += 1;
+        }
 
-	/// Generate a random number from a given seed.
-	/// Note that there is potential bias introduced by using modulus operator.
-	/// You should call this function with different seed values until the random
-	/// number lies within `u32::MAX - u32::MAX % n`.
-	/// TODO: deal with randomness freshness
-	/// https://github.com/paritytech/substrate/issues/8311
-  /// This is not a secure random number generator but serves its purpose for choosing random numbers
-	pub fn generate_random_number(seed: u32) -> u32 {
-		let (random_seed, _) = T::Randomness::random(&(T::PalletId::get(), seed).encode());
-		let random_number = <u32>::decode(&mut random_seed.as_ref())
-			.expect("secure hashes should always be bigger than u32; qed");
+        random_number % max
+    }
 
-		random_number
-	}
+    /// Generate a random number from a given seed.
+    /// Note that there is potential bias introduced by using modulus operator.
+    /// You should call this function with different seed values until the random
+    /// number lies within `u32::MAX - u32::MAX % n`.
+    /// TODO: deal with randomness freshness
+    /// https://github.com/paritytech/substrate/issues/8311
+    /// This is not a secure random number generator but serves its purpose for choosing random numbers
+    pub fn generate_random_number(seed: u32) -> u32 {
+        let (random_seed, _) = T::Randomness::random(&(T::PalletId::get(), seed).encode());
+        let random_number = <u32>::decode(&mut random_seed.as_ref())
+            .expect("secure hashes should always be bigger than u32; qed");
+
+        random_number
+    }
 }

@@ -1,14 +1,9 @@
 // use super::mock::*;
 // use crate::tests::test_utils::*;
-// use crate::Event;
 // use frame_support::{
-// 	assert_noop, assert_ok, assert_err
+// 	assert_ok, assert_err
 // };
-// use log::info;
-// use frame_support::traits::{OnInitialize, Currency};
-// use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
-// use frame_support::BoundedVec;
-// use sp_core::OpaquePeerId as PeerId;
+// use frame_support::traits::Currency;
 // use crate::{
 //   SubnetName, 
 //   NetworkMinStakeBalance,

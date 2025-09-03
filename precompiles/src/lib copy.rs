@@ -10,9 +10,7 @@ use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_sha3fips::Sha3FIPS256;
 use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
 use sp_runtime::traits::{StaticLookup, Dispatchable};
-// use sp_core::U256;
 use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
-// use sp_core::ByteArray;
 use sp_core::{H160, U256, crypto::ByteArray};
 
 use crate::staking::*;

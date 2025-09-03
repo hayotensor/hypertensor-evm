@@ -1,14 +1,11 @@
 use super::mock::*;
 use super::test_utils::*;
-use crate::Event;
-use sp_core::OpaquePeerId as PeerId;
 use frame_support::{
-	assert_noop, assert_ok, assert_err
+	assert_ok, assert_err
 };
 use sp_runtime::traits::Header;
-use log::info;
 use sp_core::{H256, U256};
-use frame_support::traits::{OnInitialize, Currency};
+use frame_support::traits::Currency;
 use crate::{
   Error,   
   SubnetName, 
@@ -21,15 +18,12 @@ use crate::{
   ProposalBidAmount, 
   SubnetNode, 
 };
-use frame_support::BoundedVec;
-use strum::IntoEnumIterator;
 use sp_io::crypto::sr25519_sign;
 use sp_runtime::{MultiSigner, MultiSignature};
 use sp_io::crypto::sr25519_generate;
 use frame_support::pallet_prelude::Encode;
 use sp_runtime::traits::IdentifyAccount;
 use sp_core::Pair;
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 // ///
 // ///
@@ -135,7 +129,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 // //         peer(1),
 // //         Vec::new()
 // //       ),
-// //       Error::<Test>::InvalidSubnet
+// //       Error::<Test>::InvalidSubnetId
 // //     );
 // //   })
 // // }

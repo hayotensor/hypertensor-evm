@@ -14,7 +14,6 @@
 // limitations under the License.
 
 use super::*;
-use libm::sqrt;
 use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {

@@ -18,15 +18,11 @@
 //! Runtime API definition for the network pallet.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use sp_std::vec::Vec;
 use frame_support::BoundedVec;
 use pallet_network::{
-	DefaultMaxVectorLength, 
-	SubnetInfo,
-	SubnetNode,
-	ConsensusData,
-	SubnetNodeInfo,
+    ConsensusData, DefaultMaxVectorLength, SubnetInfo, SubnetNode, SubnetNodeInfo,
 };
+use sp_std::vec::Vec;
 // use fp_account::AccountId20;
 
 sp_api::decl_runtime_apis! {
@@ -34,6 +30,7 @@ sp_api::decl_runtime_apis! {
     fn get_subnet_info(subnet_id: u32) -> Vec<u8>;
     fn get_all_subnets_info() -> Vec<u8>;
     fn get_subnet_nodes(subnet_id: u32) -> Vec<u8>;
+    fn get_min_class_subnet_nodes(subnet_id: u32, subnet_epoch: u32, min_class: u8) -> Vec<u8>;
     fn get_subnet_nodes_included(subnet_id: u32) -> Vec<u8>;
     fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<u8>;
     fn get_consensus_data(subnet_id: u32, epoch: u32) -> Vec<u8>;

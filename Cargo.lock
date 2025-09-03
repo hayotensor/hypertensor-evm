@@ -6622,6 +6622,7 @@ name = "pallet-collective"
 version = "37.0.0"
 dependencies = [
  "docify",
+ "fp-account",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6788,6 +6789,7 @@ name = "pallet-network"
 version = "4.0.0-dev"
 dependencies = [
  "env_logger",
+ "fp-account",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

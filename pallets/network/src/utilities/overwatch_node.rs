@@ -15,33 +15,23 @@
 //
 
 use super::*;
-use libm::pow;
-use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  pub fn get_overwatch_node_hotkey_coldkey(
-    overwatch_node_id: u32, 
-  ) -> Option<(T::AccountId, T::AccountId)> {
-    let hotkey = OverwatchNodeIdHotkey::<T>::try_get(overwatch_node_id).ok()?;
-    let coldkey = HotkeyOwner::<T>::try_get(&hotkey).ok()?;
+    pub fn get_overwatch_node_hotkey_coldkey(
+        overwatch_node_id: u32,
+    ) -> Option<(T::AccountId, T::AccountId)> {
+        let hotkey = OverwatchNodeIdHotkey::<T>::try_get(overwatch_node_id).ok()?;
+        let coldkey = HotkeyOwner::<T>::try_get(&hotkey).ok()?;
 
-    Some((hotkey, coldkey))
-  }
+        Some((hotkey, coldkey))
+    }
 
-  pub fn is_overwatch_node_keys_owner(
-    overwatch_node_id: u32, 
-    key: T::AccountId, 
-  ) -> bool {
-    let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
-      Some((hotkey, coldkey)) => {
-        (hotkey, coldkey)
-      }
-      None => {
-        return false
-      }
-    };
+    pub fn is_overwatch_node_keys_owner(overwatch_node_id: u32, key: T::AccountId) -> bool {
+        let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
+            Some((hotkey, coldkey)) => (hotkey, coldkey),
+            None => return false,
+        };
 
-    key == hotkey || key == coldkey
-  }
-
+        key == hotkey || key == coldkey
+    }
 }

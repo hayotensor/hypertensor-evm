@@ -16,49 +16,76 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
-  pub fn do_register_identity(
-    coldkey: T::AccountId,
-    hotkey: T::AccountId,
-    name: BoundedVec<u8, DefaultMaxUrlLength>,
-    url: BoundedVec<u8, DefaultMaxUrlLength>,
-    image: BoundedVec<u8, DefaultMaxUrlLength>,
-    discord: BoundedVec<u8, DefaultMaxSocialIdLength>,
-    x: BoundedVec<u8, DefaultMaxSocialIdLength>,
-    telegram: BoundedVec<u8, DefaultMaxSocialIdLength>,
-    github: BoundedVec<u8, DefaultMaxUrlLength>,
-    hugging_face: BoundedVec<u8, DefaultMaxUrlLength>,
-    description: BoundedVec<u8, DefaultMaxVectorLength>,
-    misc: BoundedVec<u8, DefaultMaxVectorLength>,
-  ) -> DispatchResult {
-    // --- Ensure is or has had a subnet node
-    // This will not completely stop non-subnet-node users from registering identities but prevents it
-    ensure!(
-      HotkeyOwner::<T>::get(&hotkey) == coldkey,
-      Error::<T>::NotKeyOwner
-    );
+    pub fn do_register_or_update_identity(
+        coldkey: T::AccountId,
+        hotkey: T::AccountId,
+        name: BoundedVec<u8, DefaultMaxVectorLength>,
+        url: BoundedVec<u8, DefaultMaxUrlLength>,
+        image: BoundedVec<u8, DefaultMaxUrlLength>,
+        discord: BoundedVec<u8, DefaultMaxSocialIdLength>,
+        x: BoundedVec<u8, DefaultMaxSocialIdLength>,
+        telegram: BoundedVec<u8, DefaultMaxSocialIdLength>,
+        github: BoundedVec<u8, DefaultMaxUrlLength>,
+        hugging_face: BoundedVec<u8, DefaultMaxUrlLength>,
+        description: BoundedVec<u8, DefaultMaxVectorLength>,
+        misc: BoundedVec<u8, DefaultMaxVectorLength>,
+    ) -> DispatchResult {
+        // --- Ensure is or has had a subnet node
+        // This will not completely stop non-subnet-node users from registering identities but prevents it
+        // Accounts that have never registered a subnet node will not have a HotkeyOwner stored
+        ensure!(
+            HotkeyOwner::<T>::get(&hotkey) == coldkey,
+            Error::<T>::NotKeyOwner
+        );
 
-    let coldkey_identity = ColdkeyIdentityData {
-      name,
-      url,
-      image,
-      discord,
-      x,
-      telegram,
-      github,
-      hugging_face,
-      description,
-      misc,
-    };
+        match ColdkeyIdentityNameOwner::<T>::try_get(name.clone()) {
+            Ok(owner) => {
+                ensure!(
+                    owner == coldkey.clone(),
+                    Error::<T>::IdentityTaken
+                );
+            },
+            Err(()) => (),
+        };
 
-    ColdkeyIdentity::<T>::insert(&coldkey, &coldkey_identity);
+        // Remove previous name to ensure they can't own multiple names
+        if let Ok(coldkey_identity) = ColdkeyIdentity::<T>::try_get(&coldkey) {
+            ColdkeyIdentityNameOwner::<T>::remove(coldkey_identity.name);
+        }
 
-    Ok(())
-  }
+        let coldkey_identity = ColdkeyIdentityData {
+            name: name.clone(),
+            url,
+            image,
+            discord,
+            x,
+            telegram,
+            github,
+            hugging_face,
+            description,
+            misc,
+        };
 
-  pub fn do_remove_identity(
-    coldkey: T::AccountId,
-  ) -> DispatchResult {
-    ColdkeyIdentity::<T>::remove(&coldkey);
-    Ok(())
-  }
+        ColdkeyIdentityNameOwner::<T>::insert(name.clone(), &coldkey);
+        ColdkeyIdentity::<T>::insert(&coldkey, &coldkey_identity);
+
+        Self::deposit_event(Event::IdentityRegistered {
+            coldkey: coldkey,
+            identity: coldkey_identity,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_remove_identity(coldkey: T::AccountId) -> DispatchResult {
+        let coldkey_identity = ColdkeyIdentity::<T>::take(&coldkey);
+        ColdkeyIdentityNameOwner::<T>::remove(coldkey_identity.clone().name);
+
+        Self::deposit_event(Event::IdentityRemoved {
+            coldkey: coldkey,
+            identity: coldkey_identity.clone(),
+        });
+
+        Ok(())
+    }
 }
