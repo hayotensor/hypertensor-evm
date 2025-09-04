@@ -1,9 +1,9 @@
 use super::mock::*;
-use crate::Event;
 use crate::tests::test_utils::*;
+use crate::Event;
 use crate::{
-    ColdkeyIdentity, DefaultMaxSocialIdLength, DefaultMaxUrlLength, DefaultMaxVectorLength, Error,
-    HotkeyOwner, ColdkeyIdentityNameOwner
+    ColdkeyIdentity, ColdkeyIdentityNameOwner, DefaultMaxSocialIdLength, DefaultMaxUrlLength,
+    DefaultMaxVectorLength, Error, HotkeyOwner,
 };
 use frame_support::storage::bounded_vec::BoundedVec;
 use frame_support::{assert_err, assert_ok};
@@ -69,7 +69,10 @@ fn test_register_or_update_identity() {
         assert_eq!(coldkey_identity.description, description);
         assert_eq!(coldkey_identity.misc, misc);
 
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::get(name.clone()), coldkey.clone());
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::get(name.clone()),
+            coldkey.clone()
+        );
 
         assert_eq!(
             *network_events().last().unwrap(),
@@ -126,7 +129,10 @@ fn test_register_or_update_identity_try_stealing_error() {
         assert_eq!(coldkey_identity.hugging_face, hugging_face);
         assert_eq!(coldkey_identity.description, description);
         assert_eq!(coldkey_identity.misc, misc);
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::get(name.clone()), coldkey.clone());
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::get(name.clone()),
+            coldkey.clone()
+        );
 
         assert_eq!(
             *network_events().last().unwrap(),
@@ -198,7 +204,10 @@ fn test_register_or_update_identity_update_name() {
 
         let coldkey_identity = ColdkeyIdentity::<Test>::get(coldkey);
         assert_eq!(coldkey_identity.name, name);
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::get(name.clone()), coldkey.clone());
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::get(name.clone()),
+            coldkey.clone()
+        );
 
         // new name should override previous
         let new_name = to_bounded::<DefaultMaxVectorLength>("new_name");
@@ -218,12 +227,18 @@ fn test_register_or_update_identity_update_name() {
         ));
 
         // Ensure old name is removed
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()), Err(()));
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()),
+            Err(())
+        );
 
         // Ensure new name is the identity name and new name is the key
         let coldkey_identity = ColdkeyIdentity::<Test>::get(coldkey);
         assert_eq!(coldkey_identity.name, new_name);
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::get(new_name.clone()), coldkey.clone());
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::get(new_name.clone()),
+            coldkey.clone()
+        );
     });
 }
 
@@ -269,7 +284,7 @@ fn test_register_or_update_identity_not_key_owner_error() {
 fn test_remove_identity() {
     new_test_ext().execute_with(|| {
         increase_epochs(1);
-        
+
         let coldkey = account(99);
         let hotkey = account(98);
 
@@ -324,7 +339,10 @@ fn test_remove_identity() {
         );
 
         assert_eq!(ColdkeyIdentity::<Test>::try_get(coldkey.clone()), Err(()));
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()), Err(()));
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()),
+            Err(())
+        );
     });
 }
 
@@ -375,9 +393,12 @@ fn test_remove_identity_readd() {
         assert_ok!(Network::remove_identity(RuntimeOrigin::signed(
             coldkey.clone()
         )));
-        
+
         assert_eq!(ColdkeyIdentity::<Test>::try_get(coldkey.clone()), Err(()));
-        assert_eq!(ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()), Err(()));
+        assert_eq!(
+            ColdkeyIdentityNameOwner::<Test>::try_get(name.clone()),
+            Err(())
+        );
 
         let coldkey = account(199);
         let hotkey = account(198);
@@ -398,6 +419,5 @@ fn test_remove_identity_readd() {
             description.clone(),
             misc.clone(),
         ));
-
     });
 }

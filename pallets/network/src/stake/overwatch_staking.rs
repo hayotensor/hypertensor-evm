@@ -65,10 +65,7 @@ impl<T: Config> Pallet<T> {
         let coldkey: T::AccountId = ensure_signed(origin)?;
 
         // --- Ensure that the stake amount to be removed is above zero.
-        ensure!(
-            stake_to_be_removed > 0,
-            Error::<T>::NotEnoughStakeToWithdraw
-        );
+        ensure!(stake_to_be_removed > 0, Error::<T>::AmountZero);
 
         let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
 

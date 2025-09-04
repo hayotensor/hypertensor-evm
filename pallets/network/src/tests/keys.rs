@@ -1,14 +1,14 @@
 use super::mock::*;
-use crate::Event;
 use crate::tests::test_utils::*;
+use crate::Event;
 use crate::{
-    AccountSubnetStake, ColdkeyHotkeys, ColdkeyIdentity, DefaultMaxSocialIdLength,
-    DefaultMaxUrlLength, DefaultMaxVectorLength, Error, HotkeyOverwatchNodeId, HotkeyOwner,
-    HotkeySubnetId, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
+    AccountOverwatchStake, AccountSubnetStake, ColdkeyHotkeys, ColdkeyIdentity,
+    ColdkeyIdentityNameOwner, ColdkeyReputation, DefaultMaxSocialIdLength, DefaultMaxUrlLength,
+    DefaultMaxVectorLength, Error, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId,
+    HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
     NetworkMinStakeBalance, OverwatchMinStakeBalance, OverwatchNodeIdHotkey, OverwatchNodes,
     StakeUnbondingLedger, StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData,
-    TotalActiveSubnets, TotalSubnetNodes, ColdkeyReputation, ColdkeyIdentityNameOwner,
-    AccountOverwatchStake
+    TotalActiveSubnets, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -38,7 +38,10 @@ fn test_update_coldkey() {
 
         // Insert overwatch node with coldkey
         let overwatch_node_id = insert_overwatch_node(max_subnet_nodes + end * subnets, 0);
-        set_overwatch_stake(max_subnet_nodes + end * subnets, OverwatchMinStakeBalance::<Test>::get());
+        set_overwatch_stake(
+            max_subnet_nodes + end * subnets,
+            OverwatchMinStakeBalance::<Test>::get(),
+        );
 
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
@@ -137,7 +140,7 @@ fn test_update_coldkey() {
             new_coldkey.clone(), // new_coldkey
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::UpdateColdkey {
                 coldkey: coldkey.clone(),
@@ -434,7 +437,7 @@ fn test_update_hotkey() {
             new_hotkey.clone(),
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::UpdateHotkey {
                 hotkey: hotkey.clone(),
@@ -483,7 +486,8 @@ fn test_update_hotkey() {
         //
         let ow_new_hotkey = account(ow_hotkey_n + 1);
 
-        let starting_account_overwatch_stake = AccountOverwatchStake::<Test>::get(ow_hotkey.clone());
+        let starting_account_overwatch_stake =
+            AccountOverwatchStake::<Test>::get(ow_hotkey.clone());
         assert!(starting_account_overwatch_stake > 0);
 
         assert_ok!(Network::update_hotkey(

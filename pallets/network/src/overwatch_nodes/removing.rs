@@ -17,7 +17,7 @@ use super::*;
 use sp_runtime::Saturating;
 
 impl<T: Config> Pallet<T> {
-    pub fn do_remove_ow(key: T::AccountId, overwatch_node_id: u32) -> DispatchResult {
+    pub fn do_remove_overwatch_node(key: T::AccountId, overwatch_node_id: u32) -> DispatchResult {
         ensure!(
             Self::is_overwatch_node_keys_owner(overwatch_node_id, key),
             Error::<T>::NotKeyOwner
@@ -25,15 +25,15 @@ impl<T: Config> Pallet<T> {
 
         let overwatch_node = match OverwatchNodes::<T>::try_get(overwatch_node_id) {
             Ok(overwatch_node) => overwatch_node,
-            Err(()) => return Err(Error::<T>::InvalidOverwatchNode.into()),
+            Err(()) => return Err(Error::<T>::InvalidOverwatchNodeId.into()),
         };
 
-        Self::perform_remove_ow(overwatch_node_id);
+        Self::perform_remove_overwatch_node(overwatch_node_id);
 
         Ok(())
     }
 
-    pub fn perform_remove_ow(overwatch_node_id: u32) {
+    pub fn perform_remove_overwatch_node(overwatch_node_id: u32) {
         if OverwatchNodes::<T>::contains_key(overwatch_node_id) {
             OverwatchNodes::<T>::remove(overwatch_node_id)
         } else {

@@ -1,6 +1,6 @@
 use super::mock::*;
-use crate::Event;
 use super::test_utils::*;
+use crate::Event;
 use crate::{
     AccountSubnetStake, Error, FinalSubnetEmissionWeights, HotkeySubnetNodeId,
     IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodePenalties, MaxSubnetNodes,
@@ -119,9 +119,15 @@ fn test_propose_attestation() {
         for node_id in submission.subnet_nodes.iter() {
             let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_id);
             assert!(subnet_node.has_classification(&SubnetNodeClass::Included, subnet_epoch));
-            assert_ne!(subnet_node.classification.node_class, SubnetNodeClass::Registered);
+            assert_ne!(
+                subnet_node.classification.node_class,
+                SubnetNodeClass::Registered
+            );
             assert_ne!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
-            assert_ne!(subnet_node.classification.node_class, SubnetNodeClass::Deactivated);
+            assert_ne!(
+                subnet_node.classification.node_class,
+                SubnetNodeClass::Deactivated
+            );
         }
 
         assert_err!(
@@ -445,7 +451,7 @@ fn test_attest() {
                 None,
             ));
 
-            assert_eq!( 
+            assert_eq!(
                 *network_events().last().unwrap(),
                 Event::Attestation {
                     subnet_id,
@@ -1088,8 +1094,10 @@ fn test_distribute_rewards_graduate_idle_to_included() {
         let idle_coldkey = get_coldkey(subnets, max_subnet_nodes, end + 2);
         let idle_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
         let idle_peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let idle_bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let idle_client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let idle_bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let idle_client_peer_id =
+            get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
         let _ = Balances::deposit_creating(&idle_coldkey.clone(), deposit_amount);
 
         assert_ok!(Network::register_subnet_node(
@@ -1900,8 +1908,10 @@ fn test_distribute_rewards_graduate_included_to_validator() {
         let idle_coldkey = get_coldkey(subnets, max_subnet_nodes, end + 2);
         let idle_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
         let idle_peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let idle_bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let idle_client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let idle_bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let idle_client_peer_id =
+            get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
         let _ = Balances::deposit_creating(&idle_coldkey.clone(), deposit_amount);
 
         assert_ok!(Network::register_subnet_node(

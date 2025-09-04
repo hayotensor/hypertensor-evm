@@ -19,6 +19,7 @@ mod subnet_cost;
 mod subnet_node_new;
 mod unbonding;
 // mod emissions_stake_weight;
+mod council;
 mod identity;
 mod on_initialize;
 mod overwatch_nodes;

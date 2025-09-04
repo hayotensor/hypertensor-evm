@@ -106,10 +106,12 @@ impl<T: Config> Pallet<T> {
 
         let account_stake_balance: u128 = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
 
+        ensure!(stake_to_be_removed > 0, Error::<T>::AmountZero);
+
         // --- Ensure that the stake amount to be removed is above zero.
         // --- Ensure that the account has enough stake to withdraw.
         ensure!(
-            stake_to_be_removed > 0 && account_stake_balance >= stake_to_be_removed,
+            account_stake_balance >= stake_to_be_removed,
             Error::<T>::NotEnoughStakeToWithdraw
         );
 

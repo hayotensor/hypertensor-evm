@@ -344,6 +344,16 @@ fn test_remove_node_delegate_stake() {
             account_node_delegate_stake_shares_to_be_removed,
         ));
 
+        assert_err!(
+            Network::remove_node_delegate_stake(
+                RuntimeOrigin::signed(account(total_subnet_nodes + 1)),
+                subnet_id,
+                0,
+                0,
+            ),
+            Error::<Test>::SharesZero
+        );
+
         let account_node_delegate_stake_shares = AccountNodeDelegateStakeShares::<Test>::get((
             account(total_subnet_nodes + 1),
             subnet_id,

@@ -135,7 +135,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateDelegateRewardRate {
             subnet_id,
             subnet_node_id: params.id,
-            delegate_reward_rate: new_delegate_reward_rate
+            delegate_reward_rate: new_delegate_reward_rate,
         });
 
         Ok(())
@@ -225,7 +225,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdatePeerId {
             subnet_id,
             subnet_node_id,
-            peer_id: new_peer_id
+            peer_id: new_peer_id,
         });
 
         Ok(())
@@ -295,7 +295,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateBootnode {
             subnet_id,
             subnet_node_id: params.id,
-            bootnode: new_bootnode
+            bootnode: new_bootnode,
         });
 
         Ok(())
@@ -385,7 +385,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateBootnodePeerId {
             subnet_id,
             subnet_node_id,
-            bootnode_peer_id: new_bootnode_peer_id
+            bootnode_peer_id: new_bootnode_peer_id,
         });
 
         Ok(())
@@ -475,7 +475,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateClientPeerId {
             subnet_id,
             subnet_node_id,
-            client_peer_id: new_client_peer_id
+            client_peer_id: new_client_peer_id,
         });
 
         Ok(())
@@ -491,12 +491,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
                 |maybe_params| -> DispatchResult {
-                    Self::perform_update_unique(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        unique,
-                    )
+                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
                 },
             )?;
 
@@ -506,12 +501,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
                 |maybe_params| -> DispatchResult {
-                    Self::perform_update_unique(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        unique,
-                    )
+                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
                 },
             )?;
 
@@ -521,12 +511,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
                 |maybe_params| -> DispatchResult {
-                    Self::perform_update_unique(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        unique,
-                    )
+                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
                 },
             )?;
 
@@ -546,7 +531,7 @@ impl<T: Config> Pallet<T> {
         let params = maybe_params
             .as_mut()
             .ok_or(Error::<T>::InvalidSubnetNodeId)?;
-        
+
         // Remove nodes previous unique if Some
         if let Some(unique_param) = &params.unique {
             SubnetNodeUniqueParam::<T>::remove(subnet_id, unique_param);
@@ -558,7 +543,7 @@ impl<T: Config> Pallet<T> {
                     owner_subnet_node_id == subnet_node_id,
                     Error::<T>::UniqueParameterTaken
                 );
-            },
+            }
             Err(()) => (),
         };
 
@@ -568,7 +553,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateUnique {
             subnet_id,
             subnet_node_id,
-            unique: unique
+            unique: unique,
         });
 
         Ok(())
@@ -645,7 +630,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::SubnetNodeUpdateNonUnique {
             subnet_id,
             subnet_node_id,
-            non_unique: non_unique
+            non_unique: non_unique,
         });
 
         Ok(())

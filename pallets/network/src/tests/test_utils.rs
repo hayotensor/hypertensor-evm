@@ -62,12 +62,7 @@ pub fn get_hotkey(
     account(get_hotkey_n(subnets, max_subnets, max_subnet_nodes, n))
 }
 
-pub fn get_peer_id(
-    subnets: u32,
-    max_subnet_nodes: u32,
-    max_subnets: u32,
-    n: u32,
-) -> PeerId {
+pub fn get_peer_id(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> PeerId {
     peer(max_subnets * max_subnet_nodes + (subnets * max_subnet_nodes) + n)
 }
 
@@ -77,16 +72,17 @@ pub fn get_bootnode_peer_id(
     max_subnets: u32,
     n: u32,
 ) -> PeerId {
-    peer((max_subnets * max_subnet_nodes * 2) + (max_subnets * max_subnet_nodes + (subnets * max_subnet_nodes) + n))
+    peer(
+        (max_subnets * max_subnet_nodes * 2)
+            + (max_subnets * max_subnet_nodes + (subnets * max_subnet_nodes) + n),
+    )
 }
 
-pub fn get_client_peer_id(
-    subnets: u32,
-    max_subnet_nodes: u32,
-    max_subnets: u32,
-    n: u32,
-) -> PeerId {
-    peer((max_subnets * max_subnet_nodes * 3) + (max_subnets * max_subnet_nodes + (subnets * max_subnet_nodes) + n))
+pub fn get_client_peer_id(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> PeerId {
+    peer(
+        (max_subnets * max_subnet_nodes * 3)
+            + (max_subnets * max_subnet_nodes + (subnets * max_subnet_nodes) + n),
+    )
 }
 
 pub fn get_overwatch_coldkey(
@@ -2490,6 +2486,30 @@ pub fn make_overwatch_qualified(coldkey_n: u32) {
 
     let min_age = OverwatchMinAge::<Test>::get();
     increase_epochs(min_age + 1);
+}
+
+pub fn make_overwatch_unqualified(coldkey_n: u32) {
+    let max_subnets = MaxSubnets::<Test>::get();
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let mut subnet_nodes: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
+    ColdkeySubnetNodes::<Test>::insert(account(coldkey_n), subnet_nodes);
+
+    // max reputation
+    ColdkeyReputation::<Test>::insert(
+        account(coldkey_n),
+        Reputation {
+            start_epoch: 0,
+            score: 50_000_000_000_000_000,
+            lifetime_node_count: 0,
+            total_active_nodes: 0,
+            total_increases: 0,
+            total_decreases: 0,
+            average_attestation: 50_000_000_000_000_000,
+            last_validator_epoch: 0,
+            ow_score: 50_000_000_000_000_000,
+        },
+    );
 }
 
 /// Force overwatch node qualified

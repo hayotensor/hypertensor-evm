@@ -2,19 +2,19 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    AccountSubnetStake, ActivationGraceEpochs, BootnodePeerIdSubnetNodeId, ColdkeyReputation,
-    ColdkeySubnetNodes, DeactivatedSubnetNodesData, DefaultMaxVectorLength, Error, HotkeyOwner,
-    HotkeySubnetId, HotkeySubnetNodeId, LogicExpr, MaxDeactivationEpochs,
-    MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
-    MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMinStakeBalance,
-    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystemV2,
-    NodeSlotIndex, PeerIdSubnetNodeId, RegisteredSubnetNodesData, RegistrationQueueEpochs,
-    Reputation, RewardRateUpdatePeriod, SubnetElectedValidator, SubnetMinStakeBalance, SubnetName,
-    SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeElectionSlots,
-    SubnetNodeIdHotkey, SubnetNodesData, SubnetOwner, SubnetRegistrationEpochs, SubnetState,
-    SubnetsData, TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes,
-    TotalNodes, TotalStake, TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes,
-    TotalSubnetStake, SubnetNodeUniqueParam, BootnodeSubnetNodeId, ClientPeerIdSubnetNodeId
+    AccountSubnetStake, ActivationGraceEpochs, BootnodePeerIdSubnetNodeId, BootnodeSubnetNodeId,
+    ClientPeerIdSubnetNodeId, ColdkeyReputation, ColdkeySubnetNodes, DeactivatedSubnetNodesData,
+    DefaultMaxVectorLength, Error, HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, LogicExpr,
+    MaxDeactivationEpochs, MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease,
+    MaxSubnetNodes, MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs,
+    NetworkMinStakeBalance, NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy,
+    NodeRemovalSystemV2, NodeSlotIndex, PeerIdSubnetNodeId, RegisteredSubnetNodesData,
+    RegistrationQueueEpochs, Reputation, RewardRateUpdatePeriod, SubnetElectedValidator,
+    SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
+    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeUniqueParam, SubnetNodesData,
+    SubnetOwner, SubnetRegistrationEpochs, SubnetState, SubnetsData, TotalActiveNodes,
+    TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake,
+    TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -58,7 +58,8 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -137,7 +138,8 @@ fn test_add_subnet_node_subnet_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let amount: u128 = 1000;
@@ -200,7 +202,8 @@ fn test_add_subnet_node_not_exists_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -246,7 +249,8 @@ fn test_add_subnet_node_not_exists_err() {
         );
 
         // new bootnode peer id
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end);
 
         // add same peer_id under new account error
@@ -266,7 +270,6 @@ fn test_add_subnet_node_not_exists_err() {
             ),
             Error::<Test>::ClientPeerIdExist
         );
-
     })
 }
 
@@ -291,7 +294,8 @@ fn test_register_subnet_node_match_coldkey_hotkey_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -347,7 +351,8 @@ fn test_register_subnet_subnet_is_paused_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -402,7 +407,8 @@ fn test_register_subnet_subnet_must_be_registering_or_active() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -453,7 +459,8 @@ fn test_register_subnet_coldkey_registration_whitelist_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -500,7 +507,8 @@ fn test_register_subnet_max_registered_nodes_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -581,7 +589,8 @@ fn test_register_subnet_node_and_then_update_a_param() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         assert_ok!(Balances::transfer(
@@ -617,7 +626,8 @@ fn test_register_subnet_node_and_then_update_a_param() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 2);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
 
         assert_ok!(Balances::transfer(
@@ -667,7 +677,8 @@ fn test_register_subnet_node_post_subnet_activation() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -749,7 +760,8 @@ fn test_activate_subnet_node_post_subnet_activation() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -816,7 +828,8 @@ fn test_register_after_activate_with_same_keys() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -948,7 +961,8 @@ fn test_activate_subnet_node_not_key_owner_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1007,7 +1021,8 @@ fn test_activate_subnet_node_not_uid_owner_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1106,7 +1121,8 @@ fn test_activate_subnet_node_min_stake_not_reached_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1175,7 +1191,8 @@ fn test_activate_subnet_node_not_start_epoch() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1246,7 +1263,8 @@ fn test_remove_subnet_node_registered() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -1356,7 +1374,8 @@ fn test_remove_subnet_node_registered() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 2);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1462,7 +1481,8 @@ fn test_remove_subnet_node_registered() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 3);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 3);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 3);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 3);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 3);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 3);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1574,7 +1594,8 @@ fn test_remove_subnet_node_registered() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 4);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 4);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 4);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 4);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 4);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 4);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -1712,7 +1733,8 @@ fn test_register_subnet_node_subnet_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let amount: u128 = 1000;
@@ -1804,7 +1826,8 @@ fn test_register_subnet_node_not_exists_err() {
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -1851,7 +1874,8 @@ fn test_register_subnet_node_not_exists_err() {
             Error::<Test>::PeerIdExist
         );
 
-        let bad_bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end);
+        let bad_bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end);
 
         assert_err!(
             Network::register_subnet_node(
@@ -1915,7 +1939,8 @@ fn test_add_subnet_node_stake_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -1961,7 +1986,8 @@ fn test_add_subnet_node_stake_not_enough_balance_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         assert_err!(
@@ -2073,7 +2099,8 @@ fn test_add_subnet_node_remove_readd_new_hotkey() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -2113,8 +2140,10 @@ fn test_add_subnet_node_remove_readd_new_hotkey() {
         // let new_bootnode_peer_id = peer(subnets * max_subnet_nodes + end + 2);
         let new_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
         let new_peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let new_bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let new_client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let new_bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let new_client_peer_id =
+            get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
 
         assert_ok!(Network::register_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -2154,7 +2183,8 @@ fn test_remove_subnet_node_not_key_owner() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -2204,7 +2234,8 @@ fn test_add_subnet_node_remove_readd_must_unstake_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -2361,7 +2392,7 @@ fn test_update_delegate_reward_rate() {
             new_delegate_reward_rate
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateDelegateRewardRate {
                 subnet_id,
@@ -2369,7 +2400,6 @@ fn test_update_delegate_reward_rate() {
                 delegate_reward_rate: new_delegate_reward_rate
             }
         );
-
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.delegate_reward_rate, new_delegate_reward_rate);
@@ -2822,7 +2852,8 @@ fn test_deactivate_subnet_node_not_exist_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -3048,7 +3079,7 @@ fn test_update_peer_id() {
             peer(500)
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdatePeerId {
                 subnet_id,
@@ -3064,7 +3095,10 @@ fn test_update_peer_id() {
         let peer_subnet_node_id = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer(500));
         assert_eq!(peer_subnet_node_id, subnet_node_id);
 
-        assert_eq!(PeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_peer_id), Err(()));
+        assert_eq!(
+            PeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_peer_id),
+            Err(())
+        );
 
         let prev_peer_subnet_node_id = PeerIdSubnetNodeId::<Test>::get(subnet_id, &current_peer_id);
         assert_ne!(prev_peer_subnet_node_id, subnet_node_id);
@@ -3073,7 +3107,8 @@ fn test_update_peer_id() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end - 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end - 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
 
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
@@ -3088,7 +3123,8 @@ fn test_update_peer_id() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.peer_id, current_peer_id.clone());
 
-        let peer_subnet_node_id = PeerIdSubnetNodeId::<Test>::get(subnet_id, current_peer_id.clone());
+        let peer_subnet_node_id =
+            PeerIdSubnetNodeId::<Test>::get(subnet_id, current_peer_id.clone());
         assert_eq!(peer_subnet_node_id, subnet_node_id);
     })
 }
@@ -3121,8 +3157,8 @@ fn test_update_peer_id_exists() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
         let current_peer_id = subnet_node.peer_id;
-        
-        let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end-1);
+
+        let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
 
         assert_err!(
             Network::update_peer_id(
@@ -3259,7 +3295,7 @@ fn test_update_bootnode() {
             Some(bounded_bootnode.clone())
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateBootnode {
                 subnet_id,
@@ -3270,7 +3306,10 @@ fn test_update_bootnode() {
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.bootnode, Some(bounded_bootnode.clone()));
-        assert_eq!(BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()), subnet_node_id);
+        assert_eq!(
+            BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()),
+            subnet_node_id
+        );
 
         // Can update to None
         assert_ok!(Network::update_bootnode(
@@ -3281,7 +3320,10 @@ fn test_update_bootnode() {
         ));
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.bootnode, None);
-        assert_eq!(BootnodeSubnetNodeId::<Test>::try_get(subnet_id, bounded_bootnode.clone()), Err(()));
+        assert_eq!(
+            BootnodeSubnetNodeId::<Test>::try_get(subnet_id, bounded_bootnode.clone()),
+            Err(())
+        );
 
         assert_ok!(Network::update_bootnode(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -3291,7 +3333,10 @@ fn test_update_bootnode() {
         ));
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.bootnode, Some(bounded_bootnode.clone()));
-        assert_eq!(BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()), subnet_node_id);
+        assert_eq!(
+            BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()),
+            subnet_node_id
+        );
 
         // Another node should be able to use the removed bootnode
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end - 1);
@@ -3306,7 +3351,10 @@ fn test_update_bootnode() {
         ));
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.bootnode, Some(bounded_bootnode.clone()));
-        assert_eq!(BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()), subnet_node_id);
+        assert_eq!(
+            BootnodeSubnetNodeId::<Test>::get(subnet_id, bounded_bootnode.clone()),
+            subnet_node_id
+        );
     })
 }
 
@@ -3390,7 +3438,7 @@ fn test_update_bootnode_peer_id() {
             peer(500)
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateBootnodePeerId {
                 subnet_id,
@@ -3403,12 +3451,17 @@ fn test_update_bootnode_peer_id() {
         assert_eq!(subnet_node.bootnode_peer_id, peer(500));
         assert_ne!(subnet_node.bootnode_peer_id, current_bootnode_peer_id);
 
-        let bootnode_peer_subnet_node_id = BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, peer(500));
+        let bootnode_peer_subnet_node_id =
+            BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, peer(500));
         assert_eq!(bootnode_peer_subnet_node_id, subnet_node_id);
 
-        assert_eq!(BootnodePeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_bootnode_peer_id), Err(()));
+        assert_eq!(
+            BootnodePeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_bootnode_peer_id),
+            Err(())
+        );
 
-        let prev_bootnode_peer_subnet_node_id = BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, &current_bootnode_peer_id);
+        let prev_bootnode_peer_subnet_node_id =
+            BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, &current_bootnode_peer_id);
         assert_ne!(prev_bootnode_peer_subnet_node_id, subnet_node_id);
 
         // test using previous peer id under a diff subnet node
@@ -3426,9 +3479,13 @@ fn test_update_bootnode_peer_id() {
         ));
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-        assert_eq!(subnet_node.bootnode_peer_id, current_bootnode_peer_id.clone());
+        assert_eq!(
+            subnet_node.bootnode_peer_id,
+            current_bootnode_peer_id.clone()
+        );
 
-        let bootnode_peer_subnet_node_id = BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, current_bootnode_peer_id.clone());
+        let bootnode_peer_subnet_node_id =
+            BootnodePeerIdSubnetNodeId::<Test>::get(subnet_id, current_bootnode_peer_id.clone());
         assert_eq!(bootnode_peer_subnet_node_id, subnet_node_id);
     })
 }
@@ -3462,7 +3519,8 @@ fn test_update_bootnode_peer_id_exists() {
 
         let current_bootnode_peer_id = subnet_node.bootnode_peer_id;
 
-        let someone_elses_bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end-1);
+        let someone_elses_bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
 
         assert_err!(
             Network::update_bootnode_peer_id(
@@ -3595,7 +3653,7 @@ fn test_update_client_peer_id() {
         let current_client_peer_id = subnet_node.client_peer_id;
 
         // new and unused peer id
-        let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end+1);
+        let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         assert_ok!(Network::update_client_peer_id(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -3604,7 +3662,7 @@ fn test_update_client_peer_id() {
             client_peer_id.clone()
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateClientPeerId {
                 subnet_id,
@@ -3617,12 +3675,17 @@ fn test_update_client_peer_id() {
         assert_eq!(subnet_node.client_peer_id, client_peer_id.clone());
         assert_ne!(subnet_node.client_peer_id, current_client_peer_id);
 
-        let client_peer_subnet_node_id = ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, client_peer_id.clone());
+        let client_peer_subnet_node_id =
+            ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, client_peer_id.clone());
         assert_eq!(client_peer_subnet_node_id, subnet_node_id);
 
-        assert_eq!(ClientPeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_client_peer_id), Err(()));
+        assert_eq!(
+            ClientPeerIdSubnetNodeId::<Test>::try_get(subnet_id, &current_client_peer_id),
+            Err(())
+        );
 
-        let prev_client_peer_subnet_node_id = ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, &current_client_peer_id);
+        let prev_client_peer_subnet_node_id =
+            ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, &current_client_peer_id);
         assert_ne!(prev_client_peer_subnet_node_id, subnet_node_id);
 
         // test using previous peer id under a diff subnet node
@@ -3641,7 +3704,8 @@ fn test_update_client_peer_id() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.client_peer_id, current_client_peer_id.clone());
 
-        let client_peer_subnet_node_id = ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, current_client_peer_id.clone());
+        let client_peer_subnet_node_id =
+            ClientPeerIdSubnetNodeId::<Test>::get(subnet_id, current_client_peer_id.clone());
         assert_eq!(client_peer_subnet_node_id, subnet_node_id);
     })
 }
@@ -3675,7 +3739,7 @@ fn test_update_client_peer_id_exists() {
 
         let current_client_peer_id = subnet_node.client_peer_id;
 
-        let peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end-1);
+        let peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end - 1);
 
         assert_err!(
             Network::update_client_peer_id(
@@ -3832,7 +3896,8 @@ fn test_subnet_overwatch_node_unique_hotkeys() {
         let free_hotkey = account(max_subnet_nodes + end * subnets + 2);
 
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
 
         let _ = Balances::deposit_creating(&free_coldkey, deposit_amount);
@@ -3907,7 +3972,8 @@ fn test_defer_node() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -4564,10 +4630,14 @@ fn test_update_unique() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
         let unique: Vec<u8> = "a".into();
-        let bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> = unique.try_into().expect("String too long");
+        let bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> =
+            unique.try_into().expect("String too long");
 
         // sanity check
-        assert_eq!(SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique), Err(()));
+        assert_eq!(
+            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            Err(())
+        );
 
         // update unique parameter
         assert_ok!(Network::update_unique(
@@ -4577,7 +4647,7 @@ fn test_update_unique() {
             bounded_unique.clone()
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateUnique {
                 subnet_id,
@@ -4600,8 +4670,8 @@ fn test_update_unique() {
         ));
 
         // Shouldn't allow same parameter unless owner
-        let coldkey = get_coldkey(subnets, max_subnet_nodes, end-1);
-        let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end-1);
+        let coldkey = get_coldkey(subnets, max_subnet_nodes, end - 1);
+        let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end - 1);
 
         assert_err!(
             Network::update_unique(
@@ -4631,7 +4701,8 @@ fn test_update_unique() {
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
         let new_unique: Vec<u8> = "new".into();
-        let new_bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> = new_unique.try_into().expect("String too long");
+        let new_bounded_unique: BoundedVec<u8, DefaultMaxVectorLength> =
+            new_unique.try_into().expect("String too long");
 
         assert_ok!(Network::update_unique(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -4641,7 +4712,10 @@ fn test_update_unique() {
         ));
 
         // ensure old deletes
-        assert_eq!(SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique), Err(()));
+        assert_eq!(
+            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            Err(())
+        );
 
         // new
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
@@ -4679,7 +4753,8 @@ fn test_update_non_unique() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
         let non_unique: Vec<u8> = "a".into();
-        let bounded_non_unique: BoundedVec<u8, DefaultMaxVectorLength> = non_unique.try_into().expect("String too long");
+        let bounded_non_unique: BoundedVec<u8, DefaultMaxVectorLength> =
+            non_unique.try_into().expect("String too long");
 
         assert_ok!(Network::update_non_unique(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -4688,7 +4763,7 @@ fn test_update_non_unique() {
             bounded_non_unique.clone()
         ));
 
-        assert_eq!( 
+        assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetNodeUpdateNonUnique {
                 subnet_id,

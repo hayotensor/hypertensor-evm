@@ -47,7 +47,8 @@ fn test_register_remove_claim_stake_unbondings() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -149,7 +150,8 @@ fn test_register_activate_remove_claim_stake_unbondings() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -266,7 +268,8 @@ fn test_remove_stake_twice_in_epoch() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -407,7 +410,8 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
@@ -485,7 +489,8 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 

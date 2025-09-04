@@ -235,37 +235,37 @@ pub mod pallet {
         SubnetNodeUpdateDelegateRewardRate {
             subnet_id: u32,
             subnet_node_id: u32,
-            delegate_reward_rate: u128
+            delegate_reward_rate: u128,
         },
         SubnetNodeUpdatePeerId {
             subnet_id: u32,
             subnet_node_id: u32,
-            peer_id: PeerId
+            peer_id: PeerId,
         },
         SubnetNodeUpdateBootnode {
             subnet_id: u32,
             subnet_node_id: u32,
-            bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>
+            bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
         },
         SubnetNodeUpdateBootnodePeerId {
             subnet_id: u32,
             subnet_node_id: u32,
-            bootnode_peer_id: PeerId
+            bootnode_peer_id: PeerId,
         },
         SubnetNodeUpdateClientPeerId {
             subnet_id: u32,
             subnet_node_id: u32,
-            client_peer_id: PeerId
+            client_peer_id: PeerId,
         },
         SubnetNodeUpdateUnique {
             subnet_id: u32,
             subnet_node_id: u32,
-            unique: BoundedVec<u8, DefaultMaxVectorLength>
+            unique: BoundedVec<u8, DefaultMaxVectorLength>,
         },
         SubnetNodeUpdateNonUnique {
             subnet_id: u32,
             subnet_node_id: u32,
-            non_unique: BoundedVec<u8, DefaultMaxVectorLength>
+            non_unique: BoundedVec<u8, DefaultMaxVectorLength>,
         },
         UpdateColdkey {
             coldkey: T::AccountId,
@@ -275,7 +275,6 @@ pub mod pallet {
             hotkey: T::AccountId,
             new_hotkey: T::AccountId,
         },
-
 
         // Stake
         StakeAdded(u32, T::AccountId, T::AccountId, u128),
@@ -729,6 +728,10 @@ pub mod pallet {
         /// Elected validator on current epoch cannot unstake to ensure they are able to be penalized
         ElectedValidatorCannotUnstake,
         MinActiveNodeStakeEpochs,
+        /// Shares entered is zero, must be greater than
+        SharesZero,
+        /// Amount entered is zero, must be greater than
+        AmountZero,
 
         /// Not enough balance to withdraw bid for proposal
         NotEnoughBalanceToBid,
@@ -840,7 +843,6 @@ pub mod pallet {
         AlreadyCommitted,
         /// Invalid subnet weight, must be below percentage factor 1e18
         InvalidWeight,
-        InvalidOverwatchNode,
         MaxOverwatchNodes,
         /// Overwatch scores are based on the previous epoch, therefor a node cannot begin commiting until overwatch epoch 1 to avoid underflow
         OverwatchEpochIsZero,
@@ -2807,14 +2809,8 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    pub type ColdkeyIdentityNameOwner<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        Vec<u8>,
-        T::AccountId,
-        ValueQuery,
-        DefaultAccountId<T>,
-    >;
+    pub type ColdkeyIdentityNameOwner<T: Config> =
+        StorageMap<_, Blake2_128Concat, Vec<u8>, T::AccountId, ValueQuery, DefaultAccountId<T>>;
 
     // Hotkey => Coldkey
     #[pallet::storage]
@@ -5070,11 +5066,7 @@ pub mod pallet {
                 Error::<T>::NotKeyOwner
             );
 
-            Self::do_update_unique(
-                subnet_id,
-                subnet_node_id,
-                unique,
-            )
+            Self::do_update_unique(subnet_id, subnet_node_id, unique)
         }
 
         /// Register non-unique Subnet Node parameter
@@ -5104,11 +5096,7 @@ pub mod pallet {
                 Error::<T>::NotKeyOwner
             );
 
-            Self::do_update_non_unique(
-                subnet_id,
-                subnet_node_id,
-                non_unique,
-            )
+            Self::do_update_non_unique(subnet_id, subnet_node_id, non_unique)
         }
 
         /// Update coldkey
@@ -5149,7 +5137,10 @@ pub mod pallet {
                         match ColdkeyIdentity::<T>::try_get(&curr_coldkey) {
                             Ok(coldkey_identity) => {
                                 ColdkeyIdentity::<T>::swap(&curr_coldkey, &new_coldkey);
-                                ColdkeyIdentityNameOwner::<T>::insert(coldkey_identity.name.clone(), &new_coldkey);
+                                ColdkeyIdentityNameOwner::<T>::insert(
+                                    coldkey_identity.name.clone(),
+                                    &new_coldkey,
+                                );
                             }
                             // Has no identity, pass
                             Err(()) => (),
@@ -5399,7 +5390,7 @@ pub mod pallet {
 
             Self::is_paused()?;
 
-            Self::do_remove_ow(key, overwatch_node_id)
+            Self::do_remove_overwatch_node(key, overwatch_node_id)
         }
 
         #[pallet::call_index(69)]
@@ -5414,7 +5405,7 @@ pub mod pallet {
 
             ensure!(
                 OverwatchNodeIdHotkey::<T>::contains_key(overwatch_node_id),
-                Error::<T>::ColdkeyOverwatchQualified
+                Error::<T>::InvalidOverwatchNodeId
             );
 
             let overwatch_node_hotkey = OverwatchNodeIdHotkey::<T>::get(overwatch_node_id).unwrap();
@@ -5425,7 +5416,7 @@ pub mod pallet {
                 Error::<T>::ColdkeyOverwatchQualified
             );
 
-            Self::perform_remove_ow(overwatch_node_id);
+            Self::perform_remove_overwatch_node(overwatch_node_id);
 
             Ok(())
         }
@@ -6329,7 +6320,11 @@ pub mod pallet {
                     !SubnetNodeUniqueParam::<T>::contains_key(subnet_id, unique.clone().unwrap()),
                     Error::<T>::SubnetNodeUniqueParamTaken
                 );
-                SubnetNodeUniqueParam::<T>::insert(subnet_id, unique.clone().unwrap(), subnet_node_id);
+                SubnetNodeUniqueParam::<T>::insert(
+                    subnet_id,
+                    unique.clone().unwrap(),
+                    subnet_node_id,
+                );
             }
 
             HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, subnet_node_id);

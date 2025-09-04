@@ -407,7 +407,6 @@ fn test_owner_update_name() {
         let owner_2 = account(2);
         SubnetOwner::<Test>::insert(subnet_id_2, &owner_2);
 
-
         let new_subnet_name: Vec<u8> = "new-subnet-name".into();
         assert_ok!(Network::owner_update_name(
             RuntimeOrigin::signed(original_owner.clone()),
@@ -463,7 +462,6 @@ fn test_owner_update_name() {
             SubnetName::<Test>::get(&new_subnet_name.clone()).unwrap(),
             subnet_id_2
         );
-
     });
 }
 
@@ -514,7 +512,6 @@ fn test_owner_update_repo() {
 
         // Set initial owner
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-
 
         let subnet_name_2: Vec<u8> = "subnet-name-2".into();
         build_activated_subnet_new(subnet_name_2.clone(), 0, 4, deposit_amount, stake_amount);

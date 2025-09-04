@@ -659,7 +659,7 @@ fn test_remove_delegate_stake_not_enough_stake_to_withdraw() {
                 subnet_id,
                 0,
             ),
-            Error::<Test>::NotEnoughStakeToWithdraw
+            Error::<Test>::SharesZero
         );
 
         assert_err!(

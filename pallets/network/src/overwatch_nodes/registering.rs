@@ -159,8 +159,6 @@ impl<T: Config> Pallet<T> {
         ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
             for (subnet_id, nodes) in colkey_map.iter_mut() {
                 let node_ids: Vec<u32> = nodes.iter().copied().collect();
-                // log::error!("subnet_id {:?}", subnet_id);
-                // log::error!("node_ids {:?}", node_ids);
 
                 // Process each node_id one by one
                 for node_id in node_ids {
@@ -184,16 +182,12 @@ impl<T: Config> Pallet<T> {
                 TotalActiveSubnets::<T>::get() as u128,
             ),
         };
-        // log::error!("diversification                {:?}", diversification);
 
         if diversification < min_diversification_ratio {
-            // log::error!("active_unique_node_count       {:?}", active_unique_node_count);
-            // log::error!("diversification < min_diversification_ratio");
             return false;
         }
 
         if reputation.average_attestation < min_avg_attestation {
-            // log::error!("average_attestation < min_avg_attestation");
             return false;
         }
 

@@ -399,7 +399,7 @@ fn test_remove_stake_not_enough_stake_error() {
                 hotkey.clone(),
                 0,
             ),
-            Error::<Test>::NotEnoughStakeToWithdraw,
+            Error::<Test>::AmountZero,
         );
     });
 }
@@ -547,7 +547,8 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnet_id, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
@@ -896,7 +897,8 @@ fn test_register_try_removing_all_stake_error() {
         let coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let bootnode_peer_id =
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);

@@ -32,6 +32,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_subnet_owner_percentage(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         SubnetOwnerPercentage::<T>::put(value);
         Ok(())
     }
@@ -106,6 +111,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_collective_remove_overwatch_node(overwatch_node_id: u32) -> DispatchResult {
+        Self::perform_remove_overwatch_node(overwatch_node_id);
         Ok(())
     }
 

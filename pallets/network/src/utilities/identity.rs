@@ -40,11 +40,8 @@ impl<T: Config> Pallet<T> {
 
         match ColdkeyIdentityNameOwner::<T>::try_get(name.clone()) {
             Ok(owner) => {
-                ensure!(
-                    owner == coldkey.clone(),
-                    Error::<T>::IdentityTaken
-                );
-            },
+                ensure!(owner == coldkey.clone(), Error::<T>::IdentityTaken);
+            }
             Err(()) => (),
         };
 

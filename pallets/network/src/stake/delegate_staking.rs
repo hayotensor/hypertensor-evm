@@ -197,7 +197,7 @@ impl<T: Config> Pallet<T> {
     ) -> (DispatchResult, u128, u128) {
         // --- Ensure that the delegate_stake amount to be removed is above zero.
         if delegate_stake_shares_to_be_removed == 0 {
-            return (Err(Error::<T>::NotEnoughStakeToWithdraw.into()), 0, 0);
+            return (Err(Error::<T>::SharesZero.into()), 0, 0);
         }
 
         let account_delegate_stake_shares: u128 =

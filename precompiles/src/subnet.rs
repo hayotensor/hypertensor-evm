@@ -346,7 +346,9 @@ where
         Ok(())
     }
 
-    #[precompile::public("registerSubnetNode(uint256,address,string,string,string,uint256,uint256)")]
+    #[precompile::public(
+        "registerSubnetNode(uint256,address,string,string,string,uint256,uint256)"
+    )]
     #[precompile::payable]
     fn register_subnet_node(
         handle: &mut impl PrecompileHandle,

@@ -97,6 +97,194 @@ fn test_do_commit_and_reveal_weights_success() {
 }
 
 #[test]
+fn test_do_commit_and_reveal_weights_not_key_owner_error() {
+    new_test_ext().execute_with(|| {
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+        let overwatch_node_id = 1;
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        TotalOverwatchNodeUids::<Test>::mutate(|n: &mut u32| *n += 1);
+        let current_uid = TotalOverwatchNodeUids::<Test>::get();
+
+        let overwatch_node = OverwatchNode {
+            id: current_uid,
+            hotkey: hotkey.clone(),
+        };
+
+        OverwatchNodes::<Test>::insert(overwatch_node_id, overwatch_node);
+        HotkeyOwner::<Test>::insert(hotkey.clone(), coldkey.clone());
+        OverwatchNodeIdHotkey::<Test>::insert(current_uid, hotkey.clone());
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        // Commit
+        assert_err!(
+            Network::commit_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                0,
+                vec![OverwatchCommit {
+                    subnet_id,
+                    weight: commit_hash
+                }]
+            ),
+            Error::<Test>::NotKeyOwner
+        );
+    });
+}
+
+#[test]
+fn test_do_commit_and_reveal_weights_commits_empty_error() {
+    new_test_ext().execute_with(|| {
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+        let overwatch_node_id = 1;
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        TotalOverwatchNodeUids::<Test>::mutate(|n: &mut u32| *n += 1);
+        let current_uid = TotalOverwatchNodeUids::<Test>::get();
+
+        let overwatch_node = OverwatchNode {
+            id: current_uid,
+            hotkey: hotkey.clone(),
+        };
+
+        OverwatchNodes::<Test>::insert(overwatch_node_id, overwatch_node);
+        HotkeyOwner::<Test>::insert(hotkey.clone(), coldkey.clone());
+        OverwatchNodeIdHotkey::<Test>::insert(current_uid, hotkey.clone());
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        // Commit
+        assert_err!(
+            Network::commit_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                current_uid,
+                vec![]
+            ),
+            Error::<Test>::CommitsEmpty
+        );
+    });
+}
+
+#[test]
+fn test_do_commit_and_reveal_weights_already_committed_error() {
+    new_test_ext().execute_with(|| {
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+        let overwatch_node_id = 1;
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        TotalOverwatchNodeUids::<Test>::mutate(|n: &mut u32| *n += 1);
+        let current_uid = TotalOverwatchNodeUids::<Test>::get();
+
+        let overwatch_node = OverwatchNode {
+            id: current_uid,
+            hotkey: hotkey.clone(),
+        };
+
+        OverwatchNodes::<Test>::insert(overwatch_node_id, overwatch_node);
+        HotkeyOwner::<Test>::insert(hotkey.clone(), coldkey.clone());
+        OverwatchNodeIdHotkey::<Test>::insert(current_uid, hotkey.clone());
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        // Commit
+        assert_ok!(Network::commit_overwatch_subnet_weights(
+            RuntimeOrigin::signed(hotkey.clone()),
+            overwatch_node_id,
+            vec![OverwatchCommit {
+                subnet_id,
+                weight: commit_hash
+            }]
+        ));
+
+        // Ensure it's stored
+        let stored =
+            OverwatchCommits::<Test>::get((overwatch_epoch, overwatch_node_id, subnet_id)).unwrap();
+        assert_eq!(stored, commit_hash);
+
+        // Reveal
+        assert_ok!(Network::perform_reveal_overwatch_subnet_weights(
+            overwatch_node_id,
+            vec![OverwatchReveal {
+                subnet_id,
+                weight,
+                salt
+            }]
+        ));
+
+        // Ensure revealed weight is correct
+        let revealed =
+            OverwatchReveals::<Test>::get((overwatch_epoch, subnet_id, overwatch_node_id)).unwrap();
+        assert_eq!(revealed, weight);
+
+        assert_err!(
+            Network::commit_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                overwatch_node_id,
+                vec![OverwatchCommit {
+                    subnet_id,
+                    weight: commit_hash
+                }]
+            ),
+            Error::<Test>::AlreadyCommitted
+        );
+    });
+}
+
+#[test]
 fn test_commit_and_reveal_extrinsics() {
     new_test_ext().execute_with(|| {
         // subnet
@@ -177,6 +365,265 @@ fn test_commit_and_reveal_extrinsics() {
         let revealed =
             OverwatchReveals::<Test>::get((overwatch_epoch, subnet_id, overwatch_node_id)).unwrap();
         assert_eq!(revealed, weight);
+    });
+}
+
+#[test]
+fn test_reveal_overwatch_subnet_weights_not_key_owner_error() {
+    new_test_ext().execute_with(|| {
+        // subnet
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let min_subnet_nodes = MinSubnetNodes::<Test>::get();
+        let end = min_subnet_nodes;
+        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+
+        let amount = 100000000000000000000;
+
+        let _ = Balances::deposit_creating(&coldkey.clone(), 100000000000000000000 + 500);
+        make_overwatch_qualified(1);
+
+        assert_ok!(Network::register_overwatch_node(
+            RuntimeOrigin::signed(coldkey.clone()),
+            hotkey.clone(),
+            amount,
+        ));
+
+        let overwatch_node_id = HotkeyOverwatchNodeId::<Test>::get(hotkey.clone()).unwrap();
+
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        // Commit
+        assert_ok!(Network::commit_overwatch_subnet_weights(
+            RuntimeOrigin::signed(hotkey.clone()),
+            overwatch_node_id,
+            vec![OverwatchCommit {
+                subnet_id,
+                weight: commit_hash
+            }]
+        ));
+
+        // Ensure it's stored
+        let stored =
+            OverwatchCommits::<Test>::get((overwatch_epoch, overwatch_node_id, subnet_id)).unwrap();
+        assert_eq!(stored, commit_hash);
+
+        set_block_to_overwatch_reveal_block(overwatch_epoch);
+
+        // Reveal
+        assert_err!(
+            Network::reveal_overwatch_subnet_weights(
+                RuntimeOrigin::signed(account(0)),
+                overwatch_node_id,
+                vec![OverwatchReveal {
+                    subnet_id,
+                    weight: weight.clone(),
+                    salt: salt.clone()
+                }]
+            ),
+            Error::<Test>::NotKeyOwner
+        );
+
+        assert_err!(
+            Network::reveal_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                123,
+                vec![OverwatchReveal {
+                    subnet_id,
+                    weight: weight.clone(),
+                    salt: salt.clone()
+                }]
+            ),
+            Error::<Test>::NotKeyOwner
+        );
+    });
+}
+
+#[test]
+fn test_reveal_overwatch_subnet_weights_no_commit_found_error() {
+    new_test_ext().execute_with(|| {
+        // subnet
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let min_subnet_nodes = MinSubnetNodes::<Test>::get();
+        let end = min_subnet_nodes;
+        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+
+        let amount = 100000000000000000000;
+
+        let _ = Balances::deposit_creating(&coldkey.clone(), 100000000000000000000 + 500);
+        make_overwatch_qualified(1);
+
+        assert_ok!(Network::register_overwatch_node(
+            RuntimeOrigin::signed(coldkey.clone()),
+            hotkey.clone(),
+            amount,
+        ));
+
+        let overwatch_node_id = HotkeyOverwatchNodeId::<Test>::get(hotkey.clone()).unwrap();
+
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        set_block_to_overwatch_reveal_block(overwatch_epoch);
+
+        // Reveal
+        assert_err!(
+            Network::reveal_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                overwatch_node_id,
+                vec![OverwatchReveal {
+                    subnet_id,
+                    weight: weight.clone(),
+                    salt: salt.clone()
+                }]
+            ),
+            Error::<Test>::NoCommitFound
+        );
+    });
+}
+
+#[test]
+fn test_reveal_overwatch_subnet_weights_reveal_mismatch_error() {
+    new_test_ext().execute_with(|| {
+        // subnet
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let min_subnet_nodes = MinSubnetNodes::<Test>::get();
+        let end = min_subnet_nodes;
+        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let coldkey: AccountId = account(1);
+        let hotkey: AccountId = account(2);
+
+        let amount = 100000000000000000000;
+
+        let _ = Balances::deposit_creating(&coldkey.clone(), 100000000000000000000 + 500);
+        make_overwatch_qualified(1);
+
+        assert_ok!(Network::register_overwatch_node(
+            RuntimeOrigin::signed(coldkey.clone()),
+            hotkey.clone(),
+            amount,
+        ));
+
+        let overwatch_node_id = HotkeyOverwatchNodeId::<Test>::get(hotkey.clone()).unwrap();
+
+        let subnet_id = 99;
+        let overwatch_epoch = Network::get_current_overwatch_epoch_as_u32();
+
+        // Setup: assign ownership and create subnet
+        let subnet_data = SubnetData {
+            id: 1,
+            name: "subnet_name".into(),
+            repo: "github".into(),
+            description: "description".into(),
+            misc: "misc".into(),
+            state: SubnetState::Active,
+            start_epoch: 0,
+        };
+
+        SubnetsData::<Test>::insert(subnet_id, subnet_data);
+
+        // Weight + salt
+        let weight: u128 = 123456;
+        let salt: Vec<u8> = b"secret-salt".to_vec();
+        let commit_hash = make_commit(weight, salt.clone());
+
+        let fake_salt: Vec<u8> = b"fake-salt".to_vec();
+
+        // Commit
+        assert_ok!(Network::commit_overwatch_subnet_weights(
+            RuntimeOrigin::signed(hotkey.clone()),
+            overwatch_node_id,
+            vec![OverwatchCommit {
+                subnet_id,
+                weight: commit_hash
+            }]
+        ));
+
+        // Ensure it's stored
+        let stored =
+            OverwatchCommits::<Test>::get((overwatch_epoch, overwatch_node_id, subnet_id)).unwrap();
+        assert_eq!(stored, commit_hash);
+
+        set_block_to_overwatch_reveal_block(overwatch_epoch);
+
+        // Reveal
+        assert_err!(
+            Network::reveal_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                overwatch_node_id,
+                vec![OverwatchReveal {
+                    subnet_id,
+                    weight: weight.clone(),
+                    salt: fake_salt.clone()
+                }]
+            ),
+            Error::<Test>::RevealMismatch
+        );
+
+        assert_err!(
+            Network::reveal_overwatch_subnet_weights(
+                RuntimeOrigin::signed(hotkey.clone()),
+                overwatch_node_id,
+                vec![OverwatchReveal {
+                    subnet_id,
+                    weight: weight.clone() + 1,
+                    salt: salt.clone()
+                }]
+            ),
+            Error::<Test>::RevealMismatch
+        );
     });
 }
 

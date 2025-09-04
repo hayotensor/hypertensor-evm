@@ -779,7 +779,7 @@ fn test_activate_subnet() {
                 subnet_id: subnet_id,
             }
         );
-        
+
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
         assert_eq!(subnet.id, subnet_id);
