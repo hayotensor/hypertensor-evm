@@ -45,12 +45,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidValidator
         );
 
-        // --- Node must have subnet minimum stake to propose attestation
-        ensure!(
-            AccountSubnetStake::<T>::get(&hotkey, subnet_id)
-                >= SubnetMinStakeBalance::<T>::get(subnet_id),
-            Error::<T>::MinStakeNotReached
-        );
+        // - Note: we don't check stake balance here
 
         // --- Ensure not submitted already
         ensure!(
@@ -84,8 +79,15 @@ impl<T: Config> Pallet<T> {
         let block: u32 = Self::get_current_block_as_u32();
 
         // --- Validator auto-attests the epoch
-        let attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)> =
-            BTreeMap::from([(validator_id, (block, attest_data))]);
+        // let attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)> =
+        //     BTreeMap::from([(validator_id, (block, attest_data))]);
+        let attests: BTreeMap<u32, AttestEntry> = BTreeMap::from([(
+            validator_id,
+            AttestEntry {
+                block: block,
+                data: attest_data,
+            },
+        )]);
 
         // --- Get all (activated) Idle + consensus-eligible nodes
         // We get this here instead of in the rewards distribution to handle block weight more efficiently
@@ -135,11 +137,7 @@ impl<T: Config> Pallet<T> {
             Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
         };
 
-        ensure!(
-            AccountSubnetStake::<T>::get(&hotkey, subnet_id)
-                >= SubnetMinStakeBalance::<T>::get(subnet_id),
-            Error::<T>::MinStakeNotReached
-        );
+        // - Note: we don't check stake balance here
 
         let block: u32 = Self::get_current_block_as_u32();
 
@@ -151,15 +149,11 @@ impl<T: Config> Pallet<T> {
                     .as_mut()
                     .ok_or(Error::<T>::InvalidSubnetConsensusSubmission)?;
 
-                // --- Double check in inclusion list
-                // Redundant
-                // let included_subnet_nodes = &params.included_subnet_nodes;
-                // ensure!(included_subnet_nodes.get(&subnet_node_id), Error::<T>::AlreadyAttested);
-
                 let mut attests = &mut params.attests;
 
                 ensure!(
-                    attests.insert(subnet_node_id, (block, data)) == None,
+                    // attests.insert(subnet_node_id, (block, data)) == None,
+                    attests.insert(subnet_node_id, AttestEntry { block, data }) == None,
                     Error::<T>::AlreadyAttested
                 );
 

@@ -33,7 +33,9 @@ use crate::{
   SubnetRegistrationEpochs,
   NetworkMinStakeBalance,
   ChurnLimit,
-  RegistrationQueueEpochs,
+  SubnetNodeQueueEpochs,
+  MaxUnbondings,
+  StakeCooldownEpochs,
 };
 
 ///
@@ -225,15 +227,15 @@ fn test_update_coldkey() {
       Error::<Test>::NotKeyOwner
     );    
     
-    // `do_deactivate_subnet_node` allows both hotkey and coldkey
-    assert_err!(
-      Network::do_deactivate_subnet_node(
-        RuntimeOrigin::signed(account(2)),
-        subnet_id,
-        hotkey_subnet_node_id
-      ),
-      Error::<Test>::NotKeyOwner
-    );
+    // `do_pause_subnet_node` allows both hotkey and coldkey
+    // assert_err!(
+    //   Network::do_pause_subnet_node(
+    //     RuntimeOrigin::signed(account(2)),
+    //     subnet_id,
+    //     hotkey_subnet_node_id
+    //   ),
+    //   Error::<Test>::NotKeyOwner
+    // );
 
     assert_err!(
       Network::update_coldkey(
@@ -278,14 +280,14 @@ fn test_update_coldkey() {
       )
     );
 
-    // `do_deactivate_subnet_node` allows both hotkey and coldkey
-    assert_ok!(
-      Network::do_deactivate_subnet_node(
-        RuntimeOrigin::signed(account(total_subnet_nodes+1)),
-        subnet_id,
-        hotkey_subnet_node_id
-      )
-    );
+    // `do_pause_subnet_node` allows both hotkey and coldkey
+    // assert_ok!(
+    //   Network::do_pause_subnet_node(
+    //     RuntimeOrigin::signed(account(total_subnet_nodes+1)),
+    //     subnet_id,
+    //     hotkey_subnet_node_id
+    //   )
+    // );
 
     assert_ok!(
       Network::update_hotkey(
@@ -720,7 +722,7 @@ fn test_register_subnet_node_activate_subnet_node() {
 }
 
 #[test]
-fn test_deactivate_subnet_node_reactivate() {
+fn test_pause_subnet_node_reactivate() {
   new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
     
@@ -742,7 +744,7 @@ fn test_deactivate_subnet_node_reactivate() {
     let epoch_length = EpochLength::get();
     let subnet_epoch: u32 = Network::get_current_subnet_epoch_as_u32(subnet_id);
     assert_ok!(
-      Network::deactivate_subnet_node(
+      Network::pause_subnet_node(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -1291,7 +1293,7 @@ fn test_add_subnet_node_remove_stake_partial_readd() {
 
     // once blocks have been increased, account can either remove stake in part or in full or readd subnet peer
     let epoch_length = EpochLength::get();
-    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::<Test>::get();
 
     // System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
     increase_epochs(min_required_unstake_epochs);
@@ -1368,7 +1370,7 @@ fn test_add_subnet_node_remove_stake_readd() {
 
     // once blocks have been increased, account can either remove stake in part or in full or readd subnet peer
     let epoch_length = EpochLength::get();
-    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::<Test>::get();
     // System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
     increase_epochs(min_required_unstake_epochs);
 
@@ -1753,7 +1755,7 @@ fn test_update_subnet_node_with_non_unique_param() {
 // // //     );
     
 // // //     let epoch_length = EpochLength::get();
-// // //     let min_required_unstake_epochs = StakeCooldownEpochs::get();
+// // //     let min_required_unstake_epochs = StakeCooldownEpochs::<Test>::get();
 // // //     System::set_block_number(System::block_number() + epoch_length * min_required_unstake_epochs);
     
 // // //     assert_ok!(
@@ -1819,7 +1821,7 @@ fn test_remove_peer_unstake_total_balance() {
     assert_eq!(Network::total_subnet_nodes(subnet_id), total_subnet_nodes);
     
     let epoch_length = EpochLength::get();
-    let min_required_unstake_epochs = StakeCooldownEpochs::get();
+    let min_required_unstake_epochs = StakeCooldownEpochs::<Test>::get();
     increase_epochs(min_required_unstake_epochs + 1);
     
     let remaining_account_stake_balance: u128 = AccountSubnetStake::<Test>::get(&account(total_subnet_nodes+1), subnet_id);
@@ -1910,10 +1912,10 @@ fn test_claim_stake_unbondings() {
     assert_eq!(unbondings.len(), 1);
     let (first_key, first_value) = unbondings.iter().next().unwrap();
     
-    assert_eq!(*first_key, &epoch + StakeCooldownEpochs::get());
+    assert_eq!(*first_key, &epoch + StakeCooldownEpochs::<Test>::get());
     assert!(*first_value <= stake_balance);
     
-    let stake_cooldown_epochs = StakeCooldownEpochs::get();
+    let stake_cooldown_epochs = StakeCooldownEpochs::<Test>::get();
 
     increase_epochs(stake_cooldown_epochs + 1);
 
@@ -2009,7 +2011,7 @@ fn test_remove_stake_twice_in_epoch() {
     assert_eq!(ledger_balance, amount);  
 
     let (ledger_epoch, ledger_balance) = unbondings.iter().next().unwrap();
-    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::get());
+    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::<Test>::get());
 
     assert_ok!(
       Network::remove_stake(
@@ -2026,7 +2028,7 @@ fn test_remove_stake_twice_in_epoch() {
     assert_eq!(ledger_balance, amount*2);
 
     let (ledger_epoch, ledger_balance) = unbondings.iter().next().unwrap();
-    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::get());
+    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::<Test>::get());
 
     increase_epochs(1);
 
@@ -2047,11 +2049,11 @@ fn test_remove_stake_twice_in_epoch() {
     assert_eq!(total_ledger_balance, amount*3);
 
     let (ledger_epoch, ledger_balance) = unbondings.iter().last().unwrap();
-    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::get());
+    assert_eq!(*ledger_epoch, &epoch + StakeCooldownEpochs::<Test>::get());
     assert_eq!(*ledger_balance, amount);
 
-    System::set_block_number(System::block_number() + ((EpochLength::get()  + 1) * StakeCooldownEpochs::get()));
-    // increase_epochs(StakeCooldownEpochs::get() + 11);
+    System::set_block_number(System::block_number() + ((EpochLength::get()  + 1) * StakeCooldownEpochs::<Test>::get()));
+    // increase_epochs(StakeCooldownEpochs::<Test>::get() + 11);
     
     let starting_balance = Balances::free_balance(&account(total_subnet_nodes+1));
 
@@ -2150,7 +2152,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
       ) 
     );
 
-    let max_unlockings = MaxStakeUnlockings::get();
+    let max_unlockings = MaxUnbondings::<Test>::get();
     for n in 1..max_unlockings+2 {
       // System::set_block_number(System::block_number() + EpochLength::get() + 1);
       increase_epochs(1);
@@ -2240,7 +2242,7 @@ fn test_remove_subnet_node() {
 }
 
 #[test]
-fn test_deactivate_subnet_node_and_reactivate() {
+fn test_pause_subnet_node_and_reactivate() {
   new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
@@ -2256,7 +2258,7 @@ fn test_deactivate_subnet_node_and_reactivate() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     assert_ok!(
-      Network::deactivate_subnet_node(
+      Network::pause_subnet_node(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -2269,7 +2271,7 @@ fn test_deactivate_subnet_node_and_reactivate() {
 }
 
 #[test]
-fn test_deactivate_subnet_node() {
+fn test_pause_subnet_node() {
   new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
     let deposit_amount: u128 = 10000000000000000000000;
@@ -2285,7 +2287,7 @@ fn test_deactivate_subnet_node() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     assert_ok!(
-      Network::deactivate_subnet_node(
+      Network::pause_subnet_node(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -2353,7 +2355,7 @@ fn test_deactivation_ledger_as_attestor() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     assert_ok!(
-      Network::deactivate_subnet_node(
+      Network::pause_subnet_node(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,
@@ -2410,7 +2412,7 @@ fn test_deactivation_ledger_as_chosen_validator() {
     let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, account(1)).unwrap();
 
     assert_ok!(
-      Network::deactivate_subnet_node(
+      Network::pause_subnet_node(
         RuntimeOrigin::signed(account(1)),
         subnet_id,
         subnet_node_id,

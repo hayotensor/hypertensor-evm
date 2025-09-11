@@ -434,7 +434,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // TODO: Emit
-        log::error!("calculate_overwatch_rewards_v3 done");
+        // log::error!("calculate_overwatch_rewards_v3 done");
 
         weight
     }
@@ -455,7 +455,7 @@ impl<T: Config> Pallet<T> {
 
             // Get weight of subnet_id from calculated weights
             if let Some(&subnet_weight) = subnet_emission_weights.weights.get(&subnet_id) {
-                // Get elected consensus submission
+                // Get elected consensus submission from the previous epoch
                 if let Some((consensus_submission_data, consensus_submission_weight)) =
                     Self::precheck_subnet_consensus_submission(subnet_id, current_subnet_epoch - 1)
                 {
@@ -498,10 +498,52 @@ impl<T: Config> Pallet<T> {
 
                 // --- Elect new validator for the current epoch
                 // The current epoch is the start of the subnets epoch
-                // We only elect if the subnet has weights, otherwise it isn't activate yet
+                // We only elect if the subnet has weights, otherwise it isn't active yet
                 // See `calculate_subnet_weights`
                 Self::elect_validator_v3(subnet_id, current_subnet_epoch, block);
                 // weight = weight.saturating_add(T::WeightInfo::elect_validator_v3());
+
+                // After election, we activate nodes in the queue
+
+                let subnet_node_queue_epochs = SubnetNodeQueueEpochs::<T>::get(subnet_id);
+                let max_nodes = MaxSubnetNodes::<T>::get();
+                let total_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
+                let churn_limit = ChurnLimit::<T>::get(subnet_id);
+                let take = if max_nodes.saturating_sub(total_active_nodes) < churn_limit {
+                    max_nodes.saturating_sub(total_active_nodes)
+                } else {
+                    churn_limit
+                };
+                weight = weight.saturating_add(db_weight.reads(4));
+
+                let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
+                if queue.len() != 0 && take != 0 {
+                    let mut activated_nodes = 0;
+                    // Activate any nodes in the unpause queue
+                    for subnet_node in queue.iter().take(take as usize) {
+                        log::error!("subnet_node.classification.start_epoch {:?}", subnet_node.classification.start_epoch);
+                        if subnet_node.classification.start_epoch + subnet_node_queue_epochs
+                            < current_subnet_epoch
+                        {
+                            weight = weight.saturating_add(Self::do_activate_subnet_node_v2(
+                                subnet_id,
+                                subnet_node.clone(),
+                                current_subnet_epoch,
+                            ));
+                            activated_nodes += 1;
+                        } else {
+                            // Nodes are in order, break early if first one isn't qualified yet
+                            break;
+                        }
+                    }
+
+                    // Remove the processed nodes from the front
+                    queue.drain(0..activated_nodes);
+
+                    // Update storage
+                    SubnetNodeQueue::<T>::set(subnet_id, queue);
+                    weight = weight.saturating_add(db_weight.writes(1));
+                }
             }
         } else {
             // Count DB read even if subnet_emission_weights is missing
@@ -778,6 +820,91 @@ impl<T: Config> Pallet<T> {
         (subnet_weights_normalized, weight)
     }
 
+    // // No decimals
+    // pub fn calculate_subnet_weights_v4(epoch: u32) -> (BTreeMap<u32, u128>, Weight) {
+    //     let mut weight = Weight::zero();
+    //     let db_weight = T::DbWeight::get();
+
+    //     let subnet_distribution_power =
+    //         Self::get_percent_as_f64(SubnetDistributionPower::<T>::get());
+    //     let total_delegate_stake = TotalDelegateStake::<T>::get();
+
+    //     // {subnet_id, weight}
+    //     let mut subnet_weights: BTreeMap<u32, f64> = BTreeMap::new();
+    //     // {subnet_id, count}
+    //     let mut subnet_weight_sum: u128 = 0;
+    //     let total_electable_nodes: f64 = TotalElectableNodes::<T>::get() as f64;
+    //     let mut total_subnet_reads = 0u64;
+
+    //     let dstake_factor = Self::get_percent_as_f64(DelegateStakeWeightFactor::<T>::get());
+    //     let node_factor = 1.0 - dstake_factor;
+
+    //     weight = weight.saturating_add(db_weight.reads(4));
+
+    //     let current_overwatch_epoch = Self::get_current_overwatch_epoch_as_u32();
+
+    //     for (subnet_id, data) in SubnetsData::<T>::iter() {
+    //         total_subnet_reads += 1;
+    //         // - Must be active to calculate rewards distribution
+    //         if data.start_epoch > epoch && data.state != SubnetState::Active {
+    //             continue;
+    //         }
+
+    //         let total_subnet_delegate_stake = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+    //         weight = weight.saturating_add(db_weight.reads(1));
+
+    //         // - Get delegate stake weight in f64
+    //         let subnet_dstake_weight: f64 =
+    //             (total_subnet_delegate_stake as f64 / total_delegate_stake as f64).clamp(0.0, 1.0);
+
+    //         // - Get node count weight in f64
+    //         let electable_nodes_count = TotalSubnetElectableNodes::<T>::get(subnet_id);
+    //         weight = weight.saturating_add(db_weight.reads(1));
+    //         let subnet_nodes_weight = electable_nodes_count as f64 / total_electable_nodes;
+
+    //         // - Get Overwatch weight in f64
+    //         let overwatch_subnet_weight = match OverwatchSubnetWeights::<T>::try_get(
+    //             current_overwatch_epoch.saturating_sub(1),
+    //             subnet_id,
+    //         ) {
+    //             Ok(weight) => Self::get_percent_as_f64(weight).min(1.0),
+    //             Err(()) => 1.0,
+    //         };
+
+    //         weight = weight.saturating_add(db_weight.reads(1));
+
+    //         // - Get combined weight (stake + node count) * overwatchers weight
+    //         let subnet_weight = ((subnet_dstake_weight * dstake_factor
+    //             + subnet_nodes_weight * node_factor)
+    //             * overwatch_subnet_weight)
+    //             .clamp(0.0, 1.0);
+
+    //         // - Adj weight (to later be normalized)
+    //         let adj_subnet_weight: f64 = Self::pow(subnet_weight, subnet_distribution_power);
+
+    //         subnet_weights.insert(subnet_id, adj_subnet_weight);
+    //         subnet_weight_sum += adj_subnet_weight;
+    //         weight = weight.saturating_add(Weight::from_parts(400_000, 0));
+    //     }
+
+    //     weight = weight.saturating_add(db_weight.reads(total_subnet_reads));
+    //     let mut subnet_weights_normalized: BTreeMap<u32, u128> = BTreeMap::new();
+    //     let percentage_factor = Self::percentage_factor_as_u128();
+
+    //     // --- Normalize delegate stake weights from power
+    //     for (subnet_id, subnet_weight) in subnet_weights {
+    //         let weight_normalized: u128 = Self::percent_div(subnet_weight, subnet_weight_sum);
+    //         subnet_weights_normalized.insert(subnet_id, weight_normalized);
+    //         weight = weight.saturating_add(Weight::from_parts(400_000, 0));
+    //     }
+
+    //     //
+    //     // Weight calc complete
+    //     //
+
+    //     (subnet_weights_normalized, weight)
+    // }
+
     /// Compile consensus data from the previous epochs attestation proposals
     ///
     pub fn precheck_subnet_consensus_submission(
@@ -798,6 +925,7 @@ impl<T: Config> Pallet<T> {
         let subnet_nodes = submission.subnet_nodes;
 
         // --- Get all qualified possible attestors
+        // We take the subnet nodes generated from the validators `propose_attestation` call
         let validators: Vec<SubnetNode<T::AccountId>> = subnet_nodes
             .clone()
             .into_iter()
@@ -830,6 +958,7 @@ impl<T: Config> Pallet<T> {
             weight_sum: weight_sum,
             data_length: data_length,
             data: submission.data,
+            attests: submission.attests,
             subnet_nodes: subnet_nodes,
         };
 

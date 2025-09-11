@@ -108,6 +108,58 @@ impl<T: Config> Pallet<T> {
             }
         }
 
+        Self::handle_increase_account_delegate_stake(
+            account_id,
+            subnet_id,
+            delegate_stake_to_be_added,
+        )
+
+        // let total_subnet_delegated_stake_shares =
+        //     match TotalSubnetDelegateStakeShares::<T>::get(subnet_id) {
+        //         0 => {
+        //             // --- Mitigate inflation attack
+        //             TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| {
+        //                 n.saturating_accrue(Self::MIN_LIQUIDITY)
+        //             });
+        //             0
+        //         }
+        //         shares => shares,
+        //     };
+        // let total_subnet_delegated_stake_balance =
+        //     TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+
+        // // --- Get amount to be added as shares based on stake to balance added to account
+        // let mut delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
+        //     delegate_stake_to_be_added,
+        //     total_subnet_delegated_stake_shares,
+        //     total_subnet_delegated_stake_balance,
+        // );
+
+        // // --- Check rounding errors, mitigates donation attacks that round to zero
+        // if delegate_stake_to_be_added_as_shares == 0 {
+        //     return (Err(Error::<T>::CouldNotConvertToShares.into()), 0, 0);
+        // }
+
+        // Self::increase_account_delegate_stake(
+        //     &account_id,
+        //     subnet_id,
+        //     delegate_stake_to_be_added,
+        //     delegate_stake_to_be_added_as_shares,
+        // );
+
+        // (
+        //     Ok(()),
+        //     delegate_stake_to_be_added,
+        //     delegate_stake_to_be_added_as_shares,
+        // )
+    }
+
+    // Infallible
+    pub fn handle_increase_account_delegate_stake(
+        account_id: &T::AccountId,
+        subnet_id: u32,
+        delegate_stake_to_be_added: u128,
+    ) -> (DispatchResult, u128, u128) {
         let total_subnet_delegated_stake_shares =
             match TotalSubnetDelegateStakeShares::<T>::get(subnet_id) {
                 0 => {
@@ -243,17 +295,10 @@ impl<T: Config> Pallet<T> {
 
         // --- We add the balancer to the account_id.  If the above fails we will not credit this account_id.
         if add_to_ledger {
-            // let result = Self::add_balance_to_unbonding_ledger(
-            //   &account_id,
-            //   delegate_stake_to_be_removed,
-            //   T::DelegateStakeCooldownEpochs::get(),
-            //   block
-            // );
-
             let result = Self::add_balance_to_unbonding_ledger_v2(
                 &account_id,
                 delegate_stake_to_be_removed,
-                T::DelegateStakeCooldownEpochs::get() * T::EpochLength::get(),
+                DelegateStakeCooldownEpochs::<T>::get() * T::EpochLength::get(),
                 block,
             );
 
@@ -277,7 +322,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id: T::AccountId = ensure_signed(origin)?;
 
-        let (result, delegate_stake_to_be_removed, _) = Self::perform_do_remove_delegate_stake(
+        let (result, balance, _) = Self::perform_do_remove_delegate_stake(
             &account_id,
             from_subnet_id,
             delegate_stake_shares_to_swap,
@@ -286,30 +331,62 @@ impl<T: Config> Pallet<T> {
 
         result?;
 
-        // --- Add
-        let (result, balance, shares) = Self::perform_do_add_delegate_stake(
-            &account_id,
+        // --- Add to queue
+        let call = QueuedSwapCall::SwapToSubnetDelegateStake {
+            account_id: account_id.clone(),
             to_subnet_id,
-            delegate_stake_to_be_removed,
-            true,
-        );
+            balance,
+        };
 
-        result?;
-
-        let block: u32 = Self::get_current_block_as_u32();
-
-        // Set last block for rate limiting
-        Self::set_last_tx_block(&account_id, block);
-
-        Self::deposit_event(Event::SubnetDelegateStakeSwapped(
-            from_subnet_id,
-            to_subnet_id,
+        Self::queue_swap(
             account_id,
-            delegate_stake_to_be_removed,
-        ));
+            call,
+        )?;
 
         Ok(())
     }
+
+    // pub fn do_swap_delegate_stake(
+    //     origin: T::RuntimeOrigin,
+    //     from_subnet_id: u32,
+    //     to_subnet_id: u32,
+    //     delegate_stake_shares_to_swap: u128,
+    // ) -> DispatchResult {
+    //     let account_id: T::AccountId = ensure_signed(origin)?;
+
+    //     let (result, delegate_stake_to_be_removed, _) = Self::perform_do_remove_delegate_stake(
+    //         &account_id,
+    //         from_subnet_id,
+    //         delegate_stake_shares_to_swap,
+    //         false,
+    //     );
+
+    //     result?;
+
+    //     // --- Add
+    //     let (result, balance, shares) = Self::perform_do_add_delegate_stake(
+    //         &account_id,
+    //         to_subnet_id,
+    //         delegate_stake_to_be_removed,
+    //         true,
+    //     );
+
+    //     result?;
+
+    //     let block: u32 = Self::get_current_block_as_u32();
+
+    //     // Set last block for rate limiting
+    //     Self::set_last_tx_block(&account_id, block);
+
+    //     Self::deposit_event(Event::SubnetDelegateStakeSwapped(
+    //         from_subnet_id,
+    //         to_subnet_id,
+    //         account_id,
+    //         delegate_stake_to_be_removed,
+    //     ));
+
+    //     Ok(())
+    // }
 
     // pub fn do_transfer_delegate_stake(
     //   origin: T::RuntimeOrigin,

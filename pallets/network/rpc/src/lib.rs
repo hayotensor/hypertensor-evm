@@ -13,12 +13,13 @@ use sp_api::ProvideRuntimeApi;
 use frame_support::storage::bounded_vec::BoundedVec;
 pub use network_custom_rpc_runtime_api::NetworkRuntimeApi;
 use pallet_network::{DefaultMaxVectorLength, SubnetNodeClass};
-// use fp_account::AccountId20;
 
 #[rpc(client, server)]
 pub trait NetworkCustomApi<BlockHash> {
     #[method(name = "network_getSubnetInfo")]
     fn get_subnet_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
+    #[method(name = "network_getSubnetData")]
+    fn get_subnet_data(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
     #[method(name = "network_getAllSubnetsInfo")]
     fn get_all_subnets_info(&self, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
     #[method(name = "network_getSubnetNodes")]
@@ -74,6 +75,12 @@ pub trait NetworkCustomApi<BlockHash> {
         min_class: u8,
         at: Option<BlockHash>,
     ) -> RpcResult<bool>;
+    #[method(name = "network_getBootnodes")]
+    fn get_bootnodes(
+        &self,
+        subnet_id: u32,
+        at: Option<BlockHash>,
+    ) -> RpcResult<Vec<u8>>;
 
     // #[method(name = "network_getSubnetInfo")]
     // fn get_subnet_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Option<SubnetInfo<AccountId20>>>;
@@ -224,6 +231,18 @@ where
         api.get_subnet_info(at, subnet_id)
             .map_err(|e| Error::RuntimeError(format!("Unable to get subnet info: {:?}", e)).into())
     }
+
+    fn get_subnet_data(
+        &self,
+        subnet_id: u32,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> RpcResult<Vec<u8>> {
+        let api = self.client.runtime_api();
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_subnet_data(at, subnet_id)
+            .map_err(|e| Error::RuntimeError(format!("Unable to get subnet data: {:?}", e)).into())
+    }
+
     fn get_all_subnets_info(&self, at: Option<<Block as BlockT>::Hash>) -> RpcResult<Vec<u8>> {
         let api = self.client.runtime_api();
         let at = at.unwrap_or_else(|| self.client.info().best_hash);
@@ -343,6 +362,22 @@ where
             .map_err(|e| {
                 Error::RuntimeError(format!(
                     "Unable to get subnet nodes by a parameter: {:?}",
+                    e
+                ))
+                .into()
+            })
+    }
+    fn get_bootnodes(
+        &self,
+        subnet_id: u32,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> RpcResult<Vec<u8>> {
+        let api = self.client.runtime_api();
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_bootnodes(at, subnet_id)
+            .map_err(|e| {
+                Error::RuntimeError(format!(
+                    "Unable to get bootnodes: {:?}",
                     e
                 ))
                 .into()

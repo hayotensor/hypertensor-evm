@@ -10,6 +10,7 @@ use crate::{
     SubnetElectedValidator, SubnetName, SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs,
     SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodesData, TotalActiveSubnets,
     TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance, TotalSubnetNodes,
+    SubnetNodeQueueEpochs,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -1091,13 +1092,13 @@ fn test_distribute_rewards_graduate_idle_to_included() {
         let epoch = block_number / epoch_length;
 
         // ⸺ Register and activate node into Idle classification
-        let idle_coldkey = get_coldkey(subnets, max_subnet_nodes, end + 2);
-        let idle_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 2);
-        let idle_peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+        let idle_coldkey = get_coldkey(subnets, max_subnet_nodes, end + 1);
+        let idle_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let idle_peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let idle_bootnode_peer_id =
-            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+            get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let idle_client_peer_id =
-            get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 2);
+            get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let _ = Balances::deposit_creating(&idle_coldkey.clone(), deposit_amount);
 
         assert_ok!(Network::register_subnet_node(
@@ -1119,15 +1120,28 @@ fn test_distribute_rewards_graduate_idle_to_included() {
         let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
         let start_epoch = subnet_node.classification.start_epoch;
 
-        set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
+        let queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);
 
+        let epoch = Network::get_current_epoch_as_u32();
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        assert_ok!(Network::activate_subnet_node(
-            RuntimeOrigin::signed(idle_coldkey.clone()),
-            subnet_id,
-            hotkey_subnet_node_id
-        ));
+        // increase to the nodes start epoch
+        set_block_to_subnet_slot_epoch(subnet_epoch + queue_epochs + 2, subnet_id);
+
+        let epoch = Network::get_current_epoch_as_u32();
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        // Get subnet weights (nodes only activate from queue if there are weights)
+        // Note: This means a subnet is active if it gets weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+
+        // Trigger the node activation
+        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
+            Err(())
+        );
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
@@ -1616,15 +1630,28 @@ fn test_distribute_rewards_graduate_included_to_validator() {
         let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
         let start_epoch = subnet_node.classification.start_epoch;
 
-        set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
+        let queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);
 
+        let epoch = Network::get_current_epoch_as_u32();
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        assert_ok!(Network::activate_subnet_node(
-            RuntimeOrigin::signed(idle_coldkey.clone()),
-            subnet_id,
-            hotkey_subnet_node_id
-        ));
+        // increase to the nodes start epoch
+        set_block_to_subnet_slot_epoch(subnet_epoch + queue_epochs + 2, subnet_id);
+
+        let epoch = Network::get_current_epoch_as_u32();
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        // Get subnet weights (nodes only activate from queue if there are weights)
+        // Note: This means a subnet is active if it gets weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+
+        // Trigger the node activation
+        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
+            Err(())
+        );
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);

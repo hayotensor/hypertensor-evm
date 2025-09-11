@@ -123,7 +123,7 @@ impl<T: Config> Pallet<T> {
                 continue;
             } else if penalties != 0 {
                 // Is in consensus data, decrease
-                // If the validator submits themselves in the data and is successfully attested, this also
+                // If the validator submits themselves in the data and passes consensus, this also
                 // decreases the validators penalties
                 SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
                     n.saturating_dec()

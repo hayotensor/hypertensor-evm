@@ -4,7 +4,7 @@ use crate::{
     AccountSubnetStake, Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets,
     NetworkMinStakeBalance, RegisteredSubnetNodesData,
     StakeUnbondingLedgerV2, SubnetName, TotalActiveSubnets, TotalSubnetNodes,
-    MaxUnbondings, StakeCooldownEpochs
+    SubnetNodeQueueEpochs, MaxUnbondings, StakeCooldownEpochs
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -187,14 +187,29 @@ fn test_register_activate_remove_claim_stake_unbondings() {
         let after_stake_balance = Balances::free_balance(&coldkey.clone());
         assert_eq!(after_stake_balance, starting_balance - amount);
 
-        // set_epoch(start_epoch);
-        set_block_to_subnet_slot_epoch(start_epoch, subnet_id);
+        let queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);
 
-        assert_ok!(Network::activate_subnet_node(
-            RuntimeOrigin::signed(coldkey.clone()),
-            subnet_id,
-            hotkey_subnet_node_id
-        ));
+        let epoch = Network::get_current_epoch_as_u32();
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        // increase to the nodes start epoch
+        set_block_to_subnet_slot_epoch(subnet_epoch + queue_epochs + 2, subnet_id);
+
+        let epoch = Network::get_current_epoch_as_u32();
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        // Get subnet weights (nodes only activate from queue if there are weights)
+        // Note: This means a subnet is active if it gets weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+
+        // Trigger the node activation
+        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
+            Err(())
+        );
+
 
         assert_ok!(Network::remove_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -512,7 +527,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
         ));
 
         // let max_unlockings = MaxUnbondings::get();
-        let max_unlockings = MaxUnbondings::<Test>get();
+        let max_unlockings = MaxUnbondings::<Test>::get();
         for n in 0..max_unlockings + 2 {
             let _n = n + 1;
             // increase_epochs(1);

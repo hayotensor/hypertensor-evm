@@ -100,14 +100,14 @@ impl<T: Config> Pallet<T> {
         // Self::add_balance_to_unbonding_ledger(
         //   &coldkey,
         //   stake_to_be_removed,
-        //   T::StakeCooldownEpochs::get(),
+        //   StakeCooldownEpochs::<T>::get(),
         //   block
         // ).map_err(|e| e)?;
 
         let result = Self::add_balance_to_unbonding_ledger_v2(
             &coldkey,
             stake_to_be_removed,
-            T::StakeCooldownEpochs::get() * T::EpochLength::get(),
+            StakeCooldownEpochs::<T>::get() * T::EpochLength::get(),
             block,
         )
         .map_err(|e| e)?;

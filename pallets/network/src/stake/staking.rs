@@ -128,6 +128,16 @@ impl<T: Config> Pallet<T> {
             //         >= NetworkMinStakeBalance::<T>::get(),
             //     Error::<T>::MinStakeNotReached
             // );
+        } else if stake_to_be_removed >= account_stake_balance {
+            // In case a subnet was removed, we clean up elements that wouldn't 
+            // be cleaned up in the subnet removal. Elements that have an account
+            // as the key.
+            HotkeySubnetId::<T>::remove(&hotkey);
+            let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+            hotkeys.remove(&hotkey);
+            ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+            HotkeyOwner::<T>::remove(&hotkey);
+            Self::clean_coldkey_subnet_nodes(coldkey.clone()); // cleans ColdkeySubnetNodes
         }
 
         // --- Ensure that we can convert this u128 to a balance.
@@ -147,16 +157,10 @@ impl<T: Config> Pallet<T> {
         Self::decrease_account_stake(&hotkey, subnet_id, stake_to_be_removed);
 
         // --- 9. We add the balancer to the coldkey.  If the above fails we will not credit this coldkey.
-        // Self::add_balance_to_unbonding_ledger(
-        //   &coldkey,
-        //   stake_to_be_removed,
-        //   T::StakeCooldownEpochs::get(),
-        //   block
-        // ).map_err(|e| e)?;
         Self::add_balance_to_unbonding_ledger_v2(
             &coldkey,
             stake_to_be_removed,
-            T::StakeCooldownEpochs::get() * T::EpochLength::get(),
+            StakeCooldownEpochs::<T>::get() * T::EpochLength::get(),
             block,
         )
         .map_err(|e| e)?;

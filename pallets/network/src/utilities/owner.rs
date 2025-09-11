@@ -311,12 +311,12 @@ impl<T: Config> Pallet<T> {
         );
 
         ensure!(
-            value >= MinRegistrationQueueEpochs::<T>::get()
-                && value <= MaxRegistrationQueueEpochs::<T>::get(),
+            value >= MinQueueEpochs::<T>::get()
+                && value <= MaxQueueEpochs::<T>::get(),
             Error::<T>::InvalidRegistrationQueueEpochs
         );
 
-        RegistrationQueueEpochs::<T>::insert(subnet_id, value);
+        SubnetNodeQueueEpochs::<T>::insert(subnet_id, value);
 
         Self::deposit_event(Event::RegistrationQueueEpochsUpdate {
             subnet_id: subnet_id,
@@ -1003,7 +1003,7 @@ impl<T: Config> Pallet<T> {
 
         SubnetBootnodeAccess::<T>::try_mutate(subnet_id, |access_list| {
             if !access_list.insert(new_account) {
-                return Err(Error::<T>::InAccessList.into());
+                return Err(Error::<T>::InBootnodeAccessList.into());
             }
             ensure!(
                 access_list.len() <= MaxSubnetBootnodeAccess::<T>::get() as usize,

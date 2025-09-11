@@ -28,6 +28,7 @@ use sp_std::vec::Vec;
 sp_api::decl_runtime_apis! {
   pub trait NetworkRuntimeApi {
     fn get_subnet_info(subnet_id: u32) -> Vec<u8>;
+    fn get_subnet_data(subnet_id: u32) -> Vec<u8>;
     fn get_all_subnets_info() -> Vec<u8>;
     fn get_subnet_nodes(subnet_id: u32) -> Vec<u8>;
     fn get_min_class_subnet_nodes(subnet_id: u32, subnet_epoch: u32, min_class: u8) -> Vec<u8>;
@@ -38,6 +39,7 @@ sp_api::decl_runtime_apis! {
     fn is_subnet_node_by_peer_id(subnet_id: u32, peer_id: Vec<u8>) -> bool;
     fn is_subnet_node_by_unique(subnet_id: u32, unique: BoundedVec<u8, DefaultMaxVectorLength>) -> bool;
     fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool;
+    fn get_bootnodes(subnet_id: u32) -> Vec<u8>;
 
     // fn get_subnet_info(subnet_id: u32) -> Option<SubnetInfo<AccountId20>>;
     // fn get_all_subnets_info() -> Vec<SubnetInfo<AccountId20>>;

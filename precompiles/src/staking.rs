@@ -65,7 +65,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
         // RuntimeHelper::<R>::try_dispatch(handle, Some(origin.clone()).into(), call, 0)?;
 
@@ -97,7 +97,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -114,7 +114,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -127,12 +127,6 @@ where
         subnet_id: U256,
         stake_to_be_added: U256,
     ) -> EvmResult<()> {
-        // handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-        // log::trace!(
-        //   target: "precompile",
-        //   "add_to_delegate_stake",
-        // );
-
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let stake_to_be_added = stake_to_be_added.unique_saturated_into();
 
@@ -176,7 +170,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -206,7 +200,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -233,7 +227,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -257,7 +251,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -325,7 +319,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -359,7 +353,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -391,7 +385,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -422,7 +416,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -430,7 +424,7 @@ where
 
     #[precompile::public("transferFromNodeToSubnet(uint256,uint256,uint256,uint256)")]
     #[precompile::payable]
-    fn transfer_from_node_to_subnet(
+    fn swap_from_node_to_subnet(
         handle: &mut impl PrecompileHandle,
         from_subnet_id: U256,
         from_subnet_node_id: U256,
@@ -445,7 +439,7 @@ where
         let to_subnet_id = try_u256_to_u32(to_subnet_id)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::transfer_from_node_to_subnet {
+        let call = pallet_network::Call::<R>::swap_from_node_to_subnet {
             from_subnet_id,
             from_subnet_node_id,
             to_subnet_id,
@@ -456,7 +450,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())
@@ -464,7 +458,7 @@ where
 
     #[precompile::public("transferFromSubnetToNode(uint256,uint256,uint256,uint256)")]
     #[precompile::payable]
-    fn transfer_from_subnet_to_node(
+    fn swap_from_subnet_to_node(
         handle: &mut impl PrecompileHandle,
         from_subnet_id: U256,
         to_subnet_id: U256,
@@ -478,7 +472,7 @@ where
         let to_subnet_node_id = try_u256_to_u32(to_subnet_node_id)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::transfer_from_subnet_to_node {
+        let call = pallet_network::Call::<R>::swap_from_subnet_to_node {
             from_subnet_id,
             to_subnet_id,
             to_subnet_node_id,
@@ -489,7 +483,7 @@ where
             handle,
             RawOrigin::Signed(origin.clone()).into(),
             call,
-            148,
+            0,
         )?;
 
         Ok(())

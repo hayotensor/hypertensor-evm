@@ -176,20 +176,6 @@ impl<T: Config> Pallet<T> {
         (total_active_nodes as f64 / max_nodes as f64).clamp(0.0, 1.0)
     }
 
-    // pub fn get_epoch_emissions(epoch: u32) -> u128 {
-    //   // Get epoch inflation rate
-    //   let epoch_rate: f64 = Self::get_epoch_inflation_rate(
-    //     epoch,
-    //     Self::get_subnet_node_utilization().min(1.0)
-    //   );
-
-    //   // Placer
-    //   // TODO: Get total network issuance
-    //   let total_issuance: f64 = 100000000e+18 as f64;
-
-    //   (total_issuance * epoch_rate) as u128
-    // }
-
     /// Get the epochs emissions for validators and foundation
     ///
     /// # Arguments

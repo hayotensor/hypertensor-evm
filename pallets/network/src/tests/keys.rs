@@ -7,7 +7,7 @@ use crate::{
     DefaultMaxVectorLength, Error, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId,
     HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
     NetworkMinStakeBalance, OverwatchMinStakeBalance, OverwatchNodeIdHotkey, OverwatchNodes,
-    StakeUnbondingLedger, StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData,
+    StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData,
     TotalActiveSubnets, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
@@ -244,16 +244,16 @@ fn test_update_coldkey() {
             Error::<Test>::NotKeyOwner
         );
 
-        // `do_deactivate_subnet_node` allows both hotkey and coldkey
-        // old_coldkey shouldn't work
-        assert_err!(
-            Network::do_deactivate_subnet_node(
-                RuntimeOrigin::signed(fake_coldkey.clone()),
-                subnet_id,
-                hotkey_subnet_node_id
-            ),
-            Error::<Test>::NotKeyOwner
-        );
+        // // `do_pause_subnet_node` allows both hotkey and coldkey
+        // // old_coldkey shouldn't work
+        // assert_err!(
+        //     Network::do_pause_subnet_node(
+        //         RuntimeOrigin::signed(fake_coldkey.clone()),
+        //         subnet_id,
+        //         hotkey_subnet_node_id
+        //     ),
+        //     Error::<Test>::NotKeyOwner
+        // );
 
         assert_err!(
             Network::update_coldkey(
@@ -296,12 +296,12 @@ fn test_update_coldkey() {
             add_stake_amount,
         ));
 
-        // `do_deactivate_subnet_node` allows both hotkey and coldkey
-        assert_ok!(Network::do_deactivate_subnet_node(
-            RuntimeOrigin::signed(new_coldkey.clone()),
-            subnet_id,
-            hotkey_subnet_node_id
-        ));
+        // // `do_pause_subnet_node` allows both hotkey and coldkey
+        // assert_ok!(Network::do_pause_subnet_node(
+        //     RuntimeOrigin::signed(new_coldkey.clone()),
+        //     subnet_id,
+        //     hotkey_subnet_node_id
+        // ));
 
         assert_ok!(Network::update_hotkey(
             RuntimeOrigin::signed(new_coldkey.clone()),

@@ -60,13 +60,13 @@ impl<T: Config> Pallet<T> {
         let epoch_length: u32 = T::EpochLength::get();
         let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
         let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
-        let current_epoch = current_block.saturating_div(overwatch_epoch_length);
+        let current_overwatch_epoch = current_block.saturating_div(overwatch_epoch_length);
         let cutoff_percentage = OverwatchCommitCutoffPercent::<T>::get();
         let block_increase_cutoff =
             Self::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
         // start_block + cutoff blocks
         let epoch_cutoff_block =
-            overwatch_epoch_length * current_epoch + block_increase_cutoff as u32;
+            overwatch_epoch_length * current_overwatch_epoch + block_increase_cutoff as u32;
         current_block < epoch_cutoff_block
     }
 
@@ -172,11 +172,14 @@ impl<T: Config> Pallet<T> {
 
                     if epoch <= max_registration_epoch {
                         // --- Registration Period: do nothing
+                        // We wait for the owner to activate the subnet to ensure the subnet is ready to begin
                         continue;
                     }
 
                     if epoch <= max_enactment_epoch {
-                        // --- Enactment Period: check min nodes
+                        // --- Enactment Period
+                        // - Check min nodes
+                        // We don't check delegate stake here because users can continue to stake in this phase
                         let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
                         weight = weight.saturating_add(db_weight.reads(1));
 

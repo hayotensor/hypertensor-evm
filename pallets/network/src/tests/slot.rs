@@ -113,8 +113,8 @@ fn test_calculate_subnet_weights() {
 #[test]
 fn test_calculate_subnet_weights_v2() {
   new_test_ext().execute_with(|| {
-    let max_subnets = MaxSubnets::<T>::get();
-		let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+    let max_subnets = MaxSubnets::<Test>::get();
+		let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 		let total_ows = 12;
 
 		// - insert overwatchers
@@ -152,12 +152,12 @@ fn test_calculate_subnet_weights_v2() {
         let _n = n + 1;
         let coldkey_n = _n;
         let hotkey_n = total_ows + _n;
-				let node_id = HotkeyOverwatchNodeId::<T>::get(account(hotkey_n)).unwrap();
+				let node_id = HotkeyOverwatchNodeId::<Test>::get(account(hotkey_n)).unwrap();
 				submit_weight(epoch, subnet_id, node_id, 1000000000000000000);
 			}
 		}
 
-    // let (stake_weights_normalized, stake_weights_weight) = Network::<T>::calculate_subnet_weights_v2(epoch);
+    // let (stake_weights_normalized, stake_weights_weight) = Network::<Test>::calculate_subnet_weights_v2(epoch);
     // assert!(stake_weights_normalized.len() as u32 == max_subnets);
 
   });

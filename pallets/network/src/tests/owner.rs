@@ -7,14 +7,14 @@ use crate::{
     LastSubnetDelegateStakeRewardsUpdate, LogicExpr, MaxActivationGraceEpochs,
     MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
     MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxRegisteredNodes,
-    MaxRegistrationQueueEpochs, MaxSubnetBootnodeAccess,
+    MaxQueueEpochs, MaxSubnetBootnodeAccess,
     MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMaxStake, MaxSubnetMinStake,
     MaxSubnetNodePenalties, MaxSubnetNodes, MaxSubnets, MinActivationGraceEpochs,
     MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
-    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinRegistrationQueueEpochs,
+    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinQueueEpochs,
     MinSubnetMaxStake, MinSubnetMinStake, NetworkMaxStakeBalance, NetworkMinStakeBalance,
     NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystemV2, RegisteredSubnetNodesData,
-    RegistrationQueueEpochs, SubnetBootnodeAccess, SubnetData,
+    SubnetNodeQueueEpochs, SubnetBootnodeAccess, SubnetData,
     SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes,
     SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
     SubnetNodeClassification, SubnetOwner, SubnetRegistrationInitialColdkeys, SubnetRemovalReason,
@@ -746,7 +746,7 @@ fn test_owner_update_registration_queue_epochs() {
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
         let epoch = Network::get_current_epoch_as_u32();
 
-        let reg_queue_epochs = RegistrationQueueEpochs::<Test>::get(subnet_id);
+        let reg_queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);
 
         let new_reg_queue_epochs = reg_queue_epochs + 1;
         assert_ok!(Network::owner_update_registration_queue_epochs(
@@ -755,7 +755,7 @@ fn test_owner_update_registration_queue_epochs() {
             new_reg_queue_epochs
         ));
 
-        let reg_queue_epochs = RegistrationQueueEpochs::<Test>::get(subnet_id);
+        let reg_queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);
         assert_eq!(reg_queue_epochs, new_reg_queue_epochs);
 
         assert_eq!(
@@ -785,7 +785,7 @@ fn test_owner_update_registration_queue_epochs_invalid_registration_queue_epochs
         // Set initial owner
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
-        let epochs = MinRegistrationQueueEpochs::<Test>::get() - 1;
+        let epochs = MinQueueEpochs::<Test>::get() - 1;
 
         assert_err!(
             Network::owner_update_registration_queue_epochs(
@@ -796,7 +796,7 @@ fn test_owner_update_registration_queue_epochs_invalid_registration_queue_epochs
             Error::<Test>::InvalidRegistrationQueueEpochs
         );
 
-        let epochs = MaxRegistrationQueueEpochs::<Test>::get() + 1;
+        let epochs = MaxQueueEpochs::<Test>::get() + 1;
 
         assert_err!(
             Network::owner_update_registration_queue_epochs(
@@ -2076,7 +2076,7 @@ fn test_owner_add_bootnode_access() {
                 subnet_id,
                 new_access.clone()
             ),
-            Error::<Test>::InAccessList
+            Error::<Test>::InBootnodeAccessList
         );
 
         SubnetBootnodeAccess::<Test>::remove(subnet_id);

@@ -204,11 +204,6 @@ parameter_types! {
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
   pub const NetworkPalletId: PalletId = PalletId(*b"/network");
   pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
-  pub const DelegateStakeCooldownEpochs: u32 = 2;
-  pub const NodeDelegateStakeCooldownEpochs: u32 = 2;
-  pub const StakeCooldownEpochs: u32 = 100;
-  pub const MaxDelegateStakeUnlockings: u32 = 32;
-  pub const MaxStakeUnlockings: u32 = 32;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
 }
 
@@ -226,11 +221,6 @@ impl Config for Test {
     type InitialTxRateLimit = ConstU32<0>;
     type Randomness = InsecureRandomnessCollectiveFlip;
     type PalletId = NetworkPalletId;
-    type DelegateStakeCooldownEpochs = DelegateStakeCooldownEpochs;
-    type NodeDelegateStakeCooldownEpochs = NodeDelegateStakeCooldownEpochs;
-    type StakeCooldownEpochs = StakeCooldownEpochs;
-    type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
-    type MaxStakeUnlockings = MaxStakeUnlockings;
     type MinProposalStake = MinProposalStake;
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;

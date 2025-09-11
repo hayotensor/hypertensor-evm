@@ -136,19 +136,16 @@ impl<T: Config> Pallet<T> {
 
         // - No one can be an Overwatch Node yet
         if current_epoch <= min_age {
-            // log::error!("current_epoch <= min_age");
             return false;
         }
 
         let age = current_epoch.saturating_sub(reputation.start_epoch);
 
         if age < min_age {
-            // log::error!("age < min_age");
             return false;
         }
 
         if reputation.score < min_score {
-            // log::error!("score < min_score");
             return false;
         }
 
@@ -171,9 +168,6 @@ impl<T: Config> Pallet<T> {
                 }
             }
         });
-
-        // log::error!("active_unique_node_count       {:?}", active_unique_node_count);
-        // log::error!("TotalActiveSubnets::<T>::get() {:?}", TotalActiveSubnets::<T>::get());
 
         let diversification = match active_unique_node_count >= TotalActiveSubnets::<T>::get() {
             true => Self::percentage_factor_as_u128(),

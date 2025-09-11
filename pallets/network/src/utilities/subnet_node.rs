@@ -66,23 +66,23 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_delegate_reward_rate(
-                        maybe_params,
-                        subnet_id,
-                        block,
-                        new_delegate_reward_rate,
-                        reward_rate_update_period,
-                        max_reward_rate_decrease,
-                    )
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_delegate_reward_rate(
+        //                 maybe_params,
+        //                 subnet_id,
+        //                 block,
+        //                 new_delegate_reward_rate,
+        //                 reward_rate_update_period,
+        //                 max_reward_rate_decrease,
+        //             )
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -176,21 +176,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_peer_id(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        new_peer_id,
-                    )
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_peer_id(
+        //                 subnet_id,
+        //                 subnet_node_id,
+        //                 maybe_params,
+        //                 new_peer_id,
+        //             )
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -256,16 +256,16 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -336,21 +336,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_bootnode_peer_id(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        new_bootnode_peer_id,
-                    )
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_bootnode_peer_id(
+        //                 subnet_id,
+        //                 subnet_node_id,
+        //                 maybe_params,
+        //                 new_bootnode_peer_id,
+        //             )
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -426,21 +426,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_client_peer_id(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        new_client_peer_id,
-                    )
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_client_peer_id(
+        //                 subnet_id,
+        //                 subnet_node_id,
+        //                 maybe_params,
+        //                 new_client_peer_id,
+        //             )
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -484,7 +484,7 @@ impl<T: Config> Pallet<T> {
     pub fn do_update_unique(
         subnet_id: u32,
         subnet_node_id: u32,
-        unique: BoundedVec<u8, DefaultMaxVectorLength>,
+        unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
     ) -> DispatchResult {
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             SubnetNodesData::<T>::try_mutate_exists(
@@ -506,16 +506,16 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -526,7 +526,7 @@ impl<T: Config> Pallet<T> {
         subnet_id: u32,
         subnet_node_id: u32,
         maybe_params: &mut Option<SubnetNode<T::AccountId>>,
-        unique: BoundedVec<u8, DefaultMaxVectorLength>,
+        unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
     ) -> DispatchResult {
         let params = maybe_params
             .as_mut()
@@ -537,18 +537,21 @@ impl<T: Config> Pallet<T> {
             SubnetNodeUniqueParam::<T>::remove(subnet_id, unique_param);
         }
 
-        match SubnetNodeUniqueParam::<T>::try_get(subnet_id, &unique) {
-            Ok(owner_subnet_node_id) => {
-                ensure!(
-                    owner_subnet_node_id == subnet_node_id,
-                    Error::<T>::UniqueParameterTaken
-                );
-            }
-            Err(()) => (),
-        };
+        if let Some(unique) = unique.clone() {
+            match SubnetNodeUniqueParam::<T>::try_get(subnet_id, &unique) {
+                Ok(owner_subnet_node_id) => {
+                    ensure!(
+                        owner_subnet_node_id == subnet_node_id,
+                        Error::<T>::UniqueParameterTaken
+                    );
+                }
+                Err(()) => (),
+            };
 
-        SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique, subnet_node_id);
-        params.unique = Some(unique.clone());
+            SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique, subnet_node_id);
+        }
+
+        params.unique = unique.clone();
 
         Self::deposit_event(Event::SubnetNodeUpdateUnique {
             subnet_id,
@@ -562,7 +565,7 @@ impl<T: Config> Pallet<T> {
     pub fn do_update_non_unique(
         subnet_id: u32,
         subnet_node_id: u32,
-        non_unique: BoundedVec<u8, DefaultMaxVectorLength>,
+        non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
     ) -> DispatchResult {
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             SubnetNodesData::<T>::try_mutate_exists(
@@ -594,21 +597,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    Self::perform_update_non_unique(
-                        subnet_id,
-                        subnet_node_id,
-                        maybe_params,
-                        non_unique,
-                    )
-                },
-            )?;
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             Self::perform_update_non_unique(
+        //                 subnet_id,
+        //                 subnet_node_id,
+        //                 maybe_params,
+        //                 non_unique,
+        //             )
+        //         },
+        //     )?;
 
-            return Ok(());
+        //     return Ok(());
         }
 
         // Redundant
@@ -619,13 +622,13 @@ impl<T: Config> Pallet<T> {
         subnet_id: u32,
         subnet_node_id: u32,
         maybe_params: &mut Option<SubnetNode<T::AccountId>>,
-        non_unique: BoundedVec<u8, DefaultMaxVectorLength>,
+        non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
     ) -> DispatchResult {
         let params = maybe_params
             .as_mut()
             .ok_or(Error::<T>::InvalidSubnetNodeId)?;
 
-        params.non_unique = Some(non_unique.clone());
+        params.non_unique = non_unique.clone();
 
         Self::deposit_event(Event::SubnetNodeUpdateNonUnique {
             subnet_id,
@@ -636,11 +639,13 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Inserts a node into the election slots, the list of nodes available to be chosen as validator
+    /// Note: ONLY CALL THIS FUNCTION IF MAX NODES IS CHECKED
     pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
         SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
             if !slot_list.contains(&subnet_node_id) {
                 let idx = slot_list.len() as u32;
-                slot_list.try_push(subnet_node_id).map_err(|_| ())?;
+                slot_list.push(subnet_node_id);
                 NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
                 TotalSubnetElectableNodes::<T>::mutate(subnet_id, |mut n| n.saturating_inc());
                 TotalElectableNodes::<T>::mutate(|mut n| n.saturating_inc());
@@ -677,16 +682,28 @@ impl<T: Config> Pallet<T> {
     /// Removes a subnet node, can be registering, active, or deactive
     pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
         let mut is_active = false;
+        let mut is_registered = false;
+        let mut is_queued = true;
         let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             is_active = true;
+            is_queued = false;
             SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
         } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            is_registered = true;
             RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
         } else {
             return;
         };
+        
+        if is_queued {
+            let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
+            if let Some(pos) = queue.iter().position(|x| x.id == subnet_node.id) {
+                queue.remove(pos);
+                SubnetNodeQueue::<T>::set(subnet_id, queue);
+            }
+        }
 
         let hotkey = subnet_node.hotkey;
         let peer_id = subnet_node.peer_id;
@@ -700,24 +717,21 @@ impl<T: Config> Pallet<T> {
         BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
         HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
         SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
-        HotkeySubnetId::<T>::remove(&hotkey);
+        // HotkeySubnetId::<T>::remove(&hotkey);
+
+        let coldkey = HotkeyOwner::<T>::get(&hotkey);
 
         // Remove subnet ID from set
-        match HotkeyOwner::<T>::try_get(&hotkey) {
-            Ok(coldkey) => {
-                ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
-                    if let Some(nodes) = node_map.get_mut(&subnet_id) {
-                        nodes.remove(&subnet_node_id);
-                        if nodes.is_empty() {
-                            node_map.remove(&subnet_id);
-                        }
-                    }
-                });
+        ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
+            if let Some(nodes) = node_map.get_mut(&subnet_id) {
+                nodes.remove(&subnet_node_id);
+                if nodes.is_empty() {
+                    node_map.remove(&subnet_id);
+                }
             }
-            Err(()) => (),
-        }
+        });
 
-        // We don't remove the HotkeyOwner so the user can remove stake with coldkey
+        // Note: We don't remove the HotkeyOwner so the user can remove stake with coldkey
 
         // Update total subnet peers by subtracting  1
         TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
@@ -729,16 +743,20 @@ impl<T: Config> Pallet<T> {
         }
 
         if is_active {
+            // Subtract from active node counts
             TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
             TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-            match HotkeyOwner::<T>::try_get(&hotkey) {
-                Ok(coldkey) => {
-                    ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-                        rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-                    });
-                }
-                Err(()) => (),
-            }
+            // Subtract from coldkey reputation
+            ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+                rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+            });
+        } else if is_registered {
+            // Remove from queue
+            // This is only ever called by a user called extrinsic, not by blockchain validator logic
+            // Therefor this expensive part is paid for
+            SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
+                nodes.retain(|node| node.id != subnet_node_id);
+            });
         }
 
         Self::deposit_event(Event::SubnetNodeRemoved {
@@ -758,11 +776,6 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
             ))
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            Some(DeactivatedSubnetNodesData::<T>::get(
-                subnet_id,
-                subnet_node_id,
-            ))
         } else {
             None
         }
@@ -775,11 +788,8 @@ impl<T: Config> Pallet<T> {
     ) -> Option<SubnetNode<T::AccountId>> {
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            Some(DeactivatedSubnetNodesData::<T>::get(
-                subnet_id,
-                subnet_node_id,
-            ))
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     Some(PausedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
         } else {
             None
         }
@@ -815,18 +825,18 @@ impl<T: Config> Pallet<T> {
                     Ok(())
                 },
             );
-        } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            DeactivatedSubnetNodesData::<T>::try_mutate_exists(
-                subnet_id,
-                subnet_node_id,
-                |maybe_params| -> DispatchResult {
-                    let params = maybe_params
-                        .as_mut()
-                        .ok_or(Error::<T>::InvalidSubnetNodeId)?;
-                    params.hotkey = new_hotkey.clone();
-                    Ok(())
-                },
-            );
+        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+        //     PausedSubnetNodesData::<T>::try_mutate_exists(
+        //         subnet_id,
+        //         subnet_node_id,
+        //         |maybe_params| -> DispatchResult {
+        //             let params = maybe_params
+        //                 .as_mut()
+        //                 .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+        //             params.hotkey = new_hotkey.clone();
+        //             Ok(())
+        //         },
+        //     );
         } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             RegisteredSubnetNodesData::<T>::try_mutate_exists(
                 subnet_id,
@@ -895,6 +905,7 @@ impl<T: Config> Pallet<T> {
             .map(|(subnet_node_id, subnet_node)| {
                 let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
                 SubnetNodeInfo {
+                    subnet_id: subnet_id,
                     subnet_node_id: subnet_node_id,
                     coldkey: coldkey.clone(),
                     hotkey: subnet_node.hotkey.clone(),
@@ -975,14 +986,14 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn is_validator(subnet_id: u32, subnet_node_id: u32, subnet_epoch: u32) -> bool {
+    pub fn is_chosen_validator(subnet_id: u32, subnet_node_id: u32, subnet_epoch: u32) -> bool {
         match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
             Ok(validator_subnet_node_id) => {
-                let mut is_validator = false;
+                let mut is_chosen_validator = false;
                 if subnet_node_id == validator_subnet_node_id {
-                    is_validator = true
+                    is_chosen_validator = true
                 }
-                is_validator
+                is_chosen_validator
             }
             Err(()) => false,
         }

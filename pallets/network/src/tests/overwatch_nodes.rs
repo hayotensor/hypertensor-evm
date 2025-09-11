@@ -9,6 +9,7 @@ use crate::{
     OverwatchSubnetWeights, PeerId, PeerIdOverwatchNode, PeerIdSubnetNodeId,
     StakeUnbondingLedgerV2, SubnetData, SubnetName, SubnetNodesData, SubnetState, SubnetsData,
     TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake,
+    StakeCooldownEpochs
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -1144,11 +1145,11 @@ fn test_add_to_remove_overwatch_stake_unbond() {
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
             *ledger_block,
-            &block + StakeCooldownEpochs::get() * EpochLength::get()
+            &block + StakeCooldownEpochs::<Test>::get() * EpochLength::get()
         );
         assert_eq!(*ledger_balance, remove_amount);
 
-        System::set_block_number(block + StakeCooldownEpochs::get() * EpochLength::get());
+        System::set_block_number(block + StakeCooldownEpochs::<Test>::get() * EpochLength::get());
 
         let starting_balance = Balances::free_balance(&coldkey.clone());
 

@@ -166,8 +166,10 @@ pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 pub const YEAR: BlockNumber = DAYS * 365; // 5256000
-                                          // Blocks per epoch
-pub const BLOCKS_PER_EPOCH: u32 = 100;
+
+// Blocks per epoch
+// pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
+pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
 pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
 pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000
@@ -576,16 +578,10 @@ parameter_types! {
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
     pub const MinProposalStake: u128 = 1_000_000_000_000_000_000; // 1 * 1e18
-    pub const DelegateStakeCooldownEpochs: u32 = 2;
-    pub const NodeDelegateStakeCooldownEpochs: u32 = 2;
-    pub const StakeCooldownEpochs: u32 = 100;
-    pub const MaxDelegateStakeUnlockings: u32 = 32;
-    pub const MaxStakeUnlockings: u32 = 32;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
 }
 
 impl pallet_network::Config for Runtime {
-    // type WeightInfo = ();
     type WeightInfo = pallet_network::weights::SubstrateWeight<Runtime>;
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
@@ -598,11 +594,6 @@ impl pallet_network::Config for Runtime {
     type StringLimit = ConstU32<12288>;
     type InitialTxRateLimit = InitialTxRateLimit;
     type PalletId = NetworkPalletId;
-    type DelegateStakeCooldownEpochs = DelegateStakeCooldownEpochs;
-    type NodeDelegateStakeCooldownEpochs = NodeDelegateStakeCooldownEpochs;
-    type MaxDelegateStakeUnlockings = MaxDelegateStakeUnlockings;
-    type MaxStakeUnlockings = MaxStakeUnlockings;
-    type StakeCooldownEpochs = StakeCooldownEpochs;
     type Randomness = InsecureRandomnessCollectiveFlip;
     type MinProposalStake = MinProposalStake;
     type TreasuryAccount = TreasuryAccount;
@@ -1352,6 +1343,10 @@ impl_runtime_apis! {
             let result = Network::get_subnet_info(subnet_id);
             result.encode()
         }
+        fn get_subnet_data(subnet_id: u32) -> Vec<u8> {
+            let result = Network::get_subnet_data(subnet_id);
+            result.encode()
+        }
         fn get_all_subnets_info() -> Vec<u8> {
             let result = Network::get_all_subnets_info();
             result.encode()
@@ -1388,6 +1383,10 @@ impl_runtime_apis! {
         }
         fn proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, min_class: u8) -> bool {
             Network::proof_of_stake(subnet_id, peer_id, min_class)
+        }
+        fn get_bootnodes(subnet_id: u32) -> Vec<u8> {
+            let result = Network::get_bootnodes(subnet_id);
+            result.encode()
         }
     }
 
