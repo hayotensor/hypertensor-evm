@@ -72,6 +72,14 @@ impl<T: Config> Pallet<T> {
         min_subnet_nodes
     }
 
+    pub fn get_total_subnets() -> u32 {
+        SubnetsData::<T>::iter()
+            .collect::<Vec<_>>()
+            .len()
+            .try_into()
+            .unwrap_or(0)
+    }
+
     /// Calculates the current subnet registration fee based on a linear decay model.
     ///
     /// The registration cost starts at a maximum value (`MaxSubnetRegistrationFee`)
@@ -331,7 +339,6 @@ impl<T: Config> Pallet<T> {
         //     return (true, None)
         //   }
         // }
-
         let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
 
         if penalties > MaxSubnetPenaltyCount::<T>::get() {

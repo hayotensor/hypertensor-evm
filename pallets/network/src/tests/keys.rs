@@ -7,8 +7,8 @@ use crate::{
     DefaultMaxVectorLength, Error, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId,
     HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
     NetworkMinStakeBalance, OverwatchMinStakeBalance, OverwatchNodeIdHotkey, OverwatchNodes,
-    StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData,
-    TotalActiveSubnets, TotalSubnetNodes,
+    StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData, TotalActiveSubnets,
+    TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};

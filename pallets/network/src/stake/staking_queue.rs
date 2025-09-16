@@ -25,22 +25,93 @@ impl<T: Config> Pallet<T> {
 
         let queued_item = QueuedSwapItem {
             id,
-            call,
+            call: call.clone(),
             queued_at_block: Self::get_current_block_as_u32(),
             execute_after_blocks: T::EpochLength::get(),
         };
-        
+
         // Add to data storage
         SwapCallQueue::<T>::insert(&id, &queued_item);
-        
+
         // Add ID to the end of the queue
         SwapQueueOrder::<T>::mutate(|queue| {
             let _ = queue.try_push(id); // Handle error if queue is full
         });
-        
+
         NextSwapId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
-        
-        // Self::deposit_event(Event::SwapCallQueued { id, who });
+
+        Self::deposit_event(Event::SwapCallQueued {
+            id,
+            account_id,
+            call: call.clone(),
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_swap_queue(
+        key: T::AccountId,
+        id: u32,
+        new_call: QueuedSwapCall<T::AccountId>,
+    ) -> DispatchResult {
+        SwapCallQueue::<T>::mutate(&id, |item_opt| -> DispatchResult {
+            let item = item_opt.as_mut().ok_or(Error::<T>::SwapCallNotFound)?;
+            let call_balance = item.call.get_queue_balance();
+
+            match new_call {
+                QueuedSwapCall::SwapToSubnetDelegateStake {
+                    account_id,
+                    to_subnet_id,
+                    balance,
+                } => {
+                    ensure!(&account_id == &key, Error::<T>::NotKeyOwner);
+                    ensure!(
+                        SubnetsData::<T>::contains_key(to_subnet_id),
+                        Error::<T>::InvalidSubnetId
+                    );
+
+                    // Update queue balance "to" subnet
+                    item.call = QueuedSwapCall::SwapToSubnetDelegateStake {
+                        account_id,
+                        to_subnet_id,
+                        balance: call_balance,
+                    };
+
+                    Self::deposit_event(Event::SwapCallQueueUpdated {
+                        id,
+                        account_id: key,
+                        call: item.call.clone(),
+                    });
+                }
+                QueuedSwapCall::SwapToNodeDelegateStake {
+                    account_id,
+                    to_subnet_id,
+                    to_subnet_node_id,
+                    balance,
+                } => {
+                    ensure!(&account_id == &key, Error::<T>::NotKeyOwner);
+                    ensure!(
+                        Self::get_subnet_node(to_subnet_id, to_subnet_node_id,).is_some(),
+                        Error::<T>::InvalidSubnetNodeId
+                    );
+
+                    // Update queue balance "to" subnet node
+                    item.call = QueuedSwapCall::SwapToNodeDelegateStake {
+                        account_id,
+                        to_subnet_id,
+                        to_subnet_node_id,
+                        balance: call_balance,
+                    };
+
+                    Self::deposit_event(Event::SwapCallQueueUpdated {
+                        id,
+                        account_id: key,
+                        call: item.call.clone(),
+                    });
+                }
+            }
+            Ok(())
+        })?;
 
         Ok(())
     }

@@ -371,14 +371,13 @@ impl<T: Config> Pallet<T> {
         let account_id: T::AccountId = ensure_signed(origin)?;
 
         // --- Remove
-        let (result, balance, _) =
-            Self::perform_do_remove_node_delegate_stake(
-                &account_id,
-                from_subnet_id,
-                from_subnet_node_id,
-                node_delegate_stake_shares_to_swap,
-                false,
-            );
+        let (result, balance, _) = Self::perform_do_remove_node_delegate_stake(
+            &account_id,
+            from_subnet_id,
+            from_subnet_node_id,
+            node_delegate_stake_shares_to_swap,
+            false,
+        );
 
         result?;
 
@@ -389,13 +388,9 @@ impl<T: Config> Pallet<T> {
             to_subnet_node_id,
             balance,
         };
-                    
-        Self::queue_swap(
-            account_id.clone(),
-            call,
-        )?;
 
-        
+        Self::queue_swap(account_id.clone(), call)?;
+
         Self::deposit_event(Event::DelegateNodeStakeSwapped {
             account_id: account_id,
             from_subnet_id: from_subnet_id,
@@ -407,7 +402,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
 
     // pub fn do_transfer_node_delegate_stake(
     //   origin: T::RuntimeOrigin,

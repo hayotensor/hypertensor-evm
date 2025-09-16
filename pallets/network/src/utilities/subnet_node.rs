@@ -66,23 +66,23 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_delegate_reward_rate(
-        //                 maybe_params,
-        //                 subnet_id,
-        //                 block,
-        //                 new_delegate_reward_rate,
-        //                 reward_rate_update_period,
-        //                 max_reward_rate_decrease,
-        //             )
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_delegate_reward_rate(
+            //                 maybe_params,
+            //                 subnet_id,
+            //                 block,
+            //                 new_delegate_reward_rate,
+            //                 reward_rate_update_period,
+            //                 max_reward_rate_decrease,
+            //             )
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -176,21 +176,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_peer_id(
-        //                 subnet_id,
-        //                 subnet_node_id,
-        //                 maybe_params,
-        //                 new_peer_id,
-        //             )
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_peer_id(
+            //                 subnet_id,
+            //                 subnet_node_id,
+            //                 maybe_params,
+            //                 new_peer_id,
+            //             )
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -256,16 +256,16 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -336,21 +336,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_bootnode_peer_id(
-        //                 subnet_id,
-        //                 subnet_node_id,
-        //                 maybe_params,
-        //                 new_bootnode_peer_id,
-        //             )
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_bootnode_peer_id(
+            //                 subnet_id,
+            //                 subnet_node_id,
+            //                 maybe_params,
+            //                 new_bootnode_peer_id,
+            //             )
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -426,21 +426,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_client_peer_id(
-        //                 subnet_id,
-        //                 subnet_node_id,
-        //                 maybe_params,
-        //                 new_client_peer_id,
-        //             )
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_client_peer_id(
+            //                 subnet_id,
+            //                 subnet_node_id,
+            //                 maybe_params,
+            //                 new_client_peer_id,
+            //             )
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -506,16 +506,16 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -597,21 +597,21 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             Self::perform_update_non_unique(
-        //                 subnet_id,
-        //                 subnet_node_id,
-        //                 maybe_params,
-        //                 non_unique,
-        //             )
-        //         },
-        //     )?;
+            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            //     PausedSubnetNodesData::<T>::try_mutate_exists(
+            //         subnet_id,
+            //         subnet_node_id,
+            //         |maybe_params| -> DispatchResult {
+            //             Self::perform_update_non_unique(
+            //                 subnet_id,
+            //                 subnet_node_id,
+            //                 maybe_params,
+            //                 non_unique,
+            //             )
+            //         },
+            //     )?;
 
-        //     return Ok(());
+            //     return Ok(());
         }
 
         // Redundant
@@ -696,7 +696,7 @@ impl<T: Config> Pallet<T> {
         } else {
             return;
         };
-        
+
         if is_queued {
             let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
             if let Some(pos) = queue.iter().position(|x| x.id == subnet_node.id) {
@@ -1078,67 +1078,67 @@ impl<T: Config> Pallet<T> {
         0
     }
 
-    pub fn get_removing_node(
-        subnet_id: u32,
-        coldkey: &T::AccountId,
-        hotkey: &T::AccountId,
-        subnet_node: &SubnetNode<T::AccountId>,
-    ) -> Option<u32> {
-        let policy = match NodeRemovalSystemV2::<T>::get(subnet_id) {
-            Some(policy) => policy,
-            None => return None,
-        };
+    // pub fn get_removing_node(
+    //     subnet_id: u32,
+    //     coldkey: &T::AccountId,
+    //     hotkey: &T::AccountId,
+    //     subnet_node: &SubnetNode<T::AccountId>,
+    // ) -> Option<u32> {
+    //     let policy = match NodeRemovalSystemV2::<T>::get(subnet_id) {
+    //         Some(policy) => policy,
+    //         None => return None,
+    //     };
 
-        let activating_coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
-        let activating_node_dstake_balance =
-            NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node.id);
-        let activating_stake_balance = AccountSubnetStake::<T>::get(hotkey, subnet_id);
+    //     let activating_coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
+    //     let activating_node_dstake_balance =
+    //         NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node.id);
+    //     let activating_stake_balance = AccountSubnetStake::<T>::get(hotkey, subnet_id);
 
-        let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
+    //     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
 
-        for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-            // Redundant, activating node is in RegisteredSubnetNodesData
-            if uid == subnet_node.id {
-                continue;
-            }
+    //     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
+    //         // Redundant, activating node is in RegisteredSubnetNodesData
+    //         if uid == subnet_node.id {
+    //             continue;
+    //         }
 
-            let node_hotkey = node.hotkey.clone();
-            let node_coldkey = HotkeyOwner::<T>::get(&node_hotkey);
-            let proposing_stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
-            let proposing_dstake = NodeDelegateStakeBalance::<T>::get(subnet_id, node.id);
-            let proposing_reputation = ColdkeyReputation::<T>::get(&node_coldkey);
-            let proposing_score = proposing_reputation.score;
+    //         let node_hotkey = node.hotkey.clone();
+    //         let node_coldkey = HotkeyOwner::<T>::get(&node_hotkey);
+    //         let proposing_stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
+    //         let proposing_dstake = NodeDelegateStakeBalance::<T>::get(subnet_id, node.id);
+    //         let proposing_reputation = ColdkeyReputation::<T>::get(&node_coldkey);
+    //         let proposing_score = proposing_reputation.score;
 
-            if !Self::evaluate_logic_expr(
-                &policy.logic,
-                activating_coldkey_reputation.score,
-                activating_coldkey_reputation.average_attestation,
-                subnet_node.delegate_reward_rate,
-                activating_node_dstake_balance,
-                activating_stake_balance,
-                proposing_score,
-                proposing_reputation.average_attestation,
-                node.delegate_reward_rate,
-                proposing_dstake,
-                proposing_stake,
-            ) {
-                continue;
-            }
-            let start_epoch = node.classification.start_epoch;
-            candidates.push((uid, proposing_score, start_epoch));
-        }
+    //         if !Self::evaluate_logic_expr(
+    //             &policy.logic,
+    //             activating_coldkey_reputation.score,
+    //             activating_coldkey_reputation.average_attestation,
+    //             subnet_node.delegate_reward_rate,
+    //             activating_node_dstake_balance,
+    //             activating_stake_balance,
+    //             proposing_score,
+    //             proposing_reputation.average_attestation,
+    //             node.delegate_reward_rate,
+    //             proposing_dstake,
+    //             proposing_stake,
+    //         ) {
+    //             continue;
+    //         }
+    //         let start_epoch = node.classification.start_epoch;
+    //         candidates.push((uid, proposing_score, start_epoch));
+    //     }
 
-        if candidates.is_empty() {
-            return None;
-        }
+    //     if candidates.is_empty() {
+    //         return None;
+    //     }
 
-        candidates.sort_by(|a, b| {
-            // Sort by reputation.score ascending, then start_epoch descending
-            a.1.cmp(&b.1).then(b.2.cmp(&a.2))
-        });
+    //     candidates.sort_by(|a, b| {
+    //         // Sort by reputation.score ascending, then start_epoch descending
+    //         a.1.cmp(&b.1).then(b.2.cmp(&a.2))
+    //     });
 
-        candidates.first().map(|(uid, _, _)| *uid)
-    }
+    //     candidates.first().map(|(uid, _, _)| *uid)
+    // }
 
     pub fn evaluate_logic_expr(
         expr: &LogicExpr,

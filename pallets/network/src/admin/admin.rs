@@ -65,10 +65,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_max_bootnodes(value: u32) -> DispatchResult {
-        ensure!(
-            value <= 256,
-            Error::<T>::InvalidMaxBootnodes
-        );
+        ensure!(value <= 256, Error::<T>::InvalidMaxBootnodes);
 
         MaxBootnodes::<T>::set(value);
 
@@ -80,10 +77,7 @@ impl<T: Config> Pallet<T> {
     pub fn do_set_max_subnet_bootnodes_access(value: u32) -> DispatchResult {
         // Account for the first 3 block steps in an epoch
         // Do not go over epoch length - 3 to ensure each subnet has a slot in each epoch
-        ensure!(
-            value <= 256,
-            Error::<T>::InvalidMaxSubnetBootnodeAccess
-        );
+        ensure!(value <= 256, Error::<T>::InvalidMaxSubnetBootnodeAccess);
 
         MaxSubnetBootnodeAccess::<T>::set(value);
 
@@ -340,10 +334,14 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_max_subnet_delegate_stake_rewards_percentage_change(value: u128) -> DispatchResult {
+    pub fn do_set_max_subnet_delegate_stake_rewards_percentage_change(
+        value: u128,
+    ) -> DispatchResult {
         MaxSubnetDelegateStakeRewardsPercentageChange::<T>::set(value);
 
-        Self::deposit_event(Event::SetMaxSubnetDelegateStakeRewardsPercentageChange(value));
+        Self::deposit_event(Event::SetMaxSubnetDelegateStakeRewardsPercentageChange(
+            value,
+        ));
 
         Ok(())
     }
@@ -445,10 +443,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_min_delegate_stake_deposit(value: u128) -> DispatchResult {
-        ensure!(
-            value >= 1000,
-            Error::<T>::InvalidMinDelegateStakeDeposit
-        );
+        ensure!(value >= 1000, Error::<T>::InvalidMinDelegateStakeDeposit);
 
         MinDelegateStakeDeposit::<T>::set(value);
 
@@ -689,10 +684,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_delegate_stake_cooldown_epochs(value: u32) -> DispatchResult {
-        ensure!(
-            value > 0,
-            Error::<T>::InvalidDelegateStakeCooldownEpochs
-        );
+        ensure!(value > 0, Error::<T>::InvalidDelegateStakeCooldownEpochs);
 
         DelegateStakeCooldownEpochs::<T>::set(value);
 
@@ -713,10 +705,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_min_stake_cooldown_epochs(value: u32) -> DispatchResult {
-        ensure!(
-            value > 0,
-            Error::<T>::InvalidStakeCooldownEpochs
-        );
+        ensure!(value > 0, Error::<T>::InvalidStakeCooldownEpochs);
 
         StakeCooldownEpochs::<T>::set(value);
 
@@ -725,10 +714,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_max_unbondings(value: u32) -> DispatchResult {
-        ensure!(
-            value <= 256,
-            Error::<T>::InvalidMaxUnbondings
-        );
+        ensure!(value <= 256, Error::<T>::InvalidMaxUnbondings);
 
         MaxUnbondings::<T>::set(value);
 

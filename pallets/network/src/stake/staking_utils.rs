@@ -263,7 +263,7 @@ impl<T: Config> Pallet<T> {
     pub fn queue_to_subnet_delegate_stake(
         account_id: T::AccountId,
         to_subnet_id: u32,
-        balance: u128
+        balance: u128,
     ) -> DispatchResult {
         let call = QueuedSwapCall::SwapToSubnetDelegateStake {
             account_id,
@@ -279,17 +279,17 @@ impl<T: Config> Pallet<T> {
             queued_at_block: Self::get_current_block_as_u32(),
             execute_after_blocks: T::EpochLength::get(),
         };
-        
+
         // Add to data storage
         SwapCallQueue::<T>::insert(&id, &queued_item);
-        
+
         // Add ID to the end of the queue
         SwapQueueOrder::<T>::mutate(|queue| {
             let _ = queue.try_push(id); // Handle error if queue is full
         });
-        
+
         NextSwapId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
-        
+
         // Self::deposit_event(Event::SwapCallQueued { id, who });
 
         Ok(())

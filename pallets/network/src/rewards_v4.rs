@@ -53,6 +53,8 @@ impl<T: Config> Pallet<T> {
                 reputation_decrease_factor,
                 current_epoch,
             );
+            SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+            weight = weight.saturating_add(db_weight.writes(1));
             return weight.saturating_add(slash_validator_weight);
         }
 
@@ -170,6 +172,7 @@ impl<T: Config> Pallet<T> {
                         weight = weight.saturating_add(db_weight.writes(1));
                     }
                 }
+
                 // SubnetNodeClass::Included does not get rewards yet, they must pass the gauntlet
                 continue;
             }

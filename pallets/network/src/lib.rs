@@ -549,11 +549,11 @@ pub mod pallet {
             owner: T::AccountId,
             value: BTreeSet<KeyType>,
         },
-        NodeRemovalSystemV2Update {
-            subnet_id: u32,
-            owner: T::AccountId,
-            value: NodeRemovalPolicy,
-        },
+        // NodeRemovalSystemV2Update {
+        //     subnet_id: u32,
+        //     owner: T::AccountId,
+        //     value: NodeRemovalPolicy,
+        // },
         SubnetMinStakeBalanceUpdate {
             subnet_id: u32,
             owner: T::AccountId,
@@ -600,6 +600,16 @@ pub mod pallet {
         IdentityRemoved {
             coldkey: T::AccountId,
             identity: ColdkeyIdentityData,
+        },
+        SwapCallQueued {
+            id: u32,
+            account_id: T::AccountId,
+            call: QueuedSwapCall<T::AccountId>,
+        },
+        SwapCallQueueUpdated {
+            id: u32,
+            account_id: T::AccountId,
+            call: QueuedSwapCall<T::AccountId>,
         },
     }
 
@@ -994,27 +1004,27 @@ pub mod pallet {
     /// *Stake: Lowest staked & newest node is removed if activating node has a higher stake balance
     ///		- If using this, there should be a min - max range for stake balance to allow balance competing.
     /// *Reputation: Lowest rated & newest node is removed if activating node has a higher reputation and age.
-    #[derive(
-        Default,
-        EnumIter,
-        FromRepr,
-        Copy,
-        Encode,
-        Decode,
-        Clone,
-        PartialOrd,
-        PartialEq,
-        Eq,
-        RuntimeDebug,
-        Ord,
-        scale_info::TypeInfo,
-    )]
-    pub enum NodeRemovalSystem {
-        #[default]
-        Consensus,
-        Stake,
-        Reputation,
-    }
+    // #[derive(
+    //     Default,
+    //     EnumIter,
+    //     FromRepr,
+    //     Copy,
+    //     Encode,
+    //     Decode,
+    //     Clone,
+    //     PartialOrd,
+    //     PartialEq,
+    //     Eq,
+    //     RuntimeDebug,
+    //     Ord,
+    //     scale_info::TypeInfo,
+    // )]
+    // pub enum NodeRemovalSystem {
+    //     #[default]
+    //     Consensus,
+    //     Stake,
+    //     Reputation,
+    // }
 
     /// Reputation node removal system parameters
     ///
@@ -1731,7 +1741,7 @@ pub mod pallet {
     pub fn DefaultMinActiveNodeStakeEpochs<T: Config>() -> u32 {
         // 1 day
         T::EpochsPerYear::get() / 365
-   }
+    }
     #[pallet::type_value]
     pub fn DefaultSubnetMinStakeBalance() -> u128 {
         100e+18 as u128
@@ -2253,6 +2263,10 @@ pub mod pallet {
         500000000000000
     }
     #[pallet::type_value]
+    pub fn DefaultMaxSubnetRemovalInterval() -> u32 {
+        10
+    }
+    #[pallet::type_value]
     pub fn DefaultColdkeyReputation() -> Reputation {
         return Reputation {
             start_epoch: 0,
@@ -2359,9 +2373,8 @@ pub mod pallet {
     }
     #[pallet::type_value]
     pub fn DefaultMaxUnbondings() -> u32 {
-       32
+        32
     }
-
 
     //
     // Subnet elements
@@ -2504,6 +2517,11 @@ pub mod pallet {
     #[pallet::storage]
     pub type SubnetRegistrationInterval<T> =
         StorageValue<_, u32, ValueQuery, DefaultSubnetRegistrationInterval>;
+
+    // Count of every epochs we attempt to remove a subnet if there are > max subnets
+    #[pallet::storage]
+    pub type MaxSubnetRemovalInterval<T> =
+        StorageValue<_, u32, ValueQuery, DefaultMaxSubnetRemovalInterval>;
 
     // /// Set of coldkeys
     // #[pallet::storage]
@@ -2785,9 +2803,11 @@ pub mod pallet {
         StorageValue<_, u32, ValueQuery, DefaultSubnetDelegateStakeRewardsUpdatePeriod>;
 
     #[pallet::storage]
-    pub type DelegateStakeCooldownEpochs<T> = StorageValue<_, u32, ValueQuery, DefaultDelegateStakeCooldownEpochs>;
+    pub type DelegateStakeCooldownEpochs<T> =
+        StorageValue<_, u32, ValueQuery, DefaultDelegateStakeCooldownEpochs>;
     #[pallet::storage]
-    pub type NodeDelegateStakeCooldownEpochs<T> = StorageValue<_, u32, ValueQuery, DefaultNodeDelegateStakeCooldownEpochs>;
+    pub type NodeDelegateStakeCooldownEpochs<T> =
+        StorageValue<_, u32, ValueQuery, DefaultNodeDelegateStakeCooldownEpochs>;
     #[pallet::storage]
     pub type StakeCooldownEpochs<T> = StorageValue<_, u32, ValueQuery, DefaultStakeCooldownEpochs>;
     #[pallet::storage]
@@ -2828,8 +2848,8 @@ pub mod pallet {
     // pub type SubnetNodeRemovalSystem<T> =
     // 	StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
 
-    #[pallet::storage]
-    pub type NodeRemovalSystemV2<T> = StorageMap<_, Identity, u32, NodeRemovalPolicy, OptionQuery>;
+    // #[pallet::storage]
+    // pub type NodeRemovalSystemV2<T> = StorageMap<_, Identity, u32, NodeRemovalPolicy, OptionQuery>;
 
     #[pallet::storage]
     pub type SubnetKeyTypes<T> = StorageMap<_, Identity, u32, BTreeSet<KeyType>, ValueQuery>;
@@ -2888,7 +2908,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<T::AccountId>, ValueQuery>;
 
     // Coldkey => {SID: SNID}
-    // This is used mainly for overwatch node qualification because it allows easily getting 
+    // This is used mainly for overwatch node qualification because it allows easily getting
     // a count of how many unique subnets a coldkey is in.
     // This is cleaned up on `perform_remove_subnet_node` and `clean_coldkey_subnet_nodes`
     #[pallet::storage]
@@ -3571,7 +3591,7 @@ pub mod pallet {
         pub id: u32,
         pub call: QueuedSwapCall<AccountId>,
         pub queued_at_block: u32,
-        pub execute_after_blocks: u32, // How many blocks to wait
+        pub execute_after_blocks: u32, // How many blocks to wait to execute
     }
 
     impl<AccountId> QueuedSwapCall<AccountId> {
@@ -3584,11 +3604,8 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    pub type SwapQueueOrder<T: Config> = StorageValue<
-        _, 
-        BoundedVec<u32, ConstU32<1000>>,
-        ValueQuery
-    >;
+    pub type SwapQueueOrder<T: Config> =
+        StorageValue<_, BoundedVec<u32, ConstU32<1000>>, ValueQuery>;
 
     /// Queue to swap between nodes and subnet delegate staking
     #[pallet::storage]
@@ -3609,7 +3626,8 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    pub type MaxSwapQueueCallsPerBlock<T> = StorageValue<_, u32, ValueQuery, DefaultMaxSwapQueueCallsPerBlock>;
+    pub type MaxSwapQueueCallsPerBlock<T> =
+        StorageValue<_, u32, ValueQuery, DefaultMaxSwapQueueCallsPerBlock>;
 
     /// The pallet's dispatchable functions ([`Call`]s).
     ///
@@ -3725,6 +3743,7 @@ pub mod pallet {
                 && !in_registration_period
                 && !in_enactment_period
             {
+                // --- If the subnet has not activated itself yet, outside the enactment period
                 Self::do_remove_subnet(subnet_id, SubnetRemovalReason::EnactmentPeriod);
                 return Ok(());
             }
@@ -3907,7 +3926,8 @@ pub mod pallet {
             policy: NodeRemovalPolicy,
         ) -> DispatchResult {
             Self::is_paused()?;
-            Self::do_owner_update_node_removal_policy(origin, subnet_id, policy)
+            // Self::do_owner_update_node_removal_policy(origin, subnet_id, policy)
+            Ok(())
         }
 
         #[pallet::call_index(20)]
@@ -3929,6 +3949,7 @@ pub mod pallet {
             subnet_node_id: u32,
         ) -> DispatchResult {
             Self::is_paused()?;
+            // TODO ADD
             Ok(())
         }
 
@@ -4121,7 +4142,7 @@ pub mod pallet {
         /// Register a Subnet Node to the subnet
         ///
         /// A registered Subnet Node will not be included in consensus data, therefor no incentives until
-        /// the Subnet Node activates itself (see `activate_subnet_node`)
+        /// the Subnet Node is activatated from the queue
         ///
         /// Subnet nodes register by staking the minimum required balance to pass authentication in any P2P
         /// networks, such as a subnet.
@@ -4200,13 +4221,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             subnet_id: u32,
             subnet_node_id: u32,
-        ) -> DispatchResultWithPostInfo {
-            // Self::is_paused()?;
+        ) -> DispatchResult {
             Self::is_paused().map_err(|e| e)?;
 
-            Ok(().into())
-
-            // Self::do_activate_subnet_node(origin, subnet_id, subnet_node_id)
+            Ok(())
         }
 
         /// Deactivate a Subnet Node temporarily
@@ -4665,16 +4683,16 @@ pub mod pallet {
             // match SubnetsData::<T>::try_get(subnet_id) {
             //     Ok(_) => (),
             //     Err(()) => {
-                    // HotkeySubnetId::<T>::remove(&hotkey);
-                    // match HotkeyOwner::<T>::try_get(&hotkey) {
-                    // 	Ok(coldkey) => {
-                    // 	},
-                    // 	Err(()) => ()
-                    // };
+            // HotkeySubnetId::<T>::remove(&hotkey);
+            // match HotkeyOwner::<T>::try_get(&hotkey) {
+            // 	Ok(coldkey) => {
+            // 	},
+            // 	Err(()) => ()
+            // };
 
-                    // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
-                    // hotkeys.remove(&hotkey);
-                    // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
+            // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
+            // hotkeys.remove(&hotkey);
+            // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
             //     }
             // };
 
@@ -4776,14 +4794,12 @@ pub mod pallet {
                 Error::<T>::InvalidSubnetId
             );
 
-            // --- Only allow one ``swap_delegate_stake`` per epoch or every other epoch
-
             // Handles ``ensure_signed``
             Self::do_swap_delegate_stake(
-            	origin,
-            	from_subnet_id,
-            	to_subnet_id,
-            	delegate_stake_shares_to_swap,
+                origin,
+                from_subnet_id,
+                to_subnet_id,
+                delegate_stake_shares_to_swap,
             )
         }
 
@@ -4928,10 +4944,7 @@ pub mod pallet {
             Self::is_paused()?;
 
             ensure!(
-                Self::get_subnet_node(
-                    subnet_id,
-                    subnet_node_id,
-                ).is_some(),
+                Self::get_subnet_node(subnet_id, subnet_node_id,).is_some(),
                 Error::<T>::InvalidSubnetNodeId
             );
 
@@ -4978,10 +4991,7 @@ pub mod pallet {
             // );
 
             ensure!(
-                Self::get_subnet_node(
-                    to_subnet_id,
-                    to_subnet_node_id,
-                ).is_some(),
+                Self::get_subnet_node(to_subnet_id, to_subnet_node_id,).is_some(),
                 Error::<T>::InvalidSubnetNodeId
             );
 
@@ -5176,10 +5186,7 @@ pub mod pallet {
             Self::is_paused()?;
 
             ensure!(
-                Self::get_subnet_node(
-                    to_subnet_id,
-                    to_subnet_node_id,
-                ).is_some(),
+                Self::get_subnet_node(to_subnet_id, to_subnet_node_id,).is_some(),
                 Error::<T>::InvalidSubnetNodeId
             );
 
@@ -5604,6 +5611,7 @@ pub mod pallet {
 
             Self::is_paused()?;
 
+            // Ensure overwatch node exists
             ensure!(
                 OverwatchNodeIdHotkey::<T>::contains_key(overwatch_node_id),
                 Error::<T>::InvalidOverwatchNodeId
@@ -5612,6 +5620,7 @@ pub mod pallet {
             let overwatch_node_hotkey = OverwatchNodeIdHotkey::<T>::get(overwatch_node_id).unwrap();
             let overwatch_node_coldkey = HotkeyOwner::<T>::get(&overwatch_node_hotkey);
 
+            // Ensure overwatch node is not qualified
             ensure!(
                 !Self::is_overwatch_node_qualified(&overwatch_node_coldkey),
                 Error::<T>::ColdkeyOverwatchQualified
@@ -5909,21 +5918,31 @@ pub mod pallet {
 
         #[pallet::call_index(88)]
         #[pallet::weight({0})]
-        pub fn set_min_subnet_registration_fee(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_min_subnet_registration_fee(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_subnet_registration_fee(value)
         }
 
         #[pallet::call_index(89)]
         #[pallet::weight({0})]
-        pub fn set_max_subnet_registration_fee(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_max_subnet_registration_fee(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_max_subnet_registration_fee(value)
+            // Self::do_set_max_subnet_registration_fee(value)
+            Ok(())
         }
 
         #[pallet::call_index(90)]
         #[pallet::weight({0})]
-        pub fn set_subnet_registration_interval(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_subnet_registration_interval(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_subnet_registration_interval(value)
         }
@@ -5937,7 +5956,10 @@ pub mod pallet {
 
         #[pallet::call_index(92)]
         #[pallet::weight({0})]
-        pub fn set_registration_cost_delay_blocks(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_registration_cost_delay_blocks(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_registration_cost_delay_blocks(value)
         }
@@ -5951,14 +5973,20 @@ pub mod pallet {
 
         #[pallet::call_index(94)]
         #[pallet::weight({0})]
-        pub fn set_new_registration_cost_multiplier(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_new_registration_cost_multiplier(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_new_registration_cost_multiplier(value)
         }
 
         #[pallet::call_index(95)]
         #[pallet::weight({0})]
-        pub fn set_max_min_delegate_stake_multiplier(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_max_min_delegate_stake_multiplier(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_min_delegate_stake_multiplier(value)
         }
@@ -6007,49 +6035,70 @@ pub mod pallet {
 
         #[pallet::call_index(102)]
         #[pallet::weight({0})]
-        pub fn set_min_idle_classification_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_idle_classification_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_idle_classification_epochs(value)
         }
 
         #[pallet::call_index(103)]
         #[pallet::weight({0})]
-        pub fn set_max_idle_classification_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_max_idle_classification_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_idle_classification_epochs(value)
         }
 
         #[pallet::call_index(104)]
         #[pallet::weight({0})]
-        pub fn set_subnet_activation_enactment_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_subnet_activation_enactment_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_subnet_activation_enactment_epochs(value)
         }
 
         #[pallet::call_index(105)]
         #[pallet::weight({0})]
-        pub fn set_min_included_classification_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_included_classification_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_included_classification_epochs(value)
         }
 
         #[pallet::call_index(106)]
         #[pallet::weight({0})]
-        pub fn set_max_included_classification_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_max_included_classification_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_included_classification_epochs(value)
         }
 
         #[pallet::call_index(107)]
         #[pallet::weight({0})]
-        pub fn set_min_max_subnet_node_penalties(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_max_subnet_node_penalties(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_max_subnet_node_penalties(value)
         }
 
         #[pallet::call_index(108)]
         #[pallet::weight({0})]
-        pub fn set_max_max_subnet_node_penalties(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_max_max_subnet_node_penalties(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_max_subnet_node_penalties(value)
         }
@@ -6084,14 +6133,20 @@ pub mod pallet {
 
         #[pallet::call_index(113)]
         #[pallet::weight({0})]
-        pub fn set_min_delegate_stake_percentage(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_min_delegate_stake_percentage(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_delegate_stake_percentage(value)
         }
 
         #[pallet::call_index(114)]
         #[pallet::weight({0})]
-        pub fn set_max_delegate_stake_percentage(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_max_delegate_stake_percentage(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_delegate_stake_percentage(value)
         }
@@ -6112,14 +6167,20 @@ pub mod pallet {
 
         #[pallet::call_index(117)]
         #[pallet::weight({0})]
-        pub fn set_max_subnet_delegate_stake_rewards_percentage_change(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_max_subnet_delegate_stake_rewards_percentage_change(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_subnet_delegate_stake_rewards_percentage_change(value)
         }
 
         #[pallet::call_index(118)]
         #[pallet::weight({0})]
-        pub fn set_subnet_delegate_stake_rewards_update_period(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_subnet_delegate_stake_rewards_update_period(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_subnet_delegate_stake_rewards_update_period(value)
         }
@@ -6133,14 +6194,20 @@ pub mod pallet {
 
         #[pallet::call_index(120)]
         #[pallet::weight({0})]
-        pub fn set_min_vast_majority_attestation_percentage(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_min_vast_majority_attestation_percentage(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_vast_majority_attestation_percentage(value)
         }
 
         #[pallet::call_index(121)]
         #[pallet::weight({0})]
-        pub fn set_super_majority_attestation_ratio(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_super_majority_attestation_ratio(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_super_majority_attestation_ratio(value)
         }
@@ -6196,7 +6263,10 @@ pub mod pallet {
 
         #[pallet::call_index(129)]
         #[pallet::weight({0})]
-        pub fn set_min_active_nodes_stake_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_active_nodes_stake_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_active_nodes_stake_epochs(value)
         }
@@ -6231,7 +6301,10 @@ pub mod pallet {
 
         #[pallet::call_index(134)]
         #[pallet::weight({0})]
-        pub fn set_delegate_stake_weight_factor(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_delegate_stake_weight_factor(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_delegate_stake_weight_factor(value)
         }
@@ -6252,28 +6325,40 @@ pub mod pallet {
 
         #[pallet::call_index(137)]
         #[pallet::weight({0})]
-        pub fn set_overwatch_epoch_length_multiplier(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_overwatch_epoch_length_multiplier(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_epoch_length_multiplier(value)
         }
 
         #[pallet::call_index(138)]
         #[pallet::weight({0})]
-        pub fn set_overwatch_commit_cutoff_percent(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_overwatch_commit_cutoff_percent(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_commit_cutoff_percent(value)
         }
 
         #[pallet::call_index(139)]
         #[pallet::weight({0})]
-        pub fn set_max_overwatch_node_penalties(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_max_overwatch_node_penalties(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_overwatch_node_penalties(value)
         }
 
         #[pallet::call_index(140)]
         #[pallet::weight({0})]
-        pub fn set_overwatch_min_diversification_ratio(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_overwatch_min_diversification_ratio(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_min_diversification_ratio(value)
         }
@@ -6287,7 +6372,10 @@ pub mod pallet {
 
         #[pallet::call_index(142)]
         #[pallet::weight({0})]
-        pub fn set_overwatch_min_avg_attestation_ratio(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_overwatch_min_avg_attestation_ratio(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_min_avg_attestation_ratio(value)
         }
@@ -6301,7 +6389,10 @@ pub mod pallet {
 
         #[pallet::call_index(144)]
         #[pallet::weight({0})]
-        pub fn set_overwatch_min_stake_balance(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_overwatch_min_stake_balance(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_min_stake_balance(value)
         }
@@ -6322,14 +6413,20 @@ pub mod pallet {
 
         #[pallet::call_index(147)]
         #[pallet::weight({0})]
-        pub fn collective_blacklist_overwatch_node(origin: OriginFor<T>, value: T::AccountId) -> DispatchResult {
+        pub fn collective_blacklist_overwatch_node(
+            origin: OriginFor<T>,
+            value: T::AccountId,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_collective_blacklist_overwatch_node(value)
         }
 
         #[pallet::call_index(148)]
         #[pallet::weight({0})]
-        pub fn set_min_subnet_registration_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_subnet_registration_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_subnet_registration_epochs(value)
         }
@@ -6343,21 +6440,30 @@ pub mod pallet {
 
         #[pallet::call_index(150)]
         #[pallet::weight({0})]
-        pub fn set_min_active_node_stake_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_min_active_node_stake_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_min_active_node_stake_epochs(value)
         }
 
         #[pallet::call_index(151)]
         #[pallet::weight({0})]
-        pub fn set_delegate_stake_cooldown_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_delegate_stake_cooldown_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_delegate_stake_cooldown_epochs(value)
         }
 
         #[pallet::call_index(152)]
         #[pallet::weight({0})]
-        pub fn set_node_delegate_stake_cooldown_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
+        pub fn set_node_delegate_stake_cooldown_epochs(
+            origin: OriginFor<T>,
+            value: u32,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_node_delegate_stake_cooldown_epochs(value)
         }
@@ -6384,157 +6490,17 @@ pub mod pallet {
             Self::do_set_sigmoid_midpoint(value)
         }
 
-        // #[pallet::call_index(156)]
-        // #[pallet::weight({0})]
-        // pub fn update_swap_queue(
-        //     origin: OriginFor<T>,
-        //     id: u32, 
-        //     new_to_subnet_id: Option<u32>,
-        //     new_to_subnet_node_id: Option<u32>,
-        // ) -> DispatchResult {
-        //     let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        //     SwapCallQueue::<T>::mutate(&id, |item_opt| -> DispatchResult {
-        //         let item = item_opt.as_mut().ok_or(Error::<T>::SwapCallNotFound)?;
-                
-        //         match &mut item.call {
-        //             QueuedSwapCall::SwapToSubnetDelegateStake { 
-        //                 account_id, 
-        //                 to_subnet_id, 
-        //                 balance 
-        //             } => {
-        //                 ensure!(account_id == &coldkey, Error::<T>::NotKeyOwner);
-        //                 ensure!(new_to_subnet_id.is_some(), Error::<T>::SubnetIdRequired);
-
-        //                 if let Some(new_subnet_id) = new_to_subnet_id {
-        //                     match SubnetsData::<T>::try_get(new_subnet_id) {
-        //                         Ok(_) => (),
-        //                         Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-        //                     };
-        //                     *to_subnet_id = new_subnet_id;
-        //                 }
-        //             },
-        //             QueuedSwapCall::SwapToNodeDelegateStake { 
-        //                 account_id, 
-        //                 to_subnet_id, 
-        //                 to_subnet_node_id,
-        //                 balance 
-        //             } => {
-        //                 ensure!(account_id == &coldkey, Error::<T>::NotKeyOwner);
-                        
-        //                 if let Some(new_subnet_id) = new_to_subnet_id {
-        //                     //
-        //                     // If updating to new subnet ID and new subnet node ID
-        //                     //
-        //                     // # Requirements
-        //                     //
-        //                     // Subnet ID and subnet node ID are both required
-        //                     //
-
-        //                     match SubnetsData::<T>::try_get(new_subnet_id) {
-        //                         Ok(_) => (),
-        //                         Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-        //                     };
-
-        //                     ensure!(new_to_subnet_node_id.is_some(), Error::<T>::SubnetNodeIdRequired);
-
-        //                     *to_subnet_id = new_subnet_id;
-
-        //                     if let Some(new_subnet_node_id) = new_to_subnet_node_id {
-        //                         ensure!(
-        //                             Self::get_subnet_node(
-        //                                 new_subnet_id,
-        //                                 new_subnet_node_id,
-        //                             ).is_some(),
-        //                             Error::<T>::InvalidSubnetNodeId
-        //                         );
-
-        //                         *to_subnet_node_id = new_subnet_node_id;
-        //                     }
-        //                 } else if let Some(new_subnet_node_id) = new_to_subnet_node_id {
-        //                     //
-        //                     // If updating the node ID in the same subnet ID
-        //                     //
-
-        //                     ensure!(
-        //                         Self::get_subnet_node(
-        //                             *to_subnet_id,
-        //                             new_subnet_node_id,
-        //                         ).is_some(),
-        //                         Error::<T>::InvalidSubnetNodeId
-        //                     );
-
-        //                     *to_subnet_node_id = new_subnet_node_id;
-        //                 }
-                        
-        //             },
-        //         }
-        //         Ok(())
-        //     })
-        // }
         #[pallet::call_index(156)]
         #[pallet::weight({0})]
         pub fn update_swap_queue(
             origin: OriginFor<T>,
-            id: u32, 
+            id: u32,
             new_call: QueuedSwapCall<T::AccountId>,
         ) -> DispatchResult {
-            let coldkey: T::AccountId = ensure_signed(origin)?;
+            let account_id: T::AccountId = ensure_signed(origin)?;
 
-            SwapCallQueue::<T>::mutate(&id, |item_opt| -> DispatchResult {
-                let item = item_opt.as_mut().ok_or(Error::<T>::SwapCallNotFound)?;
-
-                let call_balance = item.call.get_queue_balance();
-                
-                match new_call {
-                  QueuedSwapCall::SwapToSubnetDelegateStake { 
-                        account_id, 
-                        to_subnet_id, 
-                        balance 
-                    } => {
-                        ensure!(&account_id == &coldkey, Error::<T>::NotKeyOwner);
-                        ensure!(
-                            SubnetsData::<T>::contains_key(to_subnet_id),
-                            Error::<T>::InvalidSubnetId
-                        );
-
-                        // Update queue balance "to" subnet
-                        item.call = QueuedSwapCall::SwapToSubnetDelegateStake {
-                            account_id,
-                            to_subnet_id,
-                            balance: call_balance
-                        };
-                    },
-                    QueuedSwapCall::SwapToNodeDelegateStake { 
-                        account_id, 
-                        to_subnet_id, 
-                        to_subnet_node_id,
-                        balance 
-                    } => {
-                        ensure!(&account_id == &coldkey, Error::<T>::NotKeyOwner);
-                        ensure!(
-                            Self::get_subnet_node(
-                                to_subnet_id,
-                                to_subnet_node_id,
-                            ).is_some(),
-                            Error::<T>::InvalidSubnetNodeId
-                        );
-
-                        // Update queue balance "to" subnet node
-                        item.call = QueuedSwapCall::SwapToNodeDelegateStake {
-                            account_id,
-                            to_subnet_id,
-                            to_subnet_node_id,
-                            balance: call_balance
-                        };
-                    }
-                }
-                Ok(())
-            })?;
-
-            Ok(())
+            Self::do_update_swap_queue(account_id, id, new_call)
         }
-
     }
 
     impl<T: Config> Pallet<T> {
@@ -6550,6 +6516,12 @@ pub mod pallet {
                 Error::<T>::SubnetNameExist
             );
 
+            // Ensure there aren't max+1 subnets already registered
+            ensure!(
+                Self::get_total_subnets() < MaxSubnets::<T>::get().saturating_add(1),
+                Error::<T>::MaxSubnets
+            );
+
             // Ensure name is unique
             ensure!(
                 !SubnetRepo::<T>::contains_key(&subnet_registration_data.repo),
@@ -6563,8 +6535,7 @@ pub mod pallet {
             );
 
             ensure!(
-                subnet_registration_data.subnet_node_queue_epochs
-                    >= MinQueueEpochs::<T>::get()
+                subnet_registration_data.subnet_node_queue_epochs >= MinQueueEpochs::<T>::get()
                     && subnet_registration_data.subnet_node_queue_epochs
                         <= MaxQueueEpochs::<T>::get(),
                 Error::<T>::InvalidRegistrationQueueEpochs
@@ -6772,7 +6743,6 @@ pub mod pallet {
             // Store unique name
             SubnetName::<T>::insert(&subnet_data.name, subnet_id);
             SubnetRepo::<T>::insert(&subnet_data.repo, subnet_id);
-            // SubnetNodeRemovalSystem::<T>::insert(subnet_id, subnet_registration_data.node_removal_system);
             SubnetKeyTypes::<T>::insert(subnet_id, subnet_registration_data.key_types);
             // Update latest registration epoch for all subnets
             // This is used for one subnet per registration phase
@@ -6820,14 +6790,9 @@ pub mod pallet {
                 if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
                     let min_epochs = MinSubnetRegistrationEpochs::<T>::get();
                     let min_registration_epoch = registered_epoch.saturating_add(min_epochs);
-                    log::error!("registered_epoch {:?}", registered_epoch);
-                    log::error!("min_epochs {:?}", min_epochs);
-                    log::error!("min_registration_epoch {:?}", min_registration_epoch);
-                    log::error!("epoch {:?}", epoch);
                     // At minimum must wait one epoch
                     min_registration_epoch < epoch
                 } else {
-                    log::error!("can_activate return false");
                     false
                 };
 
@@ -6842,10 +6807,6 @@ pub mod pallet {
 
             let in_registration_period =
                 Self::is_subnet_registering(subnet_id, subnet.state, epoch);
-
-            log::error!("can_subnet_be_active {:?}", can_subnet_be_active);
-            log::error!("reason {:?}", reason);
-            log::error!("in_registration_period {:?}", in_registration_period);
 
             // --- Allow accidently activating in the registration period if activation conditions are not met yet
             if !can_subnet_be_active && in_registration_period {
@@ -6938,7 +6899,7 @@ pub mod pallet {
             ActivationGraceEpochs::<T>::remove(subnet_id);
             SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
             MaxRegisteredNodes::<T>::remove(subnet_id);
-            NodeRemovalSystemV2::<T>::remove(subnet_id);
+            // NodeRemovalSystemV2::<T>::remove(subnet_id);
             SubnetKeyTypes::<T>::remove(subnet_id);
             SubnetNodeScorePenaltyThreshold::<T>::remove(subnet_id);
 
@@ -8074,7 +8035,7 @@ pub mod pallet {
 
             // // Flag to know if node is in queue already
             // IsSubnetNodeInUnpauseQueue::<T>::insert(subnet_id, subnet_node_id, true);
-            
+
             // SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
             //     nodes.push(subnet_node.clone());
             // });
@@ -8211,22 +8172,22 @@ pub mod pallet {
         pub fn execute_ready_swap_calls(block_number: u32) -> Weight {
             let mut weight = Weight::zero();
             let db_weight = T::DbWeight::get();
-            
+
             let max_executions = MaxSwapQueueCallsPerBlock::<T>::get();
             weight = weight.saturating_add(db_weight.reads(1));
 
             if max_executions == 0 {
-                return weight
+                return weight;
             }
 
             let mut executed = 0;
-            
+
             while executed < max_executions {
                 let should_continue = SwapQueueOrder::<T>::mutate(|queue| -> bool {
                     if queue.is_empty() {
                         return false;
                     }
-                    
+
                     let first_id = queue[0];
                     if let Some(item) = SwapCallQueue::<T>::get(&first_id) {
                         let blocks_passed = block_number.saturating_sub(item.queued_at_block);
@@ -8239,25 +8200,25 @@ pub mod pallet {
                     }
                     false
                 });
-                
+
                 if !should_continue {
                     break;
                 }
-                
+
                 executed += 1;
                 // weight = weight.saturating_add(T::WeightInfo::execute_swap());
             }
 
             weight = weight.saturating_add(db_weight.reads(executed as u64 + 1)); // SwapQueueOrder
-            
+
             weight
         }
 
         pub fn execute_swap_call_internal(
-            queued_call: &QueuedSwapCall<T::AccountId>
+            queued_call: &QueuedSwapCall<T::AccountId>,
         ) -> DispatchResult {
             match queued_call {
-                QueuedSwapCall::SwapToSubnetDelegateStake { 
+                QueuedSwapCall::SwapToSubnetDelegateStake {
                     account_id,
                     to_subnet_id,
                     balance,
@@ -8268,8 +8229,8 @@ pub mod pallet {
                         *balance,
                     );
                     result?
-                },
-                QueuedSwapCall::SwapToNodeDelegateStake { 
+                }
+                QueuedSwapCall::SwapToNodeDelegateStake {
                     account_id,
                     to_subnet_id,
                     to_subnet_node_id,
@@ -8282,7 +8243,7 @@ pub mod pallet {
                         *balance,
                     );
                     result?
-                },
+                }
             }
 
             Ok(())
@@ -8299,13 +8260,22 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            // [TESTING]
+            // [TESTING: LOCAL]
+            // MinSubnetRegistrationEpochs::<T>::set(0);
+            // OverwatchEpochLengthMultiplier::<T>::set(2);
+            // OverwatchMinDiversificationRatio::<T>::set(0);
+            // OverwatchMinRepScore::<T>::set(0);
+            // OverwatchMinAvgAttestationRatio::<T>::set(0);
+            // OverwatchMinAge::<T>::set(0);
+
+            // [TESTING: BENCHMARKING]
             MinSubnetRegistrationEpochs::<T>::set(0);
             OverwatchEpochLengthMultiplier::<T>::set(2);
             OverwatchMinDiversificationRatio::<T>::set(0);
             OverwatchMinRepScore::<T>::set(0);
             OverwatchMinAvgAttestationRatio::<T>::set(0);
             OverwatchMinAge::<T>::set(0);
+
             // use sp_core::U256;
             // use sp_core::crypto::Ss58Codec;
 

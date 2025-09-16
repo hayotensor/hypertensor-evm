@@ -76,11 +76,7 @@ pub trait NetworkCustomApi<BlockHash> {
         at: Option<BlockHash>,
     ) -> RpcResult<bool>;
     #[method(name = "network_getBootnodes")]
-    fn get_bootnodes(
-        &self,
-        subnet_id: u32,
-        at: Option<BlockHash>,
-    ) -> RpcResult<Vec<u8>>;
+    fn get_bootnodes(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Vec<u8>>;
 
     // #[method(name = "network_getSubnetInfo")]
     // fn get_subnet_info(&self, subnet_id: u32, at: Option<BlockHash>) -> RpcResult<Option<SubnetInfo<AccountId20>>>;
@@ -375,12 +371,6 @@ where
         let api = self.client.runtime_api();
         let at = at.unwrap_or_else(|| self.client.info().best_hash);
         api.get_bootnodes(at, subnet_id)
-            .map_err(|e| {
-                Error::RuntimeError(format!(
-                    "Unable to get bootnodes: {:?}",
-                    e
-                ))
-                .into()
-            })
+            .map_err(|e| Error::RuntimeError(format!("Unable to get bootnodes: {:?}", e)).into())
     }
 }

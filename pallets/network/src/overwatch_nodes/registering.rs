@@ -160,7 +160,6 @@ impl<T: Config> Pallet<T> {
                 // Process each node_id one by one
                 for node_id in node_ids {
                     if !Self::get_active_subnet_node(*subnet_id, node_id).is_none() {
-                        // log::error!("get_active_subnet_node");
                         active_unique_node_count += 1;
                         // `break` to next subnet
                         break;

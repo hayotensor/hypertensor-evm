@@ -2,10 +2,6 @@ use super::mock::*;
 use crate::inflation::Inflation;
 use crate::tests::test_utils::*;
 use crate::{SigmoidMidpoint, SigmoidSteepness};
-use frame_support::pallet_prelude::{One, Zero};
-use sp_runtime::traits::{CheckedDiv, CheckedMul, Saturating};
-use sp_runtime::FixedPointNumber;
-use sp_runtime::FixedU128;
 
 //
 //
@@ -26,17 +22,30 @@ use sp_runtime::FixedU128;
 #[test]
 fn inflation_should_decrease_as_utilization_increases() {
     new_test_ext().execute_with(|| {
-        let low = Network::get_inflation(0.0, 1.0);
-        let mid = Network::get_inflation(0.5, 1.0);
-        let high = Network::get_inflation(1.0, 1.0);
+        let inflation = Inflation::default();
+        let max_rate = inflation.initial_max;
+        let min_rate = inflation.initial_min;
+
+        let low_util = Network::get_inflation(0.0, 1.0);
+        let mid_util = Network::get_inflation(0.5, 1.0);
+        let high_util = Network::get_inflation(1.0, 1.0);
 
         // Ensure inflation starts high and decreases
-        assert!(low > mid, "Inflation at 0.0 should be higher than at 0.5");
-        assert!(mid > high, "Inflation at 0.5 should be higher than at 1.0");
+        assert!(
+            low_util > mid_util,
+            "Inflation at 0.0 should be higher than at 0.5"
+        );
+        assert!(
+            mid_util > high_util,
+            "Inflation at 0.5 should be higher than at 1.0"
+        );
 
         // Check that boundaries are roughly as expected
-        assert!((low - 0.1).abs() < 0.01, "Low inflation not near max");
-        assert!((high - 0.015).abs() < 0.01, "High inflation not near min");
+        assert!((low_util - max_rate).abs() < 0.01, "Low inflation not near max");
+        assert!(
+            (high_util - min_rate).abs() < 0.01,
+            "High inflation not near min"
+        );
     });
 }
 

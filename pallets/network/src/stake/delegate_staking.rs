@@ -322,6 +322,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id: T::AccountId = ensure_signed(origin)?;
 
+        // --- Remove delegate stake
         let (result, balance, _) = Self::perform_do_remove_delegate_stake(
             &account_id,
             from_subnet_id,
@@ -338,10 +339,7 @@ impl<T: Config> Pallet<T> {
             balance,
         };
 
-        Self::queue_swap(
-            account_id,
-            call,
-        )?;
+        Self::queue_swap(account_id, call)?;
 
         Ok(())
     }

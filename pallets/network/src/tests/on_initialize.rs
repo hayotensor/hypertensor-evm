@@ -5,7 +5,7 @@ use crate::{
     MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes, NewRegistrationCostMultiplier,
     OverwatchCommit, OverwatchCommits, OverwatchEpochLengthMultiplier, OverwatchReveal,
     OverwatchReveals, SlotAssignment, SubnetConsensusSubmission, SubnetElectedValidator,
-    SubnetName, TotalSubnetDelegateStakeBalance,
+    SubnetName, TotalSubnetDelegateStakeBalance, SubnetPenaltyCount
 };
 use frame_support::traits::OnInitialize;
 use frame_support::{assert_err, assert_ok};
@@ -31,6 +31,7 @@ use sp_std::collections::btree_map::BTreeMap;
 /// - Emmissions to nodes
 /// - Subnets stay active
 
+// Helper to change the overwatch weights
 fn is_even(num: u32) -> bool {
     if num % 2 == 0 {
         return true;
@@ -40,7 +41,7 @@ fn is_even(num: u32) -> bool {
 
 // Simulated commit that bounces between 1e18 and 0.5e18
 fn get_commit(num: u32) -> (u128, Vec<u8>, sp_core::H256) {
-        // default onode weights
+    // default onode weights
     let weights: Vec<u128> = vec![1000000000000000000, 500000000000000000];
 
     let mut weight: u128 = 1000000000000000000;
@@ -118,10 +119,8 @@ fn test_on_initialize() {
         let mut commits_checked = false;
         let mut reveals_checked = false;
 
-
         let mut ow_commits = 0;
         let mut ow_reveals = 0;
-
 
         let block = System::block_number();
         let start_epoch = block.saturating_div(epoch_length);
@@ -160,7 +159,7 @@ fn test_on_initialize() {
 
                 // calculate_overwatch_rewards_v3();
                 Network::on_initialize(block);
-                
+
                 // Make sure rewards were given to overwatch nodes
                 if last_overwatch_reveal_epoch > 0
                     && current_overwatch_epoch > last_overwatch_reveal_epoch
@@ -409,6 +408,13 @@ fn test_on_initialize() {
                 }
             }
 
+            // becuase of the way this test is set up, the subnets will accrue 1 penalty each
+            for s in 0..max_subnets {
+                let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
+                let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+                assert!(SubnetPenaltyCount::<Test>::get(subnet_id) <= 1);
+            }
+            
             System::set_block_number(block + 1);
         }
 

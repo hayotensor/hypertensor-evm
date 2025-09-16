@@ -202,8 +202,8 @@ impl pallet_treasury::Config for Test {
 parameter_types! {
     pub const EpochLength: u32 = EPOCH_LENGTH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
-  pub const NetworkPalletId: PalletId = PalletId(*b"/network");
-  pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
+    pub const NetworkPalletId: PalletId = PalletId(*b"/network");
+    pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
 }
 

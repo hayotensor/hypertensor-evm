@@ -45,7 +45,6 @@ impl<T: Config> Pallet<T> {
             initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
             owner: SubnetOwner::<T>::get(subnet_id),
             registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
-            // node_removal_system: NodeRemovalSystemV2::<T>::get(subnet_id),
             slot_index: SubnetSlot::<T>::get(subnet_id),
         })
     }
@@ -81,7 +80,6 @@ impl<T: Config> Pallet<T> {
                 max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
                 owner: SubnetOwner::<T>::get(subnet_id),
                 registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
-                // node_removal_system: NodeRemovalSystemV2::<T>::get(subnet_id),
                 key_types: SubnetKeyTypes::<T>::get(subnet_id),
                 slot_index: SubnetSlot::<T>::get(subnet_id),
                 penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
@@ -176,16 +174,11 @@ impl<T: Config> Pallet<T> {
         return Some(info);
     }
 
-    pub fn get_subnet_nodes_info(
-        subnet_id: u32,
-    ) -> Vec<SubnetNodeInfo<T::AccountId>> {
+    pub fn get_subnet_nodes_info(subnet_id: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
         let mut infos: Vec<SubnetNodeInfo<T::AccountId>> = Vec::new();
 
         for (_, subnet_node_id) in HotkeySubnetNodeId::<T>::iter_prefix(subnet_id) {
-            if let Some(subnet_node_info) = Self::get_subnet_node_info(
-                subnet_id,
-                subnet_node_id,
-            ) {
+            if let Some(subnet_node_info) = Self::get_subnet_node_info(subnet_id, subnet_node_id) {
                 infos.push(subnet_node_info);
             }
         }
@@ -198,10 +191,9 @@ impl<T: Config> Pallet<T> {
 
         for (subnet_id, subnet_data) in SubnetsData::<T>::iter() {
             for (_, subnet_node_id) in HotkeySubnetNodeId::<T>::iter_prefix(subnet_id) {
-                if let Some(subnet_node_info) = Self::get_subnet_node_info(
-                    subnet_id,
-                    subnet_node_id,
-                ) {
+                if let Some(subnet_node_info) =
+                    Self::get_subnet_node_info(subnet_id, subnet_node_id)
+                {
                     infos.push(subnet_node_info);
                 }
             }
@@ -405,17 +397,17 @@ impl<T: Config> Pallet<T> {
         bootnodes
     }
 
-    pub fn get_coldkey_subnet_nodes_info(coldkey: T::AccountId) -> Vec<SubnetNodeInfo<T::AccountId>> {
+    pub fn get_coldkey_subnet_nodes_info(
+        coldkey: T::AccountId,
+    ) -> Vec<SubnetNodeInfo<T::AccountId>> {
         ColdkeyHotkeys::<T>::get(coldkey.clone())
             .iter()
             .filter_map(|hotkey| {
-                HotkeySubnetId::<T>::get(hotkey)
-                    .and_then(|subnet_id| {
-                        HotkeySubnetNodeId::<T>::get(subnet_id, hotkey)
-                            .and_then(|subnet_node_id| {
-                                Self::get_subnet_node_info(subnet_id, subnet_node_id)
-                            })
+                HotkeySubnetId::<T>::get(hotkey).and_then(|subnet_id| {
+                    HotkeySubnetNodeId::<T>::get(subnet_id, hotkey).and_then(|subnet_node_id| {
+                        Self::get_subnet_node_info(subnet_id, subnet_node_id)
                     })
+                })
             })
             .collect()
     }
@@ -505,16 +497,16 @@ impl<T: Config> Pallet<T> {
     pub fn get_overwatch_commits_for_epoch_and_node(
         epoch: u32,
         overwatch_node_id: u32,
-    ) -> Vec<(u32, T::Hash)> {  // Returns (subnet_id, commit_hash) pairs
-        OverwatchCommits::<T>::iter_prefix((epoch, overwatch_node_id,))
-            .collect()
+    ) -> Vec<(u32, T::Hash)> {
+        // Returns (subnet_id, commit_hash) pairs
+        OverwatchCommits::<T>::iter_prefix((epoch, overwatch_node_id)).collect()
     }
 
     pub fn get_overwatch_reveals_for_epoch_and_node(
         epoch: u32,
         overwatch_node_id: u32,
-    ) -> Vec<(u32, u128)> {  // Returns (subnet_id, commit_hash) pairs
-        OverwatchReveals::<T>::iter_prefix((epoch, overwatch_node_id,))
-            .collect()
+    ) -> Vec<(u32, u128)> {
+        // Returns (subnet_id, commit_hash) pairs
+        OverwatchReveals::<T>::iter_prefix((epoch, overwatch_node_id)).collect()
     }
 }

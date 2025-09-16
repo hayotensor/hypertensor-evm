@@ -168,8 +168,8 @@ pub const DAYS: BlockNumber = HOURS * 24;
 pub const YEAR: BlockNumber = DAYS * 365; // 5256000
 
 // Blocks per epoch
-// pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
-pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
+pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
+                                       // pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
 pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
 pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000

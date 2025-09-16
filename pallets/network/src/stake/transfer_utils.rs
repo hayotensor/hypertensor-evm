@@ -92,10 +92,7 @@ impl<T: Config> Pallet<T> {
             balance,
         };
 
-        Self::queue_swap(
-            account_id.clone(),
-            call,
-        )?;
+        Self::queue_swap(account_id.clone(), call)?;
 
         Self::deposit_event(Event::DelegateNodeToSubnetDelegateStakeSwapped {
             account_id: account_id.clone(),
@@ -107,7 +104,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
 
     /// Swap stake from a subnet to a subnet node
     ///
@@ -181,10 +177,7 @@ impl<T: Config> Pallet<T> {
             balance,
         };
 
-        Self::queue_swap(
-            account_id.clone(),
-            call,
-        )?;
+        Self::queue_swap(account_id.clone(), call)?;
 
         Self::deposit_event(Event::SubnetDelegateToNodeDelegateStakeSwapped {
             account_id: account_id,
@@ -196,5 +189,4 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
 }

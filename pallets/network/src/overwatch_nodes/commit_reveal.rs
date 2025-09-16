@@ -40,20 +40,31 @@ impl<T: Config> Pallet<T> {
         let overwatch_epoch = Self::get_current_overwatch_epoch_as_u32();
 
         for commit in commit_weights {
-            ensure!(
-                !OverwatchCommits::<T>::contains_key((
-                    overwatch_epoch,
-                    overwatch_node_id,
-                    commit.subnet_id
-                )),
-                Error::<T>::AlreadyCommitted
-            );
-
-            OverwatchCommits::<T>::insert(
-                (overwatch_epoch, overwatch_node_id, commit.subnet_id),
-                commit.weight,
-            );
+            Self::do_commit_subnet_weight(overwatch_node_id, commit, overwatch_epoch)
+                .map_err(|e| e)?;
         }
+
+        Ok(())
+    }
+
+    pub fn do_commit_subnet_weight(
+        overwatch_node_id: u32,
+        commit: OverwatchCommit<T::Hash>,
+        overwatch_epoch: u32,
+    ) -> DispatchResult {
+        ensure!(
+            !OverwatchCommits::<T>::contains_key((
+                overwatch_epoch,
+                overwatch_node_id,
+                commit.subnet_id
+            )),
+            Error::<T>::AlreadyCommitted
+        );
+
+        OverwatchCommits::<T>::insert(
+            (overwatch_epoch, overwatch_node_id, commit.subnet_id),
+            commit.weight,
+        );
 
         Ok(())
     }

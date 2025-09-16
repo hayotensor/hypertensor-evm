@@ -129,7 +129,7 @@ impl<T: Config> Pallet<T> {
             //     Error::<T>::MinStakeNotReached
             // );
         } else if stake_to_be_removed >= account_stake_balance {
-            // In case a subnet was removed, we clean up elements that wouldn't 
+            // In case a subnet was removed, we clean up elements that wouldn't
             // be cleaned up in the subnet removal. Elements that have an account
             // as the key.
             HotkeySubnetId::<T>::remove(&hotkey);

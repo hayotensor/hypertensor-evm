@@ -1,10 +1,9 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    AccountSubnetStake, Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets,
-    NetworkMinStakeBalance, RegisteredSubnetNodesData,
-    StakeUnbondingLedgerV2, SubnetName, TotalActiveSubnets, TotalSubnetNodes,
-    SubnetNodeQueueEpochs, MaxUnbondings, StakeCooldownEpochs
+    AccountSubnetStake, Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MaxUnbondings,
+    NetworkMinStakeBalance, RegisteredSubnetNodesData, StakeCooldownEpochs, StakeUnbondingLedgerV2,
+    SubnetName, SubnetNodeQueueEpochs, TotalActiveSubnets, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -210,7 +209,6 @@ fn test_register_activate_remove_claim_stake_unbondings() {
             Err(())
         );
 
-
         assert_ok!(Network::remove_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
@@ -388,7 +386,8 @@ fn test_remove_stake_twice_in_epoch() {
         assert_eq!(*ledger_balance, stake_amount);
 
         System::set_block_number(
-            System::block_number() + ((EpochLength::get() + 1) * StakeCooldownEpochs::<Test>::get()),
+            System::block_number()
+                + ((EpochLength::get() + 1) * StakeCooldownEpochs::<Test>::get()),
         );
 
         let starting_balance = Balances::free_balance(&coldkey.clone());

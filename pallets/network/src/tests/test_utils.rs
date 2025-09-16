@@ -6,11 +6,11 @@ use crate::{
     ConsensusData, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, KeyType,
     LogicExpr, MaxOverwatchNodes, MaxSubnetMaxStake, MaxSubnetNodes, MaxSubnets, MinSubnetNodes,
     MinSubnetRegistrationEpochs, NetworkMaxStakeBalance, NetworkMinStakeBalance,
-    NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystem, OverwatchCommitCutoffPercent,
+    NodeRemovalConditionType, NodeRemovalPolicy, OverwatchCommitCutoffPercent,
     OverwatchEpochLengthMultiplier, OverwatchMinAge, OverwatchMinStakeBalance, OverwatchNode,
-    OverwatchNodeIdHotkey, OverwatchNodes, OverwatchReveals,
-    PeerIdSubnetNodeId, Proposals, RegisteredSubnetNodesData, RegistrationSubnetData, Reputation,
-    SubnetConsensusSubmission, SubnetData, SubnetElectedValidator,
+    OverwatchNodeIdHotkey, OverwatchNodes, OverwatchReveals, PeerIdSubnetNodeId, Proposals,
+    RegisteredSubnetNodesData, RegistrationSubnetData, Reputation, StakeCooldownEpochs,
+    StakeUnbondingLedgerV2, SubnetConsensusSubmission, SubnetData, SubnetElectedValidator,
     SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
     SubnetNodeClassification, SubnetNodeConsensusData, SubnetNodeElectionSlots, SubnetNodeIdHotkey,
     SubnetNodeNonUniqueParamLastSet, SubnetNodePenalties, SubnetNodeUniqueParam, SubnetNodesData,
@@ -18,26 +18,83 @@ use crate::{
     SubnetRegistrationInitialColdkeys, SubnetSlot, SubnetState, SubnetsData, TotalActiveNodes,
     TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
     TotalOverwatchStake, TotalStake, TotalSubnetDelegateStakeBalance, TotalSubnetNodeUids,
-    TotalSubnetNodes, TotalSubnetStake, TotalSubnetUids, StakeUnbondingLedgerV2, StakeCooldownEpochs
+    TotalSubnetNodes, TotalSubnetStake, TotalSubnetUids,
 };
+use fp_account::AccountId20;
 use frame_support::assert_ok;
 use frame_support::storage::bounded_vec::BoundedVec;
 use frame_support::traits::{Currency, ExistenceRequirement};
+use sp_core::keccak_256;
 use sp_core::OpaquePeerId as PeerId;
+use sp_core::H160;
 use sp_io::hashing::blake2_128;
 use sp_runtime::traits::Hash;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
+// use sp_io::hashing::keccak_256;
 
 pub type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
+pub const PERCENTAGE_FACTOR: u128 = 1000000000000000000_u128;
+pub const DEFAULT_SCORE: u128 = 500000000000000000;
+pub const MAX_SUBNET_NODES: u32 = 254;
+pub const DEFAULT_REGISTRATION_BLOCKS: u32 = 130_000;
+pub const DEFAULT_DELEGATE_REWARD_RATE: u128 = 100000000000000000; // 10%
+pub const ALICE_EXPECTED_BALANCE: u128 = 1000000000000000000000000; // 1,000,000
 
 // pub fn account(id: u32) -> AccountIdOf<Test> {
 // 	[id as u8; 32].into()
 // }
+
+// Substrate bytes32 H256
+// pub fn account(id: u32) -> AccountIdOf<Test> {
+//     let mut bytes = [0u8; 32];
+//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
+//     bytes.into()
+// }
+
+// pub fn account(id: u32) -> AccountIdOf<Test> {
+//     let mut bytes = [0u8; 20];
+//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
+//     bytes.into()
+// }
+
+// Substrate bytes20 H160
+// pub fn account(id: u32) -> AccountIdOf<Test> {
+//     let mut bytes = [0u8; 20];
+//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
+//     bytes.into()
+// }
+// pub fn account(id: u32) -> H160 {
+//     let mut bytes = [0u8; 20];
+//     // Write the id into the last 4 bytes
+//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
+//     H160::from(bytes)
+// }
+// pub fn account(id: u32) -> AccountIdOf<Test> {
+//     let mut bytes = [0u8; 20];
+//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
+//     AccountIdOf::<Test>::from(H160::from(bytes))
+// }
+// pub fn account(id: u32) -> AccountIdOf<Test> {
+//     let mut bytes = [0u8; 20];
+//     // Fill the first 4 bytes instead of just the last
+//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
+//     // AccountIdOf::<Test>::from(bytes)
+//     AccountId20::from(H160::from(bytes))
+// }
 pub fn account(id: u32) -> AccountIdOf<Test> {
-    let mut bytes = [0u8; 32];
-    bytes[0..4].copy_from_slice(&id.to_le_bytes());
-    bytes.into()
+    let hash = keccak_256(&id.to_le_bytes());
+    AccountId20::from(H160::from_slice(&hash[0..20]))
+}
+
+pub fn get_alice() -> AccountIdOf<Test> {
+    let alice = &account(0);
+    let block_number = System::block_number();
+    let cost = Network::get_current_registration_cost(block_number);
+    if Balances::free_balance(alice) < cost {
+        let _ = Balances::deposit_creating(&alice, cost + 500);
+    }
+    alice.clone()
 }
 
 pub fn get_coldkey_n(subnets: u32, max_subnet_nodes: u32, n: u32) -> u32 {
@@ -58,7 +115,7 @@ pub fn get_hotkey(
     max_subnets: u32,
     n: u32,
 ) -> AccountIdOf<Test> {
-    account(get_hotkey_n(subnets, max_subnets, max_subnet_nodes, n))
+    account(get_hotkey_n(subnets, max_subnet_nodes, max_subnets, n))
 }
 
 pub fn get_peer_id(subnets: u32, max_subnet_nodes: u32, max_subnets: u32, n: u32) -> PeerId {
@@ -127,13 +184,6 @@ pub fn make_commit(weight: u128, salt: Vec<u8>) -> sp_core::H256 {
     Hashing::hash_of(&(weight, salt))
 }
 
-pub const PERCENTAGE_FACTOR: u128 = 1000000000000000000_u128;
-pub const DEFAULT_SCORE: u128 = 500000000000000000;
-pub const MAX_SUBNET_NODES: u32 = 254;
-pub const DEFAULT_REGISTRATION_BLOCKS: u32 = 130_000;
-pub const DEFAULT_DELEGATE_REWARD_RATE: u128 = 100000000000000000; // 10%
-pub const ALICE_EXPECTED_BALANCE: u128 = 1000000000000000000000000; // 1,000,000
-
 pub fn build_activated_subnet_new(
     subnet_name: Vec<u8>,
     start: u32,
@@ -141,10 +191,9 @@ pub fn build_activated_subnet_new(
     deposit_amount: u128,
     amount: u128,
 ) {
-    let alice = 0;
-    let alice_balance = Balances::free_balance(&account(alice));
-    if alice_balance == 0 {
-        let _ = Balances::deposit_creating(&account(alice), ALICE_EXPECTED_BALANCE);
+    let alice = account(0);
+    if Balances::free_balance(alice) == 0 {
+        let _ = Balances::deposit_creating(&alice.clone(), ALICE_EXPECTED_BALANCE);
     }
 
     let epoch_length = EpochLength::get();
@@ -162,9 +211,12 @@ pub fn build_activated_subnet_new(
 
     // let cost = Network::registration_cost(epoch);
     let cost = Network::get_current_registration_cost(block_number);
-    // let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+500);
+    let alice_balance = Balances::free_balance(&alice.clone());
+    if alice_balance < cost {
+        let _ = Balances::deposit_creating(&alice.clone(), cost + 500);
+    }
     assert_ok!(Balances::transfer(
-        &account(0), // alice
+        &alice.clone(),
         &owner_coldkey.clone(),
         cost + 500,
         ExistenceRequirement::KeepAlive,
@@ -214,30 +266,21 @@ pub fn build_activated_subnet_new(
         let _n = n + 1;
         let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
         let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
-        // let peer_id = peer(subnets * max_subnet_nodes + _n);
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
         let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+
+        if Balances::free_balance(&alice.clone()) <= amount {
+            let _ = Balances::deposit_creating(&alice.clone(), amount + 500);
+        }
+
         assert_ok!(Balances::transfer(
-            &account(0), // alice
+            &alice.clone(), // alice
             &coldkey.clone(),
             amount + 500,
             ExistenceRequirement::KeepAlive,
         ));
         amount_staked += amount;
-        // assert_ok!(Network::add_subnet_node(
-        //     RuntimeOrigin::signed(coldkey.clone()),
-        //     subnet_id,
-        //     hotkey.clone(),
-        //     peer_id.clone(),
-        //     bootnode_peer_id.clone(),
-        //     client_peer_id.clone(),
-        //     None,
-        //     0,
-        //     amount,
-        //     None,
-        //     None,
-        // ));
         assert_ok!(Network::register_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
@@ -318,6 +361,9 @@ pub fn build_activated_subnet_new(
     let total_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
     assert_eq!(total_nodes, end);
 
+    let slot_list = SubnetNodeElectionSlots::<Test>::get(subnet_id);
+    assert_eq!(slot_list.len(), total_nodes as usize);
+
     let total_subnet_stake = TotalSubnetStake::<Test>::get(subnet_id);
     assert_eq!(total_subnet_stake, amount_staked);
 
@@ -330,8 +376,13 @@ pub fn build_activated_subnet_new(
         Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
     min_subnet_delegate_stake = min_subnet_delegate_stake
         + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
+
+    if Balances::free_balance(&alice.clone()) <= min_subnet_delegate_stake {
+        let _ = Balances::deposit_creating(&alice, min_subnet_delegate_stake + 500);
+    }
+
     assert_ok!(Balances::transfer(
-        &account(0), // alice
+        &alice.clone(), // alice
         &account(delegate_staker_account),
         min_subnet_delegate_stake + 500,
         ExistenceRequirement::KeepAlive,
@@ -366,12 +417,235 @@ pub fn build_activated_subnet_new(
     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
     assert_eq!(subnet.state, SubnetState::Active);
 
-    increase_epochs(2);
+    // increase_epochs(2);
+}
 
-    // --- Check validator chosen on activation
-    // let next_epoch = System::block_number() / epoch_length + 1;
-    // let validator = SubnetElectedValidator::<Test>::get(subnet_id, next_epoch as u32);
-    // assert!(validator != None, "Validator is None");
+pub fn build_activated_subnet_new_excess_subnets(
+    subnet_name: Vec<u8>,
+    start: u32,
+    mut end: u32,
+    deposit_amount: u128,
+    amount: u128,
+    excess: u32,
+) {
+    let alice = account(0);
+    if Balances::free_balance(alice) == 0 {
+        let _ = Balances::deposit_creating(&alice.clone(), ALICE_EXPECTED_BALANCE);
+    }
+
+    let epoch_length = EpochLength::get();
+    let block_number = System::block_number();
+    let epoch = System::block_number().saturating_div(epoch_length);
+
+    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let max_subnets = MaxSubnets::<Test>::get().saturating_add(excess);
+    let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+
+    let owner_coldkey = account(subnets * max_subnets * max_subnet_nodes);
+    let owner_hotkey = account(subnets * max_subnets * max_subnet_nodes + 1);
+
+    let cost = Network::get_current_registration_cost(block_number);
+
+    let alice_balance = Balances::free_balance(&alice.clone());
+    if alice_balance < cost {
+        let _ = Balances::deposit_creating(&alice.clone(), cost + 500);
+    }
+    assert_ok!(Balances::transfer(
+        &alice.clone(),
+        &owner_coldkey.clone(),
+        cost + 500,
+        ExistenceRequirement::KeepAlive,
+    ));
+
+    let min_nodes = MinSubnetNodes::<Test>::get();
+
+    if end == 0 {
+        end = min_nodes;
+    }
+
+    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
+        subnets,
+        max_subnet_nodes,
+        subnet_name.clone().into(),
+        start,
+        end,
+    );
+
+    // --- Register subnet for activation
+    assert_ok!(Network::register_subnet(
+        RuntimeOrigin::signed(owner_coldkey.clone()),
+        owner_hotkey.clone(),
+        add_subnet_data,
+    ));
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+
+    assert_eq!(subnet.state, SubnetState::Registered);
+    let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
+    assert_eq!(owner, owner_coldkey.clone());
+
+    // let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
+    // let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
+    // assert_eq!(min_stake, add_subnet_data.min_stake);
+    // assert_eq!(max_stake, add_subnet_data.max_stake);
+
+    let epoch_length = EpochLength::get();
+    let epoch = System::block_number() / epoch_length;
+
+    let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+    // --- Add subnet nodes
+    let block_number = System::block_number();
+    let mut amount_staked = 0;
+    for n in start..end {
+        let _n = n + 1;
+        let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+        let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
+        let coldkey_n = get_coldkey_n(subnets, max_subnet_nodes, _n);
+        let hotkey_n = get_hotkey_n(subnets, max_subnet_nodes, max_subnets, _n);
+
+        let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+        let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+        let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+
+        if Balances::free_balance(&alice.clone()) <= amount {
+            let _ = Balances::deposit_creating(&alice.clone(), amount + 500);
+        }
+
+        assert_ok!(Balances::transfer(
+            &alice.clone(), // alice
+            &coldkey.clone(),
+            amount + 500,
+            ExistenceRequirement::KeepAlive,
+        ));
+        amount_staked += amount;
+        assert_ok!(Network::register_subnet_node(
+            RuntimeOrigin::signed(coldkey.clone()),
+            subnet_id,
+            hotkey.clone(),
+            peer_id.clone(),
+            bootnode_peer_id.clone(),
+            client_peer_id.clone(),
+            None,
+            0,
+            amount,
+            None,
+            None,
+        ));
+
+        let hotkey_subnet_node_id =
+            HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
+        // assert_eq!(hotkey_subnet_node_id, coldkey_n);
+
+        let subnet_node_id_hotkey =
+            SubnetNodeIdHotkey::<Test>::get(subnet_id, hotkey_subnet_node_id).unwrap();
+        assert_eq!(subnet_node_id_hotkey, hotkey.clone());
+
+        // Is activated, registered element is removed
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
+            Err(())
+        );
+
+        let subnet_node_data =
+            SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).unwrap();
+        assert_eq!(subnet_node_data.hotkey, hotkey.clone());
+
+        let key_owner = HotkeyOwner::<Test>::get(subnet_node_data.hotkey.clone());
+        assert_eq!(key_owner, coldkey.clone());
+
+        assert_eq!(subnet_node_data.peer_id, peer_id.clone());
+
+        // --- Is ``Validator`` if registered before subnet activation
+        assert_eq!(
+            subnet_node_data.classification.node_class,
+            SubnetNodeClass::Validator
+        );
+        assert!(subnet_node_data.has_classification(&SubnetNodeClass::Validator, subnet_epoch));
+
+        let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer_id.clone());
+        assert_eq!(subnet_node_account, hotkey_subnet_node_id);
+
+        let account_subnet_stake = AccountSubnetStake::<Test>::get(hotkey.clone(), subnet_id);
+        assert_eq!(account_subnet_stake, amount);
+
+        let hotkey_subnet_id = HotkeySubnetId::<Test>::get(hotkey.clone());
+        assert_eq!(hotkey_subnet_id, Some(subnet_id));
+
+        let mut is_electable = false;
+        for node_id in SubnetNodeElectionSlots::<Test>::get(subnet_id).iter() {
+            if *node_id == hotkey_subnet_node_id {
+                is_electable = true;
+            }
+        }
+        assert!(is_electable);
+
+        let coldkey_subnet_nodes = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
+        assert!(coldkey_subnet_nodes
+            .get(&subnet_id)
+            .unwrap()
+            .contains(&hotkey_subnet_node_id))
+    }
+
+    let total_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+    assert_eq!(total_nodes, end);
+
+    let slot_list = SubnetNodeElectionSlots::<Test>::get(subnet_id);
+    assert_eq!(slot_list.len(), total_nodes as usize);
+
+    let total_subnet_stake = TotalSubnetStake::<Test>::get(subnet_id);
+    assert_eq!(total_subnet_stake, amount_staked);
+
+    let total_stake = TotalStake::<Test>::get();
+    assert_eq!(total_subnet_stake, amount_staked);
+
+    let delegate_staker_account = 1;
+    // Add 100e18 to account for block increase on activation
+    let mut min_subnet_delegate_stake =
+        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+    min_subnet_delegate_stake = min_subnet_delegate_stake
+        + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
+
+    if Balances::free_balance(&alice.clone()) <= min_subnet_delegate_stake {
+        let _ = Balances::deposit_creating(&alice, min_subnet_delegate_stake + 500);
+    }
+
+    assert_ok!(Balances::transfer(
+        &alice.clone(), // alice
+        &account(delegate_staker_account),
+        min_subnet_delegate_stake + 500,
+        ExistenceRequirement::KeepAlive,
+    ));
+
+    assert_ne!(min_subnet_delegate_stake, u128::MAX);
+    // --- Add the minimum required delegate stake balance to activate the subnet
+    assert_ok!(Network::add_to_delegate_stake(
+        RuntimeOrigin::signed(account(delegate_staker_account)),
+        subnet_id,
+        min_subnet_delegate_stake,
+    ));
+
+    let total_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
+    assert_eq!(total_delegate_stake_balance, min_subnet_delegate_stake);
+
+    let min_registration_epochs = MinSubnetRegistrationEpochs::<Test>::get();
+    increase_epochs(min_registration_epochs + 1);
+
+    assert_ok!(Network::activate_subnet(
+        RuntimeOrigin::signed(owner_coldkey.clone()),
+        subnet_id,
+    ));
+
+    assert_eq!(
+        *network_events().last().unwrap(),
+        Event::SubnetActivated {
+            subnet_id: subnet_id,
+        }
+    );
+
+    let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+    assert_eq!(subnet.state, SubnetState::Active);
 }
 
 pub fn build_registered_subnet_new(
@@ -382,10 +656,9 @@ pub fn build_registered_subnet_new(
     amount: u128,
     delegate_stake_conditional: bool,
 ) {
-    let alice = 0;
-    let alice_balance = Balances::free_balance(&account(alice));
-    if alice_balance == 0 {
-        let _ = Balances::deposit_creating(&account(alice), ALICE_EXPECTED_BALANCE);
+    let alice = account(0);
+    if Balances::free_balance(alice) == 0 {
+        let _ = Balances::deposit_creating(&alice.clone(), ALICE_EXPECTED_BALANCE);
     }
 
     let epoch_length = EpochLength::get();
@@ -401,11 +674,14 @@ pub fn build_registered_subnet_new(
     let owner_coldkey = account(subnets * max_subnets * max_subnet_nodes);
     let owner_hotkey = account(subnets * max_subnets * max_subnet_nodes + 1);
 
-    // let cost = Network::registration_cost(epoch);
     let cost = Network::get_current_registration_cost(block_number);
-    // let _ = Balances::deposit_creating(&owner_coldkey.clone(), cost+500);
+
+    let alice_balance = Balances::free_balance(&alice.clone());
+    if alice_balance < cost {
+        let _ = Balances::deposit_creating(&alice.clone(), cost + 500);
+    }
     assert_ok!(Balances::transfer(
-        &account(0), // alice
+        &alice.clone(),
         &owner_coldkey.clone(),
         cost + 500,
         ExistenceRequirement::KeepAlive,
@@ -453,26 +729,18 @@ pub fn build_registered_subnet_new(
         let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
         let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+        if Balances::free_balance(&alice.clone()) <= amount {
+            let _ = Balances::deposit_creating(&alice.clone(), amount + 500);
+        }
+
         assert_ok!(Balances::transfer(
-            &account(0), // alice
+            &alice.clone(), // alice
             &coldkey.clone(),
             amount + 500,
             ExistenceRequirement::KeepAlive,
         ));
+
         amount_staked += amount;
-        // assert_ok!(Network::add_subnet_node(
-        //     RuntimeOrigin::signed(coldkey.clone()),
-        //     subnet_id,
-        //     hotkey.clone(),
-        //     peer_id.clone(),
-        //     bootnode_peer_id.clone(),
-        //     client_peer_id.clone(),
-        //     None,
-        //     0,
-        //     amount,
-        //     None,
-        //     None,
-        // ));
         assert_ok!(Network::register_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
@@ -556,8 +824,12 @@ pub fn build_registered_subnet_new(
             Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
         min_subnet_delegate_stake = min_subnet_delegate_stake
             + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
+        if Balances::free_balance(&alice.clone()) <= min_subnet_delegate_stake {
+            let _ = Balances::deposit_creating(&alice, min_subnet_delegate_stake + 500);
+        }
+
         assert_ok!(Balances::transfer(
-            &account(0), // alice
+            &alice.clone(), // alice
             &account(delegate_staker_account),
             min_subnet_delegate_stake + 500,
             ExistenceRequirement::KeepAlive,
@@ -1243,8 +1515,6 @@ pub fn build_activated_subnet_with_overwatch_nodes_v2(
         let epoch_length = EpochLength::get();
         let block_number = System::block_number();
         let epoch = System::block_number().saturating_div(epoch_length);
-        // let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-        // increase_epochs(next_registration_epoch.saturating_sub(epoch));
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
 
@@ -1457,8 +1727,6 @@ pub fn build_activated_subnet_with_overwatch_nodes_v2(
 
         let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
         assert_eq!(subnet.state, SubnetState::Active);
-
-        // increase_epochs(2);
     }
 
     let min_age = OverwatchMinAge::<Test>::get();
@@ -2053,9 +2321,9 @@ pub fn increase_epochs(epochs: u32) {
 //   System::set_block_number(new_block);
 // }
 
-pub fn set_epoch(epoch: u32) {
+pub fn set_epoch(epoch: u32, block_offset: u32) {
     let epoch_length = EpochLength::get();
-    System::set_block_number(epoch * epoch_length);
+    System::set_block_number(epoch * epoch_length + block_offset);
 }
 
 pub fn get_epoch() -> u32 {
@@ -2087,6 +2355,16 @@ pub fn set_block_to_overwatch_reveal_block(epoch: u32) {
     let block_increase_cutoff =
         Network::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
     System::set_block_number(epoch * multiplier * epoch_length + block_increase_cutoff as u32);
+}
+
+pub fn set_block_to_overwatch_commit_block(epoch: u32) {
+    let epoch_length = EpochLength::get();
+    let multiplier = OverwatchEpochLengthMultiplier::<Test>::get();
+    let cutoff_percentage = OverwatchCommitCutoffPercent::<Test>::get();
+    let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
+    let block_increase_cutoff =
+        Network::percent_mul(overwatch_epoch_length as u128, cutoff_percentage);
+    System::set_block_number(epoch * multiplier * epoch_length as u32);
 }
 
 // pub fn get_subnet_node_consensus_data(

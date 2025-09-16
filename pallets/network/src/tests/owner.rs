@@ -6,19 +6,19 @@ use crate::{
     HotkeySubnetNodeId, IdleClassificationEpochs, IncludedClassificationEpochs, KeyType,
     LastSubnetDelegateStakeRewardsUpdate, LogicExpr, MaxActivationGraceEpochs,
     MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
-    MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxRegisteredNodes,
-    MaxQueueEpochs, MaxSubnetBootnodeAccess,
-    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMaxStake, MaxSubnetMinStake,
-    MaxSubnetNodePenalties, MaxSubnetNodes, MaxSubnets, MinActivationGraceEpochs,
-    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
-    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinQueueEpochs,
-    MinSubnetMaxStake, MinSubnetMinStake, NetworkMaxStakeBalance, NetworkMinStakeBalance,
-    NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystemV2, RegisteredSubnetNodesData,
-    SubnetNodeQueueEpochs, SubnetBootnodeAccess, SubnetData,
+    MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxQueueEpochs, MaxRegisteredNodes,
+    MaxSubnetBootnodeAccess, MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMaxStake,
+    MaxSubnetMinStake, MaxSubnetNodePenalties, MaxSubnetNodes, MaxSubnets,
+    MinActivationGraceEpochs, MinDelegateStakePercentage, MinIdleClassificationEpochs,
+    MinIncludedClassificationEpochs, MinMaxRegisteredNodes, MinMaxSubnetNodePenalties,
+    MinQueueEpochs, MinSubnetMaxStake, MinSubnetMinStake, NetworkMaxStakeBalance,
+    NetworkMinStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy,
+    RegisteredSubnetNodesData, SubnetBootnodeAccess, SubnetData,
     SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes,
     SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
-    SubnetNodeClassification, SubnetOwner, SubnetRegistrationInitialColdkeys, SubnetRemovalReason,
-    SubnetRepo, SubnetState, SubnetsData, TotalActiveSubnetNodes,
+    SubnetNodeClassification, SubnetNodeQueueEpochs, SubnetOwner,
+    SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
+    TotalActiveSubnetNodes, PendingSubnetOwner
 };
 use codec::{Decode, Encode};
 use frame_support::traits::Currency;
@@ -420,6 +420,11 @@ fn test_owner_update_name() {
         assert_eq!(
             SubnetName::<Test>::get(&new_subnet_name.clone()).unwrap(),
             subnet_id
+        );
+
+        assert_eq!(
+            SubnetName::<Test>::try_get(&subnet_name.clone()),
+            Err(())
         );
 
         assert_eq!(
@@ -1347,65 +1352,65 @@ fn test_owner_update_key_types() {
     });
 }
 
-#[test]
-fn test_owner_update_node_removal_policy() {
-    new_test_ext().execute_with(|| {
-        increase_epochs(1);
+// #[test]
+// fn test_owner_update_node_removal_policy() {
+//     new_test_ext().execute_with(|| {
+//         increase_epochs(1);
 
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
 
-        let subnet_id = 1;
-        let subnet_data = SubnetData {
-            id: subnet_id,
-            name: subnet_name.clone(),
-            repo: subnet_name.clone(),
-            description: subnet_name.clone(),
-            misc: subnet_name.clone(),
-            state: SubnetState::Registered,
-            start_epoch: u32::MAX,
-        };
+//         let subnet_id = 1;
+//         let subnet_data = SubnetData {
+//             id: subnet_id,
+//             name: subnet_name.clone(),
+//             repo: subnet_name.clone(),
+//             description: subnet_name.clone(),
+//             misc: subnet_name.clone(),
+//             state: SubnetState::Registered,
+//             start_epoch: u32::MAX,
+//         };
 
-        // Store subnet data
-        SubnetsData::<Test>::insert(subnet_id, &subnet_data);
+//         // Store subnet data
+//         SubnetsData::<Test>::insert(subnet_id, &subnet_data);
 
-        let original_owner = account(1);
+//         let original_owner = account(1);
 
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
-        let removal_policy = NodeRemovalPolicy {
-            logic: LogicExpr::And(
-                Box::new(LogicExpr::Condition(
-                    NodeRemovalConditionType::DeltaBelowScore(200),
-                )),
-                Box::new(LogicExpr::Condition(
-                    NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100),
-                )),
-            ),
-        };
+//         let removal_policy = NodeRemovalPolicy {
+//             logic: LogicExpr::And(
+//                 Box::new(LogicExpr::Condition(
+//                     NodeRemovalConditionType::DeltaBelowScore(200),
+//                 )),
+//                 Box::new(LogicExpr::Condition(
+//                     NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100),
+//                 )),
+//             ),
+//         };
 
-        assert_ok!(Network::owner_update_node_removal_policy(
-            RuntimeOrigin::signed(original_owner.clone()),
-            subnet_id,
-            removal_policy.clone()
-        ));
+//         assert_ok!(Network::owner_update_node_removal_policy(
+//             RuntimeOrigin::signed(original_owner.clone()),
+//             subnet_id,
+//             removal_policy.clone()
+//         ));
 
-        assert_eq!(
-            *network_events().last().unwrap(),
-            Event::NodeRemovalSystemV2Update {
-                subnet_id: subnet_id,
-                owner: original_owner.clone(),
-                value: removal_policy.clone()
-            }
-        );
+//         assert_eq!(
+//             *network_events().last().unwrap(),
+//             Event::NodeRemovalSystemV2Update {
+//                 subnet_id: subnet_id,
+//                 owner: original_owner.clone(),
+//                 value: removal_policy.clone()
+//             }
+//         );
 
-        let policy = NodeRemovalSystemV2::<Test>::get(subnet_id).unwrap();
-        assert_eq!(removal_policy.clone(), policy);
-    });
-}
+//         let policy = NodeRemovalSystemV2::<Test>::get(subnet_id).unwrap();
+//         assert_eq!(removal_policy.clone(), policy);
+//     });
+// }
 
 #[test]
 fn test_owner_remove_subnet_node() {
@@ -1521,7 +1526,6 @@ fn test_owner_update_max_stake() {
         let epoch = Network::get_current_epoch_as_u32();
 
         let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
-        log::error!("max_stake {:?}", max_stake);
 
         let new_max_stake = max_stake - 1;
         assert_ok!(Network::owner_update_max_stake(
@@ -1899,6 +1903,7 @@ fn test_transfer_and_accept_ownership_works() {
         ));
 
         // Check ownership
+        assert_eq!(PendingSubnetOwner::<Test>::try_get(subnet_id), Err(()));
         assert_eq!(SubnetOwner::<Test>::get(subnet_id), Some(new_owner.clone()));
 
         assert_eq!(
@@ -2255,26 +2260,6 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_keytypes
-            ),
-            Error::<Test>::NotSubnetOwner
-        );
-
-        let removal_policy = NodeRemovalPolicy {
-            logic: LogicExpr::And(
-                Box::new(LogicExpr::Condition(
-                    NodeRemovalConditionType::DeltaBelowScore(200),
-                )),
-                Box::new(LogicExpr::Condition(
-                    NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(100),
-                )),
-            ),
-        };
-
-        assert_err!(
-            Network::do_owner_update_node_removal_policy(
-                RuntimeOrigin::signed(fake_owner),
-                subnet_id,
-                removal_policy.clone()
             ),
             Error::<Test>::NotSubnetOwner
         );

@@ -9,7 +9,7 @@ use crate::{
     MaxSubnetNodes, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount, MaxSubnets,
     MinActivationGraceEpochs, MinChurnLimit, MinDelegateStakePercentage,
     MinIdleClassificationEpochs, MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
-    MinMaxSubnetNodePenalties, MinRegistrationCost, MinQueueEpochs, MinSubnetMaxStake,
+    MinMaxSubnetNodePenalties, MinQueueEpochs, MinRegistrationCost, MinSubnetMaxStake,
     MinSubnetMinStake, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMaxStakeBalance,
     NetworkMinStakeBalance, RegistrationCostDecayBlocks, RegistrationSubnetData, SlotAssignment,
     SubnetActivationEnactmentEpochs, SubnetBootnodeAccess, SubnetBootnodes, SubnetData, SubnetName,
@@ -2345,7 +2345,7 @@ fn test_do_epoch_preliminaries_remove_subnet_not_activated() {
 
         assert_ne!(max_epoch, 0);
 
-        set_epoch(max_epoch);
+        set_epoch(max_epoch, 0);
 
         // Shouldn't remove at `n` (removal requires epoch be greater than max)
         Network::do_epoch_preliminaries(
@@ -2409,7 +2409,7 @@ fn test_do_epoch_preliminaries_remove_subnet_min_stake_balance() {
 
         assert_ne!(max_epoch, 0);
 
-        set_epoch(max_epoch);
+        set_epoch(max_epoch, 0);
 
         // Shouldn't remove at `n` (removal requires epoch be greater than max)
         Network::do_epoch_preliminaries(

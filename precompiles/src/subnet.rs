@@ -15,8 +15,8 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use pallet_network::{
-    KeyType, NodeRemovalSystem, RegistrationSubnetData, DefaultMaxVectorLength,
-    DefaultMaxSocialIdLength, DefaultMaxUrlLength
+    DefaultMaxSocialIdLength, DefaultMaxUrlLength, DefaultMaxVectorLength, KeyType,
+    RegistrationSubnetData,
 };
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -48,8 +48,9 @@ where
     <R as pallet_evm::Config>::AddressMapping: AddressMapping<R::AccountId>,
     <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
 {
-
-    #[precompile::public("registerSubnet(address,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256[],string[])")]
+    #[precompile::public(
+        "registerSubnet(address,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256,uint256[],string[])"
+    )]
     #[precompile::payable]
     fn register_subnet(
         handle: &mut impl PrecompileHandle,
@@ -121,16 +122,21 @@ where
             initial_coldkeys,
             max_registered_nodes,
             key_types,
-            bootnodes: bootnodes
+            bootnodes: bootnodes,
         };
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_network::Call::<R>::register_subnet {
             hotkey,
-            subnet_data
+            subnet_data,
         };
 
-        RuntimeHelper::<R>::try_dispatch(handle, RawOrigin::Signed(origin.clone()).into(), call, 0)?;
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
 
         Ok(())
     }
@@ -219,9 +225,12 @@ where
         let client_peer_id = OpaquePeerId(client_peer_id.as_bytes().to_vec());
         let delegate_reward_rate: u128 = delegate_reward_rate.unique_saturated_into();
         let stake_to_be_added: u128 = stake_to_be_added.unique_saturated_into();
-        let unique: Option<BoundedVec<u8, DefaultMaxVectorLength>> = bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&unique)?;
-        let bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>> = bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&bootnode)?;
-        let non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>> = bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&non_unique)?;
+        let unique: Option<BoundedVec<u8, DefaultMaxVectorLength>> =
+            bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&unique)?;
+        let bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>> =
+            bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&bootnode)?;
+        let non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>> =
+            bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&non_unique)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
@@ -300,7 +309,9 @@ where
         Ok(())
     }
 
-    #[precompile::public("registerOrUpdateIdentity(address,string,string,string,string,string,string,string,string,string,string)")]
+    #[precompile::public(
+        "registerOrUpdateIdentity(address,string,string,string,string,string,string,string,string,string,string)"
+    )]
     #[precompile::payable]
     fn register_or_update_identity(
         handle: &mut impl PrecompileHandle,
@@ -319,16 +330,26 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let hotkey = R::AddressMapping::into_account_id(hotkey.into());
 
-        let name: BoundedVec<u8, DefaultMaxVectorLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&name)?;
-        let url: BoundedVec<u8, DefaultMaxUrlLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&url)?;
-        let image: BoundedVec<u8, DefaultMaxUrlLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&image)?;
-        let discord: BoundedVec<u8, DefaultMaxSocialIdLength> = bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&discord)?;
-        let x: BoundedVec<u8, DefaultMaxSocialIdLength> = bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&x)?;
-        let telegram: BoundedVec<u8, DefaultMaxSocialIdLength> = bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&telegram)?;
-        let github: BoundedVec<u8, DefaultMaxUrlLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&github)?;
-        let hugging_face: BoundedVec<u8, DefaultMaxUrlLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&hugging_face)?;
-        let description: BoundedVec<u8, DefaultMaxVectorLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&description)?;
-        let misc: BoundedVec<u8, DefaultMaxVectorLength> = bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&misc)?;
+        let name: BoundedVec<u8, DefaultMaxVectorLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&name)?;
+        let url: BoundedVec<u8, DefaultMaxUrlLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&url)?;
+        let image: BoundedVec<u8, DefaultMaxUrlLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&image)?;
+        let discord: BoundedVec<u8, DefaultMaxSocialIdLength> =
+            bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&discord)?;
+        let x: BoundedVec<u8, DefaultMaxSocialIdLength> =
+            bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&x)?;
+        let telegram: BoundedVec<u8, DefaultMaxSocialIdLength> =
+            bounded_string_to_bounded_vec::<255, DefaultMaxSocialIdLength>(&telegram)?;
+        let github: BoundedVec<u8, DefaultMaxUrlLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&github)?;
+        let hugging_face: BoundedVec<u8, DefaultMaxUrlLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxUrlLength>(&hugging_face)?;
+        let description: BoundedVec<u8, DefaultMaxVectorLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&description)?;
+        let misc: BoundedVec<u8, DefaultMaxVectorLength> =
+            bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&misc)?;
 
         let call = pallet_network::Call::<R>::register_or_update_identity {
             hotkey,
@@ -356,14 +377,10 @@ where
 
     #[precompile::public("removeIdentity()")]
     #[precompile::payable]
-    fn remove_identity(
-        handle: &mut impl PrecompileHandle,
-    ) -> EvmResult<()> {
+    fn remove_identity(handle: &mut impl PrecompileHandle) -> EvmResult<()> {
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
-        let call = pallet_network::Call::<R>::remove_identity {
-
-        };
+        let call = pallet_network::Call::<R>::remove_identity {};
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -553,7 +570,8 @@ where
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
-        let new_bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>> = bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&new_bootnode)?;
+        let new_bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>> =
+            bounded_string_to_option_bounded_vec::<1024, DefaultMaxVectorLength>(&new_bootnode)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_network::Call::<R>::update_bootnode {
@@ -571,8 +589,6 @@ where
 
         Ok(())
     }
-
-
 
     #[precompile::public("updateBootnodePeerId(uint256,uint256,string)")]
     #[precompile::payable]
@@ -631,7 +647,6 @@ where
 
         Ok(())
     }
-
 }
 
 fn try_u256_to_u32(value: U256) -> Result<u32, PrecompileFailure> {
@@ -651,15 +666,16 @@ fn key_type_from_u256(val: U256) -> Option<KeyType> {
 }
 
 fn bounded_string_to_option_bounded_vec<const N: u32, T>(
-    s: &BoundedString<ConstU32<N>>
-) -> Result<Option<BoundedVec<u8, T>>, PrecompileFailure> 
+    s: &BoundedString<ConstU32<N>>,
+) -> Result<Option<BoundedVec<u8, T>>, PrecompileFailure>
 where
     T: sp_runtime::traits::Get<u32>,
 {
     if s.as_bytes().is_empty() {
         Ok(None)
     } else {
-        let vec: BoundedVec<u8, T> = s.as_bytes()
+        let vec: BoundedVec<u8, T> = s
+            .as_bytes()
             .to_vec()
             .try_into()
             .map_err(|_| revert("String too long"))?;
@@ -668,12 +684,13 @@ where
 }
 
 fn bounded_string_to_bounded_vec<const N: u32, T>(
-    s: &BoundedString<ConstU32<N>>
-) -> Result<BoundedVec<u8, T>, PrecompileFailure> 
+    s: &BoundedString<ConstU32<N>>,
+) -> Result<BoundedVec<u8, T>, PrecompileFailure>
 where
     T: sp_runtime::traits::Get<u32>,
 {
-    let vec: BoundedVec<u8, T> = s.as_bytes()
+    let vec: BoundedVec<u8, T> = s
+        .as_bytes()
         .to_vec()
         .try_into()
         .map_err(|_| revert("String too long"))?;

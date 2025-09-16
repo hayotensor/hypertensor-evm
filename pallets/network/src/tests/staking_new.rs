@@ -1,12 +1,11 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
-    NetworkMinStakeBalance, RegisteredSubnetNodesData,
-    StakeUnbondingLedgerV2, SubnetMaxStakeBalance, SubnetName, SubnetNodesData,
-    SubnetRemovalReason, SubnetsData, TotalActiveSubnets, TotalSubnetNodeUids, TotalSubnetNodes,
-    TotalSubnetStake, SubnetNodeQueueEpochs, HotkeySubnetId, ColdkeyHotkeys, HotkeyOwner, 
-    ColdkeySubnetNodes, StakeCooldownEpochs
+    ColdkeyHotkeys, ColdkeySubnetNodes, Error, HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId,
+    MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs, NetworkMinStakeBalance,
+    RegisteredSubnetNodesData, StakeCooldownEpochs, StakeUnbondingLedgerV2, SubnetMaxStakeBalance,
+    SubnetName, SubnetNodeQueueEpochs, SubnetNodesData, SubnetRemovalReason, SubnetsData,
+    TotalActiveSubnets, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -622,7 +621,7 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
         let start_epoch = subnet_node.classification.start_epoch;
 
-        set_epoch(start_epoch + min_stake_epochs + 2); // increase by 2 to account for subnet epoch crossover
+        set_epoch(start_epoch + min_stake_epochs + 2, 0); // increase by 2 to account for subnet epoch crossover
 
         assert_ok!(Network::remove_stake(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -681,8 +680,6 @@ fn test_remove_stake_after_remove_subnet_node() {
         ));
 
         assert_eq!(Network::account_subnet_stake(hotkey.clone(), subnet_id), 0);
-
-
     });
 }
 

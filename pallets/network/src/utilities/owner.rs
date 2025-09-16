@@ -311,8 +311,7 @@ impl<T: Config> Pallet<T> {
         );
 
         ensure!(
-            value >= MinQueueEpochs::<T>::get()
-                && value <= MaxQueueEpochs::<T>::get(),
+            value >= MinQueueEpochs::<T>::get() && value <= MaxQueueEpochs::<T>::get(),
             Error::<T>::InvalidRegistrationQueueEpochs
         );
 
@@ -544,18 +543,18 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let coldkey: T::AccountId = ensure_signed(origin)?;
 
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
+        // ensure!(
+        //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+        //     Error::<T>::NotSubnetOwner
+        // );
 
-        NodeRemovalSystemV2::<T>::insert(subnet_id, &policy);
+        // NodeRemovalSystemV2::<T>::insert(subnet_id, &policy);
 
-        Self::deposit_event(Event::NodeRemovalSystemV2Update {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value: policy,
-        });
+        // Self::deposit_event(Event::NodeRemovalSystemV2Update {
+        //     subnet_id: subnet_id,
+        //     owner: coldkey,
+        //     value: policy,
+        // });
 
         Ok(())
     }

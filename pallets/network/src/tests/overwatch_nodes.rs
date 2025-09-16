@@ -6,10 +6,9 @@ use crate::{
     NetworkMinStakeBalance, OverwatchCommit, OverwatchCommits, OverwatchMinAge,
     OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeIdHotkey, OverwatchNodeIndex,
     OverwatchNodeWeights, OverwatchNodes, OverwatchReveal, OverwatchReveals,
-    OverwatchSubnetWeights, PeerId, PeerIdOverwatchNode, PeerIdSubnetNodeId,
+    OverwatchSubnetWeights, PeerId, PeerIdOverwatchNode, PeerIdSubnetNodeId, StakeCooldownEpochs,
     StakeUnbondingLedgerV2, SubnetData, SubnetName, SubnetNodesData, SubnetState, SubnetsData,
     TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake,
-    StakeCooldownEpochs
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -275,6 +274,11 @@ fn test_set_overwatch_peer_id() {
             PeerIdOverwatchNode::<Test>::get(subnet_id, peer_id.clone()),
             uid
         );
+
+        let exists = OverwatchNodeIndex::<Test>::get(uid)
+            .get(&subnet_id)
+            .map_or(false, |x_peer_id| *x_peer_id == peer_id);
+        assert!(exists);
     });
 }
 
@@ -401,7 +405,7 @@ fn test_remove_overwatch_node() {
         ));
 
         assert_err!(
-            Network::remove_overwatch_node(RuntimeOrigin::signed(coldkey.clone()), 0,),
+            Network::remove_overwatch_node(RuntimeOrigin::signed(coldkey.clone()), 0),
             Error::<Test>::NotKeyOwner
         );
 

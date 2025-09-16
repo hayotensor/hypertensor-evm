@@ -150,6 +150,7 @@ impl<T: Config> Pallet<T> {
         let min_subnet_nodes = MinSubnetNodes::<T>::get();
         let max_subnets = MaxSubnets::<T>::get();
         let max_pause_epochs = MaxSubnetPauseEpochs::<T>::get();
+        let is_removal_epoch: bool = epoch % MaxSubnetRemovalInterval::<T>::get() == 0;
 
         weight = weight.saturating_add(db_weight.reads(6));
 
@@ -254,13 +255,15 @@ impl<T: Config> Pallet<T> {
             }
 
             // Store delegate stake for possible excess removal
-            if excess_subnets {
+            if excess_subnets && is_removal_epoch {
                 subnet_delegate_stake.push((*subnet_id, subnet_delegate_stake_balance));
             }
         }
 
         // --- Excess subnet removal
-        if excess_subnets && !subnet_delegate_stake.is_empty() {
+        // We allow max+1 subnets to exist in the economy and every `x` epochs remove one
+        // based on the delegate stake balance
+        if excess_subnets && !subnet_delegate_stake.is_empty() && is_removal_epoch {
             subnet_delegate_stake.sort_by_key(|&(_, value)| value);
             Self::do_remove_subnet(
                 subnet_delegate_stake[0].0.clone(),

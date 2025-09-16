@@ -3,19 +3,18 @@ use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
     AccountSubnetStake, ActivationGraceEpochs, BootnodePeerIdSubnetNodeId, BootnodeSubnetNodeId,
-    ClientPeerIdSubnetNodeId, ColdkeyReputation, DefaultMaxVectorLength, Error,
+    ChurnLimit, ClientPeerIdSubnetNodeId, ColdkeyReputation, DefaultMaxVectorLength, Error,
     HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, LogicExpr, MaxDeactivationEpochs,
     MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
     MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMinStakeBalance,
-    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystemV2,
-    NodeSlotIndex, PeerIdSubnetNodeId, SubnetNodeQueue,
-    RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, RewardRateUpdatePeriod,
-    SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
-    SubnetNodeClassification, SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeUniqueParam,
-    SubnetNodesData, SubnetOwner, SubnetRegistrationEpochs, SubnetState, SubnetsData,
-    TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes, TotalNodes,
-    TotalStake, TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
-    ChurnLimit
+    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy,
+    NodeSlotIndex, PeerIdSubnetNodeId, RegisteredSubnetNodesData, Reputation,
+    RewardRateUpdatePeriod, SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode,
+    SubnetNodeClass, SubnetNodeClassification, SubnetNodeElectionSlots, SubnetNodeIdHotkey,
+    SubnetNodeQueue, SubnetNodeQueueEpochs, SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner,
+    SubnetRegistrationEpochs, SubnetState, SubnetsData, TotalActiveNodes, TotalActiveSubnetNodes,
+    TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake, TotalSubnetElectableNodes,
+    TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -228,7 +227,6 @@ fn test_register_subnet_node_v2_and_activate() {
     })
 }
 
-
 #[test]
 fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
     new_test_ext().execute_with(|| {
@@ -300,14 +298,18 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
             let hotkey_subnet_node_id =
                 HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-            let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+            let subnet_node =
+                RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
             assert_eq!(
                 subnet_node.classification.node_class,
                 SubnetNodeClass::Registered
             );
             assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
 
-            assert_eq!(total_subnet_nodes + 1, TotalSubnetNodes::<Test>::get(subnet_id));
+            assert_eq!(
+                total_subnet_nodes + 1,
+                TotalSubnetNodes::<Test>::get(subnet_id)
+            );
 
             let reg_queue = SubnetNodeQueue::<Test>::get(subnet_id);
             let found = reg_queue
@@ -317,7 +319,10 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
             System::set_block_number(System::block_number() + 1);
         }
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start);
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start
+        );
 
         let total_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
@@ -336,10 +341,16 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
         Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
 
         // Only activate up to the churn limit
-        assert_eq!(prev_active_total_nodes + churn_limit, TotalActiveSubnetNodes::<Test>::get(subnet_id));
+        assert_eq!(
+            prev_active_total_nodes + churn_limit,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start - churn_limit);
-        
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start - churn_limit
+        );
+
         for n in reg_start..reg_end {
             let _n = n + 1;
             let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
@@ -349,7 +360,6 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
 
             // Ensure all nodes up to the churn limit were activated
             if _n <= reg_start + churn_limit {
-
                 // Check in activation
                 let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
                 assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
@@ -452,14 +462,18 @@ fn test_register_subnet_node_v2_with_max_nodes() {
             let hotkey_subnet_node_id =
                 HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-            let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+            let subnet_node =
+                RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
             assert_eq!(
                 subnet_node.classification.node_class,
                 SubnetNodeClass::Registered
             );
             assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
 
-            assert_eq!(total_subnet_nodes + 1, TotalSubnetNodes::<Test>::get(subnet_id));
+            assert_eq!(
+                total_subnet_nodes + 1,
+                TotalSubnetNodes::<Test>::get(subnet_id)
+            );
 
             let reg_queue = SubnetNodeQueue::<Test>::get(subnet_id);
             let found = reg_queue
@@ -469,7 +483,10 @@ fn test_register_subnet_node_v2_with_max_nodes() {
             System::set_block_number(System::block_number() + 1);
         }
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start);
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start
+        );
 
         let total_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
@@ -488,11 +505,20 @@ fn test_register_subnet_node_v2_with_max_nodes() {
         Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
 
         // Only activate up to the churn limit
-        assert_eq!(max_subnet_nodes, TotalActiveSubnetNodes::<Test>::get(subnet_id));
-        assert_eq!(max_subnet_nodes + reg_end - reg_start, TotalSubnetNodes::<Test>::get(subnet_id));
+        assert_eq!(
+            max_subnet_nodes,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
+        assert_eq!(
+            max_subnet_nodes + reg_end - reg_start,
+            TotalSubnetNodes::<Test>::get(subnet_id)
+        );
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start);
-        
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start
+        );
+
         // no nodes should be activated
         for n in reg_start..reg_end {
             let _n = n + 1;
@@ -500,7 +526,7 @@ fn test_register_subnet_node_v2_with_max_nodes() {
 
             let hotkey_subnet_node_id =
                 HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
-            
+
             // Other nodes still in queue
             assert_eq!(
                 SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -587,14 +613,18 @@ fn test_register_subnet_node_v2_activate_up_to_max_nodes() {
             let hotkey_subnet_node_id =
                 HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-            let subnet_node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+            let subnet_node =
+                RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
             assert_eq!(
                 subnet_node.classification.node_class,
                 SubnetNodeClass::Registered
             );
             assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
 
-            assert_eq!(total_subnet_nodes + 1, TotalSubnetNodes::<Test>::get(subnet_id));
+            assert_eq!(
+                total_subnet_nodes + 1,
+                TotalSubnetNodes::<Test>::get(subnet_id)
+            );
 
             let reg_queue = SubnetNodeQueue::<Test>::get(subnet_id);
             let found = reg_queue
@@ -603,9 +633,15 @@ fn test_register_subnet_node_v2_activate_up_to_max_nodes() {
             assert_eq!(found.unwrap().id, hotkey_subnet_node_id);
         }
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start);
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start
+        );
         assert_eq!(end, TotalActiveSubnetNodes::<Test>::get(subnet_id));
-        assert_eq!(end + reg_end - reg_start, TotalSubnetNodes::<Test>::get(subnet_id));
+        assert_eq!(
+            end + reg_end - reg_start,
+            TotalSubnetNodes::<Test>::get(subnet_id)
+        );
 
         let total_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
@@ -624,10 +660,19 @@ fn test_register_subnet_node_v2_activate_up_to_max_nodes() {
         Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
 
         // Only activate up to the churn limit
-        assert_eq!(max_subnet_nodes, TotalActiveSubnetNodes::<Test>::get(subnet_id));
-        assert_eq!(end + reg_end - reg_start, TotalSubnetNodes::<Test>::get(subnet_id));
+        assert_eq!(
+            max_subnet_nodes,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
+        assert_eq!(
+            end + reg_end - reg_start,
+            TotalSubnetNodes::<Test>::get(subnet_id)
+        );
 
-        assert_eq!(SubnetNodeQueue::<Test>::get(subnet_id).len() as u32, reg_end - reg_start - expected_activated);
+        assert_eq!(
+            SubnetNodeQueue::<Test>::get(subnet_id).len() as u32,
+            reg_end - reg_start - expected_activated
+        );
 
         // no nodes should be activated
         for n in reg_start..reg_end {
@@ -639,7 +684,6 @@ fn test_register_subnet_node_v2_activate_up_to_max_nodes() {
 
             // Ensure all nodes up to the churn limit were activated
             if _n <= reg_start + expected_activated {
-
                 // Check in activation
                 let subnet_node = SubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
                 assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);

@@ -7,7 +7,7 @@ use crate::{
     HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, LogicExpr, MaxDeactivationEpochs,
     MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
     MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMinStakeBalance,
-    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy, NodeRemovalSystemV2,
+    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy,
     NodeSlotIndex, PeerIdSubnetNodeId, SubnetNodeQueue,
     RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, RewardRateUpdatePeriod,
     SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,

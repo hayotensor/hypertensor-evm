@@ -20,14 +20,17 @@ use libm::{exp, pow};
 use sp_runtime::traits::Saturating;
 
 pub struct Inflation {
-    /// Initial inflation percentage, from time=0
-    pub initial: f64,
+    /// Initial maximum inflation percentage, from time=0
+    pub initial_max: f64,
+
+    /// Initial minimum inflation percentage, from time=0
+    pub initial_min: f64,
 
     /// Terminal inflation percentage, to time=INF
     pub terminal: f64,
 
     /// Rate per year, at which inflation is lowered until reaching terminal
-    ///  i.e. inflation(year) == MAX(terminal, initial*((1-taper)^year))
+    ///  i.e. inflation(year) == MAX(terminal, initial_max*((1-taper)^year))
     pub taper: f64,
 
     /// Percentage of total inflation allocated to the foundation
@@ -36,16 +39,18 @@ pub struct Inflation {
     pub foundation_term: f64,
 }
 
-const DEFAULT_INITIAL: f64 = 0.1;
+const DEFAULT_INITIAL_MAX: f64 = 0.1;
+const DEFAULT_INITIAL_MIN: f64 = 0.045;
 const DEFAULT_TERMINAL: f64 = 0.015;
-const DEFAULT_TAPER: f64 = 0.033;
+const DEFAULT_TAPER: f64 = 0.0369;
 const DEFAULT_FOUNDATION: f64 = 0.2;
 const DEFAULT_FOUNDATION_TERM: f64 = 7.0;
 
 impl Default for Inflation {
     fn default() -> Self {
         Self {
-            initial: DEFAULT_INITIAL,
+            initial_max: DEFAULT_INITIAL_MAX,
+            initial_min: DEFAULT_INITIAL_MIN,
             terminal: DEFAULT_TERMINAL,
             taper: DEFAULT_TAPER,
             foundation: DEFAULT_FOUNDATION,
@@ -55,30 +60,6 @@ impl Default for Inflation {
 }
 
 impl Inflation {
-    // /// portion of total that goes to validators
-    // pub fn validator(&self, year: f64) -> f64 {
-    //   self.total(year) - self.foundation(year)
-    // }
-
-    // /// portion of total that goes to foundation
-    // pub fn foundation(&self, year: f64) -> f64 {
-    //   if year < self.foundation_term {
-    //     self.total(year) * self.foundation
-    //   } else {
-    //     0.0
-    //   }
-    // }
-
-    // /// inflation rate at year
-    // pub fn total(&self, year: f64) -> f64 {
-    //   let tapered = self.initial * pow(1.0 - self.taper, year);
-
-    //   if tapered > self.terminal {
-    //     tapered
-    //   } else {
-    //     self.terminal
-    //   }
-    // }
     /// portion of total that goes to validators
     pub fn validator(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
         self.total(u, mid, k, year) - self.foundation(u, mid, k, year)
@@ -114,7 +95,17 @@ impl Inflation {
     }
 
     pub fn current_max_rate(&self, year: f64) -> f64 {
-        let tapered = self.initial * pow(1.0 - self.taper, year);
+        let tapered = self.initial_max * pow(1.0 - self.taper, year);
+
+        if tapered > self.terminal {
+            tapered
+        } else {
+            self.terminal
+        }
+    }
+
+    pub fn current_min_rate(&self, year: f64) -> f64 {
+        let tapered = self.initial_min * pow(1.0 - self.taper, year);
 
         if tapered > self.terminal {
             tapered
@@ -128,7 +119,8 @@ impl Inflation {
     /// * called by get_epoch_emissions()
     ///
     /// # Uses
-    /// `initial`: Max interest rate
+    /// `initial_max`: Max interest rate
+    /// `initial_min`: Min interest rate
     /// `terminal`: Min interest rate
     ///
     /// *u: Node utilization ratio
@@ -146,7 +138,13 @@ impl Inflation {
 
         let max = self.current_max_rate(year);
 
-        self.terminal + (max - self.terminal) * sigmoid
+        if max == self.terminal {
+            return max;
+        }
+
+        let min = self.current_min_rate(year);
+
+        min + (max - min) * sigmoid
     }
 }
 
