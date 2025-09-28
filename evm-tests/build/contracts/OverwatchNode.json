@@ -1,0 +1,447 @@
+{
+  "contractName": "OverwatchNode",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "hotkey",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "stakeToBeAdded",
+          "type": "uint256"
+        }
+      ],
+      "name": "registerOverwatchNode",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "overwatchNodeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeOverwatchNode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "overwatchNodeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "anyoneRemoveOverwatchNode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "subnetId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "overwatchNodeId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "peerId",
+          "type": "string"
+        }
+      ],
+      "name": "setOverwatchNodePeerId",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"overwatchNodeId\",\"type\":\"uint256\"}],\"name\":\"anyoneRemoveOverwatchNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"hotkey\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"stakeToBeAdded\",\"type\":\"uint256\"}],\"name\":\"registerOverwatchNode\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"overwatchNodeId\",\"type\":\"uint256\"}],\"name\":\"removeOverwatchNode\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"subnetId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"overwatchNodeId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"peerId\",\"type\":\"string\"}],\"name\":\"setOverwatchNodePeerId\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/OverwatchNode.sol\":\"OverwatchNode\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/OverwatchNode.sol\":{\"keccak256\":\"0x9145e49613ed11322142e09c788f9188a98f561181ed536d228608abd61f68d5\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://f4f83a92b32f70d83dfa49432493716be9c7a977dafb8e2574b9bbf539cabe1f\",\"dweb:/ipfs/QmSEmnJ5Za82oVQYvEiRcT8syrjVB9tT6GgnX2BDScETfH\"]}},\"version\":1}",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "immutableReferences": {},
+  "generatedSources": [],
+  "deployedGeneratedSources": [],
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.0;\n\ninterface OverwatchNode  {\n  function registerOverwatchNode(address hotkey, uint256 stakeToBeAdded) external payable;\n  function removeOverwatchNode(uint256 overwatchNodeId) external;\n  function anyoneRemoveOverwatchNode(uint256 overwatchNodeId) external;\n  function setOverwatchNodePeerId(uint256 subnetId, uint256 overwatchNodeId, string memory peerId) external;\n}",
+  "sourcePath": "/home/bob/hypertensor-evm-ow/evm-tests/contracts/OverwatchNode.sol",
+  "ast": {
+    "absolutePath": "project:/contracts/OverwatchNode.sol",
+    "exportedSymbols": {
+      "OverwatchNode": [
+        28
+      ]
+    },
+    "id": 29,
+    "license": "MIT",
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 1,
+        "literals": [
+          "solidity",
+          "^",
+          "0.8",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "33:23:0"
+      },
+      {
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "OverwatchNode",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "id": 28,
+        "linearizedBaseContracts": [
+          28
+        ],
+        "name": "OverwatchNode",
+        "nameLocation": "68:13:0",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "functionSelector": "5049f1a7",
+            "id": 8,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "registerOverwatchNode",
+            "nameLocation": "96:21:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 6,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 3,
+                  "mutability": "mutable",
+                  "name": "hotkey",
+                  "nameLocation": "126:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 8,
+                  "src": "118:14:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "118:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 5,
+                  "mutability": "mutable",
+                  "name": "stakeToBeAdded",
+                  "nameLocation": "142:14:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 8,
+                  "src": "134:22:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 4,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "134:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "117:40:0"
+            },
+            "returnParameters": {
+              "id": 7,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "174:0:0"
+            },
+            "scope": 28,
+            "src": "87:88:0",
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "e592a57f",
+            "id": 13,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "removeOverwatchNode",
+            "nameLocation": "187:19:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 11,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 10,
+                  "mutability": "mutable",
+                  "name": "overwatchNodeId",
+                  "nameLocation": "215:15:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 13,
+                  "src": "207:23:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 9,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "207:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "206:25:0"
+            },
+            "returnParameters": {
+              "id": 12,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "240:0:0"
+            },
+            "scope": 28,
+            "src": "178:63:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "1c0c7f91",
+            "id": 18,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "anyoneRemoveOverwatchNode",
+            "nameLocation": "253:25:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 16,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 15,
+                  "mutability": "mutable",
+                  "name": "overwatchNodeId",
+                  "nameLocation": "287:15:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "279:23:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 14,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "279:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "278:25:0"
+            },
+            "returnParameters": {
+              "id": 17,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "312:0:0"
+            },
+            "scope": 28,
+            "src": "244:69:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "functionSelector": "dc73f7df",
+            "id": 27,
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "setOverwatchNodePeerId",
+            "nameLocation": "325:22:0",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 25,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 20,
+                  "mutability": "mutable",
+                  "name": "subnetId",
+                  "nameLocation": "356:8:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "348:16:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 19,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "348:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 22,
+                  "mutability": "mutable",
+                  "name": "overwatchNodeId",
+                  "nameLocation": "374:15:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "366:23:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 21,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "366:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 24,
+                  "mutability": "mutable",
+                  "name": "peerId",
+                  "nameLocation": "405:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "391:20:0",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 23,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "391:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "347:65:0"
+            },
+            "returnParameters": {
+              "id": 26,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "421:0:0"
+            },
+            "scope": 28,
+            "src": "316:106:0",
+            "stateMutability": "nonpayable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "scope": 29,
+        "src": "58:366:0",
+        "usedErrors": [],
+        "usedEvents": []
+      }
+    ],
+    "src": "33:391:0"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.25+commit.b61c2a91.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.4.16",
+  "updatedAt": "2025-09-26T16:23:49.281Z",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  }
+}

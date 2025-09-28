@@ -24,7 +24,7 @@
   "sourceMap": "",
   "deployedSourceMap": "",
   "source": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.0;\n\ninterface IERC20BalanceTransfer {\n    function transfer(bytes32 data) external payable;\n}",
-  "sourcePath": "/home/bob/polkadot-sdk-solochain-template/evm-tests/contracts/IERC20BalanceTransfer.sol",
+  "sourcePath": "/home/bob/hypertensor-evm-ow/evm-tests/contracts/IERC20BalanceTransfer.sol",
   "ast": {
     "absolutePath": "project:/contracts/IERC20BalanceTransfer.sol",
     "exportedSymbols": {
@@ -132,7 +132,7 @@
   },
   "networks": {},
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-05-23T18:38:04.272Z",
+  "updatedAt": "2025-09-23T03:00:33.352Z",
   "devdoc": {
     "kind": "dev",
     "methods": {},
