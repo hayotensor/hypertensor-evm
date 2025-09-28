@@ -32,8 +32,8 @@ impl<T: Config> Pallet<T> {
             max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
             delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
             subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
-            activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
-            queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
+            // activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
+            idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
             included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
             max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
             max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
@@ -47,10 +47,6 @@ impl<T: Config> Pallet<T> {
             registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
             slot_index: SubnetSlot::<T>::get(subnet_id),
         })
-    }
-
-    pub fn get_subnet_data(subnet_id: u32) -> Option<SubnetData> {
-        Some(SubnetsData::<T>::try_get(subnet_id).ok()?)
     }
 
     pub fn get_all_subnets_info() -> Vec<SubnetInfo<T::AccountId>> {
@@ -72,8 +68,8 @@ impl<T: Config> Pallet<T> {
                     subnet_id,
                 ),
                 subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
-                activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
-                queue_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
+                // activation_grace_epochs: ActivationGraceEpochs::<T>::get(subnet_id),
+                idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
                 included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
                 max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
                 initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
@@ -92,6 +88,21 @@ impl<T: Config> Pallet<T> {
         infos
     }
 
+    pub fn get_subnet_data(subnet_id: u32) -> Option<SubnetData> {
+        Some(SubnetsData::<T>::try_get(subnet_id).ok()?)
+    }
+
+    pub fn get_all_subnets_data() -> Vec<SubnetData> {
+        let mut datas: Vec<SubnetData> = Vec::new();
+
+        for (_, subnet_data) in SubnetsData::<T>::iter() {
+            datas.push(subnet_data)
+        }
+
+        datas
+    }
+
+    // remove
     pub fn get_subnet_nodes(subnet_id: u32) -> Vec<SubnetNode<T::AccountId>> {
         if !SubnetsData::<T>::contains_key(subnet_id) {
             return Vec::new();
@@ -116,6 +127,7 @@ impl<T: Config> Pallet<T> {
         Self::get_classified_subnet_nodes(subnet_id, &min_class.unwrap(), subnet_epoch)
     }
 
+    // remove
     pub fn get_subnet_nodes_included(subnet_id: u32) -> Vec<SubnetNode<T::AccountId>> {
         if !SubnetsData::<T>::contains_key(subnet_id) {
             return Vec::new();
@@ -124,6 +136,7 @@ impl<T: Config> Pallet<T> {
         Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, subnet_epoch)
     }
 
+    // remove
     pub fn get_subnet_nodes_validator(subnet_id: u32) -> Vec<SubnetNode<T::AccountId>> {
         if !SubnetsData::<T>::contains_key(subnet_id) {
             return Vec::new();
@@ -140,8 +153,6 @@ impl<T: Config> Pallet<T> {
             SubnetNodesData::<T>::get(subnet_id, subnet_node_id)
         } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             RegisteredSubnetNodesData::<T>::get(subnet_id, subnet_node_id)
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::get(subnet_id, subnet_node_id)
         } else {
             return None;
         };
@@ -174,6 +185,7 @@ impl<T: Config> Pallet<T> {
         return Some(info);
     }
 
+    /// Get subnet ID nodes info
     pub fn get_subnet_nodes_info(subnet_id: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
         let mut infos: Vec<SubnetNodeInfo<T::AccountId>> = Vec::new();
 
@@ -186,6 +198,7 @@ impl<T: Config> Pallet<T> {
         infos
     }
 
+    /// Get all subnet ID nodes info
     pub fn get_all_subnet_nodes_info() -> Vec<SubnetNodeInfo<T::AccountId>> {
         let mut infos: Vec<SubnetNodeInfo<T::AccountId>> = Vec::new();
 
@@ -202,6 +215,7 @@ impl<T: Config> Pallet<T> {
         infos
     }
 
+    /// Get the elected validators node info
     pub fn get_elected_validator_info(
         subnet_id: u32,
         subnet_epoch: u32,
@@ -212,6 +226,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Get the elected validators simple node data
     pub fn get_elected_validator_node(
         subnet_id: u32,
         subnet_epoch: u32,
@@ -225,7 +240,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn get_subnet_node_by_params(
+    pub fn get_subnet_node_by_unique_param(
         subnet_id: u32,
         unique: BoundedVec<u8, DefaultMaxVectorLength>,
     ) -> Option<SubnetNode<T::AccountId>> {
@@ -239,6 +254,7 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    // remove, can just use storage element to query
     pub fn get_consensus_data(
         subnet_id: u32,
         subnet_epoch: u32,
@@ -247,6 +263,7 @@ impl<T: Config> Pallet<T> {
         Some(data?)
     }
 
+    // remove, can just get peer id then query staking balance or use proof_of_stake
     pub fn get_subnet_node_stake_by_peer_id(subnet_id: u32, peer_id: PeerId) -> u128 {
         match PeerIdSubnetNodeId::<T>::try_get(subnet_id, &peer_id) {
             Ok(subnet_node_id) => {
@@ -274,6 +291,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    // remove, can just call `get_subnet_node_by_unique_param`
     /// If subnet node exists under unique subnet node parameter ``unique``
     pub fn is_subnet_node_by_unique(
         subnet_id: u32,
@@ -351,52 +369,23 @@ impl<T: Config> Pallet<T> {
         PeerIdOverwatchNode::<T>::try_get(subnet_id, peer_id).is_ok()
     }
 
-    /// Client Proof-of-stake
-    ///
-    /// Checks if the client peer ID is staked
-    ///
-    /// - Returns if the node has a proof of stake
-    ///
-    /// # Options
-    ///
-    /// - Can use either a subnet node ID or peer ID, or bootnode peer ID
-    ///
-    /// The most secure way to call this function is by peer ID with signatures
-    ///
-    /// # Arguments
-    ///
-    /// * `subnet_id` - Subnet ID.
-    /// * `peer_id` - Subnet node client peer ID
-    /// * `require_active` - Require that the subnet node is currently active (not registered or deactivated)
-    ///
-    pub fn client_proof_of_stake(subnet_id: u32, peer_id: Vec<u8>, require_active: bool) -> bool {
-        if !SubnetsData::<T>::contains_key(subnet_id) {
-            return false;
-        }
-
-        match ClientPeerIdSubnetNodeId::<T>::try_get(subnet_id, PeerId(peer_id)) {
-            Ok(_) => {
-                if require_active {
-                    true
-                } else {
-                    true
-                }
-            }
-            Err(()) => false,
-        }
-    }
-
-    pub fn get_bootnodes(subnet_id: u32) -> BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> {
-        let mut bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> =
+    /// Get all bootnodes organized by the official bootnodes and node bootnodes
+    pub fn get_bootnodes(subnet_id: u32) -> AllSubnetBootnodes {
+        let bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> =
             SubnetBootnodes::<T>::get(subnet_id);
 
-        bootnodes.extend(
-            SubnetNodesData::<T>::iter_prefix(subnet_id).filter_map(|(_, node)| node.bootnode),
-        );
+        let node_bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> =
+            SubnetNodesData::<T>::iter_prefix(subnet_id)
+                .filter_map(|(_, node)| node.bootnode)
+                .collect();
 
-        bootnodes
+        AllSubnetBootnodes {
+            bootnodes,
+            node_bootnodes,
+        }
     }
 
+    /// Get all nodes from a coldkey
     pub fn get_coldkey_subnet_nodes_info(
         coldkey: T::AccountId,
     ) -> Vec<SubnetNodeInfo<T::AccountId>> {
@@ -416,6 +405,7 @@ impl<T: Config> Pallet<T> {
         let mut coldkey_stake: Vec<SubnetNodeStakeInfo<T::AccountId>> = Vec::new();
 
         for hotkey in ColdkeyHotkeys::<T>::get(coldkey.clone()).iter() {
+            // Check if the subnet ID still exists
             if let Some(subnet_id) = HotkeySubnetId::<T>::get(hotkey) {
                 coldkey_stake.push(SubnetNodeStakeInfo {
                     subnet_id: Some(subnet_id),

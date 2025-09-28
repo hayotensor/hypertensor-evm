@@ -1,13 +1,13 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    AccountNodeDelegateStakeShares, AccountSubnetStake, BaseValidatorReward, Error,
-    HotkeySubnetNodeId, MaxSubnetNodes, MinDelegateStakeDeposit, NetworkMinStakeBalance,
-    NodeDelegateStakeBalance, NodeDelegateStakeCooldownEpochs, StakeUnbondingLedgerV2,
-    SubnetConsensusSubmission, SubnetElectedValidator, SubnetName, SubnetNodeClass,
-    SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodesData, TotalActiveSubnets,
-    TotalNodeDelegateStake, TotalNodeDelegateStakeShares, TotalSubnetNodes,
-    NextSwapId, SwapCallQueue, QueuedSwapCall, SwapQueueOrder, AccountSubnetDelegateStakeShares
+    AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, AccountSubnetStake,
+    BaseValidatorReward, Error, HotkeySubnetNodeId, MaxSubnetNodes, MinDelegateStakeDeposit,
+    NetworkMinStakeBalance, NextSwapId, NodeDelegateStakeBalance, NodeDelegateStakeCooldownEpochs,
+    QueuedSwapCall, StakeUnbondingLedgerV2, SubnetConsensusSubmission, SubnetElectedValidator,
+    SubnetName, SubnetNodeClass, SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodesData,
+    SwapCallQueue, SwapQueueOrder, TotalActiveSubnets, TotalNodeDelegateStake,
+    TotalNodeDelegateStakeShares, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -114,7 +114,8 @@ fn test_add_to_node_delegate_stake() {
 
         // Ensure user balance changed and is expected
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance <= amount)
         );
     })
@@ -338,7 +339,8 @@ fn test_remove_node_delegate_stake() {
         );
 
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance <= amount)
         );
 
@@ -383,7 +385,7 @@ fn test_remove_node_delegate_stake() {
                 subnet_id,
                 subnet_node_id, // unstaking from node 1
                 subnet_id_2,
-                subnet_node_id+1,
+                subnet_node_id + 1,
                 0,
             ),
             Error::<Test>::SharesZero
@@ -490,7 +492,7 @@ fn test_remove_node_delegate_stake_not_enough_stake_to_withdraw() {
                 subnet_id,
                 subnet_node_id, // unstaking from node 1
                 subnet_id_2,
-                subnet_node_id+1,
+                subnet_node_id + 1,
                 amount,
             ),
             Error::<Test>::NotEnoughStakeToWithdraw
@@ -506,7 +508,6 @@ fn test_remove_node_delegate_stake_not_enough_stake_to_withdraw() {
             ),
             Error::<Test>::NotEnoughStakeToWithdraw
         );
-
     })
 }
 
@@ -578,7 +579,8 @@ fn test_swap_node_delegate_stake() {
         );
 
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance <= amount)
         );
 
@@ -675,8 +677,6 @@ fn test_swap_node_delegate_stake() {
             .first()
             .map_or(false, |&first_id| first_id == prev_next_id));
 
-
-
         //
         // to subnet ID and Subnet node 2
         // Get accounts delegate stake info transferred to node 2 (now staked to)
@@ -761,6 +761,8 @@ fn test_swap_node_delegate_stake() {
 //         RuntimeOrigin::signed(account(1)),
 //         subnet_id,
 //         subnet_node_data_vec.clone(),
+//         None,
+//         None,
 //         None,
 //         None,
 //       )
@@ -896,7 +898,8 @@ fn test_transfer_node_delegate_stake() {
         );
 
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance <= amount)
         );
 
@@ -1011,7 +1014,8 @@ fn test_transfer_node_delegate_stake_partial_balance() {
         );
 
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance <= amount)
         );
 
@@ -1529,7 +1533,8 @@ fn test_swap_from_node_to_subnet() {
         );
 
         assert!(
-            (account_node_delegate_stake_balance >= Network::percent_mul(amount, 990000000000000000))
+            (account_node_delegate_stake_balance
+                >= Network::percent_mul(amount, 990000000000000000))
                 && (account_node_delegate_stake_balance < amount)
         );
 
@@ -1595,4 +1600,3 @@ fn test_swap_from_node_to_subnet() {
             .map_or(false, |&first_id| first_id == prev_next_id));
     });
 }
-

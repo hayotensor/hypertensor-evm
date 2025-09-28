@@ -40,6 +40,7 @@ pallet-treasury.workspace = true
 pallet-multisig.workspace = true
 pallet-tx-pause.workspace = true
 pallet-collective.workspace = true
+pallet-author-subsidy.workspace = true
 pallet-network.workspace = true
 network-custom-rpc-runtime-api.workspace = true
 
@@ -120,6 +121,7 @@ std = [
 	"pallet-multisig/std",
 	"pallet-tx-pause/std",
 	"pallet-collective/std",
+	"pallet-author-subsidy/std",
 	"pallet-network/std",
 	"network-custom-rpc-runtime-api/std",
 	"hypertensor-precompiles/std",
@@ -172,6 +174,7 @@ runtime-benchmarks = [
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-transaction-payment/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
+	"pallet-author-subsidy/runtime-benchmarks",
 	"pallet-network/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]

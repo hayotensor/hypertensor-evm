@@ -94,7 +94,7 @@ fn test_update_coldkey() {
         //
         //
 
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
             hotkey_subnet_node_id,
@@ -224,7 +224,7 @@ fn test_update_coldkey() {
         let _ = Balances::deposit_creating(&coldkey.clone(), add_stake_amount);
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
                 hotkey_subnet_node_id,
@@ -280,7 +280,7 @@ fn test_update_coldkey() {
         let _ = Balances::deposit_creating(&new_coldkey.clone(), add_stake_amount + 500);
 
         // add stake with new_coldkey
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(new_coldkey.clone()),
             subnet_id,
             hotkey_subnet_node_id,

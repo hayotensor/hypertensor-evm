@@ -137,7 +137,7 @@
 //     //
 
 //     assert_ok!(
-//       Network::add_to_stake(
+//       Network::add_stake(
 //         RuntimeOrigin::signed(account(1)),
 //         subnet_id,
 //         hotkey_subnet_node_id,
@@ -207,7 +207,7 @@
 //     let _ = Balances::deposit_creating(&account(1), add_stake_amount);
 
 //     assert_err!(
-//       Network::add_to_stake(
+//       Network::add_stake(
 //         RuntimeOrigin::signed(account(1)),
 //         subnet_id,
 //         hotkey_subnet_node_id,
@@ -262,7 +262,7 @@
 //     let _ = Balances::deposit_creating(&account(total_subnet_nodes+1), add_stake_amount + 500);
 
 //     assert_ok!(
-//       Network::add_to_stake(
+//       Network::add_stake(
 //         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
 //         subnet_id,
 //         hotkey_subnet_node_id,
@@ -1982,7 +1982,7 @@
 //     let _ = Balances::deposit_creating(&account(1), amount*2);
 
 //     assert_ok!(
-//       Network::add_to_stake(
+//       Network::add_stake(
 //         RuntimeOrigin::signed(account(total_subnet_nodes+1)),
 //         subnet_id,
 //         subnet_node_id,
@@ -2333,6 +2333,8 @@
 //         RuntimeOrigin::signed(account(1)), 
 //         subnet_id,
 //         subnet_node_data_vec.clone(),
+//         None,
+//         None,
 //         None,
 //         None,
 //       )

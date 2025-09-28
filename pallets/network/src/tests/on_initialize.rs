@@ -5,7 +5,7 @@ use crate::{
     MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes, NewRegistrationCostMultiplier,
     OverwatchCommit, OverwatchCommits, OverwatchEpochLengthMultiplier, OverwatchReveal,
     OverwatchReveals, SlotAssignment, SubnetConsensusSubmission, SubnetElectedValidator,
-    SubnetName, TotalSubnetDelegateStakeBalance, SubnetPenaltyCount
+    SubnetName, SubnetPenaltyCount, TotalSubnetDelegateStakeBalance,
 };
 use frame_support::traits::OnInitialize;
 use frame_support::{assert_err, assert_ok};
@@ -90,14 +90,8 @@ fn test_on_initialize() {
         let multiplier = OverwatchEpochLengthMultiplier::<Test>::get();
         let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
 
-        log::error!("multiplier             {:?}", multiplier);
-        log::error!("overwatch_epoch_length {:?}", overwatch_epoch_length);
-
         let overwatch_epochs = 2;
         let total_epochs = overwatch_epochs * multiplier;
-
-        log::error!("overwatch_epochs       {:?}", overwatch_epochs);
-        log::error!("total_epochs           {:?}", total_epochs);
 
         let mut epochs_complete = 0;
         let mut overwatch_epochs_complete = 0;
@@ -157,7 +151,7 @@ fn test_on_initialize() {
                     }
                 }
 
-                // calculate_overwatch_rewards_v3();
+                // calculate_overwatch_rewards();
                 Network::on_initialize(block);
 
                 // Make sure rewards were given to overwatch nodes
@@ -320,7 +314,7 @@ fn test_on_initialize() {
                     }
                     if validator_id != None {
                         // Run attestation proposal and attestation voting
-                        run_subnet_consensus_step(subnet_id);
+                        run_subnet_consensus_step(subnet_id, None, None);
                     }
                 }
                 // Remove unqualified subnets
@@ -414,7 +408,7 @@ fn test_on_initialize() {
                 let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
                 assert!(SubnetPenaltyCount::<Test>::get(subnet_id) <= 1);
             }
-            
+
             System::set_block_number(block + 1);
         }
 

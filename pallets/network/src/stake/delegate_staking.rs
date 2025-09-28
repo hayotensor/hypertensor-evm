@@ -113,45 +113,6 @@ impl<T: Config> Pallet<T> {
             subnet_id,
             delegate_stake_to_be_added,
         )
-
-        // let total_subnet_delegated_stake_shares =
-        //     match TotalSubnetDelegateStakeShares::<T>::get(subnet_id) {
-        //         0 => {
-        //             // --- Mitigate inflation attack
-        //             TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| {
-        //                 n.saturating_accrue(Self::MIN_LIQUIDITY)
-        //             });
-        //             0
-        //         }
-        //         shares => shares,
-        //     };
-        // let total_subnet_delegated_stake_balance =
-        //     TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
-
-        // // --- Get amount to be added as shares based on stake to balance added to account
-        // let mut delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
-        //     delegate_stake_to_be_added,
-        //     total_subnet_delegated_stake_shares,
-        //     total_subnet_delegated_stake_balance,
-        // );
-
-        // // --- Check rounding errors, mitigates donation attacks that round to zero
-        // if delegate_stake_to_be_added_as_shares == 0 {
-        //     return (Err(Error::<T>::CouldNotConvertToShares.into()), 0, 0);
-        // }
-
-        // Self::increase_account_delegate_stake(
-        //     &account_id,
-        //     subnet_id,
-        //     delegate_stake_to_be_added,
-        //     delegate_stake_to_be_added_as_shares,
-        // );
-
-        // (
-        //     Ok(()),
-        //     delegate_stake_to_be_added,
-        //     delegate_stake_to_be_added_as_shares,
-        // )
     }
 
     // Infallible

@@ -208,9 +208,9 @@ impl<T: Config> Pallet<T> {
         return T::Currency::free_balance(&coldkey);
     }
 
-  pub fn u128_to_balance(
-    input: u128,
-  ) -> Option<
+    pub fn u128_to_balance(
+        input: u128,
+    ) -> Option<
     <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
     >{
         input.try_into().ok()

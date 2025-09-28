@@ -2,12 +2,12 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    AccountSubnetStake, ActivationGraceEpochs, BootnodePeerIdSubnetNodeId, BootnodeSubnetNodeId,
+    AccountSubnetStake, BootnodePeerIdSubnetNodeId, BootnodeSubnetNodeId,
     ClientPeerIdSubnetNodeId, ColdkeyReputation, DefaultMaxVectorLength, Error,
-    HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, LogicExpr, MaxDeactivationEpochs,
+    HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId,
     MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
     MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMinStakeBalance,
-    NodeDelegateStakeBalance, NodeRemovalConditionType, NodeRemovalPolicy,
+    NodeDelegateStakeBalance,
     NodeSlotIndex, PeerIdSubnetNodeId, SubnetNodeQueue,
     RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, RewardRateUpdatePeriod,
     SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
@@ -62,7 +62,8 @@ fn test_register_subnet_node_v2() {
         let bootnode_peer_id =
             get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
+        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -82,6 +83,7 @@ fn test_register_subnet_node_v2() {
             amount,
             None,
             None,
+            u128::MAX
         ));
 
         let hotkey_subnet_node_id =
@@ -142,7 +144,8 @@ fn test_register_subnet_node_v2_and_activate() {
         let bootnode_peer_id =
             get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
+        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -162,6 +165,7 @@ fn test_register_subnet_node_v2_and_activate() {
             amount,
             None,
             None,
+            u128::MAX
         ));
 
         let hotkey_subnet_node_id =
@@ -263,6 +267,7 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
 
         let reg_start = end + 1;
         let reg_end = reg_start + churn_limit * 2;
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
 
         // Put a bunch of nodes into the queue
         for n in reg_start..reg_end {
@@ -273,10 +278,11 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
+            
             assert_ok!(Balances::transfer(
                 &account(0), // alice
                 &coldkey.clone(),
-                amount + 500,
+                amount + burn_amount + 500,
                 ExistenceRequirement::KeepAlive,
             ));
 
@@ -295,6 +301,7 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
 
             let hotkey_subnet_node_id =

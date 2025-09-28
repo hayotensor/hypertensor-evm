@@ -38,6 +38,7 @@
 
 // We make sure this pallet uses `no_std` for compiling to Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "256"]
 
 // extern crate alloc;
 
@@ -51,6 +52,7 @@ use frame_support::{
         tokens::WithdrawReasons, Currency, EnsureOrigin, ExistenceRequirement, Get, Randomness,
         ReservableCurrency,
     },
+    weights::WeightMeter,
     PalletId,
 };
 use frame_system::pallet_prelude::OriginFor;
@@ -82,7 +84,6 @@ mod tests;
 mod benchmarking;
 pub mod weights;
 pub use weights::*;
-// use crate::weights::WeightInfo;
 
 pub mod utilities;
 pub use utilities::*;
@@ -98,9 +99,11 @@ pub mod consensus;
 pub use consensus::*;
 pub mod overwatch_nodes;
 pub use overwatch_nodes::*;
+pub mod bank;
+pub use bank::*;
 
 // mod rewards;
-mod rewards_v4;
+// mod rewards_v4;
 
 // All pallet logic is defined in its own module and must be annotated by the `pallet` attribute.
 #[frame_support::pallet]
@@ -153,21 +156,6 @@ pub mod pallet {
         #[pallet::constant]
         type PalletId: Get<PalletId>;
 
-        // #[pallet::constant]
-        // type DelegateStakeCooldownEpochs: Get<u32>;
-
-        // #[pallet::constant]
-        // type NodeDelegateStakeCooldownEpochs: Get<u32>;
-
-        // #[pallet::constant]
-        // type StakeCooldownEpochs: Get<u32>;
-
-        // #[pallet::constant]
-        // type MaxDelegateStakeUnlockings: Get<u32>;
-
-        // #[pallet::constant]
-        // type MaxUnbondings: Get<u32>;
-
         type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
 
         #[pallet::constant]
@@ -178,6 +166,9 @@ pub mod pallet {
 
         #[pallet::constant]
         type OverwatchEpochEmissions: Get<u128>;
+
+        #[pallet::constant]
+        type MaximumHooksWeight: Get<Weight>;
     }
 
     /// Events that functions in this pallet can emit.
@@ -377,6 +368,11 @@ pub mod pallet {
         SetSubnetDistributionPower(u128),
         SetDelegateStakeWeightFactor(u128),
         SetSigmoidMidpoint(u128),
+        SetMaximumHooksWeight(u32),
+        SetBaseNodeBurnAmount(u128),
+        SetMinNodeBurnRate(u128),
+        SetMaxNodeBurnRate(u128),
+        OverwatchNodeBlacklist(T::AccountId, bool),
         SetSigmoidSteepness(u128),
         SetMaxOverwatchNodes(u32),
         SetOverwatchEpochLengthMultiplier(u32),
@@ -387,7 +383,6 @@ pub mod pallet {
         SetOverwatchMinAvgAttestationRatio(u128),
         SetOverwatchMinAge(u32),
         SetOverwatchMinStakeBalance(u128),
-
         SetTxPause(),
         SetTxUnpause(),
         SetProposalMinSubnetNodes(u32),
@@ -549,11 +544,6 @@ pub mod pallet {
             owner: T::AccountId,
             value: BTreeSet<KeyType>,
         },
-        // NodeRemovalSystemV2Update {
-        //     subnet_id: u32,
-        //     owner: T::AccountId,
-        //     value: NodeRemovalPolicy,
-        // },
         SubnetMinStakeBalanceUpdate {
             subnet_id: u32,
             owner: T::AccountId,
@@ -593,6 +583,21 @@ pub mod pallet {
             owner: T::AccountId,
             remove_account: T::AccountId,
         },
+        TargetNodeRegistrationsPerEpochUpdate {
+            subnet_id: u32,
+            owner: T::AccountId,
+            value: u32,
+        },
+        NodeBurnRateAlphaUpdate {
+            subnet_id: u32,
+            owner: T::AccountId,
+            value: u128,
+        },
+        QueueImmunityEpochsUpdate {
+            subnet_id: u32,
+            owner: T::AccountId,
+            value: u32,
+        },
         IdentityRegistered {
             coldkey: T::AccountId,
             identity: ColdkeyIdentityData,
@@ -629,6 +634,7 @@ pub mod pallet {
         InvalidActivationGraceEpochs,
         InvalidIdleClassificationEpochs,
         InvalidIncludedClassificationEpochs,
+        InvalidOverwatchEpochLengthMultiplier,
 
         /// Subnet must be registering or activated, this error usually occurs during the enactment period
         SubnetMustBeRegisteringOrActivated,
@@ -654,6 +660,8 @@ pub mod pallet {
         NotDeactivatedSubnetNode,
         /// Must activate the designated epoch assigned
         NotStartEpoch,
+        /// Must be less than maximum registrations per epoch
+        InvalidTargetNodeRegistrationsPerEpoch,
         ///
         SubnetNodeNotActivated,
         /// Peer ID already in use in subnet
@@ -667,6 +675,8 @@ pub mod pallet {
         InvalidClientPeerId,
         /// Subnet peer doesn't exist
         SubnetNodeNotExist,
+        /// Hotkey doesn't have a subnet node
+        InvalidHotkeySubnetNodeId,
         /// Subnet name already exists
         SubnetNameExist,
         /// Subnet repository already exists
@@ -699,6 +709,8 @@ pub mod pallet {
         MinSubnetNodesBreached,
         ///
         SubnetActivationConditionsNotMetYet,
+        /// Max cost is less than the subnet registration cost
+        CostLessThanMaxCost,
         ///
         MinSubnetRegistrationEpochsNotMet,
         /// Cannot deactivate node if current epochs validator
@@ -732,8 +744,12 @@ pub mod pallet {
         InvalidMinSubnetNodes,
         /// Invalid maximimum subnet nodes, must not exceed maximimum allowable
         InvalidMaxSubnetNodes,
-        /// Invalid percent number, must be in 1e4 format. Used for elements that only require correct format
+        /// Invalid percent number, must be in 1e18 format. Used for elements that only require correct format
         InvalidPercent,
+        /// Invalid percent number, must be in 1e2 format. Used for elements that only require correct format
+        InvalidPerbillPercent,
+        InvalidMinNodeBurnRate,
+        InvalidMaxNodeBurnRate,
 
         // Staking
         /// u128 -> BalanceOf conversion error
@@ -746,6 +762,8 @@ pub mod pallet {
         RequiredUnstakeEpochsNotMet,
         /// Amount will kill account
         BalanceWithdrawalError,
+        /// Burn failed, amount will kill account
+        BalanceBurnError,
         /// Not enough stake to withdraw
         NotEnoughStakeToWithdraw,
         MaxStakeReached,
@@ -825,6 +843,8 @@ pub mod pallet {
         SubnetNodeNonUniqueParamUpdateIntervalNotReached,
         // Hotkey already registered to coldkey
         HotkeyAlreadyRegisteredToColdkey,
+        /// Burn amount exceeds maximum burn amount allowable
+        MaxBurnAmountExceeded,
         // Hotkey not registered to coldkey
         OldHotkeyNotRegistered,
         /// Identity is taken by another coldkey
@@ -885,6 +905,8 @@ pub mod pallet {
         SwapCallNotFound,
         SubnetIdRequired,
         SubnetNodeIdRequired,
+        /// Coldkey is blacklisted from being an Overwatch Node
+        ColdkeyBlacklisted,
     }
 
     /// Subnet data
@@ -965,7 +987,7 @@ pub mod pallet {
     /// * delegate_stake_percentage: Percentage of emissions that are allocated to delegate stakers
     /// * subnet_node_queue_epochs: Number of epochs for registered nodes to be in queue before activation
     /// * activation_grace_epochs: Grace period following `subnet_node_queue_epochs` to activate
-    /// * queue_classification_epochs: Number of epochs in "Idle" classification (See SubnetNodeClass)
+    /// * idle_classification_epochs: Number of epochs in "Idle" classification (See SubnetNodeClass)
     /// * included_classification_epochs: Number of epochs in "Included" classification (See SubnetNodeClass)
     /// * max_node_penalties: Number of penalties to be removed
     /// * initial_coldkeys: List of initial coldkeys that can register while subnet is in registration
@@ -984,120 +1006,49 @@ pub mod pallet {
         pub max_stake: u128,
         pub delegate_stake_percentage: u128,
         pub subnet_node_queue_epochs: u32,
-        pub activation_grace_epochs: u32,
-        pub queue_classification_epochs: u32,
+        pub idle_classification_epochs: u32,
         pub included_classification_epochs: u32,
         pub max_node_penalties: u32,
-        pub initial_coldkeys: BTreeSet<AccountId>,
         pub max_registered_nodes: u32,
+        pub initial_coldkeys: BTreeSet<AccountId>,
         pub key_types: BTreeSet<KeyType>,
         pub bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
     }
 
-    /// Removal system
-    ///
-    /// How activating nodes remove other nodes when the subnet is at its max node count.
-    ///
-    /// # Arguments
-    ///
-    /// *Consensus: Nodes can only be removed based on consensus, i.e., by hitting max penalties
-    /// *Stake: Lowest staked & newest node is removed if activating node has a higher stake balance
-    ///		- If using this, there should be a min - max range for stake balance to allow balance competing.
-    /// *Reputation: Lowest rated & newest node is removed if activating node has a higher reputation and age.
-    // #[derive(
-    //     Default,
-    //     EnumIter,
-    //     FromRepr,
-    //     Copy,
-    //     Encode,
-    //     Decode,
-    //     Clone,
-    //     PartialOrd,
-    //     PartialEq,
-    //     Eq,
-    //     RuntimeDebug,
-    //     Ord,
-    //     scale_info::TypeInfo,
-    // )]
-    // pub enum NodeRemovalSystem {
-    //     #[default]
-    //     Consensus,
-    //     Stake,
-    //     Reputation,
-    // }
-
-    /// Reputation node removal system parameters
-    ///
-    /// How activating nodes remove other nodes when the subnet is at its max node count.
-    ///
-    /// # Arguments
-    ///
-    /// *percentage_score_delta: Score delta in relation to activating node a potential removable node must be below to be removed
-    /// *min_score_threshold: The minimum score to be immune from being removed
-    /// *average_attestation_threshold: The minimum average attetation ratio to be immune from being removed
-    pub struct ReputationNodeRemovalParameters {
-        pub percentage_score_delta: u128,
-        pub min_score_threshold: u128,
-        pub average_attestation_threshold: u128,
+    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub struct RegistrationSubnetDataV2 {
+        pub name: Vec<u8>,
+        pub repo: Vec<u8>,
+        pub description: Vec<u8>,
+        pub misc: Vec<u8>,
+        pub churn_limit: u32,
+        pub min_stake: u128,
+        pub max_stake: u128,
+        pub delegate_stake_percentage: u128,
+        pub subnet_node_queue_epochs: u32,
+        pub idle_classification_epochs: u32,
+        pub included_classification_epochs: u32,
+        pub max_node_penalties: u32,
     }
 
-    /// Condition types
-    ///
-    /// # Logic expression for node removal policy
-    ///
-    /// # Options
-    ///
-    /// Below are the logic expression options that can be used to qualify a node to be removed
-    ///
-    /// # Hard
-    ///
-    /// HardBelowScore: Below score (see Reputation)
-    /// HardBelowAverageAttestation: Below average attestation ratio (see Reputation)
-    /// HardBelowNodeDelegateStakeRate: Below node delegate stake rate (see stake/delegate_staking)
-    ///
-    /// # Deltas
-    /// - Note: Percent uses 1e18 as u128 (see math.rs)
-    ///
-    /// DeltaBelowScore: Delta % below activating node score
-    /// DeltaBelowAverageAttestation: Delta % below activating node average attestation ratio
-    /// DeltaBelowNodeDelegateStakeRate: Delta % below activating node delegate stake rate
-    /// DeltaBelowNodeDelegateStakeBalance: Delta % below activating node delegate stake balance (users staked to node) (see stake/delegate_staking)
-    /// DeltaBelowStakeBalance: Delta % below activating node stake balance (only works if subnet has a min-max stake range for nodes)
-    #[derive(
-        Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo,
-    )]
-    pub enum NodeRemovalConditionType {
-        // hard
-        HardBelowScore(u128),
-        HardBelowAverageAttestation(u128),
-        HardBelowNodeDelegateStakeRate(u128),
-
-        // deltas
-        DeltaBelowScore(u128),
-        DeltaBelowAverageAttestation(u128),
-        DeltaBelowNodeDelegateStakeRate(u128),
-        DeltaBelowNodeDelegateStakeBalance(u128),
-        DeltaBelowStakeBalance(u128),
-    }
-
-    /// A tree-based logic system where node removal conditions are expressed as composable Boolean
-    /// logic expressions (AND, OR, XOR, NOT) over measurable properties
-    #[derive(
-        Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo,
-    )]
-    pub enum LogicExpr {
-        And(Box<LogicExpr>, Box<LogicExpr>),
-        Or(Box<LogicExpr>, Box<LogicExpr>),
-        Xor(Box<LogicExpr>, Box<LogicExpr>),
-        Not(Box<LogicExpr>),
-        Condition(NodeRemovalConditionType),
-    }
-
-    #[derive(
-        Encode, Decode, Clone, PartialOrd, PartialEq, Eq, RuntimeDebug, Ord, scale_info::TypeInfo,
-    )]
-    pub struct NodeRemovalPolicy {
-        pub logic: LogicExpr,
+    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub struct RegistrationSubnetDataV3<AccountId> {
+        pub name: Vec<u8>,
+        pub repo: Vec<u8>,
+        pub description: Vec<u8>,
+        pub misc: Vec<u8>,
+        pub churn_limit: u32,
+        pub min_stake: u128,
+        pub max_stake: u128,
+        pub delegate_stake_percentage: u128,
+        pub subnet_node_queue_epochs: u32,
+        pub idle_classification_epochs: u32,
+        pub included_classification_epochs: u32,
+        pub max_node_penalties: u32,
+        pub max_registered_nodes: u32,
+        pub initial_coldkeys: BTreeSet<AccountId>,
+        pub key_types: BTreeSet<KeyType>,
+        pub bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
     }
 
     #[derive(
@@ -1116,15 +1067,14 @@ pub mod pallet {
         pub max_stake: u128,
         pub delegate_stake_percentage: u128,
         pub subnet_node_queue_epochs: u32,
-        pub activation_grace_epochs: u32,
-        pub queue_classification_epochs: u32,
+        // pub activation_grace_epochs: u32,
+        pub idle_classification_epochs: u32,
         pub included_classification_epochs: u32,
         pub max_node_penalties: u32,
         pub initial_coldkeys: Option<BTreeSet<AccountId>>,
         pub max_registered_nodes: u32,
         pub owner: Option<AccountId>,
         pub registration_epoch: Option<u32>,
-        // pub node_removal_system: Option<NodeRemovalPolicy>,
         pub key_types: BTreeSet<KeyType>,
         pub slot_index: Option<u32>,
         pub penalty_count: u32,
@@ -1376,6 +1326,13 @@ pub mod pallet {
         pub misc: BoundedVec<u8, DefaultMaxVectorLength>,
     }
 
+    /// Attests format for consensus
+    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub struct AttestEntry {
+        pub block: u32,
+        pub data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
+    }
+
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusSubmissionData<AccountId> {
         pub validator_subnet_node_id: u32,
@@ -1383,9 +1340,10 @@ pub mod pallet {
         pub weight_sum: u128,
         pub data_length: u32,
         pub data: Vec<SubnetNodeConsensusData>,
-        // pub attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)>,
-        pub attests: BTreeMap<u32, AttestEntry>,
+        pub attests: BTreeMap<u32, AttestEntry>, // subnet_node_id: AttestEntry
         pub subnet_nodes: Vec<SubnetNode<AccountId>>,
+        pub prioritize_queue_node_id: Option<u32>,
+        pub remove_queue_node_id: Option<u32>,
     }
 
     /// Reasons for a subnets removal
@@ -1410,23 +1368,14 @@ pub mod pallet {
         PauseExpired,
     }
 
-    /// Attests format for consensus
-    /// ``u64`` is the block number of the accounts attestation for subnets to utilize to measure attestation speed
-    /// The blockchain itself doesn't utilize this data
-    // pub type Attests<AccountId> = BTreeMap<AccountId, u64>;
-
-    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-    pub struct AttestEntry {
-        pub block: u32,
-        pub data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
-    }
-
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusData<AccountId> {
         pub validator_id: u32, // Chosen validator of the epoch
         // pub attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)>, // Count of attestations of the submitted data (node ID, (block, data))
         pub attests: BTreeMap<u32, AttestEntry>, // Count of attestations of the submitted data (node ID, (block, data))
         pub subnet_nodes: Vec<SubnetNode<AccountId>>,
+        pub prioritize_queue_node_id: Option<u32>,
+        pub remove_queue_node_id: Option<u32>,
         pub data: Vec<SubnetNodeConsensusData>, // Data submitted by chosen validator
         pub args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>, // Optional arguements to pass for subnet to validate
     }
@@ -1641,6 +1590,82 @@ pub mod pallet {
         pub ow_score: u128,
     }
 
+    struct WeightAccumulator<T: Config> {
+        total_reads: u64,
+        total_writes: u64,
+        computational_ops: u64,
+        _phantom: core::marker::PhantomData<T>,
+    }
+
+    impl<T: Config> WeightAccumulator<T> {
+        fn new() -> Self {
+            Self {
+                total_reads: 0,
+                total_writes: 0,
+                computational_ops: 0,
+                _phantom: Default::default(),
+            }
+        }
+
+        fn add_computational_weight(&mut self, ops: u64) {
+            self.computational_ops += ops;
+        }
+
+        fn add_clear_prefix(&mut self, removed_count: u32) {
+            self.total_writes += removed_count as u64;
+        }
+
+        fn add_remove(&mut self) {
+            self.total_writes += 1;
+        }
+
+        fn add_take(&mut self) {
+            self.total_reads += 1;
+            self.total_writes += 1;
+        }
+
+        fn add_mutate(&mut self) {
+            self.total_reads += 1;
+            self.total_writes += 1;
+        }
+
+        fn add_reads(&mut self, count: u64) {
+            self.total_reads += count;
+        }
+
+        fn add_writes(&mut self, count: u64) {
+            self.total_writes += count;
+        }
+
+        fn finalize(self) -> Weight {
+            let mut weight = Weight::zero();
+            weight = weight.saturating_add(T::DbWeight::get().reads(self.total_reads));
+            weight = weight.saturating_add(T::DbWeight::get().writes(self.total_writes));
+            // Add computational overhead
+            weight = weight
+                .saturating_add(Weight::from_parts(1000, 0).saturating_mul(self.computational_ops));
+            weight
+        }
+    }
+
+    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub struct AllSubnetBootnodes {
+        pub bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
+        pub node_bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
+    }
+
+    /// Struct to hold burn rate statistics
+    #[derive(Debug)]
+    pub struct BurnRateStats {
+        pub current_rate_percentage: u128,
+        pub min_rate_percentage: u128,
+        pub max_rate_percentage: u128,
+        pub current_burn_amount: u128,
+        pub base_burn_amount: u128,
+        pub registrations_this_epoch: u32,
+        pub target_registrations: u32,
+    }
+
     #[pallet::type_value]
     pub fn DefaultZeroU32() -> u32 {
         0
@@ -1660,6 +1685,14 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultEmptyVec() -> Vec<u8> {
         Vec::new()
+    }
+    #[pallet::type_value]
+    pub fn DefaultOneDayInBlocks() -> u32 {
+        600
+    }
+    #[pallet::type_value]
+    pub fn DefaultOneWeekInBlocks() -> u32 {
+        100800
     }
     #[pallet::type_value]
     pub fn DefaultPeerId() -> PeerId {
@@ -1772,14 +1805,6 @@ pub mod pallet {
     pub fn DefaultDelegateStakeTransferPeriod() -> u32 {
         1000
     }
-    // #[pallet::type_value]
-    // pub fn DefaultSubnetMinStakeBalance() -> u128 {
-    // 	1000
-    // }
-    // #[pallet::type_value]
-    // pub fn DefaultSubnetMaxStakeBalance() -> u128 {
-    // 	1000
-    // }
     #[pallet::type_value]
     pub fn DefaultDelegateStakeRewardsPercentage() -> u128 {
         // 1100
@@ -1961,43 +1986,6 @@ pub mod pallet {
         230000000000000000
     }
     #[pallet::type_value]
-    pub fn DefaultSubnetInflationFactor() -> u128 {
-        // 40.0%
-        400000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultInflationAdjFactor() -> u128 {
-        // 15%
-        150000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultSubnetInflationAdjFactor() -> u128 {
-        // Utilization steepness as `k`
-        // 200%
-        2000000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultSubnetNodeInflationAdjFactor() -> u128 {
-        // Utilization steepness as `k`
-        // 200%
-        2000000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultTerminalInflationFactor() -> u128 {
-        // 15%
-        150000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultUtilizationLowerBound() -> u128 {
-        // 10.0%
-        100000000000000000
-    }
-    #[pallet::type_value]
-    pub fn DefaultUtilizationUpperBound() -> u128 {
-        // 50.0%
-        500000000000000000
-    }
-    #[pallet::type_value]
     pub fn DefaultSigmoidMidpoint() -> u128 {
         // 50.0%
         500000000000000000
@@ -2005,18 +1993,6 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultSigmoidSteepness() -> u128 {
         7
-    }
-    // #[pallet::type_value]
-    // pub fn DefaultDeactivationLedger<T: Config>() -> BTreeSet<SubnetNodeDeactivation> {
-    // 	BTreeSet::new()
-    // }
-    #[pallet::type_value]
-    pub fn DefaultMaxDeactivations() -> u32 {
-        512
-    }
-    #[pallet::type_value]
-    pub fn DefaultChurnDenominator() -> u32 {
-        4
     }
     #[pallet::type_value]
     pub fn DefaultChurnLimit() -> u32 {
@@ -2040,7 +2016,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultMinRegistrationQueueEpochs() -> u32 {
         // Require at least one epoch in registration queue
-        1
+        4
     }
     #[pallet::type_value]
     pub fn DefaultMaxRegistrationQueueEpochs<T: Config>() -> u32 {
@@ -2116,48 +2092,12 @@ pub mod pallet {
         4
     }
     #[pallet::type_value]
-    pub fn DefaultMaxRegisteredNodes() -> u32 {
-        16
-    }
-    #[pallet::type_value]
     pub fn DefaultMinMaxRegisteredNodes() -> u32 {
         1
     }
     #[pallet::type_value]
     pub fn DefaultMaxMaxRegisteredNodes() -> u32 {
-        512
-    }
-    #[pallet::type_value]
-    pub fn DefaultRegistrationQueueEpochs() -> u32 {
-        4
-    }
-    // #[pallet::type_value]
-    // pub fn DefaultSubnetNodeRemovalSystem() -> NodeRemovalSystem {
-    // 	NodeRemovalSystem::Consensus
-    // }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalStakePercentageDelta() -> u128 {
-        0
-    }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalReputationScorePercentageDelta() -> u128 {
-        0
-    }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalStakeBalancePercentageDelta() -> u128 {
-        0
-    }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalDelegateStakeRatePercentageDelta() -> u128 {
-        0
-    }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalReputationScoreMin() -> u128 {
-        0
-    }
-    #[pallet::type_value]
-    pub fn DefaultNodeRemovalImmunityEpochs() -> u32 {
-        0
+        64
     }
     #[pallet::type_value]
     pub fn DefaultIdleClassificationEpochs() -> u32 {
@@ -2165,10 +2105,6 @@ pub mod pallet {
     }
     #[pallet::type_value]
     pub fn DefaultIncludedClassificationEpochs() -> u32 {
-        4
-    }
-    #[pallet::type_value]
-    pub fn DefaultMaxDeactivationEpochs() -> u32 {
         4
     }
     #[pallet::type_value]
@@ -2375,6 +2311,26 @@ pub mod pallet {
     pub fn DefaultMaxUnbondings() -> u32 {
         32
     }
+    #[pallet::type_value]
+    pub fn DefaultCurrentNodeBurnRate() -> u128 {
+        // 100%
+        1000000000000000000
+    }
+    #[pallet::type_value]
+    pub fn DefaultMaxNodeBurnRate() -> u128 {
+        // 500%
+        5_000_000_000_000_000_000
+    }
+    #[pallet::type_value]
+    pub fn DefaulBaseNodeBurnAmount() -> u128 {
+        // 0.00001
+        10000000000000
+    }
+    #[pallet::type_value]
+    pub fn DefaultNodeBurnRateAlpha() -> u128 {
+        // 50%
+        500_000_000_000_000_000
+    }
 
     //
     // Subnet elements
@@ -2470,17 +2426,17 @@ pub mod pallet {
     /// Subnet registration epochs
     /// This is the total epochs in the registration period before the enactment period
     #[pallet::storage]
-    pub type SubnetRegistrationEpochs<T: Config> =
+    pub type SubnetRegistrationEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultSubnetRegistrationEpochs<T>>;
 
     /// The minimum epochs a subnet much be registered for
     #[pallet::storage]
-    pub type MinSubnetRegistrationEpochs<T: Config> =
+    pub type MinSubnetRegistrationEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMinSubnetRegistrationEpochs<T>>;
 
     /// Time period allowable for subnet activation following registration period
     #[pallet::storage]
-    pub type SubnetActivationEnactmentEpochs<T: Config> =
+    pub type SubnetActivationEnactmentEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultSubnetActivationEnactmentEpochs<T>>;
 
     // Max epochs where consensus isn't formed before subnet being removed
@@ -2494,7 +2450,7 @@ pub mod pallet {
 
     /// Min ChurnLimit
     #[pallet::storage]
-    pub type MaxSubnetPauseEpochs<T: Config> =
+    pub type MaxSubnetPauseEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxSubnetPauseEpochs<T>>;
 
     // Lower bound of registration fee
@@ -2508,8 +2464,8 @@ pub mod pallet {
         StorageValue<_, u128, ValueQuery, DefaultMaxSubnetRegistrationFee>;
 
     // Last epoch a subnet was registered
-    #[pallet::storage]
-    pub type LastSubnetRegistrationEpoch<T> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
+    // #[pallet::storage]
+    // pub type LastSubnetRegistrationEpoch<T> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 
     // Epochs per subnet registration
     // Also used for calculating the fee between the max and min registration fee
@@ -2522,10 +2478,6 @@ pub mod pallet {
     #[pallet::storage]
     pub type MaxSubnetRemovalInterval<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxSubnetRemovalInterval>;
-
-    // /// Set of coldkeys
-    // #[pallet::storage]
-    // pub type SubnetColdkeys<T: Config> = StorageMap<_, Identity, u32, BTreeSet<T::AccountId>, ValueQuery>;
 
     //
     // Registration fees
@@ -2551,12 +2503,14 @@ pub mod pallet {
 
     /// Last block the price was updated
     #[pallet::storage]
-    pub type LastRegistrationBlock<T> = StorageValue<_, u32, ValueQuery>;
+    pub type LastSubnetRegistrationBlock<T> = StorageValue<_, u32, ValueQuery>;
 
     #[pallet::type_value]
     pub fn DefaultRegistrationCostDecayBlocks() -> u32 {
         // 3 months
-        1314871
+        // 1314871
+        // 1 months
+        438290
     }
 
     #[pallet::storage]
@@ -2659,14 +2613,6 @@ pub mod pallet {
     pub type MaxMinDelegateStakeMultiplier<T> =
         StorageValue<_, u128, ValueQuery, DefaulMaxMinDelegateStakeMultiplier>;
 
-    // #[pallet::storage]
-    // pub type SubnetNodeCountEMA<T> = StorageMap<_, Blake2_128Concat, u32, u128, ValueQuery, DefaultSubnetNodeCountEMA>;
-
-    // subnet_id -> last block updated
-    // #[pallet::storage]
-    // pub type SubnetNodeCountEMALastUpdated<T> =
-    //   StorageMap<_, Blake2_128Concat, u32, u32, ValueQuery, DefaultZeroU32>;
-
     /// Min ChurnLimit
     #[pallet::storage]
     pub type MinChurnLimit<T> = StorageValue<_, u32, ValueQuery, DefaultMinChurnLimit>;
@@ -2682,18 +2628,18 @@ pub mod pallet {
 
     /// Max SubnetNodeQueueEpochs
     #[pallet::storage]
-    pub type MaxQueueEpochs<T: Config> =
+    pub type MaxQueueEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxRegistrationQueueEpochs<T>>;
 
-    /// Min ActivationGraceEpochs
-    #[pallet::storage]
-    pub type MinActivationGraceEpochs<T> =
-        StorageValue<_, u32, ValueQuery, DefaultMinActivationGraceEpochs>;
+    // /// Min ActivationGraceEpochs
+    // #[pallet::storage]
+    // pub type MinActivationGraceEpochs<T> =
+    //     StorageValue<_, u32, ValueQuery, DefaultMinActivationGraceEpochs>;
 
-    /// Max ActivationGraceEpochs
-    #[pallet::storage]
-    pub type MaxActivationGraceEpochs<T: Config> =
-        StorageValue<_, u32, ValueQuery, DefaultMaxActivationGraceEpochs<T>>;
+    // /// Max ActivationGraceEpochs
+    // #[pallet::storage]
+    // pub type MaxActivationGraceEpochs<T> =
+    //     StorageValue<_, u32, ValueQuery, DefaultMaxActivationGraceEpochs<T>>;
 
     /// Min IdleClassificationEpochs
     #[pallet::storage]
@@ -2702,7 +2648,7 @@ pub mod pallet {
 
     /// Max IdleClassificationEpochs
     #[pallet::storage]
-    pub type MaxIdleClassificationEpochs<T: Config> =
+    pub type MaxIdleClassificationEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxIdleClassificationEpochs<T>>;
 
     /// Min IncludedClassificationEpochs
@@ -2712,7 +2658,7 @@ pub mod pallet {
 
     /// Max IncludedClassificationEpochs
     #[pallet::storage]
-    pub type MaxIncludedClassificationEpochs<T: Config> =
+    pub type MaxIncludedClassificationEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxIncludedClassificationEpochs<T>>;
 
     // Min value the MaxSubnetNodePenalties
@@ -2766,7 +2712,7 @@ pub mod pallet {
     /// Length of epochs a node must be in the registration queue before they can activate
     #[pallet::storage] // subnet_uid --> u32
     pub type SubnetNodeQueueEpochs<T> =
-        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultRegistrationQueueEpochs>;
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMinRegistrationQueueEpochs>;
 
     /// Length of epochs a Idle classified node must be in that class for
     #[pallet::storage] // subnet_uid --> u32
@@ -2821,16 +2767,10 @@ pub mod pallet {
     pub type IncludedClassificationEpochs<T> =
         StorageMap<_, Identity, u32, u32, ValueQuery, DefaultIncludedClassificationEpochs>;
 
-    // Max epochs a subnet can be deactivated for until they are either able to be cleaned up and remove
-    // or unable to reactivate
-    #[pallet::storage] // subnet_uid --> u32
-    pub type MaxDeactivationEpochs<T> =
-        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMaxDeactivationEpochs>;
-
-    // Epochs a registered & queued node can activate themselves in addition to their start_epoch
-    #[pallet::storage] // subnet_uid --> u32
-    pub type ActivationGraceEpochs<T> =
-        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultActivationGraceEpochs>;
+    // // Epochs a registered & queued node can activate themselves in addition to their start_epoch
+    // #[pallet::storage] // subnet_uid --> u32
+    // pub type ActivationGraceEpochs<T> =
+    //     StorageMap<_, Identity, u32, u32, ValueQuery, DefaultActivationGraceEpochs>;
 
     // Whitelist of coldkeys that nodes can register to a subnet during its registration period
     // Afterwards on subnet activation, this list is deleted and the subnet is now public
@@ -2842,14 +2782,7 @@ pub mod pallet {
 
     #[pallet::storage] // subnet_uid --> u32
     pub type MaxRegisteredNodes<T> =
-        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMaxRegisteredNodes>;
-
-    // #[pallet::storage] // subnet_uid --> u32
-    // pub type SubnetNodeRemovalSystem<T> =
-    // 	StorageMap<_, Identity, u32, NodeRemovalSystem, ValueQuery, DefaultSubnetNodeRemovalSystem>;
-
-    // #[pallet::storage]
-    // pub type NodeRemovalSystemV2<T> = StorageMap<_, Identity, u32, NodeRemovalPolicy, OptionQuery>;
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMaxMaxRegisteredNodes>;
 
     #[pallet::storage]
     pub type SubnetKeyTypes<T> = StorageMap<_, Identity, u32, BTreeSet<KeyType>, ValueQuery>;
@@ -2865,7 +2798,7 @@ pub mod pallet {
         StorageMap<_, Identity, u32, u128, ValueQuery, DefaultSubnetNodeScorePenaltyThreshold>;
 
     #[pallet::storage] // subnet_id --> u32
-    pub type TotalSubnetNodeUids<T: Config> = StorageMap<_, Identity, u32, u32, ValueQuery>;
+    pub type TotalSubnetNodeUids<T> = StorageMap<_, Identity, u32, u32, ValueQuery>;
 
     /// Coldkey => Public Identity
     #[pallet::storage]
@@ -2895,7 +2828,7 @@ pub mod pallet {
 
     // Hotkey => Subnet ID
     // This is useful for updating hotkeys in `update_hotkey`
-    // This is only removed if the node has a stake of 0
+    // This is only removed if the node has a stake of 0 (not on node removal)
     #[pallet::storage]
     pub type HotkeySubnetId<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, u32, OptionQuery>;
@@ -2926,7 +2859,7 @@ pub mod pallet {
         StorageDoubleMap<_, Identity, u32, Identity, u32, T::AccountId, OptionQuery>;
 
     #[pallet::storage] // subnet_id --> uid --> count of epochs in a row
-    pub type SubnetNodeConsecutiveIncludedEpochs<T: Config> =
+    pub type SubnetNodeConsecutiveIncludedEpochs<T> =
         StorageDoubleMap<_, Identity, u32, Identity, u32, u32, ValueQuery, DefaultZeroU32>;
 
     // Mapping of subnet nodes
@@ -2955,48 +2888,19 @@ pub mod pallet {
         DefaultSubnetNode<T>,
     >;
 
-    // #[pallet::storage]
-    // pub type SubnetNodeQueue<T: Config> =
-    //     StorageMap<_, Identity, u32, Vec<SubnetNode<T::AccountId>>, ValueQuery>;
-
     // Subnet node queue to be activated
     // This if for registered nodes and paused nodes
     #[pallet::storage]
     pub type SubnetNodeQueue<T: Config> =
         StorageMap<_, Identity, u32, Vec<SubnetNode<T::AccountId>>, ValueQuery>;
 
-    // /// Subnets that are deactivated are stored here before reactivation
-    // #[pallet::storage] // subnet_id --> uid --> data
-    // pub type PausedSubnetNodesData<T: Config> = StorageDoubleMap<
-    //     _,
-    //     Identity,
-    //     u32,
-    //     Identity,
-    //     u32,
-    //     SubnetNode<T::AccountId>,
-    //     ValueQuery,
-    //     DefaultSubnetNode<T>,
-    // >;
-
-    // Vector of unpaused subnet nodes
+    /// Immunity period for queued nodes to not be removed from queue
     #[pallet::storage]
-    pub type UnpausedSubnetNodes<T: Config> =
-        StorageMap<_, Identity, u32, Vec<SubnetNode<T::AccountId>>, ValueQuery>;
-
-    #[pallet::storage]
-    pub type IsSubnetNodeInUnpauseQueue<T: Config> = StorageDoubleMap<
-        _,
-        Identity,
-        u32, // subnet_id
-        Identity,
-        u32,  // subnet_node_id
-        bool, // is_in_queue
-        ValueQuery,
-        DefaultBoolFalse,
-    >;
+    pub type QueueImmunityEpochs<T: Config> =
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMinRegistrationQueueEpochs>;
 
     #[pallet::storage] // subnet_id --> peer_id --> subnet_node_id
-    pub type PeerIdSubnetNodeId<T: Config> = StorageDoubleMap<
+    pub type PeerIdSubnetNodeId<T> = StorageDoubleMap<
         _,
         Identity,
         u32,
@@ -3008,7 +2912,7 @@ pub mod pallet {
     >;
 
     #[pallet::storage] // subnet_id --> bootnode_peer_id --> subnet_node_id
-    pub type BootnodePeerIdSubnetNodeId<T: Config> = StorageDoubleMap<
+    pub type BootnodePeerIdSubnetNodeId<T> = StorageDoubleMap<
         _,
         Identity,
         u32,
@@ -3020,7 +2924,7 @@ pub mod pallet {
     >;
 
     #[pallet::storage] // subnet_id --> client_peer_id --> subnet_node_id
-    pub type ClientPeerIdSubnetNodeId<T: Config> = StorageDoubleMap<
+    pub type ClientPeerIdSubnetNodeId<T> = StorageDoubleMap<
         _,
         Identity,
         u32,
@@ -3032,7 +2936,7 @@ pub mod pallet {
     >;
 
     #[pallet::storage] // subnet_id --> bootnode --> subnet_node_id
-    pub type BootnodeSubnetNodeId<T: Config> = StorageDoubleMap<
+    pub type BootnodeSubnetNodeId<T> = StorageDoubleMap<
         _,
         Identity,
         u32,
@@ -3056,13 +2960,53 @@ pub mod pallet {
         DefaultZeroU32,
     >;
 
-    // #[pallet::storage]
-    // pub type SubnetNodeNonUniqueParamUpdateInterval<T> =
-    //     StorageValue<_, u32, ValueQuery, DefaultSubnetNodeNonUniqueParamUpdateInterval>;
-
     #[pallet::storage]
     pub type SubnetNodeNonUniqueParamLastSet<T> =
         StorageDoubleMap<_, Identity, u32, Identity, u32, u32, ValueQuery, DefaultZeroU32>;
+
+    //
+    // Node burn
+    //
+
+    // Subnet ID => current rate
+    #[pallet::storage]
+    pub type CurrentNodeBurnRate<T> =
+        StorageMap<_, Identity, u32, u128, ValueQuery, DefaultCurrentNodeBurnRate>;
+
+    /// Base network burn amount
+    /// Base burn amount (what 100% rate represents)
+    #[pallet::storage]
+    #[pallet::getter(fn base_burn_amount)]
+    pub type BaseNodeBurnAmount<T: Config> =
+        StorageValue<_, u128, ValueQuery, DefaulBaseNodeBurnAmount>;
+
+    /// Minimum burn rate as a percentage (using 1e18 precision)
+    /// e.g., 1e18 = 100% minimum rate
+    #[pallet::storage]
+    pub type MinNodeBurnRate<T: Config> =
+        StorageValue<_, u128, ValueQuery, DefaultCurrentNodeBurnRate>;
+
+    /// Maximum burn rate as a percentage (using 1e18 precision)  
+    /// e.g., 5e18 = 500% maximum rate
+    #[pallet::storage]
+    pub type MaxNodeBurnRate<T: Config> = StorageValue<_, u128, ValueQuery, DefaultMaxNodeBurnRate>;
+
+    /// Alpha value for burn rate adjustment (using 1e18 precision)
+    /// Higher alpha = faster adjustment to target
+    /// Subnet ID => alpha (set by subnet owner)
+    #[pallet::storage]
+    pub type NodeBurnRateAlpha<T> =
+        StorageMap<_, Identity, u32, u128, ValueQuery, DefaultNodeBurnRateAlpha>;
+
+    /// Target number of registrations per epoch
+    /// Subnet ID => alpha (set by subnet owner)
+    #[pallet::storage]
+    pub type TargetNodeRegistrationsPerEpoch<T> =
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultMaxMaxRegisteredNodes>;
+
+    /// Count of registrations in current epoch
+    #[pallet::storage]
+    pub type NodeRegistrationsThisEpoch<T> = StorageMap<_, Identity, u32, u32, ValueQuery>;
 
     //
     // Network utility elements
@@ -3085,7 +3029,8 @@ pub mod pallet {
     //
 
     #[pallet::storage] // subnet ID => epoch  => Subnet Node ID
-    pub type SubnetElectedValidator<T> = StorageDoubleMap<_, Identity, u32, Identity, u32, u32>;
+    pub type SubnetElectedValidator<T> =
+        StorageDoubleMap<_, Identity, u32, Identity, u32, u32, OptionQuery>;
 
     // Consensus submissions (attestation proposals by elected validator)
     #[pallet::storage] // subnet ID => epoch  => data
@@ -3171,23 +3116,6 @@ pub mod pallet {
         DefaultColdkeyReputation,
     >;
 
-    // /// Tracks how many unique subnets a coldkey is in
-    // /// This is not 100% accurate is a subnet is removed and deleted
-    // /// This storage requires confirming the subnet is still active, not removed on subnet removal
-    // #[pallet::storage]
-    // pub type ColdkeySubnets<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeSet<u32>, ValueQuery>;
-
-    // /// coldkey => { subnet ID: node ID }
-    // #[pallet::storage]
-    // pub type ColdkeySubnetsV2<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BTreeMap<u32, u32>, ValueQuery>;
-
-    // Attestion percentage required to increment a nodes penalty count up
-    // i.e. If a node doesn't attest and the attestation rate is above `NodeAttestationRemovalThreshold`
-    //	    then we add one penalty to the unattested node
-    // #[pallet::storage]
-    // pub type NodeAttestationRemovalThreshold<T> =
-    //     StorageValue<_, u128, ValueQuery, DefaultNodeAttestationRemovalThreshold>;
-
     //
     // Staking
     //
@@ -3242,7 +3170,7 @@ pub mod pallet {
     /// This only applies to activated nodes
     /// If a node never activates, they can unstake under the standard cooldown period
     #[pallet::storage]
-    pub type MinActiveNodeStakeEpochs<T: Config> =
+    pub type MinActiveNodeStakeEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMinActiveNodeStakeEpochs<T>>;
 
     //
@@ -3402,6 +3330,11 @@ pub mod pallet {
     // Overwatch Nodes
     //
 
+    /// If a coldkey is blacklisted from being an overwatch node
+    #[pallet::storage]
+    pub type OverwatchNodeBlacklist<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, bool, ValueQuery, DefaultBoolFalse>;
+
     #[pallet::storage]
     pub type MaxOverwatchNodes<T> = StorageValue<_, u32, ValueQuery, DefaultMaxOverwatchNodes>;
 
@@ -3546,8 +3479,7 @@ pub mod pallet {
 
     /// The minimum coldkey reputation time in network based on general blockchain epochs
     #[pallet::storage]
-    pub type OverwatchMinAge<T: Config> =
-        StorageValue<_, u32, ValueQuery, DefaultOverwatchMinAge<T>>;
+    pub type OverwatchMinAge<T> = StorageValue<_, u32, ValueQuery, DefaultOverwatchMinAge<T>>;
 
     //
     // Overwatch staking
@@ -3604,8 +3536,7 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    pub type SwapQueueOrder<T: Config> =
-        StorageValue<_, BoundedVec<u32, ConstU32<1000>>, ValueQuery>;
+    pub type SwapQueueOrder<T> = StorageValue<_, BoundedVec<u32, ConstU32<1000>>, ValueQuery>;
 
     /// Queue to swap between nodes and subnet delegate staking
     #[pallet::storage]
@@ -3618,7 +3549,7 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    pub type NextSwapId<T: Config> = StorageValue<_, u32, ValueQuery>;
+    pub type NextSwapId<T> = StorageValue<_, u32, ValueQuery>;
 
     #[pallet::type_value]
     pub fn DefaultMaxSwapQueueCallsPerBlock() -> u32 {
@@ -3628,6 +3559,15 @@ pub mod pallet {
     #[pallet::storage]
     pub type MaxSwapQueueCallsPerBlock<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxSwapQueueCallsPerBlock>;
+
+    #[pallet::type_value]
+    pub fn DefaultMaximumHooksWeightV2<T: Config>() -> Weight {
+        sp_runtime::Perbill::from_percent(50) * T::BlockWeights::get().max_block
+    }
+
+    #[pallet::storage]
+    pub type MaximumHooksWeightV2<T> =
+        StorageValue<_, Weight, ValueQuery, DefaultMaximumHooksWeightV2<T>>;
 
     /// The pallet's dispatchable functions ([`Call`]s).
     ///
@@ -3654,13 +3594,14 @@ pub mod pallet {
         pub fn register_subnet(
             origin: OriginFor<T>,
             hotkey: T::AccountId,
+            max_cost: u128,
             subnet_data: RegistrationSubnetData<T::AccountId>,
         ) -> DispatchResult {
             let owner: T::AccountId = ensure_signed(origin)?;
 
             Self::is_paused()?;
 
-            Self::do_register_subnet(owner, hotkey, subnet_data)
+            Self::do_register_subnet(owner, max_cost, subnet_data)
         }
 
         /// Try activation a registered subnet.
@@ -3678,7 +3619,7 @@ pub mod pallet {
         ///
         #[pallet::call_index(1)]
         #[pallet::weight({0})]
-        pub fn activate_subnet(origin: OriginFor<T>, subnet_id: u32) -> DispatchResult {
+        pub fn activate_subnet(origin: OriginFor<T>, subnet_id: u32) -> DispatchResultWithPostInfo {
             let coldkey: T::AccountId = ensure_signed(origin)?;
 
             Self::is_paused()?;
@@ -3706,7 +3647,7 @@ pub mod pallet {
         ///
         #[pallet::call_index(2)]
         #[pallet::weight({0})]
-        pub fn remove_subnet(origin: OriginFor<T>, subnet_id: u32) -> DispatchResult {
+        pub fn remove_subnet(origin: OriginFor<T>, subnet_id: u32) -> DispatchResultWithPostInfo {
             ensure_signed(origin)?;
 
             Self::is_paused()?;
@@ -3731,24 +3672,32 @@ pub mod pallet {
 
             if !in_registration_period && penalties > MaxSubnetPenaltyCount::<T>::get() {
                 // --- If the subnet has reached max penalty, remove it
-                Self::do_remove_subnet(subnet_id, SubnetRemovalReason::MaxPenalties);
-                return Ok(());
+                let weight =
+                    Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MaxPenalties);
+                return Ok(Some(weight).into());
             } else if !in_registration_period
                 && subnet_delegate_stake_balance < min_subnet_delegate_stake_balance
             {
                 // --- If the delegate stake balance is below minimum threshold, remove it
-                Self::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
-                return Ok(());
+                let weight = Self::do_remove_subnet_v2(
+                    subnet_id,
+                    SubnetRemovalReason::MinSubnetDelegateStake,
+                );
+                return Ok(Some(weight).into());
             } else if subnet.state == SubnetState::Registered
                 && !in_registration_period
                 && !in_enactment_period
             {
                 // --- If the subnet has not activated itself yet, outside the enactment period
-                Self::do_remove_subnet(subnet_id, SubnetRemovalReason::EnactmentPeriod);
-                return Ok(());
+                let weight =
+                    Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::EnactmentPeriod);
+                return Ok(Some(weight).into());
             }
 
-            // We don't remove when a subnet has less than the minimum subnet nodes as it increases penalties in epoch preliminaries
+            // We don't remove when a subnet:
+            // - Has less than the minimum subnet nodes as it increases penalties in epoch preliminaries
+            // - Is paused as being past the max pause epochs increases penalties in epoch preliminaries
+            // See `do_epoch_preliminaries`
 
             // --- If we make it to here, fail the extrinsic
             Err(Error::<T>::InvalidSubnetRemoval.into())
@@ -3849,7 +3798,8 @@ pub mod pallet {
             value: u32,
         ) -> DispatchResult {
             Self::is_paused()?;
-            Self::do_owner_update_activation_grace_epochs(origin, subnet_id, value)
+            // Self::do_owner_update_activation_grace_epochs(origin, subnet_id, value)
+            Ok(())
         }
 
         #[pallet::call_index(13)]
@@ -3923,10 +3873,9 @@ pub mod pallet {
         pub fn owner_update_node_removal_policy(
             origin: OriginFor<T>,
             subnet_id: u32,
-            policy: NodeRemovalPolicy,
+            policy: u32,
         ) -> DispatchResult {
             Self::is_paused()?;
-            // Self::do_owner_update_node_removal_policy(origin, subnet_id, policy)
             Ok(())
         }
 
@@ -3935,7 +3884,7 @@ pub mod pallet {
         pub fn owner_placer_fn(
             origin: OriginFor<T>,
             subnet_id: u32,
-            policy: NodeRemovalPolicy,
+            policy: u32,
         ) -> DispatchResult {
             Self::is_paused()?;
             Ok(())
@@ -4053,6 +4002,39 @@ pub mod pallet {
 
         #[pallet::call_index(29)]
         #[pallet::weight({0})]
+        pub fn owner_update_target_registrations_per_epoch(
+            origin: OriginFor<T>,
+            subnet_id: u32,
+            value: u32,
+        ) -> DispatchResult {
+            Self::is_paused()?;
+            Self::do_owner_update_target_registrations_per_epoch(origin, subnet_id, value)
+        }
+
+        #[pallet::call_index(30)]
+        #[pallet::weight({0})]
+        pub fn owner_update_node_burn_rate_alpha(
+            origin: OriginFor<T>,
+            subnet_id: u32,
+            value: u128,
+        ) -> DispatchResult {
+            Self::is_paused()?;
+            Self::do_owner_update_node_burn_rate_alpha(origin, subnet_id, value)
+        }
+
+        #[pallet::call_index(31)]
+        #[pallet::weight({0})]
+        pub fn owner_update_queue_immunity_epochs(
+            origin: OriginFor<T>,
+            subnet_id: u32,
+            value: u32,
+        ) -> DispatchResult {
+            Self::is_paused()?;
+            Self::do_owner_update_queue_immunity_epochs(origin, subnet_id, value)
+        }
+
+        #[pallet::call_index(32)]
+        #[pallet::weight({0})]
         pub fn update_bootnodes(
             origin: OriginFor<T>,
             subnet_id: u32,
@@ -4061,82 +4043,6 @@ pub mod pallet {
         ) -> DispatchResult {
             Self::is_paused()?;
             Self::do_update_bootnodes(origin, subnet_id, add, remove)
-        }
-
-        /// Add a Subnet Node to the subnet by registering and activating in one call
-        ///
-        /// The Subnet Node will be assigned a class (`SubnetNodeClass`)
-        /// * If the subnet is in its registration period it will be assigned the Validator class
-        /// * If the subnet is active, it will be assigned as `Registered` and must be inducted by consensus
-        /// - See `SubnetNodeClass` for more information on class levels
-        ///
-        /// # Arguments
-        ///
-        /// * `subnet_id` - Subnet ID.
-        /// * `hotkey` - Hotkey of the Subnet Node.
-        /// * `peer_id` - The Peer ID of the Subnet Node within the subnet P2P network.
-        /// * `stake_to_be_added` - The balance to add to stake.
-        /// * `a` - A Subnet Node parameter unique to each subnet.
-        /// * `b` - A non-unique parameter.
-        ///
-        /// # Requirements
-        ///
-        /// * `stake_to_be_added` must be the minimum required stake balance
-        ///
-        #[pallet::call_index(30)]
-        // #[pallet::weight(T::WeightInfo::add_subnet_node())]
-        #[pallet::weight({0})]
-        pub fn add_subnet_node(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            hotkey: T::AccountId,
-            peer_id: PeerId,
-            bootnode_peer_id: PeerId,
-            client_peer_id: PeerId,
-            bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-            delegate_reward_rate: u128,
-            stake_to_be_added: u128,
-            unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-            non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
-        ) -> DispatchResult {
-            Self::is_paused()?;
-
-            // Self::do_register_subnet_node(
-            //     origin.clone(),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id,
-            //     bootnode_peer_id,
-            //     client_peer_id,
-            //     bootnode,
-            //     delegate_reward_rate,
-            //     stake_to_be_added,
-            //     unique,
-            //     non_unique,
-            // )
-            // .map_err(|e| e)?;
-
-            // // Redundant `ok_or`
-            // let subnet_node_id = HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone())
-            //     .ok_or(Error::<T>::NotUidOwner)?;
-
-            // Self::do_activate_subnet_node(origin, subnet_id, subnet_node_id)
-            //     .map(|_| ())
-            //     .map_err(|e| e.error)
-            // Ok(())
-            Self::do_register_subnet_node_v2(
-                origin,
-                subnet_id,
-                hotkey,
-                peer_id,
-                bootnode_peer_id,
-                client_peer_id,
-                bootnode,
-                delegate_reward_rate,
-                stake_to_be_added,
-                unique,
-                non_unique,
-            )
         }
 
         /// Register a Subnet Node to the subnet
@@ -4160,7 +4066,7 @@ pub mod pallet {
         ///
         /// * `stake_to_be_added` must be the minimum required stake balance
         ///
-        #[pallet::call_index(31)]
+        #[pallet::call_index(33)]
         #[pallet::weight({0})]
         pub fn register_subnet_node(
             origin: OriginFor<T>,
@@ -4174,22 +4080,9 @@ pub mod pallet {
             stake_to_be_added: u128,
             unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
             non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+            max_burn_amount: u128,
         ) -> DispatchResult {
             Self::is_paused()?;
-
-            // Self::do_register_subnet_node(
-            //     origin,
-            //     subnet_id,
-            //     hotkey,
-            //     peer_id,
-            //     bootnode_peer_id,
-            //     client_peer_id,
-            //     bootnode,
-            //     delegate_reward_rate,
-            //     stake_to_be_added,
-            //     unique,
-            //     non_unique,
-            // )
             Self::do_register_subnet_node_v2(
                 origin,
                 subnet_id,
@@ -4202,6 +4095,7 @@ pub mod pallet {
                 stake_to_be_added,
                 unique,
                 non_unique,
+                u128::MAX,
             )
         }
 
@@ -4215,7 +4109,7 @@ pub mod pallet {
         /// * `subnet_id` - Subnet ID.
         /// * `subnet_node_id` - Subnet node ID assigned during registration
         ///
-        #[pallet::call_index(32)]
+        #[pallet::call_index(34)]
         #[pallet::weight({0})]
         pub fn activate_subnet_node(
             origin: OriginFor<T>,
@@ -4229,7 +4123,7 @@ pub mod pallet {
 
         /// Deactivate a Subnet Node temporarily
         ///
-        /// A Subnet Node can deactivate themselves temporarily up to the MaxDeactivationEpochs
+        /// A Subnet Node can deactivate themselves temporarily up to the
         ///
         /// # Arguments
         ///
@@ -4240,7 +4134,7 @@ pub mod pallet {
         ///
         /// * Must be a Validator class to deactivate, otherwise the Subnet Node must
         ///
-        #[pallet::call_index(33)]
+        #[pallet::call_index(35)]
         #[pallet::weight({0})]
         pub fn pause_subnet_node(
             origin: OriginFor<T>,
@@ -4264,7 +4158,7 @@ pub mod pallet {
         ///
         /// * Caller must be owner of Subnet Node, hotkey or coldkey
         ///
-        #[pallet::call_index(34)]
+        #[pallet::call_index(36)]
         #[pallet::weight({0})]
         pub fn reactivate_subnet_node(
             origin: OriginFor<T>,
@@ -4288,7 +4182,7 @@ pub mod pallet {
         ///
         /// * Caller must be owner of Subnet Node, hotkey or coldkey
         ///
-        #[pallet::call_index(35)]
+        #[pallet::call_index(37)]
         // #[pallet::weight(T::WeightInfo::remove_subnet_node())]
         #[pallet::weight({0})]
         pub fn remove_subnet_node(
@@ -4319,7 +4213,7 @@ pub mod pallet {
         ///
         /// * Caller must be owner of Subnet Node, hotkey or coldkey
         ///
-        #[pallet::call_index(36)]
+        #[pallet::call_index(38)]
         #[pallet::weight({0})]
         pub fn register_or_update_identity(
             origin: OriginFor<T>,
@@ -4355,7 +4249,7 @@ pub mod pallet {
             )
         }
 
-        #[pallet::call_index(37)]
+        #[pallet::call_index(39)]
         #[pallet::weight({0})]
         pub fn remove_identity(origin: OriginFor<T>) -> DispatchResult {
             let coldkey: T::AccountId = ensure_signed(origin)?;
@@ -4363,169 +4257,10 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(38)]
+        #[pallet::call_index(40)]
         #[pallet::weight({0})]
         pub fn accept_identity(origin: OriginFor<T>, identity: Vec<u8>) -> DispatchResult {
             // let coldkey: T::AccountId = ensure_signed(origin)?;
-            Ok(())
-        }
-
-        #[pallet::call_index(39)]
-        #[pallet::weight({0})]
-        pub fn clean_expired_registered_subnet_nodes(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            subnet_node_id: u32,
-        ) -> DispatchResult {
-            ensure_signed(origin.clone())?;
-
-            // if subnet_id == 0 {
-            //     // no subnet ID
-            //     for (subnet_id, subnet_node_id, subnet_node) in
-            //         RegisteredSubnetNodesData::<T>::iter()
-            //     {
-            //         match SubnetsData::<T>::try_get(subnet_id) {
-            //             Ok(subnet) => {
-            //                 // Nodes can only be expired if subnet is active
-            //                 if subnet.state == SubnetState::Registered {
-            //                     continue;
-            //                 }
-            //             }
-            //             Err(()) => (),
-            //         };
-
-            //         let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-            //         let grace_epochs = ActivationGraceEpochs::<T>::get(subnet_id);
-            //         if subnet_epoch > subnet_node.classification.start_epoch + grace_epochs {
-            //             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //         }
-            //     }
-            // } else {
-            //     match SubnetsData::<T>::try_get(subnet_id) {
-            //         Ok(subnet) => {
-            //             ensure!(
-            //                 subnet.state != SubnetState::Registered,
-            //                 Error::<T>::SubnetNotActive
-            //             );
-            //         }
-            //         Err(()) => (),
-            //     };
-
-            //     let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-            //     let grace_epochs = ActivationGraceEpochs::<T>::get(subnet_id);
-            //     if subnet_node_id != 0 {
-            //         // --- Remove a specific node
-            //         ensure!(
-            //             RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
-            //             Error::<T>::NotRegisteredSubnetNode
-            //         );
-
-            //         let subnet_node =
-            //             RegisteredSubnetNodesData::<T>::get(subnet_id, subnet_node_id);
-
-            //         ensure!(
-            //             subnet_epoch > subnet_node.classification.start_epoch + grace_epochs,
-            //             Error::<T>::NotRegisteredSubnetNode
-            //         );
-
-            //         if subnet_epoch > subnet_node.classification.start_epoch + grace_epochs {
-            //             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //         }
-            //     } else {
-            //         // --- Attempt to remove all expired registered nodes in specific subnet
-            //         for (subnet_node_id, subnet_node) in
-            //             RegisteredSubnetNodesData::<T>::iter_prefix(subnet_id)
-            //         {
-            //             if subnet_epoch > subnet_node.classification.start_epoch + grace_epochs {
-            //                 Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //             }
-            //         }
-            //     }
-            // }
-
-            Ok(())
-        }
-
-        #[pallet::call_index(40)]
-        #[pallet::weight({0})]
-        pub fn clean_expired_deactivated_subnet_nodes(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            subnet_node_id: u32,
-        ) -> DispatchResult {
-            ensure_signed(origin.clone())?;
-
-            // if subnet_id == 0 {
-            //     // no subnet ID
-            //     // --- Attempt to remove all expired deactivated nodes
-            //     for (subnet_id, subnet_node_id, subnet_node) in PausedSubnetNodesData::<T>::iter() {
-            //         match SubnetsData::<T>::try_get(subnet_id) {
-            //             Ok(subnet) => {
-            //                 // Nodes can only be expired if subnet is active
-            //                 if subnet.state == SubnetState::Registered {
-            //                     continue;
-            //                 }
-            //             }
-            //             Err(()) => (),
-            //         };
-
-            //         let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-            //         let max_deactivation_epochs = MaxDeactivationEpochs::<T>::get(subnet_id);
-            //         if subnet_epoch
-            //             > subnet_node.classification.start_epoch + max_deactivation_epochs
-            //         {
-            //             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //         }
-            //     }
-            // } else {
-            //     match SubnetsData::<T>::try_get(subnet_id) {
-            //         Ok(subnet) => {
-            //             ensure!(
-            //                 subnet.state != SubnetState::Registered,
-            //                 Error::<T>::SubnetNotActive
-            //             );
-            //         }
-            //         Err(()) => (),
-            //     };
-
-            //     let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-            //     let max_deactivation_epochs = MaxDeactivationEpochs::<T>::get(subnet_id);
-            //     if subnet_node_id != 0 {
-            //         // --- Remove a specific node
-            //         // This can be useful for saving block weight
-            //         ensure!(
-            //             PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
-            //             Error::<T>::NotDeactivatedSubnetNode
-            //         );
-
-            //         let subnet_node = PausedSubnetNodesData::<T>::get(subnet_id, subnet_node_id);
-
-            //         ensure!(
-            //             subnet_epoch
-            //                 > subnet_node.classification.start_epoch + max_deactivation_epochs,
-            //             Error::<T>::NotDeactivatedSubnetNode
-            //         );
-
-            //         if subnet_epoch
-            //             > subnet_node.classification.start_epoch + max_deactivation_epochs
-            //         {
-            //             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //         }
-            //     } else {
-            //         // --- Attempt to remove all expired deactivated nodes in specific subnet
-            //         for (subnet_node_id, subnet_node) in
-            //             PausedSubnetNodesData::<T>::iter_prefix(subnet_id)
-            //         {
-            //             if subnet_epoch
-            //                 > subnet_node.classification.start_epoch + max_deactivation_epochs
-            //             {
-            //                 Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            //             }
-            //         }
-            //     }
-            // }
-
             Ok(())
         }
 
@@ -4582,9 +4317,9 @@ pub mod pallet {
         /// * Must have amount free in wallet
         ///
         #[pallet::call_index(42)]
-        // #[pallet::weight(T::WeightInfo::add_to_stake())]
+        // #[pallet::weight(T::WeightInfo::add_stake())]
         #[pallet::weight({0})]
-        pub fn add_to_stake(
+        pub fn add_stake(
             origin: OriginFor<T>,
             subnet_id: u32,
             subnet_node_id: u32,
@@ -4649,6 +4384,8 @@ pub mod pallet {
             // Else they can remove entire balance because they are not validating subnets
             //		They are removed in `do_remove_subnet_node()` when self or consensus removed
             // This includes registered, active, and deactivated subnet nodes
+            // Note that `HotkeySubnetNodeId` is cleaned when subnet is removed so we don't check if the
+            // subnet exists
             let is_subnet_node: bool = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &hotkey) {
                 Ok(subnet_node_id) => {
                     let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
@@ -4661,6 +4398,8 @@ pub mod pallet {
                         Error::<T>::ElectedValidatorCannotUnstake
                     );
 
+                    // --- Check if activated node
+                    // If activated, must stay staked for minimum time
                     if let Some(subnet_node) =
                         Self::get_activated_subnet_node(subnet_id, subnet_node_id)
                     {
@@ -4668,7 +4407,7 @@ pub mod pallet {
                         // --- Ensure activated nodes minimum stake epochs are complete to remove any balances
                         ensure!(
                             subnet_node.classification.start_epoch + min_stake_epochs
-                                < subnet_epoch,
+                                <= subnet_epoch,
                             Error::<T>::MinActiveNodeStakeEpochs
                         );
                     }
@@ -4676,25 +4415,6 @@ pub mod pallet {
                 }
                 Err(()) => false,
             };
-
-            // --- If subnet doesn't exist, clean up the nodes storage elements that may not have been cleaned
-            // In a situation when a subnet is removed with existing subnet nodes, a few storage elements are not cleaned up
-            // In any case, any existing nodes must at some point remove stake and this will clean those up
-            // match SubnetsData::<T>::try_get(subnet_id) {
-            //     Ok(_) => (),
-            //     Err(()) => {
-            // HotkeySubnetId::<T>::remove(&hotkey);
-            // match HotkeyOwner::<T>::try_get(&hotkey) {
-            // 	Ok(coldkey) => {
-            // 	},
-            // 	Err(()) => ()
-            // };
-
-            // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
-            // hotkeys.remove(&hotkey);
-            // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
-            //     }
-            // };
 
             // Remove stake
             // 		is_subnet_node: cannot remove stake below minimum required stake
@@ -4744,7 +4464,6 @@ pub mod pallet {
         /// * Subnet must exist
         ///
         #[pallet::call_index(45)]
-        // #[pallet::weight(T::WeightInfo::add_to_delegate_stake())]
         #[pallet::weight({0})]
         pub fn add_to_delegate_stake(
             origin: OriginFor<T>,
@@ -4754,6 +4473,8 @@ pub mod pallet {
             let account_id: T::AccountId = ensure_signed(origin.clone())?;
 
             Self::is_paused()?;
+
+            let current_balance = Self::get_coldkey_balance(&account_id.clone());
 
             // --- Ensure subnet exists
             ensure!(
@@ -5214,6 +4935,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             subnet_id: u32,
             data: Vec<SubnetNodeConsensusData>,
+            mut prioritize_queue_node_id: Option<u32>,
+            mut remove_queue_node_id: Option<u32>,
             args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
             attest_data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
         ) -> DispatchResultWithPostInfo {
@@ -5221,7 +4944,15 @@ pub mod pallet {
 
             Self::is_paused()?;
 
-            Self::do_propose_attestation(subnet_id, hotkey, data, args, attest_data)
+            Self::do_propose_attestation_v2(
+                subnet_id,
+                hotkey,
+                data,
+                prioritize_queue_node_id,
+                remove_queue_node_id,
+                args,
+                attest_data,
+            )
         }
 
         /// Attest validators view of the subnet
@@ -5235,13 +4966,13 @@ pub mod pallet {
         pub fn attest(
             origin: OriginFor<T>,
             subnet_id: u32,
-            data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
+            attest_data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
         ) -> DispatchResultWithPostInfo {
             let hotkey: T::AccountId = ensure_signed(origin)?;
 
             Self::is_paused()?;
 
-            Self::do_attest(subnet_id, hotkey, data)
+            Self::do_attest(subnet_id, hotkey, attest_data)
         }
 
         /// Register unique Subnet Node parameter if not already added
@@ -5813,7 +5544,10 @@ pub mod pallet {
 
         #[pallet::call_index(77)]
         #[pallet::weight({0})]
-        pub fn collective_remove_subnet(origin: OriginFor<T>, subnet_id: u32) -> DispatchResult {
+        pub fn collective_remove_subnet(
+            origin: OriginFor<T>,
+            subnet_id: u32,
+        ) -> DispatchResultWithPostInfo {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_collective_remove_subnet(subnet_id)
         }
@@ -5933,6 +5667,7 @@ pub mod pallet {
             value: u128,
         ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
+            // MaxSubnetRegistrationFee not in use anymore
             // Self::do_set_max_subnet_registration_fee(value)
             Ok(())
         }
@@ -6023,14 +5758,16 @@ pub mod pallet {
         #[pallet::weight({0})]
         pub fn set_min_activation_grace_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_min_activation_grace_epochs(value)
+            // Self::do_set_min_activation_grace_epochs(value)
+            Ok(())
         }
 
         #[pallet::call_index(101)]
         #[pallet::weight({0})]
         pub fn set_max_activation_grace_epochs(origin: OriginFor<T>, value: u32) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_max_activation_grace_epochs(value)
+            // Self::do_set_max_activation_grace_epochs(value)
+            Ok(())
         }
 
         #[pallet::call_index(102)]
@@ -6413,12 +6150,13 @@ pub mod pallet {
 
         #[pallet::call_index(147)]
         #[pallet::weight({0})]
-        pub fn collective_blacklist_overwatch_node(
+        pub fn collective_set_coldkey_overwatch_node_eligibility(
             origin: OriginFor<T>,
-            value: T::AccountId,
+            coldkey: T::AccountId,
+            value: bool,
         ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_collective_blacklist_overwatch_node(value)
+            Self::do_collective_set_coldkey_overwatch_node_eligibility(coldkey, value)
         }
 
         #[pallet::call_index(148)]
@@ -6492,6 +6230,34 @@ pub mod pallet {
 
         #[pallet::call_index(156)]
         #[pallet::weight({0})]
+        pub fn set_maximum_hooks_weight(origin: OriginFor<T>, value: u32) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_maximum_hooks_weight(value)
+        }
+
+        #[pallet::call_index(157)]
+        #[pallet::weight({0})]
+        pub fn set_base_node_burn_amount(origin: OriginFor<T>, value: u128) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_base_node_burn_amount(value)
+        }
+
+        #[pallet::call_index(158)]
+        #[pallet::weight({0})]
+        pub fn set_min_node_burn_rate(origin: OriginFor<T>, value: u128) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_min_node_burn_rate(value)
+        }
+
+        #[pallet::call_index(159)]
+        #[pallet::weight({0})]
+        pub fn set_max_node_burn_rate(origin: OriginFor<T>, value: u128) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_max_node_burn_rate(value)
+        }
+
+        #[pallet::call_index(160)]
+        #[pallet::weight({0})]
         pub fn update_swap_queue(
             origin: OriginFor<T>,
             id: u32,
@@ -6507,7 +6273,7 @@ pub mod pallet {
         /// Register subnet
         pub fn do_register_subnet(
             owner: T::AccountId,
-            owner_hotkey: T::AccountId,
+            max_cost: u128,
             subnet_registration_data: RegistrationSubnetData<T::AccountId>,
         ) -> DispatchResult {
             // Ensure name is unique
@@ -6517,6 +6283,9 @@ pub mod pallet {
             );
 
             // Ensure there aren't max+1 subnets already registered
+            // Network allows n+1 subnets
+            // See `do_epoch_preliminaries` to learn how subnets are removed if
+            // maximum subnets is exceeded
             ensure!(
                 Self::get_total_subnets() < MaxSubnets::<T>::get().saturating_add(1),
                 Error::<T>::MaxSubnets
@@ -6542,17 +6311,9 @@ pub mod pallet {
             );
 
             ensure!(
-                subnet_registration_data.activation_grace_epochs
-                    >= MinActivationGraceEpochs::<T>::get()
-                    && subnet_registration_data.activation_grace_epochs
-                        <= MaxActivationGraceEpochs::<T>::get(),
-                Error::<T>::InvalidActivationGraceEpochs
-            );
-
-            ensure!(
-                subnet_registration_data.queue_classification_epochs
+                subnet_registration_data.idle_classification_epochs
                     >= MinIdleClassificationEpochs::<T>::get()
-                    && subnet_registration_data.queue_classification_epochs
+                    && subnet_registration_data.idle_classification_epochs
                         <= MaxIdleClassificationEpochs::<T>::get(),
                 Error::<T>::InvalidIdleClassificationEpochs
             );
@@ -6617,6 +6378,7 @@ pub mod pallet {
                 Error::<T>::InvalidMinDelegateStakePercentage
             );
 
+            // We don't check TargetNodeRegistrationsPerEpoch because the default value is
             ensure!(
                 subnet_registration_data.max_registered_nodes >= MinMaxRegisteredNodes::<T>::get()
                     && subnet_registration_data.max_registered_nodes
@@ -6643,6 +6405,9 @@ pub mod pallet {
 
             let block: u32 = Self::get_current_block_as_u32();
             let cost = Self::get_current_registration_cost(block);
+
+            ensure!(max_cost >= cost, Error::<T>::CostLessThanMaxCost);
+
             Self::update_last_registration_cost(cost, block);
 
             if cost > 0 {
@@ -6658,18 +6423,13 @@ pub mod pallet {
                 Self::send_to_treasury(&owner, cost_as_balance.unwrap())?;
             }
 
-            // ensure!(
-            // 	&owner != &owner_hotkey,
-            // 	Error::<T>::ColdkeyMatchesHotkey
-            // );
-
             // Get total subnets ever
             let subnet_uids: u32 = TotalSubnetUids::<T>::get();
 
             // Start the subnet_ids at 1
             let subnet_id = subnet_uids.saturating_add(1);
             // Increase total subnets. This is used for unique Subnet IDs
-            TotalSubnetUids::<T>::mutate(|n: &mut u32| *n += 1);
+            TotalSubnetUids::<T>::put(subnet_id);
 
             let subnet_data = SubnetData {
                 id: subnet_id,
@@ -6698,24 +6458,23 @@ pub mod pallet {
             );
 
             // Add classification epochs
+            // Registration queue epochs
             SubnetNodeQueueEpochs::<T>::insert(
                 subnet_id,
                 subnet_registration_data.subnet_node_queue_epochs,
             );
+            // Idle epochs
             IdleClassificationEpochs::<T>::insert(
                 subnet_id,
-                subnet_registration_data.queue_classification_epochs,
+                subnet_registration_data.idle_classification_epochs,
             );
+            // Included epochs
             IncludedClassificationEpochs::<T>::insert(
                 subnet_id,
                 subnet_registration_data.included_classification_epochs,
             );
 
             // Add queue variables
-            ActivationGraceEpochs::<T>::insert(
-                subnet_id,
-                subnet_registration_data.activation_grace_epochs,
-            );
             ChurnLimit::<T>::insert(subnet_id, subnet_registration_data.churn_limit);
 
             // Store max node penalties
@@ -6738,8 +6497,6 @@ pub mod pallet {
             // Add bootnodes
             SubnetBootnodes::<T>::insert(subnet_id, subnet_registration_data.bootnodes);
 
-            // MaxDeactivationEpochs::<T>::insert(subnet_id);
-
             // Store unique name
             SubnetName::<T>::insert(&subnet_data.name, subnet_id);
             SubnetRepo::<T>::insert(&subnet_data.repo, subnet_id);
@@ -6749,7 +6506,7 @@ pub mod pallet {
 
             let epoch = Self::get_current_epoch_as_u32();
 
-            LastSubnetRegistrationEpoch::<T>::set(epoch);
+            // LastSubnetRegistrationEpoch::<T>::set(epoch);
 
             // Store registration epoch temporarily
             // This is removed on activation
@@ -6773,11 +6530,15 @@ pub mod pallet {
         ///
         ///
         ///
-        pub fn do_activate_subnet(subnet_id: u32) -> DispatchResult {
+        pub fn do_activate_subnet(subnet_id: u32) -> DispatchResultWithPostInfo {
+            let mut weight = Weight::zero();
+            let db_weight = T::DbWeight::get();
+
             let subnet = match SubnetsData::<T>::try_get(subnet_id) {
                 Ok(subnet) => subnet,
                 Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
             };
+            weight = weight.saturating_add(db_weight.reads(1));
 
             ensure!(
                 subnet.state == SubnetState::Registered,
@@ -6786,51 +6547,85 @@ pub mod pallet {
 
             let epoch: u32 = Self::get_current_epoch_as_u32();
 
-            let can_activate =
+            let past_min_registration_epochs =
                 if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
                     let min_epochs = MinSubnetRegistrationEpochs::<T>::get();
+                    // MinSubnetRegistrationEpochs
+                    weight = weight.saturating_add(db_weight.reads(1));
                     let min_registration_epoch = registered_epoch.saturating_add(min_epochs);
                     // At minimum must wait one epoch
-                    min_registration_epoch < epoch
+                    min_registration_epoch <= epoch
                 } else {
                     false
                 };
 
+            // SubnetRegistrationEpoch
+            weight = weight.saturating_add(db_weight.reads(1));
+
             // --- Minimum registration epochs not met yet
             // This is the period within the registration period where the subnet CANNOT attempt to activate yet
-            if !can_activate {
-                return Err(Error::<T>::MinSubnetRegistrationEpochsNotMet.into());
-            }
+            ensure!(
+                past_min_registration_epochs,
+                Error::<T>::MinSubnetRegistrationEpochsNotMet
+            );
 
-            // --- Has subnet met activation epochs
+            // Get activation status and periods
             let (can_subnet_be_active, reason) = Self::can_subnet_be_active(subnet_id);
-
             let in_registration_period =
                 Self::is_subnet_registering(subnet_id, subnet.state, epoch);
-
-            // --- Allow accidently activating in the registration period if activation conditions are not met yet
-            if !can_subnet_be_active && in_registration_period {
-                return Err(Error::<T>::SubnetActivationConditionsNotMetYet.into());
-            }
-
-            // --- Once in the enactment period, the subnet MUST pass all activation conditions if the owner attempts
-            // to activate. If not, the subnet is deregistered
             let in_enactment_period = Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch);
 
-            // If can't be activated, and in enactment period, remove subnet
-            if !can_subnet_be_active && in_enactment_period {
-                Self::do_remove_subnet(subnet_id, reason.unwrap());
-                return Ok(());
-            } else if !can_subnet_be_active {
-                // Any time past the enactment period, give the correct error on why
-                Self::do_remove_subnet(subnet_id, reason.unwrap());
-                return Ok(());
+            // If can't activate and in registration period, return error
+            ensure!(
+                can_subnet_be_active || !in_registration_period,
+                Error::<T>::SubnetActivationConditionsNotMetYet
+            );
+
+            // If can't activate (and not in registration), always remove
+            if !can_subnet_be_active {
+                weight =
+                    weight.saturating_add(Self::do_remove_subnet_v2(subnet_id, reason.unwrap()));
+                return Ok(Some(weight).into());
             }
 
-            // --- If past the enactment period and not yet activated, remove
-            if !in_registration_period && !in_enactment_period {
-                Self::do_remove_subnet(subnet_id, SubnetRemovalReason::EnactmentPeriod);
-                return Ok(());
+            // If can activate but outside valid periods, remove for timeout
+            if !in_registration_period
+                && !Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch)
+            {
+                weight = weight.saturating_add(Self::do_remove_subnet_v2(
+                    subnet_id,
+                    SubnetRemovalReason::EnactmentPeriod,
+                ));
+                return Ok(Some(weight).into());
+            }
+
+            match (
+                can_subnet_be_active,
+                in_registration_period,
+                in_enactment_period,
+            ) {
+                // Can activate AND in a valid period - proceed
+                (true, true, _) | (true, _, true) => {
+                    // Continue to activation
+                }
+                // Can't activate but in registration period - error (not removal)
+                (false, true, _) => {
+                    return Err(Error::<T>::SubnetActivationConditionsNotMetYet.into());
+                }
+                // Can't activate and in enactment period - remove for failing conditions
+                (false, false, true) => {
+                    weight = weight
+                        .saturating_add(Self::do_remove_subnet_v2(subnet_id, reason.unwrap()));
+                    return Ok(Some(weight).into());
+                }
+                // Outside both periods - remove for missing the deadline
+                (_, false, false) => {
+                    weight = weight.saturating_add(Self::do_remove_subnet_v2(
+                        subnet_id,
+                        SubnetRemovalReason::EnactmentPeriod,
+                    ));
+                    return Ok(Some(weight).into());
+                }
             }
 
             // ===============
@@ -6840,7 +6635,7 @@ pub mod pallet {
             // --- Activate subnet
             // Subnet start_epoch uses general blockchain epoch (not subnet epoch)
             SubnetsData::<T>::try_mutate(subnet_id, |maybe_params| -> DispatchResult {
-                let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?; // redundant
+                let params = maybe_params.as_mut().ok_or(Error::<T>::InvalidSubnetId)?;
                 params.state = SubnetState::Active;
                 // Start consensus after 1 fresh epoch.
                 // Consensus starts once epoch > start_epoch
@@ -6855,19 +6650,50 @@ pub mod pallet {
             // --- Remove registration whitelist
             SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
 
-            // Self::assign_subnet_slot(subnet_id)?;
+            // SubnetsData | TotalActiveSubnets | SubnetRegistrationEpoch |
+            // SubnetRegistrationInitialColdkeys
+            weight = weight.saturating_add(db_weight.writes(4));
+            // SubnetsData | TotalActiveSubnets
+            weight = weight.saturating_add(db_weight.reads(2));
 
             Self::deposit_event(Event::SubnetActivated {
                 subnet_id: subnet_id,
             });
 
-            Ok(())
+            Ok(Some(weight).into())
         }
 
-        pub fn do_remove_subnet(subnet_id: u32, reason: SubnetRemovalReason) {
+        /// Try to remove a subnet
+        /// This is called by `do_epoch_preliminaries`
+        /// We ensure there is enough block weight to call to remove a subnet
+        pub fn try_do_remove_subnet(
+            weight_meter: &mut WeightMeter,
+            subnet_id: u32,
+            reason: SubnetRemovalReason,
+        ) {
+            // TotalSubnetNodes
+            weight_meter.consume(T::DbWeight::get().reads(1));
+            // See if we can call to remove a subnet
+            // if !weight_meter
+            //     .can_consume(T::WeightInfo::do_remove_subnet_v2(
+            //         TotalSubnetNodes::<T>::get(subnet_id),
+            //     ))
+            // {
+            //     return;
+            // }
+
+            let weight = Self::do_remove_subnet_v2(subnet_id, reason);
+            weight_meter.consume(weight);
+        }
+
+        pub fn do_remove_subnet_v2(subnet_id: u32, reason: SubnetRemovalReason) -> Weight {
+            let mut weight = Weight::zero();
+            let db_weight = T::DbWeight::get();
+
+            weight = weight.saturating_add(db_weight.reads(1));
             let subnet = match SubnetsData::<T>::try_get(subnet_id) {
                 Ok(subnet) => subnet,
-                Err(()) => return,
+                Err(()) => return weight,
             };
 
             // Remove unique name
@@ -6876,15 +6702,12 @@ pub mod pallet {
             // Remove subnet data
             SubnetsData::<T>::remove(subnet_id);
 
-            // Remove owner
+            // Remove owner elements
             SubnetOwner::<T>::remove(subnet_id);
-
-            SubnetOwnerV2::<T>::remove(subnet_id);
             SubnetOwnerHotkey::<T>::remove(subnet_id);
             PendingSubnetOwner::<T>::remove(subnet_id);
 
             SubnetRegistrationEpoch::<T>::remove(subnet_id);
-            SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
 
             // Subnet parameters
             ChurnLimit::<T>::remove(subnet_id);
@@ -6895,68 +6718,132 @@ pub mod pallet {
             SubnetDelegateStakeRewardsPercentage::<T>::remove(subnet_id);
             LastSubnetDelegateStakeRewardsUpdate::<T>::remove(subnet_id);
             IncludedClassificationEpochs::<T>::remove(subnet_id);
-            MaxDeactivationEpochs::<T>::remove(subnet_id);
-            ActivationGraceEpochs::<T>::remove(subnet_id);
             SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
             MaxRegisteredNodes::<T>::remove(subnet_id);
-            // NodeRemovalSystemV2::<T>::remove(subnet_id);
             SubnetKeyTypes::<T>::remove(subnet_id);
             SubnetNodeScorePenaltyThreshold::<T>::remove(subnet_id);
+            TargetNodeRegistrationsPerEpoch::<T>::remove(subnet_id);
+            NodeBurnRateAlpha::<T>::remove(subnet_id);
+
+            weight = weight.saturating_add(T::DbWeight::get().writes(23));
 
             Self::free_slot_of_subnet(subnet_id);
+            // Add weight here of `free_slot_of_subnet`
+            // AssignedSlots
+            weight = weight.saturating_add(T::DbWeight::get().reads(1));
+            // SubnetSlot | SlotAssignment | AssignedSlots
+            weight = weight.saturating_add(T::DbWeight::get().writes(3));
 
             if subnet.state == SubnetState::Active {
                 // Dec total active subnets, if active
+                // Note: We don't have a TotalSubnets storage elements
+                //       When counting how many subnets there are, we iter() `SubnetsData`
                 TotalActiveSubnets::<T>::mutate(|n: &mut u32| n.saturating_dec());
+                weight = weight.saturating_add(T::DbWeight::get().reads(1));
+                weight = weight.saturating_add(T::DbWeight::get().writes(1));
             }
 
             // We have removed all of the data required to assist in blockchain logic
             // `clean_subnet_nodes` cleans up non-required data
-            Self::clean_subnet_nodes(subnet_id);
+            // let _ = Self::clean_subnet_nodes(subnet_id);
+            weight = weight.saturating_add(Self::clean_subnet_nodes(subnet_id));
 
             Self::deposit_event(Event::SubnetDeactivated {
                 subnet_id: subnet_id,
                 reason: reason,
             });
+
+            weight
         }
 
         // Only called from `do_remove_subnet`
         // If we call this anywhere else, must include a way to ensure subnet exists
-        pub fn clean_subnet_nodes(subnet_id: u32) {
+        pub fn clean_subnet_nodes(subnet_id: u32) -> Weight {
+            let mut weight_acc = WeightAccumulator::<T>::new();
+
             // Remove all subnet nodes data
-            let _ = SubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            let removed_subnet_nodes_data =
+                SubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(removed_subnet_nodes_data.unique);
+
             let total_nodes = TotalActiveSubnetNodes::<T>::take(subnet_id);
+            weight_acc.add_take();
+
             TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_reduce(total_nodes));
+            weight_acc.add_mutate();
 
             let _ = TotalSubnetNodes::<T>::remove(subnet_id);
-            let _ = TotalSubnetNodeUids::<T>::remove(subnet_id);
-            let _ = PeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = BootnodePeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = SubnetNodeUniqueParam::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = HotkeySubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = SubnetNodeIdHotkey::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = SubnetNodeNonUniqueParamLastSet::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = SubnetNodePenalties::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = NodeSlotIndex::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_remove();
 
-            let _ =
+            let _ = TotalSubnetNodeUids::<T>::remove(subnet_id);
+            weight_acc.add_remove();
+
+            let peer_id_subnet_node_id_removed =
+                PeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(peer_id_subnet_node_id_removed.unique);
+
+            let bootnode_peer_id_subnet_node_id_removed =
+                BootnodePeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(bootnode_peer_id_subnet_node_id_removed.unique);
+
+            let client_peer_id_subnet_node_id_removed =
+                ClientPeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(client_peer_id_subnet_node_id_removed.unique);
+
+            let subnet_node_unique_param_removed =
+                SubnetNodeUniqueParam::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(subnet_node_unique_param_removed.unique);
+
+            let hotkey_subnet_node_id_removed =
+                HotkeySubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(hotkey_subnet_node_id_removed.unique);
+
+            let subnet_node_is_hotkey_removed =
+                SubnetNodeIdHotkey::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(subnet_node_is_hotkey_removed.unique);
+
+            // let subnet_node_ = SubnetNodeNonUniqueParamLastSet::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            // weight_acc.add_clear_prefix(subnet_node_.unique);
+
+            let subnet_node_penalties =
+                SubnetNodePenalties::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(subnet_node_penalties.unique);
+
+            let node_slot_index_removed =
+                NodeSlotIndex::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(node_slot_index_removed.unique);
+
+            let subnet_node_consecutive_included_epochs_removed =
                 SubnetNodeConsecutiveIncludedEpochs::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = RegisteredSubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            // let _ = PausedSubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = ClientPeerIdSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(subnet_node_consecutive_included_epochs_removed.unique);
+            let registered_subnet_nodes_data_removed =
+                RegisteredSubnetNodesData::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(registered_subnet_nodes_data_removed.unique);
 
             let electable_nodes = SubnetNodeElectionSlots::<T>::take(subnet_id).len() as u32;
+            weight_acc.add_take();
+
+            // Vec size impacts weight, add extra based on length
+            let vec_len = electable_nodes as u64;
+            if vec_len > 1 {
+                // Add extra computational weight for processing larger vectors
+                weight_acc.add_computational_weight(vec_len * 1000);
+            }
+
             // Sub total electable nodes network wide
             TotalElectableNodes::<T>::mutate(|mut n| n.saturating_sub(electable_nodes));
+            weight_acc.add_mutate();
 
             TotalSubnetElectableNodes::<T>::remove(subnet_id);
+            weight_acc.add_remove();
 
             // Remove all subnet consensus data
             let _ = SubnetPenaltyCount::<T>::remove(subnet_id);
+            weight_acc.add_remove();
 
-            // Remove consensus data
-            let _ = SubnetElectedValidator::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            let _ = SubnetConsensusSubmission::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            let final_weight = weight_acc.finalize();
+            // Ok(Some(final_weight).into())
+            final_weight
         }
 
         pub fn do_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
@@ -7239,6 +7126,7 @@ pub mod pallet {
             stake_to_be_added: u128,
             unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
             non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+            max_burn_amount: u128,
         ) -> DispatchResult {
             let coldkey: T::AccountId = ensure_signed(origin.clone())?;
 
@@ -7249,6 +7137,7 @@ pub mod pallet {
 
             ensure!(&coldkey != &hotkey, Error::<T>::ColdkeyMatchesHotkey);
 
+            // Ensure subnet is not paused
             ensure!(
                 subnet.state != SubnetState::Paused,
                 Error::<T>::SubnetIsPaused
@@ -7311,6 +7200,12 @@ pub mod pallet {
                 }
             };
 
+            ensure!(
+                SubnetNodeQueue::<T>::get(subnet_id).len() as u32
+                    <= MaxRegisteredNodes::<T>::get(subnet_id),
+                Error::<T>::MaxRegisteredNodes
+            );
+
             // Validate peer_id
             ensure!(Self::validate_peer_id(&peer_id), Error::<T>::InvalidPeerId);
 
@@ -7341,7 +7236,6 @@ pub mod pallet {
 
             // --- Ensure they have no stake on registration
             // This is redundant since hotkeys can't be used twice
-            // If a Subnet Node deregisters, then they must fully unstake its stake balance to register again using that same balance
             ensure!(
                 AccountSubnetStake::<T>::get(&hotkey, subnet_id) == 0,
                 Error::<T>::MustUnstakeToRegister
@@ -7353,6 +7247,25 @@ pub mod pallet {
                 !hotkeys.contains(&hotkey),
                 Error::<T>::HotkeyAlreadyRegisteredToColdkey
             );
+
+            //
+            // Burn fee
+            //
+            let burn_amount = Self::calculate_burn_amount(subnet_id);
+            ensure!(
+                burn_amount <= max_burn_amount,
+                Error::<T>::MaxBurnAmountExceeded
+            );
+
+            let burn_amount_as_balance = Self::u128_to_balance(burn_amount);
+            if let Some(burn_amount_as_balance) = burn_amount_as_balance {
+                ensure!(
+                    Self::burn(coldkey.clone(), burn_amount_as_balance),
+                    Error::<T>::BalanceBurnError
+                );
+            }
+
+            Self::record_registration(subnet_id);
 
             // ====================
             // Initiate stake logic
@@ -7478,130 +7391,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // pub fn do_activate_subnet_node(
-        //     origin: OriginFor<T>,
-        //     subnet_id: u32,
-        //     subnet_node_id: u32,
-        // ) -> DispatchResultWithPostInfo {
-        //     // Activate with hotkey from the Subnet Node server
-        //     let key: T::AccountId = ensure_signed(origin)?;
-
-        //     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-        //         Ok(subnet) => subnet,
-        //         Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-        //     };
-
-        //     let (hotkey, coldkey) =
-        //         match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
-        //             Some((hotkey, coldkey)) => (hotkey, coldkey),
-        //             None => return Err(Error::<T>::NotUidOwner.into()),
-        //         };
-
-        //     ensure!(key == hotkey || key == coldkey, Error::<T>::NotKeyOwner);
-
-        //     // This should be caught by prev `get_subnet_node_hotkey_coldkey`
-        //     ensure!(
-        //         HotkeySubnetNodeId::<T>::get(subnet_id, &hotkey) == Some(subnet_node_id),
-        //         Error::<T>::NotUidOwner
-        //     );
-
-        //     // --- Ensure they are a registered node
-        //     ensure!(
-        //         RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
-        //         Error::<T>::NotRegisteredSubnetNode
-        //     );
-
-        //     // --- Check stake balance
-        //     // This can only revert if the owner updated the required minimum balance
-        //     ensure!(
-        //         AccountSubnetStake::<T>::get(&hotkey, subnet_id)
-        //             >= SubnetMinStakeBalance::<T>::get(subnet_id),
-        //         Error::<T>::MinStakeNotReached
-        //     );
-
-        //     // --- Remove from RegisteredSubnetNodesData
-        //     let mut subnet_node = RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id);
-        //     let start_epoch = subnet_node.classification.start_epoch;
-        //     let grace_epochs = ActivationGraceEpochs::<T>::get(subnet_id);
-
-        //     let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-        //     // Node must register within the grace period if subnet activated
-        //     ensure!(
-        //         subnet.state == SubnetState::Registered
-        //             || subnet_epoch >= start_epoch && subnet_epoch <= start_epoch + grace_epochs,
-        //         Error::<T>::NotStartEpoch
-        //     );
-
-        //     let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-        //     let max_nodes = MaxSubnetNodes::<T>::get();
-
-        //     // Push node into queue again if paused
-        //     if subnet.state == SubnetState::Paused {
-        //         Self::defer_subnet_node(subnet_id, subnet_node, subnet_epoch);
-        //         return Ok(Pays::No.into());
-        //     }
-
-        //     // --- Use the subnets node removal system
-        //     // If node can't be removed, push the node back into the queue
-        //     if total_nodes >= max_nodes {
-        //         let mut maybe_remove_node: Option<u32> = None;
-        //         let mut should_defer = false;
-
-        //         match Self::get_removing_node(subnet_id, &coldkey, &hotkey, &subnet_node) {
-        //             Some(remove_subnet_node_id) => {
-        //                 maybe_remove_node = Some(remove_subnet_node_id);
-        //             }
-        //             None => {
-        //                 should_defer = true;
-        //             }
-        //         }
-
-        //         // Redundant
-        //         // Ensure either maybe_remove_node is Some or should_defer is true
-        //         ensure!(
-        //             maybe_remove_node.is_some() || should_defer,
-        //             Error::<T>::SubnetNodesMax
-        //         );
-
-        //         if let Some(remove_subnet_node_id) = maybe_remove_node {
-        //             // Remove node and add activating node in `perform_activate_subnet_node`
-        //             Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id);
-        //         } else if should_defer {
-        //             // --- Defer the start_epoch
-        //             // Add node back to the queue
-        //             Self::defer_subnet_node(subnet_id, subnet_node, subnet_epoch);
-        //             return Ok(Pays::No.into());
-        //         }
-        //     }
-
-        //     Self::perform_activate_subnet_node(
-        //         coldkey,
-        //         subnet_id,
-        //         subnet.state,
-        //         subnet_node,
-        //         subnet_epoch,
-        //     )
-        //     .map_err(|e| e)?;
-
-        //     Ok(().into())
-        // }
-
-        // /// Handle deferring a node back into the queue
-        // /// This is called if
-        // /// - The subnet is full and no node can be replaced
-        // /// - The subnet is paused
-        // fn defer_subnet_node(
-        //     subnet_id: u32,
-        //     mut subnet_node: SubnetNode<T::AccountId>,
-        //     subnet_epoch: u32,
-        // ) {
-        //     let new_start_epoch =
-        //         Self::get_registration_queue_start_epoch(subnet_id, subnet_node.id, subnet_epoch);
-        //     subnet_node.classification.start_epoch = new_start_epoch;
-        //     RegisteredSubnetNodesData::<T>::insert(subnet_id, subnet_node.id, &subnet_node);
-        // }
-
         pub fn perform_activate_subnet_node(
             coldkey: T::AccountId,
             subnet_id: u32,
@@ -7677,25 +7466,6 @@ pub mod pallet {
                 // Default use if subnet is active and not currently registering
                 // --- If subnet activated, activate the node starting at `Idle`
                 subnet_node.classification.node_class = SubnetNodeClass::Idle;
-            // } else if subnet_node.classification.node_class == SubnetNodeClass::Deactivated {
-            //     PausedSubnetNodesData::<T>::take(subnet_id, subnet_node.id);
-            //     subnet_node.classification.node_class = SubnetNodeClass::Validator;
-            //     IsSubnetNodeInUnpauseQueue::<T>::insert(subnet_id, subnet_node.id, false);
-
-            //     // Validator already elected
-            //     // This node can be elected on the next epoch when it's start_epoch starts n+1
-            //     //
-            //     // Before `do_activate_subnet_node_v2` is called, max node count is already
-            //     // verified there is room to insert into the slots
-            //     Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
-
-            //     // PausedSubnetNodesData
-            //     // IsSubnetNodeInUnpauseQueue
-            //     // SubnetNodeElectionSlots
-            //     // NodeSlotIndex
-            //     // TotalSubnetElectableNodes
-            //     // TotalElectableNodes
-            //     weight = weight.saturating_add(db_weight.writes(6));
             } else {
                 return weight;
             };
@@ -7729,360 +7499,63 @@ pub mod pallet {
             weight
         }
 
-        /// Called by extrinsic ``pause_subnet_node``
-        pub fn do_pause_subnet_node(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            subnet_node_id: u32,
-        ) -> DispatchResult {
-            // let key: T::AccountId = ensure_signed(origin)?;
-
-            // let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-            //     Ok(subnet) => subnet,
-            //     Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-            // };
-
-            // // can deactivate using both keys
-            // let (hotkey, coldkey) =
-            //     match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
-            //         Some((hotkey, coldkey)) => (hotkey, coldkey),
-            //         None => return Err(Error::<T>::NotUidOwner.into()),
-            //     };
-
-            // ensure!(
-            //     key == hotkey.clone() || key == coldkey,
-            //     Error::<T>::NotKeyOwner
-            // );
-
-            // // Ensure node is a current `SubnetNodeClass::Validator` node
-            // // Otherise they cannot deactivate and must remove
-            // let mut subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-            //     Ok(subnet_node) => {
-            //         ensure!(
-            //             subnet_node.classification.node_class >= SubnetNodeClass::Validator,
-            //             Error::<T>::SubnetNodeNotActivated
-            //         );
-            //         SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-            //     }
-            //     Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
-            // };
-
-            // let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-            // let is_chosen_validator: bool =
-            //     Self::is_chosen_validator(subnet_id, subnet_node_id, subnet_epoch);
-
-            // ensure!(
-            //     !is_chosen_validator,
-            //     Error::<T>::IsValidatorCannotDeactivate
-            // );
-
-            // subnet_node.classification.node_class = SubnetNodeClass::Deactivated;
-            // // --- Increase subnet_epoch by one to ensure node starts on a fresh subnet_epoch unless subnet is still registering
-            // subnet_node.classification.start_epoch = subnet_epoch;
-
-            // PausedSubnetNodesData::<T>::insert(subnet_id, subnet_node_id, subnet_node);
-
-            // // Decrease total subnet nodes
-            // TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-            // TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-
-            // ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-            //     rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-            // });
-
-            // // Must already be validator to get this far, so we remove from the election slots
-            // Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
-
-            // Self::deposit_event(Event::SubnetNodeDeactivated {
-            //     subnet_id: subnet_id,
-            //     subnet_node_id: subnet_node_id,
-            // });
-
-            Ok(())
-        }
-
-        pub fn do_reactivate_subnet_node(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            subnet_node_id: u32,
-        ) -> DispatchResult {
-            // let key: T::AccountId = ensure_signed(origin)?;
-
-            // let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-            //     Ok(subnet) => subnet,
-            //     Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-            // };
-
-            // // can deactivate using both keys
-            // let (hotkey, coldkey) =
-            //     match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
-            //         Some((hotkey, coldkey)) => (hotkey, coldkey),
-            //         None => return Err(Error::<T>::NotUidOwner.into()),
-            //     };
-
-            // ensure!(
-            //     key == hotkey.clone() || key == coldkey,
-            //     Error::<T>::NotKeyOwner
-            // );
-
-            // ensure!(
-            //     HotkeySubnetNodeId::<T>::get(subnet_id, &hotkey) == Some(subnet_node_id),
-            //     Error::<T>::NotUidOwner
-            // );
-
-            // // --- Ensure they are a deactivated node
-            // ensure!(
-            //     PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
-            //     Error::<T>::NotDeactivatedSubnetNode
-            // );
-
-            // // --- Remove from PausedSubnetNodesData
-            // let mut subnet_node = PausedSubnetNodesData::<T>::take(subnet_id, subnet_node_id);
-            // let max_deactivation_epochs = MaxDeactivationEpochs::<T>::get(subnet_id);
-            // let start_epoch = subnet_node.classification.start_epoch;
-
-            // let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-            // // Node must reactivate within the grace period if subnet activated
-            // ensure!(
-            //     subnet_epoch <= start_epoch + max_deactivation_epochs,
-            //     Error::<T>::DeactivatedTooLong
-            // );
-
-            // // Must reactivate AFTER the validator has been elected because they are being readded to the election slots
-            // let epoch_slot = Self::get_current_block_as_u32() % T::EpochLength::get();
-            // if let Some(slot_subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
-            //     ensure!(
-            //         slot_subnet_id != subnet_id,
-            //         Error::<T>::CannotReactivateOnElectionStep
-            //     );
-            // }
-
-            // // If they can't they will have to continue trying
-            // ensure!(
-            //     Self::insert_node_into_election_slot(subnet_id, subnet_node_id),
-            //     Error::<T>::ElectionSlotInsertFail
-            // );
-
-            // // Add SubnetNodesData
-            // // --- If subnet reactivated, activate the node starting at `Validator`
-            // // All nodes that deactivate must be Validator class, so we start them back where they deactivated from
-            // subnet_node.classification.node_class = SubnetNodeClass::Validator;
-            // // --- Increase subnet_epoch by one to ensure node starts on a fresh subnet_epoch unless subnet is still registering
-            // subnet_node.classification.start_epoch = subnet_epoch + 1;
-
-            // // --- Enter node into the Idle class
-            // SubnetNodesData::<T>::insert(subnet_id, subnet_node_id, subnet_node);
-
-            // // Increase total subnet nodes
-            // TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-            // TotalActiveNodes::<T>::mutate(|n: &mut u32| *n += 1);
-
-            // ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-            //     rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
-            // });
-
-            // Self::deposit_event(Event::SubnetNodeReactivated {
-            //     subnet_id: subnet_id,
-            //     subnet_node_id: subnet_node_id,
-            // });
-
-            Ok(())
-        }
-
-        // /// Called by extrinsic ``pause_subnet_node``
-        // pub fn do_pause_subnet_node_v2(
-        //     origin: OriginFor<T>,
-        //     subnet_id: u32,
-        //     subnet_node_id: u32,
-        //     force: bool,
-        // ) -> DispatchResult {
-        //     let key: T::AccountId = ensure_signed(origin)?;
-
-        //     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-        //         Ok(subnet) => subnet,
-        //         Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-        //     };
-
-        //     // can deactivate using both keys
-        //     let (hotkey, coldkey) =
-        //         match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
-        //             Some((hotkey, coldkey)) => (hotkey, coldkey),
-        //             None => return Err(Error::<T>::NotUidOwner.into()),
-        //         };
-
-        //     ensure!(
-        //         key == hotkey.clone() || key == coldkey,
-        //         Error::<T>::NotKeyOwner
-        //     );
-
-        //     // Ensure node is a current `SubnetNodeClass::Validator` class
-        //     // Otherise they cannot pause
-        //     let mut subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-        //         Ok(subnet_node) => {
-        //             ensure!(
-        //                 subnet_node.classification.node_class >= SubnetNodeClass::Validator,
-        //                 Error::<T>::SubnetNodeNotActivated
-        //             );
-        //             SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-        //         }
-        //         Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
-        //     };
-
-        //     let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-        //     let is_chosen_validator: bool =
-        //         Self::is_chosen_validator(subnet_id, subnet_node_id, subnet_epoch);
-
-        //     // Ensure not is not elected validator
-        //     ensure!(
-        //         !is_chosen_validator,
-        //         Error::<T>::IsValidatorCannotDeactivate
-        //     );
-
-        //     let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-        //     let min_subnet_nodes = MinSubnetNodes::<T>::get();
-
-        //     // If pausing will put the subnet under the minimum nodes, give error
-        //     // unless node forces to pause
-        //     // Being under the minimum node count doen't automatically remove a subnet but
-        //     // it will penalize it each epoch until it hits the network max subnet penalties
-        //     // see MaxSubnetPenaltyCount
-        //     ensure!(
-        //         force
-        //             || TotalActiveSubnetNodes::<T>::get(subnet_id).saturating_sub(1)
-        //                 >= MinSubnetNodes::<T>::get(),
-        //         Error::<T>::MinSubnetNodesBreached
-        //     );
-
-        //     subnet_node.classification.node_class = SubnetNodeClass::Deactivated;
-        //     // --- Pause immediately
-        //     subnet_node.classification.start_epoch = subnet_epoch;
-
-        //     PausedSubnetNodesData::<T>::insert(subnet_id, subnet_node_id, subnet_node);
-
-        //     // Decrease total active subnet nodes
-        //     TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-        //     TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-
-        //     ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-        //         rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-        //     });
-
-        //     // Must already be validator to get this far, so we remove from the election slots
-        //     Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
-
-        //     Self::deposit_event(Event::SubnetNodeDeactivated {
-        //         subnet_id: subnet_id,
-        //         subnet_node_id: subnet_node_id,
-        //     });
-
-        //     Ok(())
-        // }
-
-        // Push node into unpause queue
-        pub fn do_unpause_subnet_node(
-            origin: OriginFor<T>,
-            subnet_id: u32,
-            subnet_node_id: u32,
-        ) -> DispatchResult {
-            // let key: T::AccountId = ensure_signed(origin)?;
-
-            // let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-            //     Ok(subnet) => subnet,
-            //     Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-            // };
-
-            // // can deactivate using both keys
-            // let (hotkey, coldkey) =
-            //     match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
-            //         Some((hotkey, coldkey)) => (hotkey, coldkey),
-            //         None => return Err(Error::<T>::NotUidOwner.into()),
-            //     };
-
-            // ensure!(
-            //     key == hotkey.clone() || key == coldkey,
-            //     Error::<T>::NotKeyOwner
-            // );
-
-            // ensure!(
-            //     HotkeySubnetNodeId::<T>::get(subnet_id, &hotkey) == Some(subnet_node_id),
-            //     Error::<T>::NotUidOwner
-            // );
-
-            // // --- Ensure they are a deactivated node
-            // ensure!(
-            //     PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id),
-            //     Error::<T>::NotDeactivatedSubnetNode
-            // );
-
-            // ensure!(
-            //     IsSubnetNodeInUnpauseQueue::<T>::get(subnet_id, subnet_node_id) == false,
-            //     Error::<T>::NotDeactivatedSubnetNode
-            // );
-
-            // // --- Remove from PausedSubnetNodesData
-            // let mut subnet_node = PausedSubnetNodesData::<T>::get(subnet_id, subnet_node_id);
-            // let max_deactivation_epochs = MaxDeactivationEpochs::<T>::get(subnet_id);
-            // let start_epoch = subnet_node.classification.start_epoch;
-
-            // let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-            // // Node must reactivate within the grace period if subnet activated
-            // ensure!(
-            //     subnet_epoch <= start_epoch + max_deactivation_epochs,
-            //     Error::<T>::DeactivatedTooLong
-            // );
-
-            // // Flag to know if node is in queue already
-            // IsSubnetNodeInUnpauseQueue::<T>::insert(subnet_id, subnet_node_id, true);
-
-            // SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
-            //     nodes.push(subnet_node.clone());
-            // });
-
-            // Self::deposit_event(Event::SubnetNodeReactivated {
-            //     subnet_id: subnet_id,
-            //     subnet_node_id: subnet_node_id,
-            // });
-
-            Ok(())
-        }
-
-        // This is only called by blockchain validators and not extrinsics
-        pub fn perform_unpause_subnet_node(
+        pub fn do_activate_subnet_node_v3(
+            weight_meter: &mut WeightMeter,
             subnet_id: u32,
             mut subnet_node: SubnetNode<T::AccountId>,
-        ) -> DispatchResult {
-            Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
+            subnet_epoch: u32,
+        ) -> bool {
+            let mut weight = Weight::zero();
+            let db_weight = T::DbWeight::get();
 
-            let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
+            // writes
+            // RegisteredSubnetNodesData
+            // SubnetNodesData
+            // TotalActiveSubnetNodes
+            // TotalActiveNodes
+            // ColdkeyReputation
+            //
+            // reads
+            // HotkeyOwner
+            if !weight_meter.can_consume(db_weight.reads(5) + db_weight.writes(1)) {
+                return false;
+            }
 
-            // Add SubnetNodesData
-            // --- If subnet reactivated, activate the node starting at `Validator`
-            // All nodes that deactivate must be Validator class, so we start them back where they deactivated from
-            subnet_node.classification.node_class = SubnetNodeClass::Validator;
+            // --- Remove from RegisteredSubnetNodesData
+            if subnet_node.classification.node_class == SubnetNodeClass::Registered {
+                RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node.id);
+                // Default use if subnet is active and not currently registering
+                // --- If subnet activated, activate the node starting at `Idle`
+                subnet_node.classification.node_class = SubnetNodeClass::Idle;
+            } else {
+                // Redundant
+                // Because each queued node is always `SubnetNodeClass::Registered`
+                // return true and pop them out of the queue
+                return true;
+            };
+
             // --- Increase subnet_epoch by one to ensure node starts on a fresh subnet_epoch unless subnet is still registering
             subnet_node.classification.start_epoch = subnet_epoch + 1;
 
-            // --- Enter node into the Idle class
+            // --- Insert new active node
             SubnetNodesData::<T>::insert(subnet_id, subnet_node.id, &subnet_node);
-
-            // Increase total subnet nodes
+            // Increase total active nodes in subnet
             TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+
+            // Increase total active nodes
             TotalActiveNodes::<T>::mutate(|n: &mut u32| *n += 1);
 
             let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
+            weight = weight.saturating_add(db_weight.reads(1));
 
             ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+                rep.lifetime_node_count = rep.lifetime_node_count.saturating_add(1);
                 rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
             });
 
-            Self::deposit_event(Event::SubnetNodeUnpaused {
-                subnet_id: subnet_id,
-                subnet_node_id: subnet_node.id,
-            });
+            weight_meter.consume(db_weight.reads(5) + db_weight.writes(1));
 
-            Ok(())
+            true
         }
     }
 
@@ -8095,22 +7568,29 @@ pub mod pallet {
         /// At the start of each epoch
         ///
         /// 1. Epoch prelims (removing or penalizing subnets) (block)
-        /// 2. Calculate overwatch subnet weights (block - 1)
+        /// 2. Calculate overwatch subnet weights (block - 1) (called on overwatch epochs only)
         /// 3. Calculate subnet emissions distribution (block - 2)
         /// 4. Handle subnet slots (slot)
         ///		* Distribute rewards
         /// 	* Elect validator
+        ///
+        /// * Execute swap queue calls on all blocks with block weight remaining
         ///
         /// # Arguments
         ///
         /// * `block_number` - Current block number.
         ///
         fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
-            let mut weight = Weight::zero();
-            if Self::is_paused().is_err() {
-                return weight;
-            }
             let db_weight = T::DbWeight::get();
+
+            let mut weight_meter = WeightMeter::with_limit(MaximumHooksWeightV2::<T>::get());
+
+            // MaximumHooksWeightV2
+            weight_meter.consume(db_weight.reads(1));
+
+            if Self::is_paused().is_err() {
+                return weight_meter.consumed();
+            }
 
             // General epochs
             let block: u32 = Self::convert_block_as_u32(block_number);
@@ -8120,44 +7600,58 @@ pub mod pallet {
 
             // Overwatch epochs
             let multiplier: u32 = OverwatchEpochLengthMultiplier::<T>::get();
-            weight = weight.saturating_add(db_weight.reads(1));
-            let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
-            let current_overwatch_epoch =
-                block.saturating_div(epoch_length.saturating_mul(multiplier));
 
-            if (block - 1) >= overwatch_epoch_length && (block - 1) % overwatch_epoch_length == 0 {
-                // Calculate Overwatch Node Weights
-                let step_weight = Self::calculate_overwatch_rewards_v3();
-                return weight.saturating_add(step_weight);
-            }
+            // OverwatchEpochLengthMultiplier
+            weight_meter.consume(db_weight.reads(1));
+
+            let overwatch_epoch_length = epoch_length.saturating_mul(multiplier);
 
             if block >= epoch_length && block % epoch_length == 0 {
                 // Remove unqualified subnets
-                let step_weight = Self::do_epoch_preliminaries(block, current_epoch);
-                return weight.saturating_add(step_weight);
+                // Note: This updates `weight_meter`
+                //
+                // The weight_meter is sent in to ensure we can remove a subnet without consuming too much
+                // block weight. The maximum number of subnets being removed does not currently surpass the
+                // maximum block weight, although, this is meant for future-proofing and optimizing
+                Self::do_epoch_preliminaries(&mut weight_meter, block, current_epoch);
+            } else if (block - 1) >= overwatch_epoch_length
+                && (block - 1) % overwatch_epoch_length == 0
+            {
+                // Calculate Overwatch Node Weights
+                let block_step_weight = Self::calculate_overwatch_rewards();
+                weight_meter.consume(block_step_weight);
             } else if (block - 2) >= epoch_length && (block - 2) % epoch_length == 0 {
                 // Calculate rewards
-                // Distribute foundation
+                // Distribute to foundation/treasury
                 // Calculate emissions based on subnet weights (delegate stake based)
                 // We calculate based on delegate stake weights on all subnets
-                let step_weight = Self::handle_subnet_emission_weights(current_epoch);
-                return weight.saturating_add(step_weight);
+                let block_step_weight = Self::handle_subnet_emission_weights(current_epoch);
+                weight_meter.consume(block_step_weight);
             } else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
+                // SlotAssignment
+                weight_meter.consume(db_weight.reads(1));
+
                 let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-                weight = weight.saturating_add(db_weight.reads(2)); // `SlotAssignment` and `SubnetSlot`
-                let step_weight =
-                    Self::emission_step(block, current_epoch, subnet_epoch, subnet_id);
-                return weight.saturating_add(step_weight);
+
+                Self::emission_step_v2(
+                    &mut weight_meter,
+                    block,
+                    current_epoch,
+                    subnet_epoch,
+                    subnet_id,
+                );
             } else {
-                // If we made it this far, SlotAssignment was read
-                weight = weight.saturating_add(db_weight.reads(1));
+                // SlotAssignment
+                weight_meter.consume(db_weight.reads(1));
             }
 
             // Attempt stake swap queue on every block
-            weight = weight.saturating_add(Self::execute_ready_swap_calls(block));
+            Self::execute_ready_swap_calls(block, &mut weight_meter);
 
             // for EVM tests (Weights in on_initialize change the block weight/gas)
             Weight::from_parts(0, 0)
+
+            // weight_meter.consumed()
         }
 
         fn on_finalize(block_number: BlockNumberFor<T>) {}
@@ -8169,35 +7663,57 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         // Execute multiple calls at once (for block hooks)
-        pub fn execute_ready_swap_calls(block_number: u32) -> Weight {
-            let mut weight = Weight::zero();
+        pub fn execute_ready_swap_calls(block_number: u32, weight_meter: &mut WeightMeter) {
             let db_weight = T::DbWeight::get();
 
             let max_executions = MaxSwapQueueCallsPerBlock::<T>::get();
-            weight = weight.saturating_add(db_weight.reads(1));
-
-            if max_executions == 0 {
-                return weight;
-            }
+            weight_meter.consume(db_weight.reads(1));
 
             let mut executed = 0;
 
             while executed < max_executions {
+                // Loop iteration overhead
+                weight_meter.consume(Weight::from_parts(1_000, 0));
+
+                // SwapQueueOrder
+                weight_meter.consume(db_weight.reads(1));
+                weight_meter.consume(db_weight.writes(1));
                 let should_continue = SwapQueueOrder::<T>::mutate(|queue| -> bool {
+                    // Check either stake functions can be called before we get there.
+                    // `weight_meter.can_consume` is called in `execute_swap_call_internal` again.
+                    // This is redundant but will save at least one DB read (which is what is expensive)
                     if queue.is_empty() {
                         return false;
                     }
 
                     let first_id = queue[0];
+
+                    // SwapCallQueue
+                    weight_meter.consume(db_weight.reads(1));
+
                     if let Some(item) = SwapCallQueue::<T>::get(&first_id) {
                         let blocks_passed = block_number.saturating_sub(item.queued_at_block);
                         if blocks_passed >= item.execute_after_blocks.into() {
-                            Self::execute_swap_call_internal(&item.call);
-                            queue.remove(0); // remove from SwapQueueOrder
+                            // If the function can't be called, it will return before calling and the loop will break
+                            let is_ok = Self::execute_swap_call_internal(&item.call, weight_meter);
+                            // If not `is_ok`, the function was not called
+                            if !is_ok {
+                                // break if no weight left in WeightMeter
+                                return false;
+                            }
+
+                            // The swap can only fail if the balance -> shares conversion fails
+                            // Therefore, we always remove from the queue.
+                            // If the conversion fails, the stake value is worthless or near worthless
+                            queue.remove(0);
                             SwapCallQueue::<T>::remove(&first_id);
+                            // SwapCallQueue
+                            weight_meter.consume(db_weight.writes(1));
                             return true;
                         }
                     }
+
+                    // If no elements in `SwapCallQueue`
                     false
                 });
 
@@ -8206,29 +7722,30 @@ pub mod pallet {
                 }
 
                 executed += 1;
-                // weight = weight.saturating_add(T::WeightInfo::execute_swap());
             }
-
-            weight = weight.saturating_add(db_weight.reads(executed as u64 + 1)); // SwapQueueOrder
-
-            weight
         }
 
         pub fn execute_swap_call_internal(
             queued_call: &QueuedSwapCall<T::AccountId>,
-        ) -> DispatchResult {
+            weight_meter: &mut WeightMeter,
+        ) -> bool {
             match queued_call {
                 QueuedSwapCall::SwapToSubnetDelegateStake {
                     account_id,
                     to_subnet_id,
                     balance,
                 } => {
-                    let (result, _, _) = Self::handle_increase_account_delegate_stake(
+                    if !weight_meter
+                        .can_consume(T::WeightInfo::handle_increase_account_delegate_stake())
+                    {
+                        return false;
+                    }
+                    weight_meter.consume(T::WeightInfo::handle_increase_account_delegate_stake());
+                    let (_, _, _) = Self::handle_increase_account_delegate_stake(
                         account_id,
                         *to_subnet_id,
                         *balance,
                     );
-                    result?
                 }
                 QueuedSwapCall::SwapToNodeDelegateStake {
                     account_id,
@@ -8236,17 +7753,24 @@ pub mod pallet {
                     to_subnet_node_id,
                     balance,
                 } => {
-                    let (result, _, _) = Self::handle_increase_account_node_delegate_stake_shares(
+                    if !weight_meter.can_consume(
+                        T::WeightInfo::handle_increase_account_node_delegate_stake_shares(),
+                    ) {
+                        return false;
+                    }
+                    weight_meter.consume(
+                        T::WeightInfo::handle_increase_account_node_delegate_stake_shares(),
+                    );
+                    let (_, _, _) = Self::handle_increase_account_node_delegate_stake_shares(
                         account_id,
                         *to_subnet_id,
                         *to_subnet_node_id,
                         *balance,
                     );
-                    result?
                 }
             }
 
-            Ok(())
+            true
         }
     }
 
@@ -8268,13 +7792,20 @@ pub mod pallet {
             // OverwatchMinAvgAttestationRatio::<T>::set(0);
             // OverwatchMinAge::<T>::set(0);
 
-            // [TESTING: BENCHMARKING]
+            // [TESTING: BENCHMARKING && EVM TESTS]
             MinSubnetRegistrationEpochs::<T>::set(0);
-            OverwatchEpochLengthMultiplier::<T>::set(2);
+            OverwatchEpochLengthMultiplier::<T>::set(1);
             OverwatchMinDiversificationRatio::<T>::set(0);
             OverwatchMinRepScore::<T>::set(0);
             OverwatchMinAvgAttestationRatio::<T>::set(0);
             OverwatchMinAge::<T>::set(0);
+
+            DelegateStakeCooldownEpochs::<T>::set(0);
+            NodeDelegateStakeCooldownEpochs::<T>::put(0);
+            StakeCooldownEpochs::<T>::put(0);
+            MinActiveNodeStakeEpochs::<T>::put(0);
+            SubnetDelegateStakeRewardsUpdatePeriod::<T>::put(0);
+            RewardRateUpdatePeriod::<T>::put(0);
 
             // use sp_core::U256;
             // use sp_core::crypto::Ss58Codec;
@@ -8338,7 +7869,6 @@ pub mod pallet {
             // // x * y / 100.0
 
             // let result = x * y / U256([0xde0b6b3a7640000, 0x0, 0x0, 0x0]);
-            // log::info!("result                               {:?}", result);
 
             // let min_subnet_delegate_stake_balance: u128 = result.try_into().unwrap_or(u128::MAX);
 
@@ -8381,7 +7911,7 @@ pub mod pallet {
 
             // // Add classification epochs
             // SubnetNodeQueueEpochs::<T>::insert(subnet_id, subnet_registration_data.subnet_node_queue_epochs);
-            // IdleClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.queue_classification_epochs);
+            // IdleClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.idle_classification_epochs);
             // IncludedClassificationEpochs::<T>::insert(subnet_id, subnet_registration_data.included_classification_epochs);
 
             // // Add queue variables

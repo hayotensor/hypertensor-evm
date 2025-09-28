@@ -39,7 +39,7 @@ where
 {
   #[precompile::public("addToStake(uint256,uint256,bytes32,uint256)")]
   #[precompile::payable]
-  fn add_to_stake(
+  fn add_stake(
     handle: &mut impl PrecompileHandle,
     subnet_id: U256,
     subnet_node_id: U256,
@@ -53,7 +53,7 @@ where
     let subnet_node_id = try_u256_to_u32(subnet_node_id)?;
 
     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    let call = pallet_network::Call::<R>::add_to_stake {
+    let call = pallet_network::Call::<R>::add_stake {
       subnet_id,
       subnet_node_id,
       hotkey,

@@ -1,6 +1,6 @@
 use super::mock::*;
-use crate::Event;
 use crate::tests::test_utils::*;
+use crate::Event;
 use crate::{
     AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs,
     Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MaxUnbondings, MinDelegateStakeDeposit,
@@ -9,7 +9,9 @@ use crate::{
     SwapQueueOrder, TotalActiveSubnets, TotalDelegateStake, TotalNodeDelegateStakeShares,
     TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares, TotalSubnetNodes,
 };
+use frame_support::pallet_prelude::Weight;
 use frame_support::traits::Currency;
+use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -219,7 +221,7 @@ fn test_update_swap_queue() {
         ));
 
         let event_exists = network_events().iter().any(|event| {
-            matches!(event, 
+            matches!(event,
                 Event::SwapCallQueueUpdated {
                     id: prev_next_id_val,
                     account_id: account_id_val,
@@ -228,7 +230,7 @@ fn test_update_swap_queue() {
                         to_subnet_id: from_subnet_id_val,
                         balance: _, // Ignore balance
                     }
-                } if *prev_next_id_val == prev_next_id 
+                } if *prev_next_id_val == prev_next_id
                 && *account_id_val == account(n_account)
                 && *account_id_val2 == account(n_account)
                 && *from_subnet_id_val == from_subnet_id
@@ -269,7 +271,7 @@ fn test_update_swap_queue() {
         ));
 
         let event_exists = network_events().iter().any(|event| {
-            matches!(event, 
+            matches!(event,
                 Event::SwapCallQueueUpdated {
                     id: prev_next_id_val,
                     account_id: account_id_val,
@@ -278,7 +280,7 @@ fn test_update_swap_queue() {
                         to_subnet_id: from_subnet_id_val,
                         balance: _, // Ignore balance
                     }
-                } if *prev_next_id_val == prev_next_id 
+                } if *prev_next_id_val == prev_next_id
                 && *account_id_val == account(n_account)
                 && *account_id_val2 == account(n_account)
                 && *from_subnet_id_val == from_subnet_id
@@ -307,7 +309,7 @@ fn test_update_swap_queue() {
 }
 
 #[test]
-fn test_execute_queue() {
+fn test_execute_ready_swap_calls() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
@@ -325,6 +327,7 @@ fn test_execute_queue() {
         for n in 0..queues_count {
             let _ = Balances::deposit_creating(&account(n), amount + 500);
             if n % queues_count == 0 {
+                // nothing in queue
                 insert_to_subnet_swap_call_queue(account(n), subnet_id_1, amount);
                 // Sanity check
                 let user_shares =
@@ -374,18 +377,21 @@ fn test_execute_queue() {
         }
 
         // NOTHING SHOULD BE EXECUTED
-        let _ = Network::execute_ready_swap_calls(System::block_number());
+        let _ = Network::execute_ready_swap_calls(System::block_number(), &mut WeightMeter::new());
         assert_eq!(SwapQueueOrder::<Test>::get().len(), queues_count as usize);
         assert_eq!(SwapCallQueue::<Test>::iter().count(), queues_count as usize);
 
         // INCREASE BLOCKS TO BE ABLE TO EXECUTE
         System::set_block_number(System::block_number() + EpochLength::get() + 1);
 
-        let _ = Network::execute_ready_swap_calls(System::block_number());
+        // Swaps SHOULD be executed
+        let _ = Network::execute_ready_swap_calls(System::block_number(), &mut WeightMeter::new());
 
+        // Ensure swaps removed from queue
         assert_eq!(SwapQueueOrder::<Test>::get().len(), 0 as usize);
         assert_eq!(SwapCallQueue::<Test>::iter().count(), 0 as usize);
 
+        // Ensure swaps were executed
         for n in 0..queues_count {
             if n % queues_count == 0 {
                 // check subnet delegate stake balance

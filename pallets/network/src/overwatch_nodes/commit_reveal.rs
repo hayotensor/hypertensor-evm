@@ -9,9 +9,16 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let key: T::AccountId = ensure_signed(origin)?;
 
+        let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
+            Some((hotkey, coldkey)) => (hotkey, coldkey),
+            None => return Err(Error::<T>::NotKeyOwner.into()),
+        };
+
+        ensure!(key == hotkey || key == coldkey, Error::<T>::NotKeyOwner);
+
         ensure!(
-            Self::is_overwatch_node_keys_owner(overwatch_node_id, key),
-            Error::<T>::NotKeyOwner
+            !OverwatchNodeBlacklist::<T>::get(coldkey.clone()),
+            Error::<T>::ColdkeyBlacklisted
         );
 
         // --- Check if we are in commit period
@@ -76,9 +83,16 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let key: T::AccountId = ensure_signed(origin)?;
 
+        let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
+            Some((hotkey, coldkey)) => (hotkey, coldkey),
+            None => return Err(Error::<T>::NotKeyOwner.into()),
+        };
+
+        ensure!(key == hotkey || key == coldkey, Error::<T>::NotKeyOwner);
+
         ensure!(
-            Self::is_overwatch_node_keys_owner(overwatch_node_id, key),
-            Error::<T>::NotKeyOwner
+            !OverwatchNodeBlacklist::<T>::get(coldkey.clone()),
+            Error::<T>::ColdkeyBlacklisted
         );
 
         // --- Check if we are in reveal period

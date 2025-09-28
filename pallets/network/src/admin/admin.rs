@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use super::*;
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 
 impl<T: Config> Pallet<T> {
     pub fn do_pause() -> DispatchResult {
@@ -198,21 +199,21 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_min_activation_grace_epochs(value: u32) -> DispatchResult {
-        MinActivationGraceEpochs::<T>::set(value);
+    // pub fn do_set_min_activation_grace_epochs(value: u32) -> DispatchResult {
+    //     MinActivationGraceEpochs::<T>::set(value);
 
-        Self::deposit_event(Event::SetMinActivationGraceEpochs(value));
+    //     Self::deposit_event(Event::SetMinActivationGraceEpochs(value));
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    pub fn do_set_max_activation_grace_epochs(value: u32) -> DispatchResult {
-        MaxActivationGraceEpochs::<T>::set(value);
+    // pub fn do_set_max_activation_grace_epochs(value: u32) -> DispatchResult {
+    //     MaxActivationGraceEpochs::<T>::set(value);
 
-        Self::deposit_event(Event::SetMaxActivationGraceEpochs(value));
+    //     Self::deposit_event(Event::SetMaxActivationGraceEpochs(value));
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn do_set_min_idle_classification_epochs(value: u32) -> DispatchResult {
         MinIdleClassificationEpochs::<T>::set(value);
@@ -501,6 +502,9 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_overwatch_epoch_length_multiplier(value: u32) -> DispatchResult {
+        // Ensure always at least  `1` to avoid modulo operator errors in `on_initialize`
+        ensure!(value > 0, Error::<T>::InvalidOverwatchEpochLengthMultiplier);
+
         OverwatchEpochLengthMultiplier::<T>::set(value);
 
         Self::deposit_event(Event::SetOverwatchEpochLengthMultiplier(value));
@@ -614,9 +618,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_collective_remove_subnet(subnet_id: u32) -> DispatchResult {
-        Self::do_remove_subnet(subnet_id, SubnetRemovalReason::Council);
-        Ok(())
+    pub fn do_collective_remove_subnet(subnet_id: u32) -> DispatchResultWithPostInfo {
+        let weight = Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::Council);
+        Ok(Some(weight).into())
     }
 
     pub fn do_collective_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
@@ -631,19 +635,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Temporary solution until network maturity
-    pub fn do_collective_blacklist_overwatch_node(coldkey: T::AccountId) -> DispatchResult {
-        Ok(())
-    }
+    pub fn do_collective_set_coldkey_overwatch_node_eligibility(
+        coldkey: T::AccountId,
+        value: bool,
+    ) -> DispatchResult {
+        OverwatchNodeBlacklist::<T>::insert(&coldkey, true);
 
-    pub fn do_set_sigmoid_midpoint(value: u128) -> DispatchResult {
-        ensure!(
-            value <= Self::percentage_factor_as_u128(),
-            Error::<T>::InvalidPercent
-        );
-
-        SigmoidMidpoint::<T>::put(value);
-
-        Self::deposit_event(Event::SetSigmoidMidpoint(value));
+        Self::deposit_event(Event::OverwatchNodeBlacklist(coldkey.clone(), value));
 
         Ok(())
     }
@@ -655,6 +653,7 @@ impl<T: Config> Pallet<T> {
             value < registration_epochs,
             Error::<T>::InvalidMinSubnetRegistrationEpochs
         );
+
         MinSubnetRegistrationEpochs::<T>::put(value);
 
         Self::deposit_event(Event::SetMinSubnetRegistrationEpochs(value));
@@ -719,6 +718,59 @@ impl<T: Config> Pallet<T> {
         MaxUnbondings::<T>::set(value);
 
         Self::deposit_event(Event::SetMaxUnbondings(value));
+
+        Ok(())
+    }
+    pub fn do_set_sigmoid_midpoint(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        SigmoidMidpoint::<T>::put(value);
+
+        Self::deposit_event(Event::SetSigmoidMidpoint(value));
+
+        Ok(())
+    }
+    pub fn do_set_maximum_hooks_weight(value: u32) -> DispatchResult {
+        ensure!(
+            value > 100 && value <= 100,
+            Error::<T>::InvalidPerbillPercent
+        );
+
+        MaximumHooksWeightV2::<T>::put(
+            sp_runtime::Perbill::from_percent(value) * T::BlockWeights::get().max_block,
+        );
+
+        Self::deposit_event(Event::SetMaximumHooksWeight(value));
+
+        Ok(())
+    }
+    pub fn do_set_base_node_burn_amount(value: u128) -> DispatchResult {
+        BaseNodeBurnAmount::<T>::put(value);
+
+        Self::deposit_event(Event::SetBaseNodeBurnAmount(value));
+
+        Ok(())
+    }
+    pub fn do_set_min_node_burn_rate(value: u128) -> DispatchResult {
+        let max_rate = MaxNodeBurnRate::<T>::get();
+        ensure!(max_rate > value, Error::<T>::InvalidMinNodeBurnRate);
+
+        MinNodeBurnRate::<T>::put(value);
+
+        Self::deposit_event(Event::SetMinNodeBurnRate(value));
+
+        Ok(())
+    }
+    pub fn do_set_max_node_burn_rate(value: u128) -> DispatchResult {
+        let min_rate = MinNodeBurnRate::<T>::get();
+        ensure!(min_rate < value, Error::<T>::InvalidMaxNodeBurnRate);
+
+        MaxNodeBurnRate::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxNodeBurnRate(value));
 
         Ok(())
     }

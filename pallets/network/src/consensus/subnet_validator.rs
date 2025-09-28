@@ -99,6 +99,142 @@ impl<T: Config> Pallet<T> {
             validator_id: validator_id,
             attests: attests,
             subnet_nodes: subnet_nodes,
+            prioritize_queue_node_id: None,
+            remove_queue_node_id: None,
+            data: data,
+            args: args,
+        };
+
+        SubnetConsensusSubmission::<T>::insert(subnet_id, subnet_epoch, consensus_data);
+
+        Self::deposit_event(Event::ValidatorSubmission {
+            subnet_id: subnet_id,
+            account_id: hotkey,
+            epoch: subnet_epoch,
+        });
+
+        Ok(Pays::No.into())
+    }
+
+    pub fn do_propose_attestation_v2(
+        subnet_id: u32,
+        hotkey: T::AccountId,
+        mut data: Vec<SubnetNodeConsensusData>,
+        mut prioritize_queue_node_id: Option<u32>,
+        mut remove_queue_node_id: Option<u32>,
+        args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
+        attest_data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
+    ) -> DispatchResultWithPostInfo {
+        // The validator is elected for the next blockchain epoch where rewards will be distributed.
+        // Each subnet epoch overlaps with the blockchains epochs, and can submit consensus data for epoch
+        // 2 on epoch 1 (if after slot) or 2 (if before slot).
+        // If a subnet is on slot 3 of 5 slots, we make sure it can submit on the current blockchains epoch.
+        let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+
+        // --- Ensure current subnet validator by its hotkey
+        let validator_id = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch)
+            .ok_or(Error::<T>::NoElectedValidator)?;
+
+        // --- If hotkey is hotkey, ensure it matches validator, otherwise if coldkey -> get hotkey
+        // If the epoch is 0, this will break
+        ensure!(
+            SubnetNodeIdHotkey::<T>::get(subnet_id, validator_id) == Some(hotkey.clone()),
+            Error::<T>::InvalidValidator
+        );
+
+        // - Note: we don't check stake balance here
+
+        // --- Ensure not submitted already
+        ensure!(
+            !SubnetConsensusSubmission::<T>::contains_key(subnet_id, subnet_epoch),
+            Error::<T>::SubnetRewardsAlreadySubmitted
+        );
+
+        //
+        // --- Qualify the data
+        //
+
+        // Remove duplicates based on peer_id
+        data.dedup_by(|a, b| a.subnet_node_id == b.subnet_node_id);
+
+        // Remove queue classified entries
+        // Each peer must have an inclusion classification at minimum
+        data.retain(
+            |x| match SubnetNodesData::<T>::try_get(subnet_id, x.subnet_node_id) {
+                Ok(subnet_node) => {
+                    subnet_node.has_classification(&SubnetNodeClass::Included, subnet_epoch)
+                }
+                Err(()) => false,
+            },
+        );
+
+        // --- Ensure overflow sum fails
+        data.iter().try_fold(0u128, |acc, node| {
+            acc.checked_add(node.score).ok_or(Error::<T>::ScoreOverflow)
+        })?;
+
+        let block: u32 = Self::get_current_block_as_u32();
+
+        // --- Validator auto-attests the epoch
+        // let attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)> =
+        //     BTreeMap::from([(validator_id, (block, attest_data))]);
+        let attests: BTreeMap<u32, AttestEntry> = BTreeMap::from([(
+            validator_id,
+            AttestEntry {
+                block: block,
+                data: attest_data,
+            },
+        )]);
+
+        // --- Get all (activated) Idle + consensus-eligible nodes
+        // We get this here instead of in the rewards distribution to handle block weight more efficiently
+        let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
+            Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
+        let subnet_nodes_count = subnet_nodes.len();
+
+        if prioritize_queue_node_id.is_some() || remove_queue_node_id.is_some() {
+            let queue = SubnetNodeQueue::<T>::get(subnet_id);
+            let immunity_epochs = QueueImmunityEpochs::<T>::get(subnet_id); // Move outside loop
+
+            let mut prioritize_exists = prioritize_queue_node_id.is_none();
+            let mut remove_allowed = remove_queue_node_id.is_none(); // Rename for clarity
+
+            // Single pass through the queue to check both nodes
+            for node in &queue {
+                if let Some(node_id) = prioritize_queue_node_id {
+                    if node.id == node_id {
+                        prioritize_exists = true;
+                    }
+                }
+
+                if let Some(node_id) = remove_queue_node_id {
+                    if node.id == node_id {
+                        // Node exists AND has passed immunity period
+                        remove_allowed = node.classification.start_epoch + immunity_epochs <= subnet_epoch;
+                    }
+                }
+
+                if prioritize_exists && (remove_queue_node_id.is_none() || remove_allowed) {
+                    break;
+                }
+            }
+
+            // Update parameters based on checks
+            if !prioritize_exists {
+                prioritize_queue_node_id = None;
+            }
+
+            if !remove_allowed {
+                remove_queue_node_id = None;
+            }
+        }
+
+        let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
+            validator_id: validator_id,
+            attests: attests,
+            subnet_nodes: subnet_nodes,
+            prioritize_queue_node_id: prioritize_queue_node_id,
+            remove_queue_node_id: remove_queue_node_id,
             data: data,
             args: args,
         };
@@ -126,7 +262,7 @@ impl<T: Config> Pallet<T> {
         // --- Ensure subnet node exists under hotkey
         let subnet_node_id = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &hotkey) {
             Ok(subnet_node_id) => subnet_node_id,
-            Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
+            Err(()) => return Err(Error::<T>::InvalidHotkeySubnetNodeId.into()),
         };
 
         // --- Ensure node classified to attest
@@ -148,6 +284,16 @@ impl<T: Config> Pallet<T> {
                 let params = maybe_params
                     .as_mut()
                     .ok_or(Error::<T>::InvalidSubnetConsensusSubmission)?;
+
+                // Reduntantly check they are in the list
+                // See `do_propose_attestation`
+                // We check they are SubnetNodeClass::Validator above so we only
+                // check they are in the list here
+                let subnet_nodes = &mut params.subnet_nodes;
+                ensure!(
+                    subnet_nodes.iter().any(|node| node.id == subnet_node_id),
+                    Error::<T>::SubnetNodeNotExist
+                );
 
                 let mut attests = &mut params.attests;
 
@@ -285,7 +431,10 @@ impl<T: Config> Pallet<T> {
         if slash_amount > 0 {
             // --- Decrease account stake
             Self::decrease_account_stake(&hotkey, subnet_id, slash_amount);
-            // weight = weight.saturating_add(T::WeightInfo::decrease_account_stake());
+
+            // AccountSubnetStake | TotalSubnetStake | TotalStake
+            weight = weight.saturating_add(db_weight.writes(3));
+            weight = weight.saturating_add(db_weight.reads(3));
         }
 
         // --- Increase validator penalty count

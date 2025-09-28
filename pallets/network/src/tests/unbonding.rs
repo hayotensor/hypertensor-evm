@@ -301,7 +301,7 @@
 
 //         let _ = Balances::deposit_creating(&account(1), stake_amount * 2);
 
-//         assert_ok!(Network::add_to_stake(
+//         assert_ok!(Network::add_stake(
 //             RuntimeOrigin::signed(coldkey.clone()),
 //             subnet_id,
 //             subnet_node_id,
@@ -446,7 +446,7 @@
 
 //         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-//         assert_ok!(Network::add_to_stake(
+//         assert_ok!(Network::add_stake(
 //             RuntimeOrigin::signed(coldkey.clone()),
 //             subnet_id,
 //             subnet_node_id,

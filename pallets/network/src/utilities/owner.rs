@@ -117,7 +117,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidSubnetId
         );
 
-        Self::do_remove_subnet(subnet_id, SubnetRemovalReason::Owner);
+        Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::Owner);
 
         Ok(())
     }
@@ -326,34 +326,34 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_owner_update_activation_grace_epochs(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-        value: u32,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
+    // pub fn do_owner_update_activation_grace_epochs(
+    //     origin: T::RuntimeOrigin,
+    //     subnet_id: u32,
+    //     value: u32,
+    // ) -> DispatchResult {
+    //     let coldkey: T::AccountId = ensure_signed(origin)?;
 
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
+    //     ensure!(
+    //         Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+    //         Error::<T>::NotSubnetOwner
+    //     );
 
-        ensure!(
-            value >= MinActivationGraceEpochs::<T>::get()
-                && value <= MaxActivationGraceEpochs::<T>::get(),
-            Error::<T>::InvalidActivationGraceEpochs
-        );
+    //     ensure!(
+    //         value >= MinActivationGraceEpochs::<T>::get()
+    //             && value <= MaxActivationGraceEpochs::<T>::get(),
+    //         Error::<T>::InvalidActivationGraceEpochs
+    //     );
 
-        ActivationGraceEpochs::<T>::insert(subnet_id, value);
+    //     ActivationGraceEpochs::<T>::insert(subnet_id, value);
 
-        Self::deposit_event(Event::ActivationGraceEpochsUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value: value,
-        });
+    //     Self::deposit_event(Event::ActivationGraceEpochsUpdate {
+    //         subnet_id: subnet_id,
+    //         owner: coldkey,
+    //         value: value,
+    //     });
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn do_owner_update_idle_classification_epochs(
         origin: T::RuntimeOrigin,
@@ -532,29 +532,6 @@ impl<T: Config> Pallet<T> {
             owner: coldkey,
             value: value,
         });
-
-        Ok(())
-    }
-
-    pub fn do_owner_update_node_removal_policy(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-        policy: NodeRemovalPolicy,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        // ensure!(
-        //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-        //     Error::<T>::NotSubnetOwner
-        // );
-
-        // NodeRemovalSystemV2::<T>::insert(subnet_id, &policy);
-
-        // Self::deposit_event(Event::NodeRemovalSystemV2Update {
-        //     subnet_id: subnet_id,
-        //     owner: coldkey,
-        //     value: policy,
-        // });
 
         Ok(())
     }
@@ -885,7 +862,8 @@ impl<T: Config> Pallet<T> {
 
         ensure!(
             value >= MinMaxRegisteredNodes::<T>::get()
-                && value <= MaxMaxRegisteredNodes::<T>::get(),
+                && value <= MaxMaxRegisteredNodes::<T>::get()
+                && value <= TargetNodeRegistrationsPerEpoch::<T>::get(subnet_id),
             Error::<T>::InvalidMaxRegisteredNodes
         );
 
@@ -1036,5 +1014,85 @@ impl<T: Config> Pallet<T> {
             }
             Ok(())
         })
+    }
+
+    pub fn do_owner_update_target_registrations_per_epoch(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u32,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        let max_registrations = MaxRegisteredNodes::<T>::get(subnet_id);
+        ensure!(
+            value <= max_registrations,
+            Error::<T>::InvalidTargetNodeRegistrationsPerEpoch
+        );
+
+        TargetNodeRegistrationsPerEpoch::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::TargetNodeRegistrationsPerEpochUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_node_burn_rate_alpha(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        NodeBurnRateAlpha::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::NodeBurnRateAlphaUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_queue_immunity_epochs(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u32,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        QueueImmunityEpochs::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::QueueImmunityEpochsUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
     }
 }

@@ -17,21 +17,21 @@ use super::*;
 
 impl<T: Config> Pallet<T> {
     /// The minimum delegate stake balance for a subnet to stay live
-    pub fn get_min_subnet_delegate_stake_balance() -> u128 {
-        let total_network_issuance = Self::get_total_network_issuance();
-        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
-        Self::percent_mul(total_network_issuance, factor)
-    }
+    // pub fn get_min_subnet_delegate_stake_balance() -> u128 {
+    //     let total_network_issuance = Self::get_total_network_issuance();
+    //     let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
+    //     Self::percent_mul(total_network_issuance, factor)
+    // }
 
     /// Get total required subnet nodes based on total nodes
     pub fn get_min_subnet_delegate_stake_balance_v2(subnet_id: u32) -> u128 {
-        let total_network_issuance = Self::get_total_network_issuance(); // 4
-        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get(); // 1
+        let total_network_issuance = Self::get_total_network_issuance();
+        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
         let base_min = Self::percent_mul(total_network_issuance, factor);
         // base_min
 
-        let electable_node_count = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32; // 1
-        let multiplier = Self::get_subnet_min_delegate_staking_multiplier(electable_node_count); // 3
+        let electable_node_count = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
+        let multiplier = Self::get_subnet_min_delegate_staking_multiplier(electable_node_count);
 
         Self::percent_mul(base_min, multiplier)
     }

@@ -35,7 +35,7 @@ fn test_add_to_stake_not_key_owner() {
         let _ = Balances::deposit_creating(&account(1), deposit_amount);
 
         assert_err!(
-            Network::add_to_stake(RuntimeOrigin::signed(account(1)), 0, 0, account(1), amount),
+            Network::add_stake(RuntimeOrigin::signed(account(1)), 0, 0, account(1), amount),
             Error::<Test>::InvalidSubnetId,
         );
 
@@ -53,7 +53,7 @@ fn test_add_to_stake_not_key_owner() {
         let _ = Balances::deposit_creating(&account(1), deposit_amount);
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(account(total_subnet_nodes + 1)),
                 subnet_id,
                 0,
@@ -73,7 +73,7 @@ fn test_remove_stake_not_key_owner() {
         let _ = Balances::deposit_creating(&account(1), deposit_amount);
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(account(1)),
                 0,
                 0,
@@ -104,7 +104,7 @@ fn test_remove_stake_not_key_owner() {
 
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
             subnet_node_id,
@@ -158,7 +158,7 @@ fn test_add_to_stake() {
             stake_amount
         );
 
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
             subnet_node_id,
@@ -213,7 +213,7 @@ fn test_add_to_stake_invalid_amount_error() {
         );
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
                 subnet_node_id,
@@ -262,7 +262,7 @@ fn test_add_to_stake_max_stake_error() {
         );
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
                 subnet_node_id,
@@ -303,7 +303,7 @@ fn test_add_to_stake_not_enough_balance_to_stake_error() {
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
                 subnet_node_id,
@@ -347,7 +347,7 @@ fn test_add_to_stake_balance_withdraw_error() {
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
 
         assert_err!(
-            Network::add_to_stake(
+            Network::add_stake(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
                 subnet_node_id,
@@ -469,7 +469,7 @@ fn test_remove_stake() {
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
 
         // add double amount to stake
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
             subnet_node_id,
@@ -544,8 +544,9 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         let bootnode_peer_id =
             get_bootnode_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnet_id, max_subnet_nodes, max_subnets, end + 1);
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
 
-        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
 
         assert_ok!(Network::register_subnet_node(
             RuntimeOrigin::signed(coldkey.clone()),
@@ -559,6 +560,7 @@ fn test_remove_stake_min_active_node_stake_epochs() {
             stake_amount,
             None,
             None,
+            u128::MAX
         ));
 
         let total_subnet_node_uids = TotalSubnetNodeUids::<Test>::get(subnet_id);
@@ -594,7 +596,7 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         );
 
         // add double amount to stake
-        assert_ok!(Network::add_to_stake(
+        assert_ok!(Network::add_stake(
             RuntimeOrigin::signed(coldkey.clone()),
             subnet_id,
             subnet_node_id,
@@ -706,7 +708,7 @@ fn test_remove_stake_after_remove_subnet() {
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
-        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
         assert_eq!(
@@ -778,7 +780,7 @@ fn test_remove_stake_after_remove_subnet_twice() {
 
         let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
 
-        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
         assert_eq!(
@@ -926,8 +928,9 @@ fn test_register_try_removing_all_stake_error() {
         let bootnode_peer_id =
             get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
 
-        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
+        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
         let starting_balance = Balances::free_balance(&coldkey.clone());
 
         assert_ok!(Network::register_subnet_node(
@@ -942,6 +945,7 @@ fn test_register_try_removing_all_stake_error() {
             stake_amount,
             None,
             None,
+            u128::MAX
         ));
 
         assert_err!(

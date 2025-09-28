@@ -1935,7 +1935,7 @@
 //         assert!(subnet_weight.is_some());
 
 //         // ⸺ Submit consnesus data
-//         // run_subnet_consensus_step(subnet_id);
+//         // run_subnet_consensus_step(subnet_id, None, None);
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);

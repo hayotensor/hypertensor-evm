@@ -123,6 +123,7 @@ parameter_types! {
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
     pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
+    pub MaximumHooksWeight: Weight = sp_runtime::Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
 
 impl pallet_network::Config for Test {
@@ -142,6 +143,7 @@ impl pallet_network::Config for Test {
     type MinProposalStake = MinProposalStake;
     type TreasuryAccount = ();
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
+    type MaximumHooksWeight = MaximumHooksWeight;
 }
 
 pub type BlockNumber = u32;
@@ -149,11 +151,11 @@ pub type BlockNumber = u32;
 parameter_types! {
     pub const VotingPeriod: BlockNumber = DAYS * 21;
     pub const EnactmentPeriod: BlockNumber = DAYS * 7;
-  pub const VerifyPeriod: BlockNumber = DAYS * 4;
-  pub const MinProposerStake: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
-  pub const Quorum: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
-  pub const CancelSlashPercent: u8 = 5;
-  pub const QuorumVotingPowerPercentage: u8 = 40;
+    pub const VerifyPeriod: BlockNumber = DAYS * 4;
+    pub const MinProposerStake: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
+    pub const Quorum: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
+    pub const CancelSlashPercent: u8 = 5;
+    pub const QuorumVotingPowerPercentage: u8 = 40;
 }
 
 parameter_types! {

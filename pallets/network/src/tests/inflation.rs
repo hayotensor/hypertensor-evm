@@ -41,7 +41,10 @@ fn inflation_should_decrease_as_utilization_increases() {
         );
 
         // Check that boundaries are roughly as expected
-        assert!((low_util - max_rate).abs() < 0.01, "Low inflation not near max");
+        assert!(
+            (low_util - max_rate).abs() < 0.01,
+            "Low inflation not near max"
+        );
         assert!(
             (high_util - min_rate).abs() < 0.01,
             "High inflation not near min"

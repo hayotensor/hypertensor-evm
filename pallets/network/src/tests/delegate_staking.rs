@@ -300,7 +300,8 @@ fn test_delegate_math() {
 
         // Ensure balance is within <= 0.01% of deposited balance, and less than deposited balance
         assert!(
-            (delegate_balance >= Network::percent_mul(delegate_stake_to_be_added, 990000000000000000))
+            (delegate_balance
+                >= Network::percent_mul(delegate_stake_to_be_added, 990000000000000000))
                 && (delegate_balance < delegate_stake_to_be_added)
         );
 
@@ -680,10 +681,10 @@ fn test_remove_delegate_stake_not_enough_stake_to_withdraw() {
         assert_err!(
             Network::swap_from_subnet_to_node(
                 RuntimeOrigin::signed(account(total_subnet_nodes + 1)),
-                    subnet_id,
-                    subnet_id_2,
-                    1,
-                    0,
+                subnet_id,
+                subnet_id_2,
+                1,
+                0,
             ),
             Error::<Test>::SharesZero
         );
@@ -710,14 +711,13 @@ fn test_remove_delegate_stake_not_enough_stake_to_withdraw() {
         assert_err!(
             Network::swap_from_subnet_to_node(
                 RuntimeOrigin::signed(account(total_subnet_nodes + 1)),
-                    subnet_id,
-                    subnet_id_2,
-                    1,
-                    delegate_shares + 1,
+                subnet_id,
+                subnet_id_2,
+                1,
+                delegate_shares + 1,
             ),
             Error::<Test>::NotEnoughStakeToWithdraw
         );
-
     });
 }
 
@@ -770,7 +770,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
                 && (delegate_balance < amount)
         );
 
-        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 
@@ -1238,7 +1238,6 @@ fn test_swap_delegate_stake() {
         //     }
         // );
 
-
         // let to_delegate_shares = AccountSubnetDelegateStakeShares::<Test>::get(account(n_account), to_subnet_id);
         // assert_ne!(to_delegate_shares, 0);
 
@@ -1469,13 +1468,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
         let epoch_length = EpochLength::get();
         let cooldown_epochs = DelegateStakeCooldownEpochs::<Test>::get();
 
-        // assert_ok!(
-        //   Network::do_remove_subnet(
-        //     subnet_id,
-        //     SubnetRemovalReason::MinSubnetDelegateStake,
-        //   )
-        // );
-        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 

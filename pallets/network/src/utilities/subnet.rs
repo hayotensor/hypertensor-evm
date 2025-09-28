@@ -220,7 +220,7 @@ impl<T: Config> Pallet<T> {
     pub fn get_current_registration_cost(block: u32) -> u128 {
         let last_registration_cost = LastRegistrationCost::<T>::get();
         let min_price = MinRegistrationCost::<T>::get();
-        let last_updated = LastRegistrationBlock::<T>::get();
+        let last_updated = LastSubnetRegistrationBlock::<T>::get();
         let decay_blocks = RegistrationCostDecayBlocks::<T>::get();
         let alpha = RegistrationCostAlpha::<T>::get();
 
@@ -271,7 +271,7 @@ impl<T: Config> Pallet<T> {
     pub fn update_last_registration_cost(current_cost: u128, block: u32) {
         let new_cost = Self::percent_mul(current_cost, NewRegistrationCostMultiplier::<T>::get());
         LastRegistrationCost::<T>::put(new_cost);
-        LastRegistrationBlock::<T>::put(block);
+        LastSubnetRegistrationBlock::<T>::put(block);
     }
 
     /// Update bootnode set

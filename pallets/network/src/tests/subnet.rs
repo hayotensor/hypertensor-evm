@@ -2,23 +2,23 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    AssignedSlots, DefaultMaxVectorLength, Error, LastRegistrationBlock, LastRegistrationCost,
-    MaxActivationGraceEpochs, MaxBootnodes, MaxChurnLimit, MaxDelegateStakePercentage,
+    AssignedSlots, DefaultMaxVectorLength, Error, LastRegistrationCost,
+    LastSubnetRegistrationBlock, MaxBootnodes, MaxChurnLimit, MaxDelegateStakePercentage,
     MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
     MaxMaxSubnetNodePenalties, MaxQueueEpochs, MaxSubnetMaxStake, MaxSubnetMinStake,
-    MaxSubnetNodes, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount, MaxSubnets,
-    MinActivationGraceEpochs, MinChurnLimit, MinDelegateStakePercentage,
-    MinIdleClassificationEpochs, MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
-    MinMaxSubnetNodePenalties, MinQueueEpochs, MinRegistrationCost, MinSubnetMaxStake,
-    MinSubnetMinStake, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMaxStakeBalance,
-    NetworkMinStakeBalance, RegistrationCostDecayBlocks, RegistrationSubnetData, SlotAssignment,
-    SubnetActivationEnactmentEpochs, SubnetBootnodeAccess, SubnetBootnodes, SubnetData, SubnetName,
-    SubnetPenaltyCount, SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason,
-    SubnetSlot, SubnetState, SubnetsData, TotalActiveSubnets, TotalSubnetDelegateStakeBalance,
-    TotalSubnetNodes,
+    MaxSubnetNodes, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount, MaxSubnets, MinChurnLimit,
+    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
+    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinQueueEpochs, MinRegistrationCost,
+    MinSubnetMaxStake, MinSubnetMinStake, MinSubnetNodes, MinSubnetRegistrationEpochs,
+    NetworkMaxStakeBalance, NetworkMinStakeBalance, RegistrationCostDecayBlocks,
+    RegistrationSubnetData, SlotAssignment, SubnetActivationEnactmentEpochs, SubnetBootnodeAccess,
+    SubnetBootnodes, SubnetData, SubnetName, SubnetPenaltyCount, SubnetRegistrationEpoch,
+    SubnetRegistrationEpochs, SubnetRemovalReason, SubnetSlot, SubnetState, SubnetsData,
+    TotalActiveSubnets, TotalSubnetDelegateStakeBalance, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
+use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_io::hashing::blake2_128;
 use sp_runtime::{BoundedVec, Weight};
@@ -74,6 +74,7 @@ fn test_register_subnet() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -253,6 +254,7 @@ fn test_register_subnet_exists_error() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data.clone(),
         ));
 
@@ -260,6 +262,7 @@ fn test_register_subnet_exists_error() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::SubnetNameExist
@@ -307,6 +310,7 @@ fn test_register_subnet_repo_error() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data.clone(),
         ));
 
@@ -317,6 +321,7 @@ fn test_register_subnet_repo_error() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::SubnetRepoExist
@@ -360,6 +365,7 @@ fn test_register_subnet_errors() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data.clone(),
         ));
 
@@ -374,6 +380,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidChurnLimit
@@ -385,6 +392,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidChurnLimit
@@ -398,6 +406,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidRegistrationQueueEpochs
@@ -409,6 +418,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidRegistrationQueueEpochs
@@ -416,56 +426,57 @@ fn test_register_subnet_errors() {
 
         add_subnet_data.subnet_node_queue_epochs = MaxQueueEpochs::<Test>::get() - 1; // reset
 
-        add_subnet_data.activation_grace_epochs = MinActivationGraceEpochs::<Test>::get() - 1;
+        // add_subnet_data.activation_grace_epochs = MinActivationGraceEpochs::<Test>::get() - 1;
+
+        // assert_err!(
+        //     Network::register_subnet(
+        //         RuntimeOrigin::signed(account(0)),
+        //         account(1),
+        //         100000000000000000000000,
+        //         add_subnet_data.clone(),
+        //     ),
+        //     Error::<Test>::InvalidActivationGraceEpochs
+        // );
+
+        // add_subnet_data.activation_grace_epochs = MaxActivationGraceEpochs::<Test>::get() + 1;
+
+        // assert_err!(
+        //     Network::register_subnet(
+        //         RuntimeOrigin::signed(account(0)),
+        //         account(1),
+        //         100000000000000000000000,
+        //         add_subnet_data.clone(),
+        //     ),
+        //     Error::<Test>::InvalidActivationGraceEpochs
+        // );
+
+        // add_subnet_data.activation_grace_epochs = MaxActivationGraceEpochs::<Test>::get() - 1; // reset
+
+        add_subnet_data.idle_classification_epochs = MinIdleClassificationEpochs::<Test>::get() - 1;
 
         assert_err!(
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
-                add_subnet_data.clone(),
-            ),
-            Error::<Test>::InvalidActivationGraceEpochs
-        );
-
-        add_subnet_data.activation_grace_epochs = MaxActivationGraceEpochs::<Test>::get() + 1;
-
-        assert_err!(
-            Network::register_subnet(
-                RuntimeOrigin::signed(account(0)),
-                account(1),
-                add_subnet_data.clone(),
-            ),
-            Error::<Test>::InvalidActivationGraceEpochs
-        );
-
-        add_subnet_data.activation_grace_epochs = MaxActivationGraceEpochs::<Test>::get() - 1; // reset
-
-        add_subnet_data.queue_classification_epochs =
-            MinIdleClassificationEpochs::<Test>::get() - 1;
-
-        assert_err!(
-            Network::register_subnet(
-                RuntimeOrigin::signed(account(0)),
-                account(1),
-                add_subnet_data.clone(),
-            ),
-            Error::<Test>::InvalidIdleClassificationEpochs
-        );
-
-        add_subnet_data.queue_classification_epochs =
-            MaxIdleClassificationEpochs::<Test>::get() + 1;
-
-        assert_err!(
-            Network::register_subnet(
-                RuntimeOrigin::signed(account(0)),
-                account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidIdleClassificationEpochs
         );
 
-        add_subnet_data.queue_classification_epochs =
-            MaxIdleClassificationEpochs::<Test>::get() - 1; // reset
+        add_subnet_data.idle_classification_epochs = MaxIdleClassificationEpochs::<Test>::get() + 1;
+
+        assert_err!(
+            Network::register_subnet(
+                RuntimeOrigin::signed(account(0)),
+                account(1),
+                100000000000000000000000,
+                add_subnet_data.clone(),
+            ),
+            Error::<Test>::InvalidIdleClassificationEpochs
+        );
+
+        add_subnet_data.idle_classification_epochs = MaxIdleClassificationEpochs::<Test>::get() - 1; // reset
 
         add_subnet_data.included_classification_epochs =
             MinIncludedClassificationEpochs::<Test>::get() - 1;
@@ -474,6 +485,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidIncludedClassificationEpochs
@@ -486,6 +498,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidIncludedClassificationEpochs
@@ -501,6 +514,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidSubnetMinStake
@@ -515,6 +529,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidSubnetMaxStake
@@ -527,6 +542,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidSubnetStakeParameters
@@ -543,6 +559,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMinDelegateStakePercentage
@@ -554,6 +571,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMinDelegateStakePercentage
@@ -565,6 +583,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMinDelegateStakePercentage
@@ -578,6 +597,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMaxRegisteredNodes
@@ -589,6 +609,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMaxRegisteredNodes
@@ -601,6 +622,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidSubnetRegistrationInitialColdkeys
@@ -613,6 +635,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::NotEnoughBalanceToRegisterSubnet
@@ -624,6 +647,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMaxSubnetNodePenalties
@@ -635,6 +659,7 @@ fn test_register_subnet_errors() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data.clone(),
             ),
             Error::<Test>::InvalidMaxSubnetNodePenalties
@@ -672,6 +697,7 @@ fn test_register_subnet_not_enough_balance_err() {
             Network::register_subnet(
                 RuntimeOrigin::signed(account(0)),
                 account(1),
+                100000000000000000000000,
                 add_subnet_data,
             ),
             Error::<Test>::NotEnoughBalanceToRegisterSubnet
@@ -719,6 +745,7 @@ fn test_activate_subnet() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -739,20 +766,8 @@ fn test_activate_subnet() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -765,6 +780,7 @@ fn test_activate_subnet() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -845,6 +861,7 @@ fn test_activate_subnet_anytime() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -865,20 +882,8 @@ fn test_activate_subnet_anytime() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -891,6 +896,7 @@ fn test_activate_subnet_anytime() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -964,6 +970,7 @@ fn test_activate_subnet_conditions_not_met_in_registration_period() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1030,6 +1037,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1050,20 +1058,8 @@ fn test_activate_subnet_invalid_subnet_id_error() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1076,6 +1072,7 @@ fn test_activate_subnet_invalid_subnet_id_error() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -1126,6 +1123,7 @@ fn test_activate_subnet_already_activated_err() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1146,20 +1144,8 @@ fn test_activate_subnet_already_activated_err() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1172,6 +1158,7 @@ fn test_activate_subnet_already_activated_err() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -1245,6 +1232,7 @@ fn test_activate_subnet_min_subnet_registration_epochs_not_met_error() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1265,20 +1253,8 @@ fn test_activate_subnet_min_subnet_registration_epochs_not_met_error() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1291,6 +1267,7 @@ fn test_activate_subnet_min_subnet_registration_epochs_not_met_error() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -1356,6 +1333,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1376,20 +1354,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1402,6 +1368,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -1486,6 +1453,7 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
 //       Network::register_subnet(
 //         RuntimeOrigin::signed(account(0)),
 //         account(1),
+//         100000000000000000000000,
 //         add_subnet_data,
 //       )
 //     );
@@ -1583,6 +1551,7 @@ fn test_activate_subnet_min_subnet_nodes_remove_subnet() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1650,13 +1619,12 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
         let epoch_length = EpochLength::get();
         let block_number = System::block_number();
         let epoch = System::block_number().saturating_div(epoch_length);
-        // let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-        // increase_epochs(next_registration_epoch - epoch);
 
         // --- Register subnet for activation
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(account(0)),
             account(1),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -1677,20 +1645,8 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
             let peer_id = get_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-            // assert_ok!(Network::add_subnet_node(
-            //     RuntimeOrigin::signed(coldkey.clone()),
-            //     subnet_id,
-            //     hotkey.clone(),
-            //     peer_id.clone(),
-            //     bootnode_peer_id.clone(),
-            //     client_peer_id.clone(),
-            //     None,
-            //     0,
-            //     amount,
-            //     None,
-            //     None,
-            // ));
+            let burn_amount = Network::calculate_burn_amount(subnet_id);
+            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1703,6 +1659,7 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
                 amount,
                 None,
                 None,
+                u128::MAX
             ));
         }
 
@@ -1827,7 +1784,7 @@ fn test_get_current_registration_cost() {
         // ---- Simulate elapsed blocks with no updates ----
         // Move forward half the decay period
         let half_decay = RegistrationCostDecayBlocks::<Test>::get() / 2;
-        let last_block = LastRegistrationBlock::<Test>::get();
+        let last_block = LastSubnetRegistrationBlock::<Test>::get();
         System::set_block_number(last_block + half_decay);
 
         let cost_after_half_decay = Network::get_current_registration_cost(System::block_number());
@@ -2001,7 +1958,7 @@ fn test_enactment_period_insufficient_nodes_removal() {
         set_active_nodes(min_subnet_nodes - 1, 0);
 
         // Run preliminaries - subnet should be removed due to insufficient nodes
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
         assert!(!SubnetsData::<Test>::contains_key(2));
     });
 }
@@ -2019,7 +1976,7 @@ fn test_out_of_enactment_period_removal() {
         let epoch = 0 + subnet_registration_epochs + subnet_enactment_epochs + 1;
 
         // Should be removed
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
         assert!(!SubnetsData::<Test>::contains_key(3));
     });
 }
@@ -2037,7 +1994,7 @@ fn test_paused_subnet_penalties_and_removal() {
         SubnetsData::<Test>::mutate(4, |d| d.as_mut().unwrap().start_epoch = 0);
 
         // Penalty count should increase and subnet removed
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
         assert!(!SubnetsData::<Test>::contains_key(4));
     });
 }
@@ -2056,7 +2013,7 @@ fn test_activated_subnet_delegate_stake_removal() {
         let epoch = 10;
         SubnetsData::<Test>::mutate(5, |d| d.as_mut().unwrap().start_epoch = 0);
 
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
 
         // Should be removed due to low delegate stake
         assert!(!SubnetsData::<Test>::contains_key(5));
@@ -2077,7 +2034,7 @@ fn test_activated_subnet_min_nodes_penalty_increment() {
         let epoch = 10;
         SubnetsData::<Test>::mutate(6, |d| d.as_mut().unwrap().start_epoch = 0);
 
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
 
         // Penalties should increase by 1
         assert_eq!(SubnetPenaltyCount::<Test>::get(6), 1);
@@ -2100,7 +2057,7 @@ fn test_activated_subnet_max_penalties_removal() {
         let epoch = 10;
         SubnetsData::<Test>::mutate(7, |d| d.as_mut().unwrap().start_epoch = 0);
 
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
 
         // Should be removed due to max penalties
         assert!(!SubnetsData::<Test>::contains_key(7));
@@ -2126,7 +2083,7 @@ fn test_excess_subnet_removal_lowest_delegate_stake() {
 
         let epoch = 10;
 
-        Network::do_epoch_preliminaries(0, epoch);
+        Network::do_epoch_preliminaries(&mut WeightMeter::new(), 0, epoch);
 
         // The subnet with id 8 (lowest stake) should be removed
         assert!(!SubnetsData::<Test>::contains_key(8));
@@ -2264,6 +2221,7 @@ fn test_remove_subnet_enactment_period() {
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(owner_coldkey.clone()),
             owner_hotkey.clone(),
+            100000000000000000000000,
             add_subnet_data,
         ));
 
@@ -2349,6 +2307,7 @@ fn test_do_epoch_preliminaries_remove_subnet_not_activated() {
 
         // Shouldn't remove at `n` (removal requires epoch be greater than max)
         Network::do_epoch_preliminaries(
+            &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
         );
@@ -2359,6 +2318,7 @@ fn test_do_epoch_preliminaries_remove_subnet_not_activated() {
         increase_epochs(1);
 
         Network::do_epoch_preliminaries(
+            &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
         );
@@ -2413,6 +2373,7 @@ fn test_do_epoch_preliminaries_remove_subnet_min_stake_balance() {
 
         // Shouldn't remove at `n` (removal requires epoch be greater than max)
         Network::do_epoch_preliminaries(
+            &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
         );
@@ -2423,6 +2384,7 @@ fn test_do_epoch_preliminaries_remove_subnet_min_stake_balance() {
         increase_epochs(1);
 
         Network::do_epoch_preliminaries(
+            &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
         );
@@ -2454,6 +2416,68 @@ fn test_remove_subnet_error() {
         let end = 4;
 
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        assert_err!(
+            Network::remove_subnet(RuntimeOrigin::signed(account(1000)), subnet_id),
+            Error::<Test>::InvalidSubnetRemoval
+        );
+    });
+}
+
+#[test]
+fn test_remove_subnet_registered_error_delegate_stake_true() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let end = 4;
+
+        build_registered_subnet_new(
+            subnet_name.clone(),
+            0,
+            end,
+            deposit_amount,
+            stake_amount,
+            true,
+        );
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        assert_err!(
+            Network::remove_subnet(RuntimeOrigin::signed(account(1000)), subnet_id),
+            Error::<Test>::InvalidSubnetRemoval
+        );
+    });
+}
+
+#[test]
+fn test_remove_subnet_registered_error_delegate_stake_false() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let end = 4;
+
+        build_registered_subnet_new(
+            subnet_name.clone(),
+            0,
+            end,
+            deposit_amount,
+            stake_amount,
+            false,
+        );
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         assert_err!(

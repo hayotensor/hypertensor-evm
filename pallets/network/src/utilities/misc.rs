@@ -94,16 +94,15 @@ impl<T: Config> Pallet<T> {
         T::Currency::deposit_creating(&treasury_account, amount);
     }
 
-    pub fn add_balance_to_burn_address(
+    pub fn burn(
+        who: T::AccountId,
         amount: <<T as pallet::Config>::Currency as Currency<
             <T as frame_system::Config>::AccountId,
         >>::Balance,
-    ) {
-        T::Currency::deposit_creating(
-            &T::AccountId::decode(&mut TrailingZeroInput::zeroes()).unwrap(),
-            amount,
-        );
+    ) -> bool {
+        Self::remove_balance_from_coldkey_account(&who, amount)
     }
+
 
     pub fn is_paused() -> DispatchResult {
         ensure!(!TxPause::<T>::get(), Error::<T>::Paused);

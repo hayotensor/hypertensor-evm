@@ -6576,6 +6576,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-author-subsidy"
+version = "0.1.0"
+dependencies = [
+ "fp-account",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-evm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-authorship"
 version = "39.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2412#823792b53d7179be3857992fb8478acc9202ee02"
@@ -10758,6 +10775,7 @@ dependencies = [
  "network-custom-rpc-runtime-api",
  "pallet-atomic-swap",
  "pallet-aura",
+ "pallet-author-subsidy",
  "pallet-balances",
  "pallet-base-fee",
  "pallet-collective",

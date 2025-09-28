@@ -4,8 +4,8 @@ use crate::{
     AccountOverwatchStake, ColdkeyHotkeys, Error, HotkeyOverwatchNodeId, HotkeyOwner,
     HotkeySubnetNodeId, MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes,
     NetworkMinStakeBalance, OverwatchCommit, OverwatchCommits, OverwatchMinAge,
-    OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeIdHotkey, OverwatchNodeIndex,
-    OverwatchNodeWeights, OverwatchNodes, OverwatchReveal, OverwatchReveals,
+    OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeBlacklist, OverwatchNodeIdHotkey,
+    OverwatchNodeIndex, OverwatchNodeWeights, OverwatchNodes, OverwatchReveal, OverwatchReveals,
     OverwatchSubnetWeights, PeerId, PeerIdOverwatchNode, PeerIdSubnetNodeId, StakeCooldownEpochs,
     StakeUnbondingLedgerV2, SubnetData, SubnetName, SubnetNodesData, SubnetState, SubnetsData,
     TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake,
@@ -86,6 +86,27 @@ fn test_register_overwatch_node() {
             Some(hotkey.clone())
         );
         assert_eq!(AccountOverwatchStake::<Test>::get(hotkey.clone()), amount);
+    });
+}
+
+#[test]
+fn test_register_overwatch_node_blacklisted() {
+    new_test_ext().execute_with(|| {
+        let amount = 100000000000000000000;
+
+        let coldkey = account(1);
+        let hotkey = account(2);
+
+        OverwatchNodeBlacklist::<Test>::insert(coldkey.clone(), true);
+
+        assert_err!(
+            Network::register_overwatch_node(
+                RuntimeOrigin::signed(coldkey.clone()),
+                hotkey.clone(),
+                amount,
+            ),
+            Error::<Test>::ColdkeyBlacklisted
+        );
     });
 }
 
@@ -530,7 +551,7 @@ fn test_equal_stake_equal_weights_v3() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         for n in 0..2 {
             let hotkey = account(n + 1);
@@ -588,7 +609,7 @@ fn test_stake_no_dampening_effect() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         for n in 0..2 {
             let hotkey = account(n + 1);
@@ -645,7 +666,7 @@ fn test_two_noces_same_stake_dif_weights_v3() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         for n in 0..2 {
             let hotkey = account(n + 1);
@@ -706,7 +727,7 @@ fn test_multiple_subnets_score_accumulation_v3() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         for n in 0..2 {
             let hotkey = account(n + 1);
@@ -771,7 +792,7 @@ fn test_multiple_subnets_score_accumulation_v3_2() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         for n in 0..2 {
             let hotkey = account(n + 1);
@@ -884,7 +905,7 @@ fn test_multiple_subnets_check_percent_acccuracy() {
             ostake_snapshot.insert(hotkey.clone(), overwatch_stake);
         }
 
-        let _ = Network::calculate_overwatch_rewards_v3();
+        let _ = Network::calculate_overwatch_rewards();
 
         for n in 0..8 {
             let hotkey = account(n + 1);
@@ -1315,7 +1336,7 @@ fn test_zero_score() {
         submit_weight(epoch, subnet_id, node_id_1, 0);
         submit_weight(epoch, subnet_id, node_id_2, 1000000000000000000);
 
-        let block_weight = Network::calculate_overwatch_rewards_v3();
+        let block_weight = Network::calculate_overwatch_rewards();
 
         let subnet_weight = OverwatchSubnetWeights::<Test>::get(epoch, subnet_id);
 

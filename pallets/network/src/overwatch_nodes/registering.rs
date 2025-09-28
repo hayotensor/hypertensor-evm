@@ -24,6 +24,11 @@ impl<T: Config> Pallet<T> {
         let coldkey: T::AccountId = ensure_signed(origin)?;
 
         ensure!(
+            !OverwatchNodeBlacklist::<T>::get(coldkey.clone()),
+            Error::<T>::ColdkeyBlacklisted
+        );
+
+        ensure!(
             Self::get_current_overwatch_epoch_as_u32() > 0,
             Error::<T>::OverwatchEpochIsZero
         );

@@ -34,6 +34,7 @@ use sp_runtime::{
 };
 use sp_version::RuntimeVersion;
 // Substrate FRAME
+use frame_support::traits::Contains;
 use frame_support::traits::{
     fungible::HoldConsideration, EqualPrivilegeOnly, InstanceFilter, LinearStoragePrice,
 };
@@ -55,6 +56,7 @@ use frame_support::{
 };
 use pallet_network::{DefaultMaxVectorLength, SubnetNode};
 use pallet_transaction_payment::{ConstFeeMultiplier, FungibleAdapter};
+use pallet_tx_pause::RuntimeCallNameOf;
 // Frontier
 use fp_account::EthereumSignature;
 use fp_evm::weight_per_gas;
@@ -63,6 +65,7 @@ use pallet_ethereum::{Call::transact, PostLogContent, Transaction as EthereumTra
 use pallet_evm::{
     Account as EVMAccount, EnsureAccountId20, FeeCalculator, IdentityAddressMapping, Runner,
 };
+
 pub mod genesis_config_presets;
 
 // A few exports that help ease life for downstream crates.
@@ -172,8 +175,13 @@ pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
                                        // pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
 pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
-pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000
+pub const TENSOR: u128 = 1_000_000_000_000_000_000; // 1e18
+
+pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000 * TENSOR;
 pub const OVERWATCH_EPOCH_EMISSIONS: u128 = OVERWATCH_YEARLY_EMISSIONS / (EPOCHS_PER_YEAR as u128);
+
+pub const AUTHOR_YEARLY_EMISSIONS: u128 = 1_000 * TENSOR;
+pub const AUTHOR_BLOCK_EMISSIONS: u128 = AUTHOR_YEARLY_EMISSIONS / (YEAR as u128);
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -398,9 +406,13 @@ parameter_types! {
 pub enum ProxyType {
     Any,
     NonTransfer,
-    // DelegateStaking,
-    // Governance,
-    // Staking,
+    Transfer,
+    SubNetworkStaking,
+    SubNetworkDelegateStaking,
+    // SubnetworkOwner,
+    Governance,
+    // Sudo,
+    CancelProxy,
 }
 impl Default for ProxyType {
     fn default() -> Self {
@@ -411,7 +423,68 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
     fn filter(&self, c: &RuntimeCall) -> bool {
         match self {
             ProxyType::Any => true,
-            ProxyType::NonTransfer => !matches!(c, RuntimeCall::Balances(..)),
+            // ProxyType::NonTransfer => !matches!(c, RuntimeCall::Balances(..)),
+            ProxyType::NonTransfer => !matches!(
+                c,
+                RuntimeCall::Balances(..)
+                    | RuntimeCall::Network(pallet_network::Call::add_to_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::transfer_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::remove_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::donate_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::add_to_node_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_node_delegate_stake { .. })
+                    | RuntimeCall::Network(
+                        pallet_network::Call::transfer_node_delegate_stake { .. }
+                    )
+                    | RuntimeCall::Network(pallet_network::Call::remove_node_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::donate_node_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_from_node_to_subnet { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_from_subnet_to_node { .. })
+                    | RuntimeCall::Network(pallet_network::Call::update_swap_queue { .. })
+            ),
+            ProxyType::Transfer => matches!(
+                c,
+                RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive { .. })
+                    | RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
+                    | RuntimeCall::Balances(pallet_balances::Call::transfer_all { .. })
+                    | RuntimeCall::Network(pallet_network::Call::transfer_delegate_stake { .. })
+                    | RuntimeCall::Network(
+                        pallet_network::Call::transfer_node_delegate_stake { .. }
+                    )
+            ),
+            ProxyType::Governance => matches!(
+                c,
+                RuntimeCall::Collective(..) | RuntimeCall::Treasury(..) | RuntimeCall::Utility(..)
+            ),
+            ProxyType::SubNetworkStaking => matches!(
+                c,
+                RuntimeCall::Network(pallet_network::Call::add_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::remove_stake { .. })
+            ),
+            // In-network management of current delegate staking funds
+            ProxyType::SubNetworkDelegateStaking => matches!(
+                c,
+                // RuntimeCall::Network(pallet_network::Call::add_to_delegate_stake { .. })
+                RuntimeCall::Network(pallet_network::Call::swap_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::transfer_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::remove_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::donate_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::add_to_node_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_node_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::transfer_node_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::remove_node_delegate_stake { .. })
+                    // | RuntimeCall::Network(pallet_network::Call::donate_node_delegate_stake { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_from_node_to_subnet { .. })
+                    | RuntimeCall::Network(pallet_network::Call::swap_from_subnet_to_node { .. })
+                    | RuntimeCall::Network(pallet_network::Call::update_swap_queue { .. })
+            ),
+            ProxyType::CancelProxy => {
+                matches!(
+                    c,
+                    RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. })
+                )
+            }
         }
     }
     fn is_superset(&self, o: &Self) -> bool {
@@ -419,7 +492,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
             (x, y) if x == y => true,
             (ProxyType::Any, _) => true,
             (_, ProxyType::Any) => false,
-            // (ProxyType::NonTransfer, _) => true,
+            (ProxyType::NonTransfer, _) => true,
             _ => false,
         }
     }
@@ -526,27 +599,28 @@ impl pallet_multisig::Config for Runtime {
 }
 
 parameter_types! {
-    pub const MaxNameLen: u32 = 50;
+    pub const MaxNameLen: u32 = 256;
 }
 
-// /// Calls that cannot be paused by the tx-pause pallet.
-// pub struct TxPauseWhitelistedCalls;
-// /// Whitelist `Balances::transfer_keep_alive`, all others are pauseable.
-// impl Contains<RuntimeCallNameOf<Runtime>> for TxPauseWhitelistedCalls {
-// 	fn contains(full_name: &RuntimeCallNameOf<Runtime>) -> bool {
-// 		match (full_name.0.as_slice(), full_name.1.as_slice()) {
-// 			(b"Balances", b"transfer_keep_alive") => true,
-// 			_ => false,
-// 		}
-// 	}
-// }
+/// Calls that cannot be paused by the tx-pause pallet.
+pub struct TxPauseWhitelistedCalls;
+/// All calls are pauseable.
+impl Contains<RuntimeCallNameOf<Runtime>> for TxPauseWhitelistedCalls {
+    fn contains(_full_name: &RuntimeCallNameOf<Runtime>) -> bool {
+        false
+        // match (full_name.0.as_slice(), full_name.1.as_slice()) {
+        // 	(b"Balances", b"transfer_keep_alive") => true,
+        // 	_ => false,
+        // }
+    }
+}
 
 impl pallet_tx_pause::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type RuntimeCall = RuntimeCall;
     type PauseOrigin = EnsureRoot<AccountId>;
     type UnpauseOrigin = EnsureRoot<AccountId>;
-    type WhitelistedCalls = ();
+    type WhitelistedCalls = TxPauseWhitelistedCalls;
     type MaxNameLen = MaxNameLen;
     type WeightInfo = pallet_tx_pause::weights::SubstrateWeight<Runtime>;
 }
@@ -573,12 +647,38 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
+    pub const AuthorBlockEmissions: u128 = AUTHOR_BLOCK_EMISSIONS;
+}
+
+// pub struct AuraAccountAdapter;
+// impl frame_support::traits::FindAuthor<AccountId> for AuraAccountAdapter {
+// 	fn find_author<'a, I>(digests: I) -> Option<AccountId>
+// 		where I: 'a + IntoIterator<Item=(frame_support::ConsensusEngineId, &'a [u8])>
+// 	{
+// 		pallet_aura::AuraAuthorId::<Runtime>::find_author(digests).and_then(|k| {
+// 			AccountId::try_from(k.as_ref()).ok()
+// 		})
+// 	}
+// }
+
+impl pallet_author_subsidy::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type FindAuthor = FindAuthorTruncated<Aura>;
+    type AddressMapping = IdentityAddressMapping;
+    type WeightInfo = pallet_author_subsidy::weights::SubstrateWeight<Runtime>;
+    type AuthorBlockEmissions = AuthorBlockEmissions;
+}
+
+parameter_types! {
     pub const InitialTxRateLimit: u32 = 0;
     pub const EpochLength: u32 = BLOCKS_PER_EPOCH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
     pub const MinProposalStake: u128 = 1_000_000_000_000_000_000; // 1 * 1e18
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
+    pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
+        BlockWeights::get().max_block;
 }
 
 impl pallet_network::Config for Runtime {
@@ -598,6 +698,7 @@ impl pallet_network::Config for Runtime {
     type MinProposalStake = MinProposalStake;
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
+    type MaximumHooksWeight = MaximumHooksWeight;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}
@@ -821,6 +922,9 @@ mod runtime {
 
     #[runtime::pallet_index(23)]
     pub type Network = pallet_network;
+
+    #[runtime::pallet_index(24)]
+    pub type AuthorSubsidy = pallet_author_subsidy;
 }
 
 #[derive(Clone)]
@@ -917,6 +1021,7 @@ mod benches {
         [pallet_template, Template]
         [pallet_collective, Collective]
         [pallet_network, Network]
+        [pallet_author_subsidy, AuthorSubsidy]
         // [pallet_treasury, Treasury]
     );
 }

@@ -40,12 +40,9 @@ type Block = frame_system::mocking::MockBlockU32<Test>;
 frame_support::construct_runtime!(
     pub enum Test
     {
-    System: system,
-    InsecureRandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
-    Balances: pallet_balances,
-    Network: pallet_network,
-    Collective: pallet_collective::<Instance1>,
-    Treasury: pallet_treasury,
+      System: system,
+      Balances: pallet_balances,
+      AuthorSubsidy: pallet_author_subsidy,
     }
 );
 
@@ -84,6 +81,9 @@ pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
 pub const OVERWATCH_YEARLY_EMISSIONS: u128 = 10_000_000_000_000_000_000_000; // 10,000
 pub const OVERWATCH_EPOCH_EMISSIONS: u128 = OVERWATCH_YEARLY_EMISSIONS / (EPOCHS_PER_YEAR as u128);
+
+pub const AUTHOR_YEARLY_EMISSIONS: u128 = 1_000_000_000_000_000_000_000; // 1,000
+pub const AUTHOR_BLOCK_EMISSIONS: u128 = AUTHOR_YEARLY_EMISSIONS / (YEAR as u128);
 
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2000ms of compute with a 6 second average block time.
@@ -154,91 +154,16 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-    pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
-    pub const CouncilMaxProposals: u32 = 100;
-    pub const CouncilMaxMembers: u32 = 100;
-    // pub BlockWeights: frame_system::limits::BlockWeights =
-    //     frame_system::limits::BlockWeights::with_sensible_defaults(
-    //     Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
-    //     NORMAL_DISPATCH_RATIO,
-    //     );
-    pub MaxCollectivesProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
-}
-
-type CouncilCollective = pallet_collective::Instance1;
-impl pallet_collective::Config<CouncilCollective> for Test {
-    type RuntimeOrigin = RuntimeOrigin;
-    type Proposal = RuntimeCall;
-    type RuntimeEvent = RuntimeEvent;
-    type MotionDuration = CouncilMotionDuration;
-    type MaxProposals = CouncilMaxProposals;
-    type MaxMembers = CouncilMaxMembers;
-    type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
-    type SetMembersOrigin = EnsureRoot<AccountId>;
-    type MaxProposalWeight = MaxCollectivesProposalWeight;
-}
-
-parameter_types! {
-    pub const Burn: Permill = Permill::from_percent(50);
-    pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
-    pub const SpendLimit: Balance = u128::MAX;
-    pub TreasuryAccount: AccountId = Treasury::account_id();
-}
-
-impl pallet_treasury::Config for Test {
-    type PalletId = TreasuryPalletId;
-    type Currency = Balances;
-    type RejectOrigin = EnsureRoot<AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type SpendPeriod = ConstU32<2>;
-    type Burn = Burn;
-    type BurnDestination = (); // Just gets burned.
-    type WeightInfo = ();
-    type SpendFunds = ();
-    type MaxApprovals = ConstU32<100>;
-    type SpendOrigin = EnsureRootWithSuccess<AccountId, SpendLimit>;
-    type AssetKind = ();
-    type Beneficiary = AccountId;
-    type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-    type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
-    type BalanceConverter = UnityAssetBalanceConversion;
-    type PayoutPeriod = ConstU32<10>;
-    // #[cfg(feature = "runtime-benchmarks")]
-    // type BenchmarkHelper = ();
-    type BlockNumberProvider = ();
-}
-
-// DelegateStakeCooldownEpochs and NodeDelegateStakeCooldownEpochs must be > 1 epochs due to subnet slots
-// This ensures users can not arbitrage subnet rewards on slots
-parameter_types! {
-    pub const EpochLength: u32 = EPOCH_LENGTH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
-    pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
-    pub const NetworkPalletId: PalletId = PalletId(*b"/network");
-    pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
-    pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
-    pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
-        BlockWeights::get().max_block;
+    pub const AuthorBlockEmissions: u128 = AUTHOR_BLOCK_EMISSIONS;
 }
 
 impl Config for Test {
-    type WeightInfo = ();
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
-    type MajorityCollectiveOrigin =
-        pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
-    type SuperMajorityCollectiveOrigin =
-        pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 4, 5>;
-    type EpochLength = EpochLength;
-    type EpochsPerYear = EpochsPerYear;
-    type StringLimit = ConstU32<100>;
-    type InitialTxRateLimit = ConstU32<0>;
-    type Randomness = InsecureRandomnessCollectiveFlip;
-    type PalletId = NetworkPalletId;
-    type MinProposalStake = MinProposalStake;
-    type TreasuryAccount = TreasuryAccount;
-    type OverwatchEpochEmissions = OverwatchEpochEmissions;
-    type MaximumHooksWeight = MaximumHooksWeight;
+    type FindAuthor = FindAuthorTruncated<Aura>;
+    type AddressMapping = IdentityAddressMapping;
+    type WeightInfo = ();
+    type AuthorBlockEmissions = AuthorBlockEmissions;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -246,18 +171,4 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .build_storage()
         .unwrap()
         .into()
-}
-
-pub(crate) fn network_events() -> Vec<crate::Event<Test>> {
-    System::events()
-        .into_iter()
-        .map(|r| r.event)
-        .filter_map(|e| {
-            if let RuntimeEvent::Network(inner) = e {
-                Some(inner)
-            } else {
-                None
-            }
-        })
-        .collect()
 }

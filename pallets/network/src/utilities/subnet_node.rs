@@ -683,27 +683,15 @@ impl<T: Config> Pallet<T> {
     pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
         let mut is_active = false;
         let mut is_registered = false;
-        let mut is_queued = true;
         let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             is_active = true;
-            is_queued = false;
             SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
         } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             is_registered = true;
             RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
         } else {
             return;
         };
-
-        if is_queued {
-            let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
-            if let Some(pos) = queue.iter().position(|x| x.id == subnet_node.id) {
-                queue.remove(pos);
-                SubnetNodeQueue::<T>::set(subnet_id, queue);
-            }
-        }
 
         let hotkey = subnet_node.hotkey;
         let peer_id = subnet_node.peer_id;
@@ -717,7 +705,7 @@ impl<T: Config> Pallet<T> {
         BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
         HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
         SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
-        // HotkeySubnetId::<T>::remove(&hotkey);
+        // We don't remove `HotkeySubnetId`. This is only removed when a node fully removes stake
 
         let coldkey = HotkeyOwner::<T>::get(&hotkey);
 
@@ -1140,154 +1128,154 @@ impl<T: Config> Pallet<T> {
     //     candidates.first().map(|(uid, _, _)| *uid)
     // }
 
-    pub fn evaluate_logic_expr(
-        expr: &LogicExpr,
-        activating_score: u128,
-        activating_avg_attestation: u128,
-        activating_dstake_rate: u128,
-        activating_dstake_balance: u128,
-        activating_stake_balance: u128,
-        proposing_score: u128,
-        proposing_avg_attestation: u128,
-        proposing_dstake_rate: u128,
-        proposing_dstake_balance: u128,
-        proposing_stake_balance: u128,
-    ) -> bool {
-        match expr {
-            LogicExpr::And(left, right) => {
-                Self::evaluate_logic_expr(
-                    left,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                ) && Self::evaluate_logic_expr(
-                    right,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                )
-            }
-            LogicExpr::Or(left, right) => {
-                Self::evaluate_logic_expr(
-                    left,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                ) || Self::evaluate_logic_expr(
-                    right,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                )
-            }
-            LogicExpr::Xor(left, right) => {
-                Self::evaluate_logic_expr(
-                    left,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                ) ^ Self::evaluate_logic_expr(
-                    right,
-                    activating_score,
-                    activating_avg_attestation,
-                    activating_dstake_rate,
-                    activating_dstake_balance,
-                    activating_stake_balance,
-                    proposing_score,
-                    proposing_avg_attestation,
-                    proposing_dstake_rate,
-                    proposing_dstake_balance,
-                    proposing_stake_balance,
-                )
-            }
-            LogicExpr::Not(inner) => !Self::evaluate_logic_expr(
-                inner,
-                activating_score,
-                activating_avg_attestation,
-                activating_dstake_rate,
-                activating_dstake_balance,
-                activating_stake_balance,
-                proposing_score,
-                proposing_avg_attestation,
-                proposing_dstake_rate,
-                proposing_dstake_balance,
-                proposing_stake_balance,
-            ),
-            LogicExpr::Condition(cond) => match cond {
-                // hard
-                NodeRemovalConditionType::HardBelowScore(v) => proposing_score < *v,
-                NodeRemovalConditionType::HardBelowAverageAttestation(v) => {
-                    proposing_avg_attestation < *v
-                }
-                NodeRemovalConditionType::HardBelowNodeDelegateStakeRate(v) => {
-                    proposing_dstake_rate < *v
-                }
+    // pub fn evaluate_logic_expr(
+    //     expr: &LogicExpr,
+    //     activating_score: u128,
+    //     activating_avg_attestation: u128,
+    //     activating_dstake_rate: u128,
+    //     activating_dstake_balance: u128,
+    //     activating_stake_balance: u128,
+    //     proposing_score: u128,
+    //     proposing_avg_attestation: u128,
+    //     proposing_dstake_rate: u128,
+    //     proposing_dstake_balance: u128,
+    //     proposing_stake_balance: u128,
+    // ) -> bool {
+    //     match expr {
+    //         LogicExpr::And(left, right) => {
+    //             Self::evaluate_logic_expr(
+    //                 left,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             ) && Self::evaluate_logic_expr(
+    //                 right,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             )
+    //         }
+    //         LogicExpr::Or(left, right) => {
+    //             Self::evaluate_logic_expr(
+    //                 left,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             ) || Self::evaluate_logic_expr(
+    //                 right,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             )
+    //         }
+    //         LogicExpr::Xor(left, right) => {
+    //             Self::evaluate_logic_expr(
+    //                 left,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             ) ^ Self::evaluate_logic_expr(
+    //                 right,
+    //                 activating_score,
+    //                 activating_avg_attestation,
+    //                 activating_dstake_rate,
+    //                 activating_dstake_balance,
+    //                 activating_stake_balance,
+    //                 proposing_score,
+    //                 proposing_avg_attestation,
+    //                 proposing_dstake_rate,
+    //                 proposing_dstake_balance,
+    //                 proposing_stake_balance,
+    //             )
+    //         }
+    //         LogicExpr::Not(inner) => !Self::evaluate_logic_expr(
+    //             inner,
+    //             activating_score,
+    //             activating_avg_attestation,
+    //             activating_dstake_rate,
+    //             activating_dstake_balance,
+    //             activating_stake_balance,
+    //             proposing_score,
+    //             proposing_avg_attestation,
+    //             proposing_dstake_rate,
+    //             proposing_dstake_balance,
+    //             proposing_stake_balance,
+    //         ),
+    //         LogicExpr::Condition(cond) => match cond {
+    //             // hard
+    //             NodeRemovalConditionType::HardBelowScore(v) => proposing_score < *v,
+    //             NodeRemovalConditionType::HardBelowAverageAttestation(v) => {
+    //                 proposing_avg_attestation < *v
+    //             }
+    //             NodeRemovalConditionType::HardBelowNodeDelegateStakeRate(v) => {
+    //                 proposing_dstake_rate < *v
+    //             }
 
-                // delta
+    //             // delta
 
-                // If node is under the activating nodes score delta value
-                NodeRemovalConditionType::DeltaBelowScore(v) => {
-                    proposing_score
-                        < activating_score.saturating_sub(Self::percent_mul(activating_score, *v))
-                }
-                NodeRemovalConditionType::DeltaBelowAverageAttestation(v) => {
-                    proposing_avg_attestation
-                        < activating_avg_attestation
-                            .saturating_sub(Self::percent_mul(activating_avg_attestation, *v))
-                }
-                NodeRemovalConditionType::DeltaBelowNodeDelegateStakeRate(v) => {
-                    proposing_dstake_rate
-                        < activating_dstake_rate
-                            .saturating_sub(Self::percent_mul(activating_dstake_rate, *v))
-                }
-                NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(v) => {
-                    proposing_dstake_balance
-                        < activating_dstake_balance
-                            .saturating_sub(Self::percent_mul(activating_dstake_balance, *v))
-                }
-                NodeRemovalConditionType::DeltaBelowStakeBalance(v) => {
-                    proposing_stake_balance
-                        < activating_stake_balance
-                            .saturating_sub(Self::percent_mul(activating_stake_balance, *v))
-                }
-            },
-        }
-    }
+    //             // If node is under the activating nodes score delta value
+    //             NodeRemovalConditionType::DeltaBelowScore(v) => {
+    //                 proposing_score
+    //                     < activating_score.saturating_sub(Self::percent_mul(activating_score, *v))
+    //             }
+    //             NodeRemovalConditionType::DeltaBelowAverageAttestation(v) => {
+    //                 proposing_avg_attestation
+    //                     < activating_avg_attestation
+    //                         .saturating_sub(Self::percent_mul(activating_avg_attestation, *v))
+    //             }
+    //             NodeRemovalConditionType::DeltaBelowNodeDelegateStakeRate(v) => {
+    //                 proposing_dstake_rate
+    //                     < activating_dstake_rate
+    //                         .saturating_sub(Self::percent_mul(activating_dstake_rate, *v))
+    //             }
+    //             NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(v) => {
+    //                 proposing_dstake_balance
+    //                     < activating_dstake_balance
+    //                         .saturating_sub(Self::percent_mul(activating_dstake_balance, *v))
+    //             }
+    //             NodeRemovalConditionType::DeltaBelowStakeBalance(v) => {
+    //                 proposing_stake_balance
+    //                     < activating_stake_balance
+    //                         .saturating_sub(Self::percent_mul(activating_stake_balance, *v))
+    //             }
+    //         },
+    //     }
+    // }
 
     pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
         ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
@@ -1307,44 +1295,87 @@ impl<T: Config> Pallet<T> {
         });
     }
 
-    // pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
-    //   ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
-    //     // Collect subnet_ids to remove (invalid subnets)
-    //     let mut subnets_to_remove: Vec<u32> = colkey_map
-    //       .keys()
-    //       .filter(|&subnet_id| !Self::subnet_exists(*subnet_id))
-    //       .copied()
-    //       .collect();
+    /// Calculate current burn amount based on burn rate
+    pub fn calculate_burn_amount(subnet_id: u32) -> u128 {
+        let base_burn = Self::base_burn_amount();
+        let burn_rate = CurrentNodeBurnRate::<T>::get(subnet_id);
 
-    //     // Remove invalid subnets
-    //     for subnet_id in &subnets_to_remove {
-    //       colkey_map.remove(subnet_id);
-    //     }
+        // Simple multiplication: burn_amount = base_burn * burn_rate
+        // burn_rate is already a percentage in 1e18 format
+        Self::percent_mul(base_burn, burn_rate)
+    }
 
-    //     // Now clean up node IDs in remaining subnets
-    //     for (subnet_id, nodes) in colkey_map.iter_mut() {
-    //       // Collect invalid node_ids
-    //       let invalid_nodes: Vec<u32> = nodes
-    //         .iter()
-    //         .filter(|&&subnet_node_id| Self::get_subnet_node(*subnet_id, subnet_node_id).is_none())
-    //         .copied()
-    //         .collect();
+    /// Record a registration (increment counter)
+    /// Called by `register_subnet_node`
+    pub fn record_registration(subnet_id: u32) -> DispatchResult {
+        let current_count = NodeRegistrationsThisEpoch::<T>::get(subnet_id);
+        NodeRegistrationsThisEpoch::<T>::insert(subnet_id, current_count.saturating_add(1));
+        Ok(())
+    }
 
-    //       // Remove invalid nodes
-    //       for node_id in invalid_nodes {
-    //         nodes.remove(&node_id);
-    //       }
+    /// Update burn rate based on registrations in previous epoch
+    pub fn update_burn_rate_for_epoch_v2(
+        weight_meter: &mut WeightMeter,
+        subnet_id: u32,
+        current_subnet_epoch: u32,
+    ) {
+        let db_weight = T::DbWeight::get();
 
-    //       // Mark subnet for removal if its BTreeSet is now empty
-    //       if nodes.is_empty() {
-    //         subnets_to_remove.push(*subnet_id);
-    //       }
-    //     }
+        // It's unlikely this will ever be true, but we check anyway to future-proof
+        if !weight_meter.can_consume(db_weight.reads(7) + db_weight.writes(4)) {
+            return;
+        }
 
-    //     // Remove any newly empty subnets
-    //     for subnet_id in subnets_to_remove {
-    //       colkey_map.remove(&subnet_id);
-    //     }
-    //   });
-    // }
+        let registrations = NodeRegistrationsThisEpoch::<T>::get(subnet_id);
+        let target = TargetNodeRegistrationsPerEpoch::<T>::get(subnet_id);
+        let previous_burn_rate = CurrentNodeBurnRate::<T>::get(subnet_id);
+        let alpha = NodeBurnRateAlpha::<T>::get(subnet_id);
+
+        weight_meter.consume(db_weight.reads(5));
+
+        // Calculate target burn rate based on registration activity
+        let target_burn_rate = Self::calculate_target_burn_rate(registrations, target);
+
+        // Rest of the function remains the same...
+        let precision = Self::percentage_factor_as_u128();
+        let one_minus_alpha = precision.saturating_sub(alpha);
+        let alpha_component = Self::percent_mul(target_burn_rate, alpha);
+        let previous_component = Self::percent_mul(previous_burn_rate, one_minus_alpha);
+        let new_burn_rate = alpha_component.saturating_add(previous_component);
+
+        // Apply min/max bounds to the rate
+        let min_rate = MinNodeBurnRate::<T>::get();
+        let max_rate = MaxNodeBurnRate::<T>::get();
+
+        weight_meter.consume(db_weight.reads(2));
+
+        let clamped_rate = new_burn_rate.max(min_rate).min(max_rate);
+
+        weight_meter.consume(db_weight.writes(4));
+
+        CurrentNodeBurnRate::<T>::insert(subnet_id, clamped_rate);
+        NodeRegistrationsThisEpoch::<T>::insert(subnet_id, 0);
+    }
+
+    fn calculate_target_burn_rate(registrations: u32, target: u32) -> u128 {
+        if registrations == 0 {
+            // No registrations -> use minimum rate
+            MinNodeBurnRate::<T>::get()
+        } else if registrations >= target {
+            // At or above target -> use maximum rate
+            MaxNodeBurnRate::<T>::get()
+        } else {
+            // Below target -> calculate proportional rate between min and max
+            let min_rate = MinNodeBurnRate::<T>::get();
+            let max_rate = MaxNodeBurnRate::<T>::get();
+            let ratio = Self::percent_div(registrations as u128, target as u128);
+
+            // Linear interpolation between min and max based on how close we are to target
+            // rate = min + (max - min) * (registrations / target)
+            let rate_range = max_rate.saturating_sub(min_rate);
+            let rate_component = Self::percent_mul(rate_range, ratio);
+
+            min_rate.saturating_add(rate_component)
+        }
+    }
 }
