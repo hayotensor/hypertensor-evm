@@ -25,6 +25,7 @@ sp-blockchain.workspace = true
 sp-rpc.workspace = true
 sp-runtime.workspace = true
 frame-support.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
 # Local
 network-custom-rpc-runtime-api.workspace = true

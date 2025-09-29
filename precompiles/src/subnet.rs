@@ -232,7 +232,7 @@ where
         stake_to_be_added: U256,
         unique: BoundedString<ConstU32<1024>>,
         non_unique: BoundedString<ConstU32<1024>>,
-        max_burn_amount: U256
+        max_burn_amount: U256,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let hotkey = R::AddressMapping::into_account_id(hotkey.into());
@@ -262,7 +262,7 @@ where
             stake_to_be_added,
             unique,
             non_unique,
-            max_burn_amount
+            max_burn_amount,
         };
 
         RuntimeHelper::<R>::try_dispatch(
@@ -1091,8 +1091,10 @@ where
         let new_owner = R::AddressMapping::into_account_id(new_owner.into());
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_network::Call::<R>::transfer_subnet_ownership { subnet_id, new_owner };
+        let call = pallet_network::Call::<R>::transfer_subnet_ownership {
+            subnet_id,
+            new_owner,
+        };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1112,8 +1114,7 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
         let subnet_id = try_u256_to_u32(subnet_id)?;
-        let call =
-            pallet_network::Call::<R>::accept_subnet_ownership { subnet_id };
+        let call = pallet_network::Call::<R>::accept_subnet_ownership { subnet_id };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1129,15 +1130,17 @@ where
     fn owner_add_bootnode_access(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        new_account: Address
+        new_account: Address,
     ) -> EvmResult<()> {
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let new_account = R::AddressMapping::into_account_id(new_account.into());
 
-        let call =
-            pallet_network::Call::<R>::owner_add_bootnode_access { subnet_id, new_account };
+        let call = pallet_network::Call::<R>::owner_add_bootnode_access {
+            subnet_id,
+            new_account,
+        };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1153,14 +1156,16 @@ where
     fn owner_update_target_registrations_per_epoch(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        value: U256
+        value: U256,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let value = try_u256_to_u32(value)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call =
-            pallet_network::Call::<R>::owner_update_target_registrations_per_epoch { subnet_id, value };
+        let call = pallet_network::Call::<R>::owner_update_target_registrations_per_epoch {
+            subnet_id,
+            value,
+        };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1176,7 +1181,7 @@ where
     fn owner_update_node_burn_rate_alpha(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        value: U256
+        value: U256,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let value: u128 = value.unique_saturated_into();
@@ -1199,7 +1204,7 @@ where
     fn owner_update_queue_immunity_epochs(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        value: U256
+        value: U256,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let value = try_u256_to_u32(value)?;

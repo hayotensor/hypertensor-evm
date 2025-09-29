@@ -16,6 +16,7 @@ serde = { features = [
 	"derive",
 ], workspace = true }
 sp-std.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
 pallet-network.workspace = true
 

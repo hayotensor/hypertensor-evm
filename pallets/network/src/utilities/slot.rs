@@ -168,136 +168,6 @@ impl<T: Config> Pallet<T> {
         weight
     }
 
-    pub fn emission_step(
-        block: u32,
-        current_epoch: u32,
-        current_subnet_epoch: u32,
-        subnet_id: u32,
-    ) -> Weight {
-        let mut weight = Weight::zero();
-        let db_weight = T::DbWeight::get();
-
-        // Get all subnet weights calculated at the start of the blockchains epoch
-        if let Ok(subnet_emission_weights) = FinalSubnetEmissionWeights::<T>::try_get(current_epoch)
-        {
-            // FinalSubnetEmissionWeights
-            weight = weight.saturating_add(db_weight.reads(1));
-
-            // Get weight of subnet_id from calculated weights
-            if let Some(&subnet_weight) = subnet_emission_weights.weights.get(&subnet_id) {
-                weight = weight.saturating_add(db_weight.reads(1));
-                let (consensus_submission_data, consensus_submission_block_weight) =
-                    Self::precheck_subnet_consensus_submission(
-                        subnet_id,
-                        current_subnet_epoch - 1,
-                        current_epoch,
-                    );
-
-                weight = weight.saturating_add(consensus_submission_block_weight);
-
-                if let Some(consensus_submission_data) = consensus_submission_data {
-                    // Accumulate weight from precheck
-                    weight = weight.saturating_add(consensus_submission_block_weight);
-
-                    // Calculate rewards
-                    let (rewards_data, rewards_block_weight) = Self::calculate_rewards(
-                        subnet_id,
-                        subnet_emission_weights.validator_emissions,
-                        subnet_weight,
-                    );
-                    weight = weight.saturating_add(rewards_block_weight);
-
-                    // Read constants
-                    let min_attestation = MinAttestationPercentage::<T>::get();
-                    let rep_increase = ReputationIncreaseFactor::<T>::get();
-                    let rep_decrease = ReputationDecreaseFactor::<T>::get();
-                    let vast_majority = MinVastMajorityAttestationPercentage::<T>::get();
-
-                    // MinAttestationPercentage | ReputationIncreaseFactor
-                    // ReputationIncreaseFactor | MinVastMajorityAttestationPercentage
-                    weight = weight.saturating_add(db_weight.reads(4));
-
-                    // Distribute rewards
-                    let dist_block_weight = Self::distribute_rewards(
-                        subnet_id,
-                        block,
-                        current_epoch,
-                        current_subnet_epoch, // used for graduating nodes
-                        consensus_submission_data,
-                        rewards_data,
-                        min_attestation,
-                        rep_increase,
-                        rep_decrease,
-                        vast_majority,
-                    );
-                    weight = weight.saturating_add(dist_block_weight);
-                } else {
-                    // Validator didn't submit consensus, but we checked
-                    // SubnetConsensusSubmission in `precheck_subnet_consensus_submission`
-                    weight = weight.saturating_add(db_weight.reads(1));
-                }
-
-                // --- Elect new validator for the current epoch
-                // The current epoch is the start of the subnets epoch
-                // We only elect if the subnet has weights, otherwise it isn't active yet
-                // See `calculate_subnet_weights`
-                Self::elect_validator_v3(subnet_id, current_subnet_epoch, block);
-                // weight = weight.saturating_add(T::WeightInfo::elect_validator_v3());
-
-                // After election, we activate nodes in the queue
-                // We execute the queue here only if the subnet has weights
-                // this ensures the subnet is active (not registered or paused)
-
-                let subnet_node_queue_epochs = SubnetNodeQueueEpochs::<T>::get(subnet_id);
-                let max_nodes = MaxSubnetNodes::<T>::get();
-                let total_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-                let churn_limit = ChurnLimit::<T>::get(subnet_id);
-
-                // - Get the number of activations to execute
-                let take = if max_nodes.saturating_sub(total_active_nodes) < churn_limit {
-                    max_nodes.saturating_sub(total_active_nodes)
-                } else {
-                    churn_limit
-                };
-
-                let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
-
-                // SubnetNodeQueueEpochs | MaxSubnetNodes
-                // TotalActiveSubnetNodes | ChurnLimit | SubnetNodeQueue
-                weight = weight.saturating_add(db_weight.reads(5));
-
-                if queue.len() != 0 && take != 0 {
-                    let mut activated_nodes = 0;
-                    // Activate any nodes in the unpause queue
-                    for subnet_node in queue.iter().take(take as usize) {
-                        if subnet_node.classification.start_epoch + subnet_node_queue_epochs
-                            < current_subnet_epoch
-                        {
-                            weight = weight.saturating_add(Self::do_activate_subnet_node_v2(
-                                subnet_id,
-                                subnet_node.clone(),
-                                current_subnet_epoch,
-                            ));
-                            activated_nodes += 1;
-                        } else {
-                            // Nodes are in order, break early if first one isn't qualified yet
-                            break;
-                        }
-                    }
-
-                    // Remove the processed nodes from the front
-                    queue.drain(0..activated_nodes);
-
-                    // Update storage
-                    SubnetNodeQueue::<T>::set(subnet_id, queue);
-                    weight = weight.saturating_add(db_weight.writes(1));
-                }
-            }
-        }
-
-        weight
-    }
-
     pub fn emission_step_v2(
         weight_meter: &mut WeightMeter,
         block: u32,
@@ -345,7 +215,7 @@ impl<T: Config> Pallet<T> {
                     weight_meter.consume(db_weight.reads(4));
 
                     // Distribute rewards
-                    let dist_block_weight = Self::distribute_rewards_v2(
+                    Self::distribute_rewards_v2(
                         weight_meter,
                         subnet_id,
                         block,
@@ -375,79 +245,16 @@ impl<T: Config> Pallet<T> {
                 // We execute the queue here only if the subnet has weights
                 // this ensures the subnet is active (not registered or paused)
 
+                // This will run if there is block weight remaining to call
                 Self::handle_registration_queue(weight_meter, subnet_id, current_subnet_epoch);
 
-                Self::update_burn_rate_for_epoch_v2(weight_meter, subnet_id, current_subnet_epoch);
-
-                // // Check we can activate nodes from the queue
-                // // This should never be true but check anyway to ensure
-                // // the block doesn't panic!
-
-                // // SubnetNodeQueueEpochs | MaxSubnetNodes
-                // // TotalActiveSubnetNodes | ChurnLimit | SubnetNodeQueue
-                // weight_meter.consume(db_weight.reads(5));
-
-                // if weight_meter.remaining().is_zero() {
-                //     return;
-                // }
-
-                // let subnet_node_queue_epochs = SubnetNodeQueueEpochs::<T>::get(subnet_id);
-                // let max_nodes = MaxSubnetNodes::<T>::get();
-                // let total_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-                // let churn_limit = ChurnLimit::<T>::get(subnet_id);
-
-                // // - Get the number of activations to execute
-                // let take = if max_nodes.saturating_sub(total_active_nodes) < churn_limit {
-                //     max_nodes.saturating_sub(total_active_nodes)
-                // } else {
-                //     churn_limit
-                // };
-
-                // let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
-
-                // if queue.len() != 0 && take != 0 {
-                //     // Base weight for queue processing
-                //     weight_meter.consume(Weight::from_parts(2_000, 0));
-
-                //     let mut activated_nodes = 0;
-                //     // Activate any nodes in the unpause queue
-                //     for subnet_node in queue.iter().take(take as usize) {
-                //         weight_meter.consume(Weight::from_parts(1_500, 0));
-
-                //         if subnet_node.classification.start_epoch + subnet_node_queue_epochs
-                //             < current_subnet_epoch
-                //         {
-                //             let can_consume = Self::do_activate_subnet_node_v3(
-                //                 weight_meter,
-                //                 subnet_id,
-                //                 subnet_node.clone(),
-                //                 current_subnet_epoch,
-                //             );
-                //             if !can_consume {
-                //                 break;
-                //             }
-                //             activated_nodes += 1;
-                //         } else {
-                //             // Nodes are in order, break early if first one isn't qualified yet
-                //             break;
-                //         }
-                //     }
-
-                //     // Remove the processed nodes from the front
-                //     if activated_nodes > 0 {
-                //         let drain_weight = Weight::from_parts(500 * activated_nodes as u64, 0);
-                //         weight_meter.consume(drain_weight);
-                //         queue.drain(0..activated_nodes);
-
-                //         // Update storage
-                //         SubnetNodeQueue::<T>::set(subnet_id, queue);
-                //         weight_meter.consume(db_weight.writes(1));
-                //     }
-                // }
+                // This will run if there is block weight remaining to call
+                Self::update_burn_rate_for_epoch(weight_meter, subnet_id, current_subnet_epoch);
             }
         }
     }
 
+    /// Activate nodes in the queue
     pub fn handle_registration_queue(
         weight_meter: &mut WeightMeter,
         subnet_id: u32,
@@ -455,15 +262,8 @@ impl<T: Config> Pallet<T> {
     ) {
         let db_weight = T::DbWeight::get();
 
-        // Check we can activate nodes from the queue
-        // This should never be true but check anyway to ensure
-        // the block doesn't panic!
-
-        // SubnetNodeQueueEpochs | MaxSubnetNodes
-        // TotalActiveSubnetNodes | ChurnLimit | SubnetNodeQueue
-        weight_meter.consume(db_weight.reads(5));
-
-        if weight_meter.remaining().is_zero() {
+        // Initial weight check - need at least 6 reads to proceed
+        if !weight_meter.can_consume(db_weight.reads(6)) {
             return;
         }
 
@@ -472,53 +272,93 @@ impl<T: Config> Pallet<T> {
         let total_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
         let churn_limit = ChurnLimit::<T>::get(subnet_id);
 
-        // - Get the number of activations to execute
+        // Consume weight for the 4 storage reads above
+        weight_meter.consume(db_weight.reads(4));
+
+        // Calculate how many nodes to process
         let take = if max_nodes.saturating_sub(total_active_nodes) < churn_limit {
             max_nodes.saturating_sub(total_active_nodes)
         } else {
             churn_limit
         };
 
+        // Check if we can afford to read the queue
+        if !weight_meter.can_consume(db_weight.reads(1)) {
+            return;
+        }
+
         let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
+        weight_meter.consume(db_weight.reads(1));
 
-        if queue.len() != 0 && take != 0 {
-            // Base weight for queue processing
-            weight_meter.consume(Weight::from_parts(2_000, 0));
+        if queue.len() == 0 || take == 0 {
+            return;
+        }
 
-            let mut activated_nodes = 0;
-            // Activate any nodes in the unpause queue
-            for subnet_node in queue.iter().take(take as usize) {
-                weight_meter.consume(Weight::from_parts(1_500, 0));
+        // Check if we can afford the base queue processing weight
+        let base_processing_weight = Weight::from_parts(2_000, 0);
+        if !weight_meter.can_consume(base_processing_weight) {
+            return;
+        }
+        weight_meter.consume(base_processing_weight);
 
-                if subnet_node.classification.start_epoch + subnet_node_queue_epochs
-                    < current_subnet_epoch
-                {
-                    let can_consume = Self::do_activate_subnet_node_v3(
-                        weight_meter,
-                        subnet_id,
-                        subnet_node.clone(),
-                        current_subnet_epoch,
-                    );
-                    if !can_consume {
-                        break;
-                    }
-                    activated_nodes += 1;
-                } else {
-                    // Nodes are in order, break early if first one isn't qualified yet
-                    break;
-                }
+        let mut activated_nodes = 0;
+        let nodes_to_process: Vec<_> = queue.iter().take(take as usize).collect();
+
+        for subnet_node in nodes_to_process {
+            // Check if node is eligible for activation first (early exit)
+            if subnet_node.classification.start_epoch + subnet_node_queue_epochs
+                >= current_subnet_epoch
+            {
+                // Nodes are ordered by epoch, so we can break early
+                break;
             }
 
-            // Remove the processed nodes from the front
-            if activated_nodes > 0 {
-                let drain_weight = Weight::from_parts(500 * activated_nodes as u64, 0);
-                weight_meter.consume(drain_weight);
-                queue.drain(0..activated_nodes);
+            // Calculate total weight needed for this activation INCLUDING guaranteed cleanup
+            let per_node_processing_weight = Weight::from_parts(1_500, 0);
+            let per_node_cleanup_weight = Weight::from_parts(500, 0);
+            let storage_write_weight = if activated_nodes == 0 {
+                db_weight.writes(1) // Only count the storage write once
+            } else {
+                Weight::zero()
+            };
 
-                // Update storage
-                SubnetNodeQueue::<T>::set(subnet_id, queue);
-                weight_meter.consume(db_weight.writes(1));
+            let total_weight_needed = per_node_processing_weight
+                .saturating_add(per_node_cleanup_weight)
+                .saturating_add(storage_write_weight);
+
+            // Check if we can consume the complete operation (activation + cleanup)
+            if !weight_meter.can_consume(total_weight_needed) {
+                break;
             }
+
+            // Consume the per-node processing weight
+            weight_meter.consume(per_node_processing_weight);
+
+            // Attempt activation
+            let can_consume = Self::do_activate_subnet_node_v3(
+                weight_meter,
+                subnet_id,
+                subnet_node.clone(),
+                current_subnet_epoch,
+            );
+
+            if !can_consume {
+                break; // Stop if activation failed due to weight constraints
+            }
+
+            activated_nodes += 1;
+        }
+
+        // Cleanup: We've pre-calculated that we can afford this
+        if activated_nodes > 0 {
+            // Consume the cleanup weights we reserved
+            let total_drain_weight = Weight::from_parts(500 * activated_nodes as u64, 0);
+            weight_meter.consume(total_drain_weight);
+            queue.drain(0..activated_nodes);
+
+            // Consume the storage write weight we reserved
+            weight_meter.consume(db_weight.writes(1));
+            SubnetNodeQueue::<T>::set(subnet_id, queue);
         }
     }
 
@@ -938,7 +778,7 @@ impl<T: Config> Pallet<T> {
             attests: submission.attests,
             subnet_nodes: subnet_nodes,
             prioritize_queue_node_id: submission.prioritize_queue_node_id,
-            remove_queue_node_id: submission.remove_queue_node_id
+            remove_queue_node_id: submission.remove_queue_node_id,
         };
 
         (Some(consensus_data), weight)

@@ -224,8 +224,7 @@ impl<T: Config> Pallet<T> {
             if data.state == SubnetState::Paused {
                 if data.start_epoch + max_pause_epochs < epoch {
                     SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-                    weight_meter.consume(db_weight.writes(1));
-                    weight_meter.consume(db_weight.reads(1));
+                    weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
 
                     let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
                     weight_meter.consume(db_weight.reads(1));
@@ -527,9 +526,7 @@ impl<T: Config> Pallet<T> {
             return;
         }
 
-        let random_number = Self::get_random_number(block);
-
-        let idx = (random_number as usize) % slot_list.len();
+        let idx = Self::get_random_number(block, slot_list.len() as u32) as usize;
 
         let subnet_node_id = slot_list.get(idx).cloned();
 

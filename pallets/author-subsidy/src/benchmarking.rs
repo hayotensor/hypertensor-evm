@@ -41,19 +41,23 @@ mod benchmarks {
 
     #[benchmark]
     fn on_initialize() {
-    	#[block]
-    	{
-        let digest = frame_system::Pallet::<T>::digest();
-        let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
-        let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
-        let account_id = T::AddressMapping::into_account_id(author);
+        #[block]
+        {
+            let digest = frame_system::Pallet::<T>::digest();
+            let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
+            let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
+            let account_id = T::AddressMapping::into_account_id(author);
 
-        let block_reward_as_u128 = T::AuthorBlockEmissions::get();
-        let block_reward = u128_to_balance::<T>(block_reward_as_u128);
+            let block_reward_as_u128 = T::AuthorBlockEmissions::get();
+            let block_reward = u128_to_balance::<T>(block_reward_as_u128);
 
-        T::Currency::deposit_creating(&account_id, block_reward.unwrap());
-    	}
+            T::Currency::deposit_creating(&account_id, block_reward.unwrap());
+        }
     }
 
-    impl_benchmark_test_suite!(AuthorSubsidy, tests::mock::new_test_ext(), tests::mock::Test);
+    impl_benchmark_test_suite!(
+        AuthorSubsidy,
+        tests::mock::new_test_ext(),
+        tests::mock::Test
+    );
 }

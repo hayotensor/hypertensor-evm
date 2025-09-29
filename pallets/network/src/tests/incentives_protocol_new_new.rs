@@ -5,14 +5,15 @@ use crate::{
     AccountSubnetStake, Error, FinalSubnetEmissionWeights, HotkeySubnetNodeId,
     IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodePenalties, MaxSubnetNodes,
     MaxSubnets, MinAttestationPercentage, MinVastMajorityAttestationPercentage,
-    NetworkMinStakeBalance, NodeDelegateStakeBalance, RegisteredSubnetNodesData,
-    ReputationDecreaseFactor, ReputationIncreaseFactor, SubnetConsensusSubmission,
-    SubnetElectedValidator, SubnetName, SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs,
-    SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodeQueue, SubnetNodeQueueEpochs,
-    SubnetNodesData, TotalActiveSubnets, TotalNodeDelegateStakeShares,
+    NetworkMinStakeBalance, NodeDelegateStakeBalance, QueueImmunityEpochs,
+    RegisteredSubnetNodesData, ReputationDecreaseFactor, ReputationIncreaseFactor,
+    SubnetConsensusSubmission, SubnetElectedValidator, SubnetName, SubnetNodeClass,
+    SubnetNodeConsecutiveIncludedEpochs, SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodeQueue,
+    SubnetNodeQueueEpochs, SubnetNodesData, TotalActiveSubnets, TotalNodeDelegateStakeShares,
     TotalSubnetDelegateStakeBalance, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
+use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -776,7 +777,20 @@ fn test_distribute_rewards() {
         let dstake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -891,7 +905,8 @@ fn test_distribute_rewards_prioritized_queue_node_id() {
         assert!(subnet_weight.is_some());
 
         // Emissions
-        Network::emission_step(
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
             Network::get_current_subnet_epoch_as_u32(subnet_id),
@@ -900,9 +915,116 @@ fn test_distribute_rewards_prioritized_queue_node_id() {
 
         let queue = SubnetNodeQueue::<Test>::get(subnet_id);
 
+        assert!(queue.len() > 0);
+
         // Ensure last is now the first
         let first = queue.first().unwrap();
         assert_eq!(first.id, last.id)
+    });
+}
+
+#[test]
+fn test_distribute_rewards_remove_queue_node_id() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+        let end = 4;
+
+        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let new_start = end + 1;
+        let new_end = new_start + 4;
+        build_registered_nodes_in_queue(subnet_id, new_start, new_end, deposit_amount, amount);
+
+        // Set queue immunity epochs less than the registration queue epochs
+        QueueImmunityEpochs::<Test>::insert(subnet_id, 1);
+
+        // Push passed immunity period so node can be removed from queue
+        let immunity_epochs = QueueImmunityEpochs::<Test>::get(subnet_id);
+        increase_epochs(immunity_epochs + 1);
+
+        // Store data
+        let mut registered_nodes_data: BTreeMap<u32, u32> = BTreeMap::new(); // node ID => start_epoch
+        for n in new_start..new_end {
+            let _n = n + 1;
+            let hotkey = get_hotkey(subnet_id, max_subnet_nodes, max_subnets, _n);
+            let hotkey_subnet_node_id =
+                HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
+            let subnet_node_data =
+                RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id)
+                    .unwrap();
+            registered_nodes_data.insert(
+                hotkey_subnet_node_id,
+                subnet_node_data.classification.start_epoch,
+            );
+        }
+
+        let queue = SubnetNodeQueue::<Test>::get(subnet_id);
+        assert_eq!(queue.len() as u32, new_end - new_start);
+
+        let first = queue.first().unwrap();
+        let last = queue.last().unwrap();
+        // Sanity check
+        assert_ne!(first.id, last.id);
+
+        let exists = queue.iter().any(|node| node.id == last.id);
+
+        set_block_to_subnet_slot_epoch(Network::get_current_epoch_as_u32(), subnet_id);
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+        Network::elect_validator_v3(subnet_id, subnet_epoch, System::block_number());
+
+        run_subnet_consensus_step(subnet_id, None, Some(first.id));
+
+        let submission = SubnetConsensusSubmission::<Test>::get(
+            subnet_id,
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+        );
+        assert!(submission.clone().unwrap().remove_queue_node_id.is_some());
+        assert_eq!(
+            submission.clone().unwrap().remove_queue_node_id.unwrap(),
+            first.id
+        );
+
+        increase_epochs(1);
+        set_block_to_subnet_slot_epoch(Network::get_current_epoch_as_u32(), subnet_id);
+
+        // Calculate weights
+        Network::handle_subnet_emission_weights(Network::get_current_epoch_as_u32());
+
+        // Verify weights exist
+        let subnet_emission_weights =
+            FinalSubnetEmissionWeights::<Test>::get(Network::get_current_epoch_as_u32());
+        let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+        assert!(subnet_weight.is_some());
+
+        // Emissions
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
+        let queue = SubnetNodeQueue::<Test>::get(subnet_id);
+        assert!(queue.len() > 0);
+
+        let mut included = false;
+        for n in queue {
+            if n.id == first.id {
+                included = true;
+            }
+        }
+
+        assert!(!included);
     });
 }
 
@@ -1020,7 +1142,20 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -1181,7 +1316,20 @@ fn test_distribute_rewards_remove_node_at_max_penalties() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -1326,7 +1474,20 @@ fn test_distribute_rewards_no_score_submitted_increase_penalties() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -1428,7 +1589,13 @@ fn test_distribute_rewards_graduate_idle_to_included() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -1536,7 +1703,20 @@ fn test_distribute_rewards_graduate_idle_to_included() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -1708,7 +1888,8 @@ fn test_distribute_rewards_graduate_included_to_validator() {
             run_subnet_consensus_step(subnet_id, None, None);
 
             // Emissions
-            Network::emission_step(
+            Network::emission_step_v2(
+                &mut WeightMeter::new(),
                 System::block_number(),
                 Network::get_current_epoch_as_u32(),
                 Network::get_current_subnet_epoch_as_u32(subnet_id),
@@ -1889,7 +2070,20 @@ fn test_attest_decrease_penalties_when_included() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,
@@ -2062,7 +2256,20 @@ fn test_distribute_rewards_node_delegate_stake() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards(
+        // Network::distribute_rewards(
+        //     subnet_id,
+        //     block_number,
+        //     epoch,
+        //     subnet_epoch,
+        //     consensus_submission_data,
+        //     rewards_data,
+        //     min_attestation_percentage,
+        //     reputation_increase_factor,
+        //     reputation_decrease_factor,
+        //     min_vast_majority_attestation_percentage,
+        // );
+        Network::distribute_rewards_v2(
+            &mut WeightMeter::new(),
             subnet_id,
             block_number,
             epoch,

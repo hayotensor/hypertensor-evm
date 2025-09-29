@@ -2432,7 +2432,7 @@ pub fn get_simulated_consensus_data(
     }
 
     let included_subnet_nodes: Vec<SubnetNode<<Test as frame_system::Config>::AccountId>> =
-        Network::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+        Network::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
 
     ConsensusData {
         validator_id: subnet_id * max_subnet_nodes,
@@ -2659,7 +2659,11 @@ pub fn set_penalties(id: u32, count: u32) {
     SubnetPenaltyCount::<Test>::insert(id, count);
 }
 
-pub fn run_subnet_consensus_step(subnet_id: u32, prioritize_queue_node_id: Option<u32>, remove_queue_node_id: Option<u32>) {
+pub fn run_subnet_consensus_step(
+    subnet_id: u32,
+    prioritize_queue_node_id: Option<u32>,
+    remove_queue_node_id: Option<u32>,
+) {
     let max_subnets = MaxSubnets::<Test>::get();
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 

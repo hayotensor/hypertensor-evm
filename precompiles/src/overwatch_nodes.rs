@@ -189,13 +189,13 @@ where
     //     Ok(())
     // }
 
-    #[precompile::public("addToOverwatchStake(uint256,address,string,uint256)")]
+    #[precompile::public("addToOverwatchStake(uint256,address,uint256)")]
     #[precompile::payable]
     fn add_to_overwatch_stake(
         handle: &mut impl PrecompileHandle,
         overwatch_node_id: U256,
         hotkey: Address,
-        stake_to_be_added: U256
+        stake_to_be_added: U256,
     ) -> EvmResult<()> {
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
         let overwatch_node_id = try_u256_to_u32(overwatch_node_id)?;
@@ -206,7 +206,7 @@ where
         let call = pallet_network::Call::<R>::add_to_overwatch_stake {
             overwatch_node_id,
             hotkey,
-            stake_to_be_added
+            stake_to_be_added,
         };
 
         RuntimeHelper::<R>::try_dispatch(
@@ -223,7 +223,7 @@ where
     fn remove_overwatch_stake(
         handle: &mut impl PrecompileHandle,
         hotkey: Address,
-        stake_to_be_removed: U256
+        stake_to_be_removed: U256,
     ) -> EvmResult<()> {
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
         let hotkey = R::AddressMapping::into_account_id(hotkey.into());
@@ -232,7 +232,7 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call = pallet_network::Call::<R>::remove_overwatch_stake {
             hotkey,
-            stake_to_be_removed
+            stake_to_be_removed,
         };
 
         RuntimeHelper::<R>::try_dispatch(
@@ -247,7 +247,10 @@ where
 
     #[precompile::public("accountOverwatchStake(address)")]
     #[precompile::view]
-    fn account_overwatch_stake(handle: &mut impl PrecompileHandle, hotkey: Address) -> EvmResult<u128> {
+    fn account_overwatch_stake(
+        handle: &mut impl PrecompileHandle,
+        hotkey: Address,
+    ) -> EvmResult<u128> {
         let hotkey = R::AddressMapping::into_account_id(hotkey.into());
 
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -267,7 +270,10 @@ where
 
     #[precompile::public("overwatchBlacklist(address)")]
     #[precompile::view]
-    fn overwatch_blacklist(handle: &mut impl PrecompileHandle, coldkey: Address) -> EvmResult<bool> {
+    fn overwatch_blacklist(
+        handle: &mut impl PrecompileHandle,
+        coldkey: Address,
+    ) -> EvmResult<bool> {
         let coldkey = R::AddressMapping::into_account_id(coldkey.into());
 
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -425,7 +431,6 @@ where
     // #[pallet::storage]
     // pub type OverwatchMinStakeBalance<T> =
     //     StorageValue<_, u128, ValueQuery, DefaultOverwatchMinStakeBalance>;
-
 }
 
 fn try_u256_to_u32(value: U256) -> Result<u32, PrecompileFailure> {

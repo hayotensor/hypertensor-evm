@@ -813,18 +813,6 @@ impl<T: Config> Pallet<T> {
                     Ok(())
                 },
             );
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     PausedSubnetNodesData::<T>::try_mutate_exists(
-        //         subnet_id,
-        //         subnet_node_id,
-        //         |maybe_params| -> DispatchResult {
-        //             let params = maybe_params
-        //                 .as_mut()
-        //                 .ok_or(Error::<T>::InvalidSubnetNodeId)?;
-        //             params.hotkey = new_hotkey.clone();
-        //             Ok(())
-        //         },
-        //     );
         } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             RegisteredSubnetNodesData::<T>::try_mutate_exists(
                 subnet_id,
@@ -840,22 +828,8 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn get_classified_subnet_node_ids<C>(
-        subnet_id: u32,
-        classification: &SubnetNodeClass,
-        subnet_epoch: u32,
-    ) -> C
-    where
-        C: FromIterator<u32>,
-    {
-        SubnetNodesData::<T>::iter_prefix(subnet_id)
-            .filter(|(_, subnet_node)| subnet_node.has_classification(classification, subnet_epoch))
-            .map(|(subnet_node_id, _)| subnet_node_id)
-            .collect()
-    }
-
     /// Get subnet nodes by classification
-    pub fn get_classified_subnet_nodes(
+    pub fn get_active_classified_subnet_nodes(
         subnet_id: u32,
         classification: &SubnetNodeClass,
         subnet_epoch: u32,
@@ -1314,7 +1288,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Update burn rate based on registrations in previous epoch
-    pub fn update_burn_rate_for_epoch_v2(
+    pub fn update_burn_rate_for_epoch(
         weight_meter: &mut WeightMeter,
         subnet_id: u32,
         current_subnet_epoch: u32,
@@ -1322,7 +1296,7 @@ impl<T: Config> Pallet<T> {
         let db_weight = T::DbWeight::get();
 
         // It's unlikely this will ever be true, but we check anyway to future-proof
-        if !weight_meter.can_consume(db_weight.reads(7) + db_weight.writes(4)) {
+        if !weight_meter.can_consume(db_weight.reads(9) + db_weight.writes(2)) {
             return;
         }
 
@@ -1330,11 +1304,12 @@ impl<T: Config> Pallet<T> {
         let target = TargetNodeRegistrationsPerEpoch::<T>::get(subnet_id);
         let previous_burn_rate = CurrentNodeBurnRate::<T>::get(subnet_id);
         let alpha = NodeBurnRateAlpha::<T>::get(subnet_id);
-
         weight_meter.consume(db_weight.reads(5));
 
         // Calculate target burn rate based on registration activity
         let target_burn_rate = Self::calculate_target_burn_rate(registrations, target);
+        // Maximum of two reads for `calculate_target_burn_rate`
+        weight_meter.consume(db_weight.reads(2));
 
         // Rest of the function remains the same...
         let precision = Self::percentage_factor_as_u128();
@@ -1346,14 +1321,14 @@ impl<T: Config> Pallet<T> {
         // Apply min/max bounds to the rate
         let min_rate = MinNodeBurnRate::<T>::get();
         let max_rate = MaxNodeBurnRate::<T>::get();
-
         weight_meter.consume(db_weight.reads(2));
 
         let clamped_rate = new_burn_rate.max(min_rate).min(max_rate);
+        weight_meter.consume(db_weight.writes(2));
 
-        weight_meter.consume(db_weight.writes(4));
-
+        // Update current burn rate for next epoch
         CurrentNodeBurnRate::<T>::insert(subnet_id, clamped_rate);
+        // Reset
         NodeRegistrationsThisEpoch::<T>::insert(subnet_id, 0);
     }
 

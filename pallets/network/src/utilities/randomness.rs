@@ -29,27 +29,30 @@ impl<T: Config> Pallet<T> {
         random_number
     }
 
-    pub fn get_random_number(seed: u32) -> u32 {
+    pub fn get_random_number(seed: u32, total: u32) -> u32 {
         let mut random_number = Self::generate_random_number(seed);
-
-        // Best effort attempt to remove bias from modulus operator.
-        let mut i = 1;
-        let mut found = false;
-        while !found {
-            if random_number < u32::MAX {
-                found = true;
-                break;
-            }
-
-            random_number = Self::generate_random_number(i);
-
-            i += 1;
-        }
-
-        random_number
+        random_number % total
     }
 
-    // pub fn get_random_number_v2(seed: u32) -> u32 {
+    // pub fn choose_ticket(total: u32, seed: u32) -> Option<u32> {
+    // 	if total == 0 {
+    // 		return None
+    // 	}
+    // 	let mut random_number = Self::generate_random_number(0);
+
+    // 	// Best effort attempt to remove bias from modulus operator.
+    // 	for i in 1..T::MaxGenerateRandom::get() {
+    // 		if random_number < u32::MAX - u32::MAX % total {
+    // 			break
+    // 		}
+
+    // 		random_number = Self::generate_random_number(i);
+    // 	}
+
+    // 	Some(random_number % total)
+    // }
+
+    // pub fn get_random_number(seed: u32) -> u32 {
     //     let mut random_number = Self::generate_random_number(seed);
 
     //     // Best effort attempt to remove bias from modulus operator.
@@ -101,7 +104,7 @@ impl<T: Config> Pallet<T> {
     /// TODO: deal with randomness freshness
     /// https://github.com/paritytech/substrate/issues/8311
     /// This is not a secure random number generator but serves its purpose for choosing random numbers
-    pub fn generate_random_number(seed: u32) -> u32 {
+    pub fn generate_random_number_old(seed: u32) -> u32 {
         let (random_seed, _) = T::Randomness::random(&(T::PalletId::get(), seed).encode());
         let random_number = <u32>::decode(&mut random_seed.as_ref())
             .expect("secure hashes should always be bigger than u32; qed");
@@ -109,32 +112,14 @@ impl<T: Config> Pallet<T> {
         random_number
     }
 
-    // pub fn generate_random_number_v2(seed: u32) -> u32 {
-    //     let (random_seed, _) = T::Randomness::random(&(T::PalletId::get(), seed).encode());
+    pub fn generate_random_number(seed: u32) -> u32 {
+        let (random_seed, _) = T::Randomness::random(&(T::PalletId::get(), seed).encode());
 
-    //     // Handle case where random_seed might be too short
-    //     if random_seed.len() < 4 {
-    //         // Fallback: create a u32 from available bytes + padding
-    //         let mut bytes = [0u8; 4];
-    //         for (i, &byte) in random_seed.iter().take(4).enumerate() {
-    //             bytes[i] = byte;
-    //         }
-    //         return u32::from_le_bytes(bytes);
-    //     }
+        // Take first 4 bytes and interpret as u32
+        let bytes = random_seed.as_ref();
+        let mut array = [0u8; 4];
+        array.copy_from_slice(&bytes[0..4]);
 
-    //     // Try to decode, with fallback
-    //     match <u32>::decode(&mut random_seed.as_ref()) {
-    //         Ok(number) => number,
-    //         Err(_) => {
-    //             // Fallback: just take first 4 bytes manually
-    //             let bytes = [
-    //                 random_seed.get(0).copied().unwrap_or(0),
-    //                 random_seed.get(1).copied().unwrap_or(0),
-    //                 random_seed.get(2).copied().unwrap_or(0),
-    //                 random_seed.get(3).copied().unwrap_or(0),
-    //             ];
-    //             u32::from_le_bytes(bytes)
-    //         }
-    //     }
-    // }
+        u32::from_le_bytes(array)
+    }
 }

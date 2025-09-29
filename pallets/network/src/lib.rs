@@ -270,6 +270,20 @@ pub mod pallet {
             hotkey: T::AccountId,
             new_hotkey: T::AccountId,
         },
+        QueuedNodePrioritized {
+            subnet_id: u32,
+            subnet_node_id: u32,
+        },
+        QueuedNodeRemoved {
+            subnet_id: u32,
+            subnet_node_id: u32,
+        },
+        SubnetRewards {
+            subnet_id: u32,
+            node_rewards: Vec<(u32, u128)>,
+            delegate_stake_reward: u128,
+            node_delegate_stake_rewards: Vec<(u32, u128)>
+        },
 
         // Stake
         StakeAdded(u32, T::AccountId, T::AccountId, u128),
@@ -660,6 +674,8 @@ pub mod pallet {
         NotDeactivatedSubnetNode,
         /// Must activate the designated epoch assigned
         NotStartEpoch,
+        /// Cannot pause again until pause cooldown epochs is reached
+        SubnetPauseCooldownActive,
         /// Must be less than maximum registrations per epoch
         InvalidTargetNodeRegistrationsPerEpoch,
         ///
@@ -723,6 +739,8 @@ pub mod pallet {
         InvalidMaxSubnetNodePenalties,
         /// The number of initial coldkeys must be greater than or equal to the minimum nodes requirement
         InvalidSubnetRegistrationInitialColdkeys,
+        /// Bootnodes is empty
+        BootnodesEmpty,
         InvalidSubnetMinStake,
         InvalidSubnetMaxStake,
         // Min stake must be lesser than the max stake
@@ -1065,19 +1083,24 @@ pub mod pallet {
         pub churn_limit: u32,
         pub min_stake: u128,
         pub max_stake: u128,
-        pub delegate_stake_percentage: u128,
+        pub queue_immunity_epochs: u32,
+        pub target_node_registrations_per_epoch: u32,
         pub subnet_node_queue_epochs: u32,
-        // pub activation_grace_epochs: u32,
         pub idle_classification_epochs: u32,
         pub included_classification_epochs: u32,
+        pub delegate_stake_percentage: u128,
+        pub node_burn_rate_alpha: u128,
         pub max_node_penalties: u32,
         pub initial_coldkeys: Option<BTreeSet<AccountId>>,
         pub max_registered_nodes: u32,
         pub owner: Option<AccountId>,
+        pub pending_owner: Option<AccountId>,
         pub registration_epoch: Option<u32>,
         pub key_types: BTreeSet<KeyType>,
         pub slot_index: Option<u32>,
         pub penalty_count: u32,
+        pub bootnode_access: BTreeSet<AccountId>,
+        pub bootnodes: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
         pub total_nodes: u32,
         pub total_active_nodes: u32,
         pub total_electable_nodes: u32,
@@ -1370,8 +1393,7 @@ pub mod pallet {
 
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusData<AccountId> {
-        pub validator_id: u32, // Chosen validator of the epoch
-        // pub attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)>, // Count of attestations of the submitted data (node ID, (block, data))
+        pub validator_id: u32,                   // Chosen validator of the epoch
         pub attests: BTreeMap<u32, AttestEntry>, // Count of attestations of the submitted data (node ID, (block, data))
         pub subnet_nodes: Vec<SubnetNode<AccountId>>,
         pub prioritize_queue_node_id: Option<u32>,
@@ -2331,6 +2353,10 @@ pub mod pallet {
         // 50%
         500_000_000_000_000_000
     }
+    #[pallet::type_value]
+    pub fn DefaultSubnetPausePeriodDelta<T: Config>() -> u32 {
+        T::EpochsPerYear::get() / 24
+    }
 
     //
     // Subnet elements
@@ -2448,7 +2474,16 @@ pub mod pallet {
     #[pallet::storage] // subnet_id => count
     pub type SubnetPenaltyCount<T> = StorageMap<_, Identity, u32, u32, ValueQuery>;
 
-    /// Min ChurnLimit
+    /// Minimum time between subnet pauses
+    #[pallet::storage]
+    pub type SubnetPauseCooldownEpochs<T> =
+        StorageValue<_, u32, ValueQuery, DefaultSubnetPausePeriodDelta<T>>;
+
+    /// Minimum time between subnet pauses
+    #[pallet::storage]
+    pub type PreviousSubnetPauseEpoch<T> =
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultZeroU32>;
+
     #[pallet::storage]
     pub type MaxSubnetPauseEpochs<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxSubnetPauseEpochs<T>>;
@@ -6326,9 +6361,15 @@ pub mod pallet {
                 Error::<T>::InvalidIncludedClassificationEpochs
             );
 
+            // Ensure bootnodes is not empty
+            ensure!(
+                !subnet_registration_data.bootnodes.is_empty(),
+                Error::<T>::BootnodesEmpty
+            );
+
             ensure!(
                 subnet_registration_data.bootnodes.len() as u32 <= MaxBootnodes::<T>::get(),
-                Error::<T>::InvalidIncludedClassificationEpochs
+                Error::<T>::TooManyBootnodes
             );
 
             // ensure!(
@@ -7676,8 +7717,7 @@ pub mod pallet {
                 weight_meter.consume(Weight::from_parts(1_000, 0));
 
                 // SwapQueueOrder
-                weight_meter.consume(db_weight.reads(1));
-                weight_meter.consume(db_weight.writes(1));
+                weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
                 let should_continue = SwapQueueOrder::<T>::mutate(|queue| -> bool {
                     // Check either stake functions can be called before we get there.
                     // `weight_meter.can_consume` is called in `execute_swap_call_internal` again.

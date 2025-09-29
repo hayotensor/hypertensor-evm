@@ -15,8 +15,9 @@ use crate::{
     SubnetBootnodeAccess, SubnetData, SubnetDelegateStakeRewardsPercentage,
     SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes, SubnetMaxStakeBalance,
     SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
-    SubnetNodeQueueEpochs, SubnetOwner, SubnetRegistrationInitialColdkeys, SubnetRemovalReason,
-    SubnetRepo, SubnetState, SubnetsData, TotalActiveSubnetNodes,
+    SubnetNodeQueueEpochs, SubnetOwner, SubnetPauseCooldownEpochs,
+    SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
+    TotalActiveSubnetNodes,
 };
 use codec::{Decode, Encode};
 use frame_support::traits::Currency;
@@ -79,6 +80,9 @@ fn test_owner_pause_subnet() {
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
 
         // Set initial owner
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
@@ -146,6 +150,9 @@ fn test_owner_unpause_subnet() {
 
         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
 
         let original_owner = account(1);
 
@@ -219,6 +226,104 @@ fn test_owner_unpause_subnet() {
 }
 
 #[test]
+fn test_owner_unpause_subnet_repause_cooldown_error() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
+
+        let original_owner = account(1);
+
+        // Set initial owner
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+        let epoch = Network::get_current_epoch_as_u32();
+
+        let coldkey = account(1000);
+        let hotkey = account(1001);
+        let start_epoch = epoch + 100;
+
+        let hotkey_subnet_node_id = 1000;
+        RegisteredSubnetNodesData::<Test>::insert(
+            subnet_id,
+            hotkey_subnet_node_id,
+            SubnetNode {
+                id: hotkey_subnet_node_id,
+                hotkey: hotkey.clone(),
+                peer_id: peer(0),
+                bootnode_peer_id: peer(0),
+                client_peer_id: peer(0),
+                bootnode: None,
+                delegate_reward_rate: 10,
+                last_delegate_reward_rate_update: 0,
+                classification: SubnetNodeClassification {
+                    node_class: SubnetNodeClass::Validator,
+                    start_epoch: start_epoch,
+                },
+                unique: Some(BoundedVec::new()),
+                non_unique: Some(BoundedVec::new()),
+                // c: Some(BoundedVec::new()),
+            },
+        );
+
+        // Transfer to new owner
+        assert_ok!(Network::owner_pause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
+        assert_eq!(subnet_data.state, SubnetState::Paused);
+        assert_eq!(subnet_data.start_epoch, epoch);
+
+        increase_epochs(10);
+
+        let curr_epoch = Network::get_current_epoch_as_u32();
+        let delta = curr_epoch - epoch;
+
+        assert_ok!(Network::owner_unpause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::SubnetUnpaused {
+                subnet_id: subnet_id,
+            }
+        );
+
+        // Ensure was activated
+        let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
+        assert_eq!(subnet_data.state, SubnetState::Active);
+        assert_eq!(subnet_data.start_epoch, curr_epoch + 1);
+
+        let node = RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
+        // The start epoch update increases the epoch by 1
+        assert_eq!(node.classification.start_epoch, start_epoch + delta + 1);
+
+        assert_err!(
+            Network::owner_pause_subnet(RuntimeOrigin::signed(original_owner.clone()), subnet_id,),
+            Error::<Test>::SubnetPauseCooldownActive
+        );
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
+
+        assert_ok!(Network::owner_pause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+    });
+}
+
+#[test]
 fn test_owner_unpause_subnet_must_be_paused_error() {
     new_test_ext().execute_with(|| {
     let subnet_name: Vec<u8> = "subnet-name".into();
@@ -273,6 +378,9 @@ fn test_owner_unpause_subnet_verify_queue_updated() {
         );
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
 
         // Set up registered nodes in the queue
         // These are to be tested against to ensure their start epochs update
@@ -2199,15 +2307,15 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
             Error::<Test>::NotSubnetOwner
         );
 
-        assert_err!(
-            Network::do_owner_activate_subnet_node(
-                RuntimeOrigin::signed(fake_owner),
-                subnet_id,
-                0,
-                0
-            ),
-            Error::<Test>::NotSubnetOwner
-        );
+        // assert_err!(
+        //     Network::do_owner_activate_subnet_node(
+        //         RuntimeOrigin::signed(fake_owner),
+        //         subnet_id,
+        //         0,
+        //         0
+        //     ),
+        //     Error::<Test>::NotSubnetOwner
+        // );
 
         assert_err!(
             Network::do_owner_update_min_stake(RuntimeOrigin::signed(fake_owner), subnet_id, 1),

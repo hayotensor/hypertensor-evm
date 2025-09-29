@@ -11,15 +11,15 @@ mod benchmarking;
 pub mod weights;
 pub use weights::*;
 
-pub use pallet::*;
 use frame_support::{
     sp_runtime::SaturatedConversion,
     traits::{Currency, FindAuthor, Get},
     weights::Weight,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_core::H160;
+pub use pallet::*;
 use pallet_evm::AddressMapping;
+use sp_core::H160;
 
 // All pallet logic is defined in its own module and must be annotated by the `pallet` attribute.
 #[frame_support::pallet]
@@ -94,8 +94,8 @@ pub mod pallet {
                 subsidy: block_reward_as_u128,
             });
 
-            // Weight::from_parts(0, 0)
-            T::WeightInfo::on_initialize()
+            Weight::from_parts(0, 0)
+            // T::WeightInfo::on_initialize()
         }
     }
 }

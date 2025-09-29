@@ -767,7 +767,8 @@ fn test_activate_subnet() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -883,7 +884,8 @@ fn test_activate_subnet_anytime() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1059,7 +1061,8 @@ fn test_activate_subnet_invalid_subnet_id_error() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1145,7 +1148,8 @@ fn test_activate_subnet_already_activated_err() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1254,7 +1258,8 @@ fn test_activate_subnet_min_subnet_registration_epochs_not_met_error() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1355,7 +1360,8 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,
@@ -1646,7 +1652,8 @@ fn test_activate_subnet_min_delegate_balance_remove_subnet() {
             let bootnode_peer_id = get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, _n);
             let burn_amount = Network::calculate_burn_amount(subnet_id);
-            let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
+            let _ =
+                Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount + 500);
             assert_ok!(Network::register_subnet_node(
                 RuntimeOrigin::signed(coldkey.clone()),
                 subnet_id,

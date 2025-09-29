@@ -8,6 +8,7 @@ use crate::{
     SubnetNodeQueueEpochs, TotalActiveSubnets, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
+use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -373,7 +374,13 @@ fn test_register_activate_remove_claim_stake_unbondings() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -483,7 +490,10 @@ fn test_remove_stake_twice_in_epoch() {
         assert_eq!(stake_balance, stake_amount);
 
         let after_stake_balance = Balances::free_balance(&coldkey.clone());
-        assert_eq!(after_stake_balance, starting_balance - stake_amount - burn_amount);
+        assert_eq!(
+            after_stake_balance,
+            starting_balance - stake_amount - burn_amount
+        );
 
         let _ = Balances::deposit_creating(&account(1), stake_amount * 2);
 
@@ -626,7 +636,10 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
         assert_eq!(stake_balance, stake_amount);
 
         let after_stake_balance = Balances::free_balance(&coldkey.clone());
-        assert_eq!(after_stake_balance, starting_balance - stake_amount - burn_amount);
+        assert_eq!(
+            after_stake_balance,
+            starting_balance - stake_amount - burn_amount
+        );
 
         assert_err!(
             Network::claim_unbondings(RuntimeOrigin::signed(coldkey.clone())),

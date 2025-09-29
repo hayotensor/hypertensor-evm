@@ -413,7 +413,7 @@ fn build_registered_subnet<T: Config>(
     mut end: u32,
     deposit_amount: u128,
     amount: u128,
-    use_unique_coldkey: bool // if to use unique coldkeys for each subnet
+    use_unique_coldkey: bool, // if to use unique coldkeys for each subnet
 ) {
     let alice = get_alice::<T>();
 
@@ -968,7 +968,11 @@ pub fn get_simulated_consensus_data<T: Config>(
     }
 
     let included_subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-        Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+        Network::<T>::get_active_classified_subnet_nodes(
+            subnet_id,
+            &SubnetNodeClass::Included,
+            epoch,
+        );
 
     ConsensusData {
         validator_id: subnet_id * max_subnet_nodes,
@@ -6399,7 +6403,7 @@ mod benchmarks {
 
     //     // ⸺ Submit consnesus data
     //     let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-    //         Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    //         Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     //     let subnet_node_count = subnet_nodes.len() as u128;
 
     //     let consensus_data = get_simulated_consensus_data::<T>(subnet_id, subnet_node_count as u32);
@@ -6483,7 +6487,7 @@ mod benchmarks {
     // }
 
     // #[benchmark]
-    // fn get_classified_subnet_nodes() {
+    // fn get_active_classified_subnet_nodes() {
     // 	let max_subnet_nodes = MaxSubnetNodes::<T>::get();
     // 	build_activated_subnet::<T>(DEFAULT_SUBNET_NAME.into(), 0, max_subnet_nodes, DEFAULT_DEPOSIT_AMOUNT, DEFAULT_SUBNET_NODE_STAKE);
     // 	let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
@@ -6493,7 +6497,7 @@ mod benchmarks {
 
     // 	#[block]
     // 	{
-    // 		let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, 0);
+    // 		let _: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, 0);
     // 	}
     // }
 
@@ -6608,7 +6612,7 @@ mod benchmarks {
     //     let epoch = get_current_block_as_u32::<T>() / epoch_length as u32;
 
     //     let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-    //         Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    //         Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     //     let subnet_node_count = subnet_nodes.len() as u128;
 
     //     let consensus_data = get_simulated_consensus_data::<T>(subnet_id, subnet_node_count as u32);
@@ -6651,7 +6655,7 @@ mod benchmarks {
 
     //     // ⸺ Submit consnesus data
     //     let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-    //         Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    //         Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     //     let subnet_node_count = subnet_nodes.len() as u128;
 
     //     let consensus_data = get_simulated_consensus_data::<T>(subnet_id, subnet_node_count as u32);
@@ -6918,7 +6922,7 @@ mod benchmarks {
     // 		let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
     // 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
 
-    // 		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    // 		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     // 		let subnet_node_count = subnet_nodes.len() as u128;
 
     // 		let consensus_data = get_simulated_consensus_data::<T>(
@@ -6989,7 +6993,7 @@ mod benchmarks {
     // 		let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
     // 		let subnet_id = SubnetName::<T>::get::<Vec<u8>>(subnet_name.clone().into()).unwrap();
 
-    // 		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    // 		let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     // 		let subnet_node_count = subnet_nodes.len() as u128;
 
     // 		let consensus_data = get_simulated_consensus_data::<T>(
@@ -7177,7 +7181,7 @@ mod benchmarks {
     // 	let current_block = get_current_block_as_u32::<T>();
     // 	let epoch = current_block / epoch_length as u32;
 
-    // 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
+    // 	let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Network::<T>::get_active_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Included, epoch);
     //   let subnet_node_count = subnet_nodes.len() as u128;
 
     // 	let overall_rewards: u128 = Network::<T>::get_epoch_emissions(epoch);

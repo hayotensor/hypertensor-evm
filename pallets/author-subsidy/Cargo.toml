@@ -22,6 +22,7 @@ sp-core = { features = ["serde"], workspace = true }
 fp-account = { workspace = true, features = ["serde"] }
 pallet-evm = { workspace = true }
 log.workspace = true
+pallet-balances.workspace = true
 
 [dev-dependencies]
 sp-io = { default-features = true, workspace = true }
@@ -35,6 +36,7 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"scale-info/std",
+	"pallet-balances/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
@@ -46,4 +48,5 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"sp-runtime/try-runtime",
+	"pallet-balances/try-runtime",
 ]

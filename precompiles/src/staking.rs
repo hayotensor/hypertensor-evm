@@ -527,49 +527,46 @@ where
     #[precompile::public("getQueuedSwapCall(uint256)")]
     #[precompile::view]
     fn get_queued_swap_call(
-        handle: &mut impl PrecompileHandle, 
-        queue_id: U256
+        handle: &mut impl PrecompileHandle,
+        queue_id: U256,
     ) -> EvmResult<(u32, Address, u8, u32, u32, u128, u32, u32)> {
         // Returns: (id, account_id, call_type, to_subnet_id, to_subnet_node_id, balance, queued_at_block, execute_after_blocks)
         let queue_id = try_u256_to_u32(queue_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-        
+
         let queued_item = pallet_network::SwapCallQueue::<R>::get(queue_id);
-        
+
         match queued_item {
             Some(item) => {
-                let (call_type, account_id, to_subnet_id, to_subnet_node_id, balance) = match &item.call {
-                    QueuedSwapCall::SwapToSubnetDelegateStake { 
-                        account_id, 
-                        to_subnet_id, 
-                        balance 
-                    } => {
-                        (0u8, account_id, *to_subnet_id, 0u32, *balance)
-                    },
-                    QueuedSwapCall::SwapToNodeDelegateStake { 
-                        account_id, 
-                        to_subnet_id, 
-                        to_subnet_node_id, 
-                        balance 
-                    } => {
-                        (1u8, account_id, *to_subnet_id, *to_subnet_node_id, *balance)
-                    }
-                };
-                
+                let (call_type, account_id, to_subnet_id, to_subnet_node_id, balance) =
+                    match &item.call {
+                        QueuedSwapCall::SwapToSubnetDelegateStake {
+                            account_id,
+                            to_subnet_id,
+                            balance,
+                        } => (0u8, account_id, *to_subnet_id, 0u32, *balance),
+                        QueuedSwapCall::SwapToNodeDelegateStake {
+                            account_id,
+                            to_subnet_id,
+                            to_subnet_node_id,
+                            balance,
+                        } => (1u8, account_id, *to_subnet_id, *to_subnet_node_id, *balance),
+                    };
+
                 let account_address = Address(sp_core::H160::from((account_id.clone()).into()));
 
                 Ok((
-                    item.id,                    // id
-                    account_address,            // account_id (as Address)
-                    call_type,                  // type (0=subnet, 1=node)
-                    to_subnet_id,               // to_subnet_id
-                    to_subnet_node_id,          // to_subnet_node_id (0 for subnet swaps)
-                    balance,                    // balance
-                    item.queued_at_block,       // queued_at_block
-                    item.execute_after_blocks   // execute_after_blocks
+                    item.id,                   // id
+                    account_address,           // account_id (as Address)
+                    call_type,                 // type (0=subnet, 1=node)
+                    to_subnet_id,              // to_subnet_id
+                    to_subnet_node_id,         // to_subnet_node_id (0 for subnet swaps)
+                    balance,                   // balance
+                    item.queued_at_block,      // queued_at_block
+                    item.execute_after_blocks, // execute_after_blocks
                 ))
-            },
-            None => Err(revert("Queue item not found"))
+            }
+            None => Err(revert("Queue item not found")),
         }
     }
 

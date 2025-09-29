@@ -23,6 +23,8 @@ use frame_support::BoundedVec;
 use frame_support::{assert_err, assert_ok};
 use sp_core::OpaquePeerId as PeerId;
 use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
+use frame_support::weights::WeightMeter;
+
 ///
 ///
 ///
@@ -212,7 +214,13 @@ fn test_register_subnet_node_v2_and_activate() {
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         // Check out of queue
         assert_eq!(
@@ -340,7 +348,13 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         // Only activate up to the churn limit
         assert_eq!(prev_active_total_nodes + churn_limit, TotalActiveSubnetNodes::<Test>::get(subnet_id));

@@ -11,10 +11,10 @@ use crate::{
     PeerIdSubnetNodeId, RegisteredSubnetNodesData, Reputation, RewardRateUpdatePeriod,
     SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
     SubnetNodeClassification, SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeQueueEpochs,
-    SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner, SubnetRegistrationEpochs, SubnetState,
-    SubnetsData, TargetNodeRegistrationsPerEpoch, TotalActiveNodes, TotalActiveSubnetNodes,
-    TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake, TotalSubnetElectableNodes,
-    TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
+    SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
+    SubnetRegistrationEpochs, SubnetState, SubnetsData, TargetNodeRegistrationsPerEpoch,
+    TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes, TotalNodes,
+    TotalStake, TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -118,8 +118,15 @@ fn test_activate_subnet_then_register_subnet_node_then_activate() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
+        // Ensure node was activated from queue
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
             Err(())
@@ -353,6 +360,9 @@ fn test_register_subnet_subnet_is_paused_error() {
 
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
 
         let original_owner = account(1);
 
@@ -847,7 +857,13 @@ fn test_activate_subnet_node_post_subnet_activation() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -940,7 +956,13 @@ fn test_register_after_activate_with_same_keys() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -1509,7 +1531,13 @@ fn test_remove_subnet_node_registered() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -1633,7 +1661,13 @@ fn test_remove_subnet_node_registered() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -1762,7 +1796,13 @@ fn test_remove_subnet_node_registered() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
@@ -1938,7 +1978,7 @@ fn test_get_classification_subnet_nodes() {
         let epoch_length = EpochLength::get();
         let subnet_epoch: u32 = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        let submittable = Network::get_classified_subnet_nodes(
+        let submittable = Network::get_active_classified_subnet_nodes(
             subnet_id,
             &SubnetNodeClass::Validator,
             subnet_epoch,
@@ -5136,42 +5176,42 @@ fn test_low_registration_volume_decreases_burn_rate() {
 
         // Epoch 1: Low volume (10 registrations)
         simulate_registrations(subnet_id, 10);
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 1);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 1);
         let epoch1_burn = Network::calculate_burn_amount(subnet_id);
         let epoch1_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 2: Very low volume (5 registrations)
         simulate_registrations(subnet_id, 5);
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 2);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 2);
         let epoch2_burn = Network::calculate_burn_amount(subnet_id);
         let epoch2_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 3: No registrations
         // Rate is still based on Epoch 2's activity (5 registrations)
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 3);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 3);
         let epoch3_burn = Network::calculate_burn_amount(subnet_id);
         let epoch3_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 4: This is where you see the effect of Epoch 3's zero registrations
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 4);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 4);
         let epoch4_burn = Network::calculate_burn_amount(subnet_id);
         let epoch4_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 5: Very low volume (5 registrations)
         simulate_registrations(subnet_id, 5);
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 5);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 5);
         let epoch5_burn = Network::calculate_burn_amount(subnet_id);
         let epoch5_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 6: Very low volume (5 registrations)
         simulate_registrations(subnet_id, 10);
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 6);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 6);
         let epoch6_burn = Network::calculate_burn_amount(subnet_id);
         let epoch6_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 
         // Epoch 7: Very low volume (1 registrations)
         simulate_registrations(subnet_id, 1);
-        Network::update_burn_rate_for_epoch_v2(&mut WeightMeter::new(), subnet_id, 7);
+        Network::update_burn_rate_for_epoch(&mut WeightMeter::new(), subnet_id, 7);
         let epoch7_burn = Network::calculate_burn_amount(subnet_id);
         let epoch7_rate = CurrentNodeBurnRate::<Test>::get(subnet_id);
 

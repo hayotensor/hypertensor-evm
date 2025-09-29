@@ -81,8 +81,6 @@ pallet-evm-precompile-simple = { workspace = true }
 
 hex-literal = { workspace = true }
 
-# sc-chain-spec = { workspace = true }
-
 # Cumulus primitives
 cumulus-primitives-storage-weight-reclaim = { workspace = true }
 

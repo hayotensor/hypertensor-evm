@@ -103,7 +103,6 @@ impl<T: Config> Pallet<T> {
         Self::remove_balance_from_coldkey_account(&who, amount)
     }
 
-
     pub fn is_paused() -> DispatchResult {
         ensure!(!TxPause::<T>::get(), Error::<T>::Paused);
         Ok(())

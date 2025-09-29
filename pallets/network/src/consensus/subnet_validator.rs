@@ -91,8 +91,11 @@ impl<T: Config> Pallet<T> {
 
         // --- Get all (activated) Idle + consensus-eligible nodes
         // We get this here instead of in the rewards distribution to handle block weight more efficiently
-        let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-            Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
+        let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_active_classified_subnet_nodes(
+            subnet_id,
+            &SubnetNodeClass::Idle,
+            subnet_epoch,
+        );
         let subnet_nodes_count = subnet_nodes.len();
 
         let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
@@ -188,8 +191,11 @@ impl<T: Config> Pallet<T> {
 
         // --- Get all (activated) Idle + consensus-eligible nodes
         // We get this here instead of in the rewards distribution to handle block weight more efficiently
-        let subnet_nodes: Vec<SubnetNode<T::AccountId>> =
-            Self::get_classified_subnet_nodes(subnet_id, &SubnetNodeClass::Idle, subnet_epoch);
+        let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_active_classified_subnet_nodes(
+            subnet_id,
+            &SubnetNodeClass::Idle,
+            subnet_epoch,
+        );
         let subnet_nodes_count = subnet_nodes.len();
 
         if prioritize_queue_node_id.is_some() || remove_queue_node_id.is_some() {
@@ -210,7 +216,8 @@ impl<T: Config> Pallet<T> {
                 if let Some(node_id) = remove_queue_node_id {
                     if node.id == node_id {
                         // Node exists AND has passed immunity period
-                        remove_allowed = node.classification.start_epoch + immunity_epochs <= subnet_epoch;
+                        remove_allowed =
+                            node.classification.start_epoch + immunity_epochs <= subnet_epoch;
                     }
                 }
 

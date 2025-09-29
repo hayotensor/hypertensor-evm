@@ -13,10 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate as pallet_network;
+use crate as pallet_author_subsidy;
 use crate::*;
+use core::str::FromStr;
 use fp_account::EthereumSignature;
 use frame_support::weights::constants::WEIGHT_REF_TIME_PER_MILLIS;
+use frame_support::ConsensusEngineId;
 use frame_support::{
     derive_impl, parameter_types,
     traits::{
@@ -28,6 +30,8 @@ use frame_support::{
 };
 use frame_system as system;
 pub use frame_system::{EnsureRoot, EnsureRootWithSuccess};
+use pallet_evm::IdentityAddressMapping;
+use sp_core::H160;
 use sp_core::{ConstU128, ConstU32, ConstU64, H256, U256};
 use sp_runtime::traits::{AccountIdLookup, BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::BuildStorage;
@@ -117,8 +121,6 @@ pub type Balance = u128;
 
 pub const EXISTENTIAL_DEPOSIT: u128 = 500;
 
-impl pallet_insecure_randomness_collective_flip::Config for Test {}
-
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type ExistentialDeposit = ConstU128<EXISTENTIAL_DEPOSIT>;
@@ -157,10 +159,20 @@ parameter_types! {
     pub const AuthorBlockEmissions: u128 = AUTHOR_BLOCK_EMISSIONS;
 }
 
+pub struct FindAuthorTruncated;
+impl FindAuthor<H160> for FindAuthorTruncated {
+    fn find_author<'a, I>(_digests: I) -> Option<H160>
+    where
+        I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+    {
+        Some(H160::from_str("1234500000000000000000000000000000000000").unwrap())
+    }
+}
+
 impl Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
-    type FindAuthor = FindAuthorTruncated<Aura>;
+    type FindAuthor = FindAuthorTruncated;
     type AddressMapping = IdentityAddressMapping;
     type WeightInfo = ();
     type AuthorBlockEmissions = AuthorBlockEmissions;

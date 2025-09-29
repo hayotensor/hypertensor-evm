@@ -1812,7 +1812,7 @@
 //         let epoch_length = EpochLength::get();
 //         let subnet_epoch: u32 = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         let submittable = Network::get_classified_subnet_nodes(
+//         let submittable = Network::get_active_classified_subnet_nodes(
 //             subnet_id,
 //             &SubnetNodeClass::Validator,
 //             subnet_epoch,

@@ -8,6 +8,7 @@ use crate::{
     TotalActiveSubnets, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
+use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -588,7 +589,13 @@ fn test_remove_stake_min_active_node_stake_epochs() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step(System::block_number(), epoch, subnet_epoch, subnet_id);
+        Network::emission_step_v2(
+            &mut WeightMeter::new(),
+            System::block_number(),
+            Network::get_current_epoch_as_u32(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            subnet_id,
+        );
 
         assert_eq!(
             RegisteredSubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id),
