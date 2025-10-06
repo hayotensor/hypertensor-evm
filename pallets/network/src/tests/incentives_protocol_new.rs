@@ -4,7 +4,7 @@
 // use crate::{
 //     AccountSubnetStake, Error, FinalSubnetEmissionWeights, HotkeySubnetNodeId,
 //     IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodePenalties, MaxSubnetNodes,
-//     MaxSubnets, MinAttestationPercentage, MinVastMajorityAttestationPercentage,
+//     MaxSubnets, MinAttestationPercentage,
 //     NetworkMinStakeBalance, NodeDelegateStakeBalance, RegisteredSubnetNodesData,
 //     ReputationDecreaseFactor, ReputationIncreaseFactor, SubnetConsensusSubmission,
 //     SubnetElectedValidator, SubnetName, SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs,
@@ -60,7 +60,7 @@
 //         let blockchain_epoch = Network::get_current_epoch_as_u32();
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -124,10 +124,6 @@
 //                 SubnetNodeClass::Registered
 //             );
 //             assert_ne!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
-//             assert_ne!(
-//                 subnet_node.classification.node_class,
-//                 SubnetNodeClass::Deactivated
-//             );
 //         }
 
 //         assert_err!(
@@ -207,7 +203,7 @@
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 //         log::error!("subnet_epoch {:?}", subnet_epoch);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -255,7 +251,7 @@
 // //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 // //         log::error!("subnet_epoch {:?}", subnet_epoch);
 
-// //         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+// //         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 // //         let subnet_node_data_vec =
 // //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -309,7 +305,7 @@
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 //         log::error!("subnet_epoch {:?}", subnet_epoch);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec = get_subnet_node_consensus_data_with_custom_score(
 //             subnets,
@@ -360,7 +356,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -414,7 +410,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -507,7 +503,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -551,7 +547,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let subnet_node_data_vec =
 //             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
@@ -677,7 +673,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -822,7 +818,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -967,7 +963,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -1148,7 +1144,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -1291,7 +1287,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -1446,7 +1442,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -1645,7 +1641,7 @@
 //         set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");
@@ -1771,7 +1767,7 @@
 //             set_block_to_subnet_slot_epoch(epoch, subnet_id);
 //             let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//             Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//             Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //             let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //             assert!(validator_id != None, "Validator is None");
@@ -1940,7 +1936,7 @@
 
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::elect_validator_v3(subnet_id, subnet_epoch, block_number);
+//         Network::elect_validator(subnet_id, subnet_epoch, block_number);
 
 //         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
 //         assert!(validator_id != None, "Validator is None");

@@ -5,8 +5,8 @@ use crate::{
     ColdkeyIdentity, ColdkeyIdentityNameOwner, DefaultMaxSocialIdLength, DefaultMaxUrlLength,
     DefaultMaxVectorLength, Error, HotkeyOwner,
 };
-use frame_support::storage::bounded_vec::BoundedVec;
 use frame_support::{assert_err, assert_ok};
+
 //
 //
 //

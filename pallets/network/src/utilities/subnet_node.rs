@@ -66,23 +66,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_delegate_reward_rate(
-            //                 maybe_params,
-            //                 subnet_id,
-            //                 block,
-            //                 new_delegate_reward_rate,
-            //                 reward_rate_update_period,
-            //                 max_reward_rate_decrease,
-            //             )
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -100,7 +83,7 @@ impl<T: Config> Pallet<T> {
         let params = maybe_params
             .as_mut()
             .ok_or(Error::<T>::InvalidSubnetNodeId)?;
-        let mut curr_delegate_reward_rate = params.delegate_reward_rate;
+        let curr_delegate_reward_rate = params.delegate_reward_rate;
 
         // --- Ensure rate change surpasses minimum update period
         ensure!(
@@ -176,21 +159,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_peer_id(
-            //                 subnet_id,
-            //                 subnet_node_id,
-            //                 maybe_params,
-            //                 new_peer_id,
-            //             )
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -236,6 +204,13 @@ impl<T: Config> Pallet<T> {
         subnet_node_id: u32,
         new_bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
     ) -> DispatchResult {
+        if let Some(bootnode) = &new_bootnode {
+            ensure!(
+                Self::is_owner_of_bootnode_or_ownerless(subnet_id, 0, bootnode.clone()),
+                Error::<T>::BootnodeExist
+            );
+        }
+
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             SubnetNodesData::<T>::try_mutate_exists(
                 subnet_id,
@@ -256,16 +231,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -336,21 +301,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_bootnode_peer_id(
-            //                 subnet_id,
-            //                 subnet_node_id,
-            //                 maybe_params,
-            //                 new_bootnode_peer_id,
-            //             )
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -426,21 +376,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_client_peer_id(
-            //                 subnet_id,
-            //                 subnet_node_id,
-            //                 maybe_params,
-            //                 new_client_peer_id,
-            //             )
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -506,16 +441,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -597,21 +522,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             return Ok(());
-            // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            //     PausedSubnetNodesData::<T>::try_mutate_exists(
-            //         subnet_id,
-            //         subnet_node_id,
-            //         |maybe_params| -> DispatchResult {
-            //             Self::perform_update_non_unique(
-            //                 subnet_id,
-            //                 subnet_node_id,
-            //                 maybe_params,
-            //                 non_unique,
-            //             )
-            //         },
-            //     )?;
-
-            //     return Ok(());
         }
 
         // Redundant
@@ -776,8 +686,6 @@ impl<T: Config> Pallet<T> {
     ) -> Option<SubnetNode<T::AccountId>> {
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
-        // } else if PausedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-        //     Some(PausedSubnetNodesData::<T>::get(subnet_id, subnet_node_id))
         } else {
             None
         }
@@ -861,7 +769,7 @@ impl<T: Config> Pallet<T> {
         subnet_epoch: u32,
     ) -> Vec<SubnetNodeInfo<T::AccountId>> {
         SubnetNodesData::<T>::iter_prefix(subnet_id)
-            .filter(|(subnet_node_id, subnet_node)| {
+            .filter(|(_subnet_node_id, subnet_node)| {
                 subnet_node.has_classification(classification, subnet_epoch)
             })
             .map(|(subnet_node_id, subnet_node)| {
@@ -1024,7 +932,7 @@ impl<T: Config> Pallet<T> {
             };
 
         is_peer_owner_or_ownerless
-            && match PeerIdOverwatchNode::<T>::try_get(subnet_id, peer_id) {
+            && match PeerIdOverwatchNodeId::<T>::try_get(subnet_id, peer_id) {
                 Ok(peer_overwatch_node_id) => {
                     if peer_overwatch_node_id == overwatch_node_id {
                         return true;
@@ -1035,221 +943,21 @@ impl<T: Config> Pallet<T> {
             }
     }
 
-    pub fn calculate_max_activation_epoch(subnet_id: u32) -> u32 {
-        let prev_registration_epoch = 10;
-        0
+    pub fn is_owner_of_bootnode_or_ownerless(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        bootnode: BoundedVec<u8, DefaultMaxVectorLength>,
+    ) -> bool {
+        match BootnodeSubnetNodeId::<T>::try_get(subnet_id, bootnode) {
+            Ok(bootnode_subnet_node_id) => {
+                if bootnode_subnet_node_id == subnet_node_id {
+                    return true;
+                }
+                false
+            }
+            Err(()) => true,
+        }
     }
-
-    // pub fn get_removing_node(
-    //     subnet_id: u32,
-    //     coldkey: &T::AccountId,
-    //     hotkey: &T::AccountId,
-    //     subnet_node: &SubnetNode<T::AccountId>,
-    // ) -> Option<u32> {
-    //     let policy = match NodeRemovalSystemV2::<T>::get(subnet_id) {
-    //         Some(policy) => policy,
-    //         None => return None,
-    //     };
-
-    //     let activating_coldkey_reputation = ColdkeyReputation::<T>::get(coldkey);
-    //     let activating_node_dstake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node.id);
-    //     let activating_stake_balance = AccountSubnetStake::<T>::get(hotkey, subnet_id);
-
-    //     let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, score, start_epoch)
-
-    //     for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-    //         // Redundant, activating node is in RegisteredSubnetNodesData
-    //         if uid == subnet_node.id {
-    //             continue;
-    //         }
-
-    //         let node_hotkey = node.hotkey.clone();
-    //         let node_coldkey = HotkeyOwner::<T>::get(&node_hotkey);
-    //         let proposing_stake = AccountSubnetStake::<T>::get(&node_hotkey, subnet_id);
-    //         let proposing_dstake = NodeDelegateStakeBalance::<T>::get(subnet_id, node.id);
-    //         let proposing_reputation = ColdkeyReputation::<T>::get(&node_coldkey);
-    //         let proposing_score = proposing_reputation.score;
-
-    //         if !Self::evaluate_logic_expr(
-    //             &policy.logic,
-    //             activating_coldkey_reputation.score,
-    //             activating_coldkey_reputation.average_attestation,
-    //             subnet_node.delegate_reward_rate,
-    //             activating_node_dstake_balance,
-    //             activating_stake_balance,
-    //             proposing_score,
-    //             proposing_reputation.average_attestation,
-    //             node.delegate_reward_rate,
-    //             proposing_dstake,
-    //             proposing_stake,
-    //         ) {
-    //             continue;
-    //         }
-    //         let start_epoch = node.classification.start_epoch;
-    //         candidates.push((uid, proposing_score, start_epoch));
-    //     }
-
-    //     if candidates.is_empty() {
-    //         return None;
-    //     }
-
-    //     candidates.sort_by(|a, b| {
-    //         // Sort by reputation.score ascending, then start_epoch descending
-    //         a.1.cmp(&b.1).then(b.2.cmp(&a.2))
-    //     });
-
-    //     candidates.first().map(|(uid, _, _)| *uid)
-    // }
-
-    // pub fn evaluate_logic_expr(
-    //     expr: &LogicExpr,
-    //     activating_score: u128,
-    //     activating_avg_attestation: u128,
-    //     activating_dstake_rate: u128,
-    //     activating_dstake_balance: u128,
-    //     activating_stake_balance: u128,
-    //     proposing_score: u128,
-    //     proposing_avg_attestation: u128,
-    //     proposing_dstake_rate: u128,
-    //     proposing_dstake_balance: u128,
-    //     proposing_stake_balance: u128,
-    // ) -> bool {
-    //     match expr {
-    //         LogicExpr::And(left, right) => {
-    //             Self::evaluate_logic_expr(
-    //                 left,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             ) && Self::evaluate_logic_expr(
-    //                 right,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             )
-    //         }
-    //         LogicExpr::Or(left, right) => {
-    //             Self::evaluate_logic_expr(
-    //                 left,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             ) || Self::evaluate_logic_expr(
-    //                 right,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             )
-    //         }
-    //         LogicExpr::Xor(left, right) => {
-    //             Self::evaluate_logic_expr(
-    //                 left,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             ) ^ Self::evaluate_logic_expr(
-    //                 right,
-    //                 activating_score,
-    //                 activating_avg_attestation,
-    //                 activating_dstake_rate,
-    //                 activating_dstake_balance,
-    //                 activating_stake_balance,
-    //                 proposing_score,
-    //                 proposing_avg_attestation,
-    //                 proposing_dstake_rate,
-    //                 proposing_dstake_balance,
-    //                 proposing_stake_balance,
-    //             )
-    //         }
-    //         LogicExpr::Not(inner) => !Self::evaluate_logic_expr(
-    //             inner,
-    //             activating_score,
-    //             activating_avg_attestation,
-    //             activating_dstake_rate,
-    //             activating_dstake_balance,
-    //             activating_stake_balance,
-    //             proposing_score,
-    //             proposing_avg_attestation,
-    //             proposing_dstake_rate,
-    //             proposing_dstake_balance,
-    //             proposing_stake_balance,
-    //         ),
-    //         LogicExpr::Condition(cond) => match cond {
-    //             // hard
-    //             NodeRemovalConditionType::HardBelowScore(v) => proposing_score < *v,
-    //             NodeRemovalConditionType::HardBelowAverageAttestation(v) => {
-    //                 proposing_avg_attestation < *v
-    //             }
-    //             NodeRemovalConditionType::HardBelowNodeDelegateStakeRate(v) => {
-    //                 proposing_dstake_rate < *v
-    //             }
-
-    //             // delta
-
-    //             // If node is under the activating nodes score delta value
-    //             NodeRemovalConditionType::DeltaBelowScore(v) => {
-    //                 proposing_score
-    //                     < activating_score.saturating_sub(Self::percent_mul(activating_score, *v))
-    //             }
-    //             NodeRemovalConditionType::DeltaBelowAverageAttestation(v) => {
-    //                 proposing_avg_attestation
-    //                     < activating_avg_attestation
-    //                         .saturating_sub(Self::percent_mul(activating_avg_attestation, *v))
-    //             }
-    //             NodeRemovalConditionType::DeltaBelowNodeDelegateStakeRate(v) => {
-    //                 proposing_dstake_rate
-    //                     < activating_dstake_rate
-    //                         .saturating_sub(Self::percent_mul(activating_dstake_rate, *v))
-    //             }
-    //             NodeRemovalConditionType::DeltaBelowNodeDelegateStakeBalance(v) => {
-    //                 proposing_dstake_balance
-    //                     < activating_dstake_balance
-    //                         .saturating_sub(Self::percent_mul(activating_dstake_balance, *v))
-    //             }
-    //             NodeRemovalConditionType::DeltaBelowStakeBalance(v) => {
-    //                 proposing_stake_balance
-    //                     < activating_stake_balance
-    //                         .saturating_sub(Self::percent_mul(activating_stake_balance, *v))
-    //             }
-    //         },
-    //     }
-    // }
 
     pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
         ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
@@ -1288,11 +996,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Update burn rate based on registrations in previous epoch
-    pub fn update_burn_rate_for_epoch(
-        weight_meter: &mut WeightMeter,
-        subnet_id: u32,
-        current_subnet_epoch: u32,
-    ) {
+    pub fn update_burn_rate_for_epoch(weight_meter: &mut WeightMeter, subnet_id: u32) {
         let db_weight = T::DbWeight::get();
 
         // It's unlikely this will ever be true, but we check anyway to future-proof

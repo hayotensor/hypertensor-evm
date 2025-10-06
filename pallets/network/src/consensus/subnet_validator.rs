@@ -19,107 +19,57 @@ use frame_support::pallet_prelude::Pays;
 use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
-    /// Submit subnet scores per subnet node
-    /// Validator of the epoch receives rewards when attestation passes consensus
+    /// Proposes attestation and submits consensus data for a subnet epoch.
+    ///
+    /// This function allows an elected validator to submit consensus data for their subnet,
+    /// including peer scores, queue management decisions, and optional attestation data.
+    ///
+    /// The validator automatically attests to their own submission.
+    ///
+    /// # Parameters
+    ///
+    /// * `subnet_id` - The ID of the subnet for which consensus data is being submitted.
+    /// * `hotkey` - The hotkey of the elected validator submitting the consensus data.
+    /// * `data` - A vector of consensus data containing scores for each peer in the subnet.
+    ///   Duplicates (based on `subnet_node_id`) are automatically removed, and only peers
+    ///   with `Included` classification are retained.
+    /// * `prioritize_queue_node_id` - Optional node ID from the registration queue to move
+    ///   to the front of the queue. The node must exist in the queue or this parameter is ignored.
+    /// * `remove_queue_node_id` - Optional node ID from the registration queue to remove.
+    ///   The node must exist in the queue and have passed the immunity period, or this
+    ///   parameter is ignored.
+    /// * `args` - Optional arbitrary arguments for subnet-specific use. This data is not
+    ///   used in any onchain logic and is purely for subnet validator coordination.
+    ///   This data can be useful within a subnet.
+    /// * `attest_data` - Optional arbitrary attestation data. This data is not used in any
+    ///   onchain logic but is included as part of the validator's automatic attestation
+    ///   to their own consensus submission.
+    ///   This data can be useful within a subnet.
+    ///
+    /// # Behavior
+    ///
+    /// The function performs the following steps:
+    /// 1. Determines the current subnet epoch
+    /// 2. Verifies the caller is the elected validator for this epoch
+    /// 3. Ensures consensus has not already been submitted for this epoch
+    /// 4. Qualifies the consensus data by:
+    ///    - Removing duplicates based on peer_id
+    ///    - Filtering out non-Included peers
+    ///    - Validating scores don't overflow when summed
+    /// 5. Validates queue operations (prioritize/remove) if specified
+    /// 6. Stores the consensus submission with the validator's auto-attestation
+    ///
+    /// # Errors
+    ///
+    /// * `NoElectedValidator` - No validator is elected for the current subnet epoch
+    /// * `InvalidValidator` - The caller's hotkey doesn't match the elected validator
+    /// * `SubnetRewardsAlreadySubmitted` - Consensus has already been submitted for this epoch
+    /// * `ScoreOverflow` - The sum of all scores would overflow u128
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(Pays::No.into())` on success, indicating the transaction fee is waived.
     pub fn do_propose_attestation(
-        subnet_id: u32,
-        hotkey: T::AccountId,
-        mut data: Vec<SubnetNodeConsensusData>,
-        args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
-        attest_data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
-    ) -> DispatchResultWithPostInfo {
-        // The validator is elected for the next blockchain epoch where rewards will be distributed.
-        // Each subnet epoch overlaps with the blockchains epochs, and can submit consensus data for epoch
-        // 2 on epoch 1 (if after slot) or 2 (if before slot).
-        // If a subnet is on slot 3 of 5 slots, we make sure it can submit on the current blockchains epoch.
-        let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-        // --- Ensure current subnet validator by its hotkey
-        let validator_id = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch)
-            .ok_or(Error::<T>::NoElectedValidator)?;
-
-        // --- If hotkey is hotkey, ensure it matches validator, otherwise if coldkey -> get hotkey
-        // If the epoch is 0, this will break
-        ensure!(
-            SubnetNodeIdHotkey::<T>::get(subnet_id, validator_id) == Some(hotkey.clone()),
-            Error::<T>::InvalidValidator
-        );
-
-        // - Note: we don't check stake balance here
-
-        // --- Ensure not submitted already
-        ensure!(
-            !SubnetConsensusSubmission::<T>::contains_key(subnet_id, subnet_epoch),
-            Error::<T>::SubnetRewardsAlreadySubmitted
-        );
-
-        //
-        // --- Qualify the data
-        //
-
-        // Remove duplicates based on peer_id
-        data.dedup_by(|a, b| a.subnet_node_id == b.subnet_node_id);
-
-        // Remove queue classified entries
-        // Each peer must have an inclusion classification at minimum
-        data.retain(
-            |x| match SubnetNodesData::<T>::try_get(subnet_id, x.subnet_node_id) {
-                Ok(subnet_node) => {
-                    subnet_node.has_classification(&SubnetNodeClass::Included, subnet_epoch)
-                }
-                Err(()) => false,
-            },
-        );
-
-        // --- Ensure overflow sum fails
-        data.iter().try_fold(0u128, |acc, node| {
-            acc.checked_add(node.score).ok_or(Error::<T>::ScoreOverflow)
-        })?;
-
-        let block: u32 = Self::get_current_block_as_u32();
-
-        // --- Validator auto-attests the epoch
-        // let attests: BTreeMap<u32, (u32, Option<BoundedVec<u8, DefaultValidatorArgsLimit>>)> =
-        //     BTreeMap::from([(validator_id, (block, attest_data))]);
-        let attests: BTreeMap<u32, AttestEntry> = BTreeMap::from([(
-            validator_id,
-            AttestEntry {
-                block: block,
-                data: attest_data,
-            },
-        )]);
-
-        // --- Get all (activated) Idle + consensus-eligible nodes
-        // We get this here instead of in the rewards distribution to handle block weight more efficiently
-        let subnet_nodes: Vec<SubnetNode<T::AccountId>> = Self::get_active_classified_subnet_nodes(
-            subnet_id,
-            &SubnetNodeClass::Idle,
-            subnet_epoch,
-        );
-        let subnet_nodes_count = subnet_nodes.len();
-
-        let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
-            validator_id: validator_id,
-            attests: attests,
-            subnet_nodes: subnet_nodes,
-            prioritize_queue_node_id: None,
-            remove_queue_node_id: None,
-            data: data,
-            args: args,
-        };
-
-        SubnetConsensusSubmission::<T>::insert(subnet_id, subnet_epoch, consensus_data);
-
-        Self::deposit_event(Event::ValidatorSubmission {
-            subnet_id: subnet_id,
-            account_id: hotkey,
-            epoch: subnet_epoch,
-        });
-
-        Ok(Pays::No.into())
-    }
-
-    pub fn do_propose_attestation_v2(
         subnet_id: u32,
         hotkey: T::AccountId,
         mut data: Vec<SubnetNodeConsensusData>,
@@ -277,7 +227,7 @@ impl<T: Config> Pallet<T> {
             Ok(subnet_node) => {
                 subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch)
             }
-            Err(()) => return Err(Error::<T>::SubnetNodeNotExist.into()),
+            Err(()) => return Err(Error::<T>::InvalidSubnetNodeId.into()),
         };
 
         // - Note: we don't check stake balance here
@@ -299,7 +249,7 @@ impl<T: Config> Pallet<T> {
                 let subnet_nodes = &mut params.subnet_nodes;
                 ensure!(
                     subnet_nodes.iter().any(|node| node.id == subnet_node_id),
-                    Error::<T>::SubnetNodeNotExist
+                    Error::<T>::InvalidSubnetNodeId
                 );
 
                 let mut attests = &mut params.attests;
@@ -323,29 +273,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(Pays::No.into())
     }
-
-    // pub fn elect_validator_v2(subnet_id: u32, epoch: u32, random_number: u32) {
-    //     // Redundant
-    //     // If validator already chosen, then return
-    //     if let Ok(validator_id) = SubnetElectedValidator::<T>::try_get(subnet_id, epoch) {
-    //         return;
-    //     }
-
-    //     let slot_list = SubnetNodeElectionSlots::<T>::get(subnet_id);
-
-    //     if slot_list.is_empty() {
-    //         return;
-    //     }
-
-    //     let idx = (random_number as usize) % slot_list.len();
-
-    //     let subnet_node_id = slot_list.get(idx).cloned();
-
-    //     if subnet_node_id.is_some() {
-    //         // --- Insert validator for next epoch
-    //         SubnetElectedValidator::<T>::insert(subnet_id, epoch, subnet_node_id.unwrap());
-    //     }
-    // }
 
     /// Return the validators reward that submitted data on the previous epoch
     // The attestation percentage must be greater than the MinAttestationPercentage

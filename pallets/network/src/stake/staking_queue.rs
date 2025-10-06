@@ -21,7 +21,7 @@ impl<T: Config> Pallet<T> {
         account_id: T::AccountId,
         call: QueuedSwapCall<T::AccountId>,
     ) -> DispatchResult {
-        let id = NextSwapId::<T>::get();
+        let id = NextSwapQueueId::<T>::get();
 
         let queued_item = QueuedSwapItem {
             id,
@@ -38,7 +38,7 @@ impl<T: Config> Pallet<T> {
             let _ = queue.try_push(id); // Handle error if queue is full
         });
 
-        NextSwapId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
+        NextSwapQueueId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
 
         Self::deposit_event(Event::SwapCallQueued {
             id,
@@ -62,7 +62,7 @@ impl<T: Config> Pallet<T> {
                 QueuedSwapCall::SwapToSubnetDelegateStake {
                     account_id,
                     to_subnet_id,
-                    balance,
+                    balance: _,
                 } => {
                     ensure!(&account_id == &key, Error::<T>::NotKeyOwner);
                     ensure!(
@@ -87,7 +87,7 @@ impl<T: Config> Pallet<T> {
                     account_id,
                     to_subnet_id,
                     to_subnet_node_id,
-                    balance,
+                    balance: _,
                 } => {
                     ensure!(&account_id == &key, Error::<T>::NotKeyOwner);
                     ensure!(

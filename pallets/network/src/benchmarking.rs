@@ -23,6 +23,7 @@ use frame_support::Callable;
 use frame_support::{
     assert_noop, assert_ok,
     traits::{EnsureOrigin, Get, OnInitialize, UnfilteredDispatchable},
+    weights::WeightMeter,
 };
 use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 pub use pallet::*;
@@ -2653,7 +2654,7 @@ mod benchmarks {
         ));
 
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<T>::get(delegate_account.clone());
+            StakeUnbondingLedger::<T>::get(delegate_account.clone());
         assert_eq!(unbondings.len(), 1);
         let (unbonding_block, balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -2792,7 +2793,7 @@ mod benchmarks {
         );
         let prev_total_subnet_delegate_stake_balance =
             TotalSubnetDelegateStakeBalance::<T>::get(from_subnet_id);
-        let prev_next_id = NextSwapId::<T>::get();
+        let prev_next_id = NextSwapQueueId::<T>::get();
 
         #[extrinsic_call]
         swap_delegate_stake(
@@ -2832,7 +2833,7 @@ mod benchmarks {
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
         };
 
-        let next_id = NextSwapId::<T>::get();
+        let next_id = NextSwapQueueId::<T>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<T>::get();
         assert!(queue
@@ -2943,7 +2944,7 @@ mod benchmarks {
         );
 
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<T>::get(delegate_account.clone());
+            StakeUnbondingLedger::<T>::get(delegate_account.clone());
         assert_eq!(unbondings.len(), 1);
         let (unbonding_block, balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -3137,7 +3138,7 @@ mod benchmarks {
             total_node_delegate_stake_balance - expected_balance_to_be_removed,
         );
         let pre_transfer_balance = T::Currency::free_balance(&delegate_node_account.clone());
-        let prev_next_id = NextSwapId::<T>::get();
+        let prev_next_id = NextSwapQueueId::<T>::get();
 
         #[extrinsic_call]
         swap_node_delegate_stake(
@@ -3196,7 +3197,7 @@ mod benchmarks {
             }
         };
 
-        let next_id = NextSwapId::<T>::get();
+        let next_id = NextSwapQueueId::<T>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<T>::get();
         assert!(queue
@@ -3421,7 +3422,7 @@ mod benchmarks {
 
         let before_transfer_tensor = T::Currency::free_balance(&delegate_account.clone());
 
-        let prev_next_id = NextSwapId::<T>::get();
+        let prev_next_id = NextSwapQueueId::<T>::get();
 
         #[extrinsic_call]
         swap_from_node_to_subnet(
@@ -3458,7 +3459,7 @@ mod benchmarks {
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
         };
 
-        let next_id = NextSwapId::<T>::get();
+        let next_id = NextSwapQueueId::<T>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<T>::get();
         assert!(queue
@@ -3511,7 +3512,7 @@ mod benchmarks {
 
         let before_transfer_tensor = T::Currency::free_balance(&delegate_account.clone());
 
-        let prev_next_id = NextSwapId::<T>::get();
+        let prev_next_id = NextSwapQueueId::<T>::get();
 
         #[extrinsic_call]
         swap_from_subnet_to_node(
@@ -3545,7 +3546,7 @@ mod benchmarks {
             }
         };
 
-        let next_id = NextSwapId::<T>::get();
+        let next_id = NextSwapQueueId::<T>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<T>::get();
         assert!(queue
@@ -3573,7 +3574,7 @@ mod benchmarks {
         set_block_to_subnet_slot_epoch::<T>(epoch, subnet_id);
         let subnet_epoch = Network::<T>::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::<T>::elect_validator_v3(subnet_id, subnet_epoch, get_current_block_as_u32::<T>());
+        Network::<T>::elect_validator(subnet_id, subnet_epoch, get_current_block_as_u32::<T>());
 
         let validator_id = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch as u32);
         assert!(validator_id != None, "Validator is None");
@@ -3631,7 +3632,7 @@ mod benchmarks {
         set_block_to_subnet_slot_epoch::<T>(epoch, subnet_id);
         let subnet_epoch = Network::<T>::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::<T>::elect_validator_v3(subnet_id, subnet_epoch, get_current_block_as_u32::<T>());
+        Network::<T>::elect_validator(subnet_id, subnet_epoch, get_current_block_as_u32::<T>());
 
         let validator_id = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch as u32);
         assert!(validator_id != None, "Validator is None");
@@ -4722,18 +4723,18 @@ mod benchmarks {
         assert_eq!(MaxSubnetPauseEpochs::<T>::get(), new_value);
     }
 
-    #[benchmark]
-    fn set_min_subnet_registration_fee() {
-        let value = MinSubnetRegistrationFee::<T>::get();
-        let new_value = value - 1;
+    // #[benchmark]
+    // fn set_min_subnet_registration_fee() {
+    //     let value = MinSubnetRegistrationFee::<T>::get();
+    //     let new_value = value - 1;
 
-        #[block]
-        {
-            Network::<T>::do_set_min_subnet_registration_fee(new_value);
-        }
+    //     #[block]
+    //     {
+    //         Network::<T>::do_set_min_subnet_registration_fee(new_value);
+    //     }
 
-        assert_eq!(MinSubnetRegistrationFee::<T>::get(), new_value);
-    }
+    //     assert_eq!(MinSubnetRegistrationFee::<T>::get(), new_value);
+    // }
 
     #[benchmark]
     fn set_min_registration_cost() {
@@ -4912,7 +4913,7 @@ mod benchmarks {
 
     #[benchmark]
     fn set_subnet_activation_enactment_epochs() {
-        let value = SubnetActivationEnactmentEpochs::<T>::get();
+        let value = SubnetEnactmentEpochs::<T>::get();
         let new_value = value - 1;
 
         let account = get_account::<T>("account", 0);
@@ -4922,7 +4923,7 @@ mod benchmarks {
             Network::<T>::do_set_subnet_activation_enactment_epochs(new_value);
         }
 
-        assert_eq!(SubnetActivationEnactmentEpochs::<T>::get(), new_value);
+        assert_eq!(SubnetEnactmentEpochs::<T>::get(), new_value);
     }
 
     #[benchmark]
@@ -5141,20 +5142,20 @@ mod benchmarks {
         assert_eq!(MinAttestationPercentage::<T>::get(), new_value);
     }
 
-    #[benchmark]
-    fn set_min_vast_majority_attestation_percentage() {
-        let value = MinVastMajorityAttestationPercentage::<T>::get();
-        let new_value = value - 1;
+    // #[benchmark]
+    // fn set_min_vast_majority_attestation_percentage() {
+    //     let value = MinVastMajorityAttestationPercentage::<T>::get();
+    //     let new_value = value - 1;
 
-        let account = get_account::<T>("account", 0);
+    //     let account = get_account::<T>("account", 0);
 
-        #[block]
-        {
-            Network::<T>::do_set_min_vast_majority_attestation_percentage(new_value);
-        }
+    //     #[block]
+    //     {
+    //         Network::<T>::do_set_min_vast_majority_attestation_percentage(new_value);
+    //     }
 
-        assert_eq!(MinVastMajorityAttestationPercentage::<T>::get(), new_value);
-    }
+    //     assert_eq!(MinVastMajorityAttestationPercentage::<T>::get(), new_value);
+    // }
 
     #[benchmark]
     fn set_super_majority_attestation_ratio() {
@@ -5769,7 +5770,7 @@ mod benchmarks {
 
         let prev_total_subnet_delegate_stake_balance =
             TotalSubnetDelegateStakeBalance::<T>::get(from_subnet_id);
-        let prev_next_id = NextSwapId::<T>::get();
+        let prev_next_id = NextSwapQueueId::<T>::get();
 
         assert_ok!(Network::<T>::swap_delegate_stake(
             RawOrigin::Signed(account.clone()).into(),
@@ -5807,7 +5808,7 @@ mod benchmarks {
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
         };
 
-        let next_id = NextSwapId::<T>::get();
+        let next_id = NextSwapQueueId::<T>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<T>::get();
         assert!(queue
@@ -5848,7 +5849,7 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn elect_validator_v3(x: Linear<3, 512>) {
+    fn elect_validator(x: Linear<3, 512>) {
         // x: min nodes, max nodes
         build_activated_subnet::<T>(
             DEFAULT_SUBNET_NAME.into(),
@@ -5869,11 +5870,7 @@ mod benchmarks {
 
         #[block]
         {
-            Network::<T>::elect_validator_v3(
-                subnet_id,
-                subnet_epoch,
-                get_current_block_as_u32::<T>(),
-            );
+            Network::<T>::elect_validator(subnet_id, subnet_epoch, get_current_block_as_u32::<T>());
         }
 
         assert!(SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch).is_some());
@@ -5934,7 +5931,7 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn do_remove_subnet_v2(x: Linear<3, 512>) {
+    fn do_remove_subnet(x: Linear<3, 512>) {
         build_activated_subnet::<T>(
             DEFAULT_SUBNET_NAME.into(),
             0,
@@ -5946,7 +5943,7 @@ mod benchmarks {
 
         #[block]
         {
-            let _ = Network::<T>::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MaxPenalties);
+            let _ = Network::<T>::do_remove_subnet(subnet_id, SubnetRemovalReason::MaxPenalties);
         }
 
         assert_eq!(SubnetsData::<T>::try_get(subnet_id), Err(()));
@@ -5969,8 +5966,11 @@ mod benchmarks {
 
     #[benchmark]
     fn perform_remove_subnet_node(x: Linear<1, 12>, n: Linear<3, 25>) {
-        // We use Linear to see the impact of `ColdkeySubnetNodes` in the function
-        // and SubnetNodeQueue
+        // x represents subnets
+        // n represents node count
+        //
+        // We use Linear (x) to see the impact of `ColdkeySubnetNodes` in the function
+        // and Linear (n) SubnetNodeQueue
         // ColdkeySubnetNodes is impacted by how many subnets a coldkey has
         // SubnetNodeQueue is impacted by how many nodes are in the queue
         NewRegistrationCostMultiplier::<T>::set(1000000000000000000);
@@ -5995,12 +5995,7 @@ mod benchmarks {
             }
         }
 
-        let hotkey = get_hotkey::<T>(
-            subnet_id,
-            max_subnet_nodes,
-            max_subnets,
-            max_subnet_nodes - 1,
-        );
+        let hotkey = get_hotkey::<T>(subnet_id, max_subnet_nodes, max_subnets, x);
         let hotkey_subnet_node_id =
             HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone()).unwrap();
         let subnet_node = SubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
@@ -6119,7 +6114,9 @@ mod benchmarks {
             HotkeySubnetNodeId::<T>::get(subnet_id, hotkey.clone()).unwrap();
 
         let mut subnet_node = RegisteredSubnetNodesData::<T>::get(subnet_id, hotkey_subnet_node_id);
-        Network::<T>::do_activate_subnet_node_v2(
+        let mut weight_meter = WeightMeter::new();
+        Network::<T>::do_activate_subnet_node(
+            &mut weight_meter,
             subnet_id,
             subnet_node,
             Network::<T>::get_current_subnet_epoch_as_u32(subnet_id),
@@ -6328,7 +6325,7 @@ mod benchmarks {
     //     // Set to correct block to elect a validator
     //     set_block_to_subnet_slot_epoch::<T>(Network::<T>::get_current_epoch_as_u32(), subnet_id);
     //     let subnet_epoch = Network::<T>::get_current_subnet_epoch_as_u32(subnet_id);
-    //     Network::<T>::elect_validator_v3(subnet_id, subnet_epoch, Network::<T>::get_current_block_as_u32());
+    //     Network::<T>::elect_validator(subnet_id, subnet_epoch, Network::<T>::get_current_block_as_u32());
 
     //     // Run consensus, submit proposal, attest
     //     run_subnet_consensus_step::<T>(subnet_id, None);
@@ -6428,7 +6425,7 @@ mod benchmarks {
 
     // // Informational purposes only
     // #[benchmark]
-    // fn calculate_subnet_weights_v3(x: Linear<1, 65>) {
+    // fn calculate_subnet_weights(x: Linear<1, 65>) {
     //     // Activate subnets
     //     let end = MinSubnetNodes::<T>::get();
     //     NewRegistrationCostMultiplier::<T>::set(1000000000000000000);
@@ -6454,7 +6451,7 @@ mod benchmarks {
     //     #[block]
     //     {
     //         let (stake_weights_normalized, stake_weights_weight) =
-    //             Network::<T>::calculate_subnet_weights_v3(Network::<T>::get_current_epoch_as_u32());
+    //             Network::<T>::calculate_subnet_weights(Network::<T>::get_current_epoch_as_u32());
     //         assert!(stake_weights_normalized.len() as u32 == x);
     //     }
     // }
@@ -7705,7 +7702,7 @@ mod benchmarks {
     // 		delegate_shares
     // 	);
 
-    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<T>::get(delegate_account.clone());
+    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<T>::get(delegate_account.clone());
     //   assert_eq!(unbondings.len(), 1);
 
     // 	let (epoch, balance) = unbondings.iter().next().unwrap();
@@ -7749,7 +7746,7 @@ mod benchmarks {
     // 		)
     // 	);
 
-    // 	let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<T>::get(delegate_account.clone());
+    // 	let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<T>::get(delegate_account.clone());
     //   assert_eq!(unbondings.len(), 1);
 
     // 	let (epoch, balance) = unbondings.iter().next().unwrap();
@@ -7922,7 +7919,7 @@ mod benchmarks {
     //   );
 
     //   // Ensure the code didn't create an unbonding insert
-    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<T>::get(delegate_node_account.clone());
+    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<T>::get(delegate_node_account.clone());
     //   assert_eq!(unbondings.len(), 0);
     // }
 
@@ -7981,7 +7978,7 @@ mod benchmarks {
 
     //   assert_eq!(expected_post_balance, post_account_node_delegate_stake_balance);
 
-    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<T>::get(delegate_node_account.clone());
+    //   let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<T>::get(delegate_node_account.clone());
     //   assert_eq!(unbondings.len(), 1);
     //   let (ledger_epoch, ledger_balance) = unbondings.iter().next().unwrap();
     //   assert_eq!(*ledger_epoch, &epoch + NodeDelegateStakeCooldownEpochs::<T>::get());

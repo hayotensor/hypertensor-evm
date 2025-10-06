@@ -5,9 +5,9 @@ use crate::{
     ColdkeyHotkeys, Error, HotkeyOverwatchNodeId, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets,
     MinSubnetDelegateStakeFactor, MinSubnetNodes, MinSubnetRegistrationEpochs,
     NetworkMinStakeBalance, OverwatchEpochLengthMultiplier, OverwatchNodeIdHotkey, OverwatchNodes,
-    ProposalMinSubnetNodes, SigmoidMidpoint, SigmoidSteepness, SubnetName, SubnetOwnerPercentage,
-    SubnetRegistrationEpochs, SubnetRemovalReason, TotalActiveSubnets, TotalOverwatchNodeUids,
-    TotalOverwatchNodes, TxPause, TxRateLimit,
+    SigmoidMidpoint, SigmoidSteepness, SubnetName, SubnetOwnerPercentage, SubnetRegistrationEpochs,
+    SubnetRemovalReason, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TxPause,
+    TxRateLimit,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -23,17 +23,6 @@ fn test_do_pause_do_unpause() {
 
         assert_ok!(Network::do_unpause());
         assert_eq!(TxPause::<Test>::get(), false);
-    })
-}
-
-#[test]
-fn test_do_set_proposal_min_subnet_nodes() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_proposal_min_subnet_nodes(1));
-        assert_eq!(ProposalMinSubnetNodes::<Test>::get(), 1);
-
-        assert_ok!(Network::do_set_proposal_min_subnet_nodes(2));
-        assert_eq!(ProposalMinSubnetNodes::<Test>::get(), 2);
     })
 }
 

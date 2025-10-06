@@ -15,12 +15,12 @@
 
 use super::*;
 use frame_support::pallet_prelude::DispatchError;
-use frame_support::pallet_prelude::One;
 
 impl<T: Config> Pallet<T> {
     pub fn assign_subnet_slot(subnet_id: u32) -> Result<u32, DispatchError> {
         let epoch_length = T::EpochLength::get();
-        let max_slots = epoch_length - 3;
+        // See `on_initialize` for why there are 4 epoch designated
+        let max_slots = epoch_length - 4;
         // Max slots must always be > 2
 
         // Get currently assigned slots
@@ -64,10 +64,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn get_min_subnet_nodes(base_node_memory: u128, memory_mb: u128) -> u32 {
-        0
-    }
-
     pub fn get_target_subnet_nodes(min_subnet_nodes: u32) -> u32 {
         min_subnet_nodes
     }
@@ -79,74 +75,6 @@ impl<T: Config> Pallet<T> {
             .try_into()
             .unwrap_or(0)
     }
-
-    /// Calculates the current subnet registration fee based on a linear decay model.
-    ///
-    /// The registration cost starts at a maximum value (`MaxSubnetRegistrationFee`)
-    /// and linearly decreases to a minimum (`MinSubnetRegistrationFee`) over a fixed
-    /// interval of epochs (`SubnetRegistrationInterval`). After the interval expires,
-    /// the cost remains at the minimum fee.
-    ///
-    /// # Arguments
-    ///
-    /// * `current_epoch` - The current epoch at which registration is being attempted.
-    ///
-    /// # Returns
-    ///
-    /// * `u128` - The computed registration fee in token units.
-    ///
-    /// # Behavior
-    ///
-    /// - If no registration has ever occurred (`LastSubnetRegistrationEpoch == 0`),
-    ///   the cost starts from `MaxSubnetRegistrationFee`.
-    /// - The cost decreases linearly from max to min across the interval.
-    /// - If the `current_epoch` is past the interval, the minimum fee is returned.
-    // pub fn registration_cost(current_epoch: u32) -> u128 {
-    //     let last_registration_epoch = LastSubnetRegistrationEpoch::<T>::get();
-    //     let fee_min: u128 = MinSubnetRegistrationFee::<T>::get();
-    //     let fee_max: u128 = MaxSubnetRegistrationFee::<T>::get();
-    //     let period: u32 = SubnetRegistrationInterval::<T>::get();
-
-    //     // Determine the start of the current fee period
-    //     let start_epoch = if last_registration_epoch == 0 {
-    //         0
-    //     } else {
-    //         last_registration_epoch
-    //     };
-
-    //     let end_epoch = start_epoch + period;
-
-    //     // If current epoch is after end of the period, return min fee
-    //     if current_epoch >= end_epoch {
-    //         return fee_min;
-    //     }
-
-    //     // How far into the period we are
-    //     let cycle_epoch = current_epoch.saturating_sub(start_epoch);
-
-    //     // Decrease per epoch
-    //     let total_decrease = fee_max.saturating_sub(fee_min);
-    //     let decrease_per_epoch = total_decrease.saturating_div(period as u128);
-
-    //     // Linear decrease
-    //     let fee = fee_max.saturating_sub(decrease_per_epoch.saturating_mul(cycle_epoch as u128));
-
-    //     fee.max(fee_min)
-    // }
-
-    // Get the next registration epoch based on an epoch
-    // pub fn get_next_registration_epoch(current_epoch: u32) -> u32 {
-    //     let last_registration_epoch: u32 = LastSubnetRegistrationEpoch::<T>::get();
-    //     let interval: u32 = SubnetRegistrationInterval::<T>::get();
-
-    //     // If no registration has happened yet, return current_interval-aligned epoch
-    //     if last_registration_epoch == 0 {
-    //         return current_epoch - (current_epoch % interval);
-    //     }
-
-    //     // Otherwise, calculate next registration interval after last one
-    //     ((last_registration_epoch / interval) + 1) * interval
-    // }
 
     // Check if the subnet state is registered, and if it's in the registration period
     pub fn is_subnet_registering(subnet_id: u32, state: SubnetState, epoch: u32) -> bool {
@@ -174,7 +102,7 @@ impl<T: Config> Pallet<T> {
         }
 
         let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
-        let subnet_activation_enactment_epochs = SubnetActivationEnactmentEpochs::<T>::get();
+        let subnet_activation_enactment_epochs = SubnetEnactmentEpochs::<T>::get();
 
         if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
             let max_registration_epoch =
@@ -298,8 +226,11 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidSubnetId
         );
 
+        // Must be owner or have access
+        // The owner has the ability to set access so instead of requiring them to add to the list, we allow them to be the caller
         ensure!(
-            SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id),
+            Self::is_subnet_owner(&account_id, subnet_id).unwrap_or(false)
+                || SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id),
             Error::<T>::InvalidAccess
         );
 
@@ -332,19 +263,13 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn can_subnet_be_active(subnet_id: u32) -> (bool, Option<SubnetRemovalReason>) {
-        // if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
-        //   let min_epochs = MinSubnetRegistrationEpochs::<T>::get();
-        //   let min_registration_epoch = registered_epoch.saturating_add(min_epochs);
-        //   if min_registration_epoch < Self::get_current_epoch_as_u32() {
-        //     return (true, None)
-        //   }
-        // }
         let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
 
         if penalties > MaxSubnetPenaltyCount::<T>::get() {
             return (false, Some(SubnetRemovalReason::MaxPenalties));
         }
 
+        // In registration, this equals total electable nodes
         let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
 
         if total_nodes < MinSubnetNodes::<T>::get() {

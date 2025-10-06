@@ -214,7 +214,7 @@ fn test_register_subnet_node_v2_and_activate() {
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
         // Trigger the node activation
-        Network::emission_step_v2(
+        Network::emission_step(
             &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),
@@ -348,7 +348,7 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
         let _ = Network::handle_subnet_emission_weights(epoch);
 
         // Trigger the node activation
-        Network::emission_step_v2(
+        Network::emission_step(
             &mut WeightMeter::new(),
             System::block_number(),
             Network::get_current_epoch_as_u32(),

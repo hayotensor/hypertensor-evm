@@ -1,16 +1,14 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    Error, Event, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount,
-    MaxSubnetRemovalInterval, MaxSubnets, MinSubnetNodes, NewRegistrationCostMultiplier,
-    SubnetActivationEnactmentEpochs, SubnetConsensusSubmission, SubnetElectedValidator, SubnetName,
-    SubnetNodeClass, SubnetNodeIdHotkey, SubnetNodesData, SubnetPenaltyCount,
-    SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason, SubnetState,
-    SubnetsData, TotalActiveSubnetNodes, TotalActiveSubnets, TotalSubnetDelegateStakeBalance,
+    Event, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount, MaxSubnetRemovalInterval, MaxSubnets,
+    MinSubnetNodes, NewRegistrationCostMultiplier, SubnetEnactmentEpochs, SubnetName,
+    SubnetPenaltyCount, SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason,
+    SubnetState, SubnetsData, TotalActiveSubnetNodes, TotalSubnetDelegateStakeBalance,
 };
+use frame_support::assert_ok;
 use frame_support::traits::Currency;
 use frame_support::weights::WeightMeter;
-use frame_support::{assert_err, assert_ok};
 
 #[test]
 fn test_do_epoch_preliminaries_remove_expired_pause() {
@@ -328,7 +326,7 @@ fn test_do_epoch_preliminaries_remove_registered_min_nodes() {
         NewRegistrationCostMultiplier::<Test>::put(1000000000000000000);
 
         let subnet_registration_epochs = SubnetRegistrationEpochs::<Test>::get();
-        let subnet_enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
+        let subnet_enactment_epochs = SubnetEnactmentEpochs::<Test>::get();
 
         let deposit_amount: u128 = 1000000000000000000000;
         let amount: u128 = 100000000000000000000;
@@ -378,7 +376,7 @@ fn test_do_epoch_preliminaries_remove_past_enactment_phase() {
         NewRegistrationCostMultiplier::<Test>::put(1000000000000000000);
 
         let subnet_registration_epochs = SubnetRegistrationEpochs::<Test>::get();
-        let subnet_enactment_epochs = SubnetActivationEnactmentEpochs::<Test>::get();
+        let subnet_enactment_epochs = SubnetEnactmentEpochs::<Test>::get();
 
         let deposit_amount: u128 = 1000000000000000000000;
         let amount: u128 = 100000000000000000000;

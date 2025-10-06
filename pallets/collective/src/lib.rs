@@ -461,14 +461,13 @@ pub mod pallet {
         /// - `M` members-count (code-bounded)
         /// - `P` complexity of dispatching `proposal`
         #[pallet::call_index(1)]
-        // #[pallet::weight((
-        // 	T::WeightInfo::execute(
-        // 		*length_bound, // B
-        // 		T::MaxMembers::get(), // M
-        // 	).saturating_add(proposal.get_dispatch_info().call_weight), // P
-        // 	DispatchClass::Operational
-        // ))]
-        #[pallet::weight({0})]
+        #[pallet::weight((
+        	T::WeightInfo::execute(
+        		*length_bound, // B
+        		T::MaxMembers::get(), // M
+        	).saturating_add(proposal.get_dispatch_info().call_weight), // P
+        	DispatchClass::Operational
+        ))]
         pub fn execute(
             origin: OriginFor<T>,
             proposal: Box<<T as Config<I>>::Proposal>,
@@ -516,22 +515,21 @@ pub mod pallet {
         ///     - `P1` is proposal execution complexity (`threshold < 2`)
         ///     - `P2` is proposals-count (code-bounded) (`threshold >= 2`)
         #[pallet::call_index(2)]
-        // #[pallet::weight((
-        // 	if *threshold < 2 {
-        // 		T::WeightInfo::propose_execute(
-        // 			*length_bound, // B
-        // 			T::MaxMembers::get(), // M
-        // 		).saturating_add(proposal.get_dispatch_info().call_weight) // P1
-        // 	} else {
-        // 		T::WeightInfo::propose_proposed(
-        // 			*length_bound, // B
-        // 			T::MaxMembers::get(), // M
-        // 			T::MaxProposals::get(), // P2
-        // 		)
-        // 	},
-        // 	DispatchClass::Operational
-        // ))]
-        #[pallet::weight({0})]
+        #[pallet::weight((
+        	if *threshold < 2 {
+        		T::WeightInfo::propose_execute(
+        			*length_bound, // B
+        			T::MaxMembers::get(), // M
+        		).saturating_add(proposal.get_dispatch_info().call_weight) // P1
+        	} else {
+        		T::WeightInfo::propose_proposed(
+        			*length_bound, // B
+        			T::MaxMembers::get(), // M
+        			T::MaxProposals::get(), // P2
+        		)
+        	},
+        	DispatchClass::Operational
+        ))]
         pub fn propose(
             origin: OriginFor<T>,
             #[pallet::compact] threshold: MemberCount,

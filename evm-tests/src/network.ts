@@ -11,50 +11,6 @@ import { ApiPromise, Keyring } from "@polkadot/api";
 import { Contract, JsonRpcProvider } from "ethers";
 import { expect } from "chai";
 
-// force set balance for a ss58 address
-export async function forceSetBalanceToSs58Address(api: TypedApi<typeof dev>, ss58Address: string) {
-    let i: HexString = "0";
-    const alice = getAliceSigner()
-    const balance = BigInt(1000e18)
-    // const internalCall = api.tx.Balances.force_set_balance({ who: MultiAddress.Id(ss58Address), new_free: balance })
-    
-
-    const decoded = decodeAddress(ss58Address);
-
-    // 3. Truncate or hash it to 20 bytes for AccountId20
-    // ⚠️ Choose *only one* strategy, usually truncate
-    const accountId20 = decoded.slice(0, 20); // truncate to first 20 bytes
-    const hexAddress = u8aToHex(accountId20);
-
-    const address = '0xC0F0f4ab324C46e55D02D0033343B4Be8A55532d'.toLowerCase(); // important!
-    const who = hexToU8a(address)
-
-    console.log("who")
-
-    const internalCall = api.tx.Balances.force_set_balance({ who: 'c0f0f4ab324c46e55d02d0033343b4be8a55532d', new_free: balance })
-
-    console.log("internalCall.decodedCall", internalCall.decodedCall)
-
-    const tx = api.tx.Sudo.sudo({ call: internalCall.decodedCall })
-
-    await waitForTransactionCompletion(api, tx, alice)
-        .then(() => { })
-        .catch((error) => { console.log(`transaction error ${error}`) });
-
-    const balanceOnChain = (await api.query.System.Account.getValue("0xc0f0f4ab324c46e55d02d0033343b4be8a55532d")).data.free
-    console.log("forceSetBalanceToSs58Address balanceOnChain", balanceOnChain)
-    // check the balance except for sudo account becasue of tx fee
-    // if (ss58Address !== convertPublicKeyToSs58(alice.publicKey)) {
-    //     assert.equal(balance, balanceOnChain)
-    // }
-}
-
-// set balance for an eth address
-export async function forceSetBalanceToEthAddress(api: TypedApi<typeof dev>, ethAddress: string) {
-    const ss58Address = convertH160ToSS58(ethAddress)
-    await forceSetBalanceToSs58Address(api, ss58Address)
-}
-
 export async function transferBalanceFromSudo(
   api: ApiPromise,
   papiApi: TypedApi<typeof dev>,
@@ -73,7 +29,6 @@ export async function transferBalanceFromSudo(
     api.tx.balances
       .transferKeepAlive(who, balance)
       .signAndSend(sudoPair, async (result) => {
-        console.log(`Current status is ${result.status}`);
 
         if (result.status.isInBlock) {
           console.log(`Transaction included at blockHash ${result.status.asInBlock}`);
@@ -109,10 +64,9 @@ export async function transferBalanceFromSudoManual(
   api: ApiPromise,
   papiApi: TypedApi<typeof dev>,
   who: string,
-  balance: bigint
+  balance: bigint,
+  provider: JsonRpcProvider,
 ) {
-  console.log("transferBalanceFromSudoManual:", balance);
-
   const keyring = new Keyring({ type: 'ethereum' });
   const sudoPair: KeyringPair = keyring.addFromUri(
     "0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133"
@@ -145,8 +99,7 @@ export async function transferBalanceFromSudoManual(
 
   // Manually seal blocks until finalized
   while (!finalized) {
-    await finalizeBlock(api)
-    // await api.rpc.engine.createBlock(true, true); // include pending extrinsics
+    await createAndFinalizeBlock(provider)
     await new Promise((r) => setTimeout(r, 10));   // small delay to avoid tight loop
   }
 
@@ -255,7 +208,6 @@ export async function batchTransferBalanceFromSudoManual(
   // Manually seal blocks until finalized
   while (!finalized) {
     await createAndFinalizeBlock(provider)
-    // await api.rpc.engine.createBlock(true, true); // include pending extrinsics
     await new Promise((r) => setTimeout(r, 10)); // small delay
   }
 
@@ -348,9 +300,7 @@ export async function getCurrentRegistrationCost(
   api: ApiPromise,
 ) {
     const ethBlockNumber = await api.rpc.eth.blockNumber()
-    console.log("ethBlockNumber", ethBlockNumber)
     const substrateBlockNumber = await api.query.system.number();
-    console.log("substrateBlockNumber", substrateBlockNumber)
 
     const cost = await contract.getCurrentRegistrationCost(ethBlockNumber.toString());
 
@@ -1182,6 +1132,52 @@ export async function removeOverwatchStake(
   }
 }
 
+export async function commitOverwatchSubnetWeights(
+  contract: Contract, 
+  overwatchNodeId: string,
+  commits: any,
+  provider?: JsonRpcProvider,
+  manualSeal?: boolean,
+) {
+  const tx = await contract.commitOverwatchSubnetWeights(overwatchNodeId, commits);
+
+  if (manualSeal) {
+    let receipt = null;
+    while (!receipt) {
+      // Seal a new block
+      await createAndFinalizeBlock(provider!);
+
+      // Try to fetch the receipt
+      receipt = await provider!.getTransactionReceipt(tx.hash);
+    }
+  } else {
+    await tx.wait();
+  }
+}
+
+export async function revealOverwatchSubnetWeights(
+  contract: Contract, 
+  overwatchNodeId: string,
+  reveals: any,
+  provider?: JsonRpcProvider,
+  manualSeal?: boolean,
+) {
+  const tx = await contract.revealOverwatchSubnetWeights(overwatchNodeId, reveals);
+
+  if (manualSeal) {
+    let receipt = null;
+    while (!receipt) {
+      // Seal a new block
+      await createAndFinalizeBlock(provider!);
+
+      // Try to fetch the receipt
+      receipt = await provider!.getTransactionReceipt(tx.hash);
+    }
+  } else {
+    await tx.wait();
+  }
+}
+
 /**
  * Waits for the next finalized block and returns the finalized free balance for an account.
  * @param papiApi The polkadot-api instance
@@ -1232,38 +1228,6 @@ export async function advanceBlocks(api: ApiPromise, numBlocks: number): Promise
   console.log(`Advanced ${numBlocks} blocks. Current block: ${latestNumber}`);
 }
 
-
-export async function finalizeBlock(api: ApiPromise) {
-  const keyring = new Keyring({ type: 'ethereum' });
-  const sudoPair: KeyringPair = keyring.addFromUri("0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133");
-
-  // Get current timestamp
-  const currentTimestamp = Number((await api.query.timestamp.now()).toJSON());
-  console.log("currentTimestamp", currentTimestamp)
-
-  // Slot duration (usually 6000ms on dev chains)
-  const slotDuration = Number(api.consts.aura.slotDuration.toJSON());
-  console.log("slotDuration", slotDuration)
-
-  // Advance to next slot
-  const nextTimestamp = currentTimestamp + slotDuration;
-
-
-  // Set the timestamp for the next block
-  // await api.tx.timestamp
-  //   .set(currentTimestamp)
-  //   .signAndSend(sudoPair);
-  await api.tx.sudo
-    .sudo(api.tx.timestamp.set(nextTimestamp))
-    .signAndSend(sudoPair);
-
-  // await api.tx.balances.transferKeepAlive(sudoPair.address, "0")
-  //   .signAndSend(sudoPair);
-
-  // Seal block including pending extrinsics
-  await api.rpc.engine.createBlock(true, true);
-}
-
 export async function createAndFinalizeBlock(provider: JsonRpcProvider, finalize = true) {
   const request = {
     jsonrpc: "2.0",
@@ -1304,4 +1268,72 @@ export async function createAndFinalizeBlocks(provider: JsonRpcProvider, numBloc
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
   }
+}
+
+export async function calculateRevealBlock(
+  api: ApiPromise,
+  epoch: number
+): Promise<number> {
+  // Get configuration values from storage
+  const epochLength = Number(api.consts.network.epochLength.toString());
+  const multiplier = Number((await api.query.network.overwatchEpochLengthMultiplier()).toString());
+  const cutoffPercentage = Number((await api.query.network.overwatchCommitCutoffPercent()).toString());
+  
+  console.log('Configuration:');
+  console.log('  Epoch Length:', epochLength);
+  console.log('  Multiplier:', multiplier);
+  console.log('  Cutoff Percentage:', cutoffPercentage);
+  
+  // Calculate overwatch epoch length
+  const overwatchEpochLength = epochLength * multiplier;
+  
+  // Calculate block increase cutoff
+  // percent_mul formula: (value * percentage) / 10_000
+  const blockIncreaseCutoff = Math.floor(
+    (overwatchEpochLength * cutoffPercentage) / 1e18
+  );
+  
+  // Calculate target block number
+  const revealBlock = epoch * multiplier * epochLength + blockIncreaseCutoff;
+  
+  console.log('Calculations:');
+  console.log('  Overwatch Epoch Length:', overwatchEpochLength);
+  console.log('  Block Increase Cutoff:', blockIncreaseCutoff);
+  console.log('  Target Reveal Block:', revealBlock);
+  
+  return revealBlock;
+}
+
+// Advance to the reveal block for a given epoch
+export async function advanceToRevealBlock(
+  api: ApiPromise,
+  provider: JsonRpcProvider,
+  epoch: number
+): Promise<number> {
+  // Get current block number
+  const currentBlock = Number((await api.query.system.number()).toString());
+  console.log('Current block:', currentBlock);
+  
+  // Calculate target reveal block
+  const revealBlock = await calculateRevealBlock(api, epoch);
+  console.log('Target reveal block:', revealBlock);
+  
+  // Calculate how many blocks to advance
+  const blocksToAdvance = revealBlock - currentBlock;
+  
+  if (blocksToAdvance <= 0) {
+    console.log('Already at or past reveal block');
+    return currentBlock;
+  }
+  
+  console.log(`Advancing ${blocksToAdvance} blocks...`);
+  
+  // Advance blocks
+  await createAndFinalizeBlocks(provider, blocksToAdvance);
+  
+  // Verify we reached the target
+  const newBlock = Number((await api.query.system.number()).toString());
+  console.log('New block number:', newBlock);
+  
+  return newBlock;
 }

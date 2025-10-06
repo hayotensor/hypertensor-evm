@@ -10,7 +10,7 @@ use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
 use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_sha3fips::Sha3FIPS256;
 use pallet_evm_precompile_simple::{ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256};
-use sp_core::{H160, U256, crypto::ByteArray};
+use sp_core::{H160, H256, U256, crypto::ByteArray};
 use sp_runtime::traits::{Dispatchable, StaticLookup};
 
 use crate::balance::*;
@@ -27,7 +27,10 @@ pub struct FrontierPrecompiles<R>(PhantomData<R>);
 
 impl<R> Default for FrontierPrecompiles<R>
 where
-    R: frame_system::Config + pallet_evm::Config + pallet_balances::Config + pallet_network::Config,
+    R: frame_system::Config<Hash = H256>
+        + pallet_evm::Config
+        + pallet_balances::Config
+        + pallet_network::Config,
     R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
     <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
         + From<pallet_balances::Call<R>>
@@ -44,7 +47,10 @@ where
 
 impl<R> FrontierPrecompiles<R>
 where
-    R: frame_system::Config + pallet_evm::Config + pallet_balances::Config + pallet_network::Config,
+    R: frame_system::Config<Hash = H256>
+        + pallet_evm::Config
+        + pallet_balances::Config
+        + pallet_network::Config,
     R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
     <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
         + From<pallet_balances::Call<R>>
@@ -75,7 +81,10 @@ where
 }
 impl<R> PrecompileSet for FrontierPrecompiles<R>
 where
-    R: frame_system::Config + pallet_evm::Config + pallet_balances::Config + pallet_network::Config,
+    R: frame_system::Config<Hash = H256>
+        + pallet_evm::Config
+        + pallet_balances::Config
+        + pallet_network::Config,
     R::AccountId: From<[u8; 20]> + Into<[u8; 20]>,
     <R as frame_system::Config>::RuntimeCall: From<pallet_network::Call<R>>
         + From<pallet_balances::Call<R>>

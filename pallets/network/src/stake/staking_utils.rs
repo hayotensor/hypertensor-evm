@@ -21,72 +21,6 @@ impl<T: Config> Pallet<T> {
     /// Used to mint dead shares on first deposit
     pub const MIN_LIQUIDITY: u128 = 1000;
 
-    // pub fn add_balance_to_unbonding_ledger(
-    //     coldkey: &T::AccountId,
-    //     amount: u128,
-    //     cooldown_epoch_length: u32,
-    //     block: u32,
-    // ) -> DispatchResult {
-    //     let epoch = Self::get_current_epoch_as_u32();
-    //     let claim_epoch = cooldown_epoch_length.saturating_add(epoch);
-
-    //     let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
-
-    //     // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
-    //     if unbondings.len() as u32 == T::MaxUnbondings::get() {
-    //         Self::do_claim_unbondings(&coldkey);
-    //     }
-
-    //     // --- Get updated unbondings after claiming unbondings
-    //     let mut unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
-
-    //     // We're about to add another unbonding to the ledger - it must be n-1
-    //     ensure!(
-    //         unbondings.len() < T::MaxUnbondings::get() as usize,
-    //         Error::<T>::MaxUnlockingsReached
-    //     );
-
-    //     StakeUnbondingLedger::<T>::mutate(&coldkey, |ledger| {
-    //         ledger
-    //             .entry(claim_epoch)
-    //             .and_modify(|v| v.saturating_accrue(amount))
-    //             .or_insert(amount);
-    //     });
-
-    //     Ok(())
-    // }
-
-    // pub fn do_claim_unbondings(coldkey: &T::AccountId) -> u32 {
-    //     let epoch = Self::get_current_epoch_as_u32();
-    //     let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
-
-    //     let mut unbondings_copy = unbondings.clone();
-
-    //     let mut successful_unbondings = 0;
-
-    //     for (unbonding_epoch, amount) in unbondings.iter() {
-    //         if epoch < *unbonding_epoch {
-    //             continue;
-    //         }
-
-    //         let stake_to_be_added_as_currency = Self::u128_to_balance(*amount);
-    //         if !stake_to_be_added_as_currency.is_some() {
-    //             // Redundant
-    //             unbondings_copy.remove(&unbonding_epoch);
-    //             continue;
-    //         }
-
-    //         unbondings_copy.remove(&unbonding_epoch);
-    //         Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency.unwrap());
-    //         successful_unbondings += 1;
-    //     }
-
-    //     if unbondings.len() != unbondings_copy.len() {
-    //         StakeUnbondingLedger::<T>::insert(&coldkey, unbondings_copy);
-    //     }
-    //     successful_unbondings
-    // }
-
     pub fn add_balance_to_unbonding_ledger_v2(
         coldkey: &T::AccountId,
         amount: u128,
@@ -95,7 +29,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let claim_block = block.saturating_add(cooldown_blocks);
 
-        let unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+        let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
 
         // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
         // if unbondings.len() as u32 == T::MaxUnbondings::get() {
@@ -104,7 +38,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // --- Get updated unbondings after claiming unbondings
-        let mut unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+        let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
 
         // We're about to add another unbonding to the ledger - it must be n-1
         ensure!(
@@ -112,7 +46,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::MaxUnlockingsReached
         );
 
-        StakeUnbondingLedgerV2::<T>::mutate(&coldkey, |ledger| {
+        StakeUnbondingLedger::<T>::mutate(&coldkey, |ledger| {
             ledger
                 .entry(claim_block)
                 .and_modify(|v| v.saturating_accrue(amount))
@@ -124,7 +58,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn do_claim_unbondings_v2(coldkey: &T::AccountId) -> u32 {
         let block = Self::get_current_block_as_u32();
-        let unbondings = StakeUnbondingLedgerV2::<T>::get(&coldkey);
+        let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
 
         let mut unbondings_copy = unbondings.clone();
 
@@ -148,7 +82,7 @@ impl<T: Config> Pallet<T> {
         }
 
         if unbondings.len() != unbondings_copy.len() {
-            StakeUnbondingLedgerV2::<T>::insert(&coldkey, unbondings_copy);
+            StakeUnbondingLedger::<T>::insert(&coldkey, unbondings_copy);
         }
         successful_unbondings
     }
@@ -271,7 +205,7 @@ impl<T: Config> Pallet<T> {
             balance,
         };
 
-        let id = NextSwapId::<T>::get();
+        let id = NextSwapQueueId::<T>::get();
 
         let queued_item = QueuedSwapItem {
             id,
@@ -288,7 +222,7 @@ impl<T: Config> Pallet<T> {
             let _ = queue.try_push(id); // Handle error if queue is full
         });
 
-        NextSwapId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
+        NextSwapQueueId::<T>::mutate(|next_id| *next_id = next_id.saturating_add(1));
 
         // Self::deposit_event(Event::SwapCallQueued { id, who });
 

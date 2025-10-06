@@ -1,22 +1,17 @@
 import { getDevnetApi } from "../src/substrate"
 import { dev } from "@polkadot-api/descriptors"
-import { PolkadotSigner, TypedApi } from "polkadot-api";
+import { TypedApi } from "polkadot-api";
 import { ethers } from "ethers"
 import { generateRandomEd25519PeerId, generateRandomEthersWallet, generateRandomString, getPublicClient, OVERWATCH_NODE_CONTRACT_ABI, OVERWATCH_NODE_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS } from "../src/utils"
 import {
-    advanceBlocks,
     anyoneRemoveOverwatchNode,
-    batchTransferBalanceFromSudo,
     batchTransferBalanceFromSudoManual,
     createAndFinalizeBlock,
     createAndFinalizeBlocks,
-    finalizeBlock,
     getCurrentRegistrationCost,
-    registerOrUpdateIdentity,
     registerOverwatchNode,
     registerSubnet,
     registerSubnetNode,
-    removeIdentity,
     removeOverwatchNode,
     setOverwatchNodePeerId,
 } from "../src/network"
@@ -270,14 +265,14 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
 
         hotkeyOverwatchNodeId = await api.query.network.hotkeyOverwatchNodeId(wallet5.address);
         hotkeyOverwatchNodeIdOpt = hotkeyOverwatchNodeId as Option<any>;
-        expect(hotkeyOverwatchNodeIdOpt.isSome == false);
+        expect(hotkeyOverwatchNodeIdOpt.isSome).to.equal(false);
 
         console.log("✅ Remove overwatch node testing complete")
     })
 
     // Status: pending
-    // npm test -- -g "testing remove overwatch-0xgggggggunit69"
-    it("testing anyone remove overwatch-0xgggggggunit69", async () => {
+    // npm test -- -g "testing anyone remove overwatch-0xgsssssgunit69"
+    it("testing anyone remove overwatch-0xgsssssgunit69", async () => {
         let overwatch_epochs = await api.query.network.overwatchEpochLengthMultiplier();
 
         await createAndFinalizeBlocks(ethersProvider, Number(overwatch_epochs.toString()) * 300)
@@ -312,7 +307,7 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
 
         hotkeyOverwatchNodeId = await api.query.network.hotkeyOverwatchNodeId(wallet5.address);
         hotkeyOverwatchNodeIdOpt = hotkeyOverwatchNodeId as Option<any>;
-        expect(hotkeyOverwatchNodeIdOpt.isSome == false);
+        expect(hotkeyOverwatchNodeIdOpt.isSome).to.equal(false);
 
         console.log("✅ Registering overwatch node testing complete")
     })

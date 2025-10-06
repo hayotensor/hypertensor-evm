@@ -16,6 +16,13 @@
 // limitations under the License.
 // https://docs.rs/crate/pallet-collective/37.0.0/source
 //! Staking pallet benchmarking.
+//! Benchmarking setup for pallet-network
+// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_network" --output pallets/network/src/weights.rs --template ./.maintain/frame-weight-template.hbs
+
+// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_network"
+
+// cargo build --release --features runtime-benchmarks
+// cargo test --release --features runtime-benchmarks
 
 use super::*;
 use crate::Pallet as Collective;

@@ -30,71 +30,8 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn get_random_number(seed: u32, total: u32) -> u32 {
-        let mut random_number = Self::generate_random_number(seed);
+        let random_number = Self::generate_random_number(seed);
         random_number % total
-    }
-
-    // pub fn choose_ticket(total: u32, seed: u32) -> Option<u32> {
-    // 	if total == 0 {
-    // 		return None
-    // 	}
-    // 	let mut random_number = Self::generate_random_number(0);
-
-    // 	// Best effort attempt to remove bias from modulus operator.
-    // 	for i in 1..T::MaxGenerateRandom::get() {
-    // 		if random_number < u32::MAX - u32::MAX % total {
-    // 			break
-    // 		}
-
-    // 		random_number = Self::generate_random_number(i);
-    // 	}
-
-    // 	Some(random_number % total)
-    // }
-
-    // pub fn get_random_number(seed: u32) -> u32 {
-    //     let mut random_number = Self::generate_random_number(seed);
-
-    //     // Best effort attempt to remove bias from modulus operator.
-    //     let mut i = 1;
-    //     let mut found = false;
-    //     while !found {
-    //         if random_number < u32::MAX {
-    //             found = true;
-    //             break;
-    //         }
-
-    //         random_number = Self::generate_random_number(i);
-
-    //         i += 1;
-    //     }
-
-    //     random_number
-    // }
-
-    // If using len() for `max`, avoid overflow by `-1`
-    pub fn get_random_number_with_max(mut max: u32, seed: u32) -> u32 {
-        if max == 0 {
-            return 0;
-        }
-
-        let mut random_number = Self::generate_random_number(seed);
-
-        // Best effort attempt to remove bias from modulus operator.
-        let mut i = 1;
-        let mut found = false;
-        while true {
-            if random_number < u32::MAX - u32::MAX % max {
-                found = true;
-                break;
-            }
-
-            random_number = Self::generate_random_number(i);
-
-            i += 1;
-        }
-
-        random_number % max
     }
 
     /// Generate a random number from a given seed.

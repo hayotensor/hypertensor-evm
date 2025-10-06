@@ -7,8 +7,8 @@ use crate::{
     OverwatchReveals, SlotAssignment, SubnetConsensusSubmission, SubnetElectedValidator,
     SubnetName, SubnetPenaltyCount, TotalSubnetDelegateStakeBalance,
 };
+use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
-use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
 //

@@ -1,8 +1,6 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
-use crate::{
-    Error, MaxSubnetRegistrationFee, MinSubnetRegistrationFee, SubnetRegistrationInterval,
-};
+use crate::Error;
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
 

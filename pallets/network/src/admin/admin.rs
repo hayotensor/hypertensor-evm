@@ -29,14 +29,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_proposal_min_subnet_nodes(value: u32) -> DispatchResult {
-        ProposalMinSubnetNodes::<T>::put(value);
-
-        Self::deposit_event(Event::SetProposalMinSubnetNodes(value));
-
-        Ok(())
-    }
-
     pub fn do_set_subnet_owner_percentage(value: u128) -> DispatchResult {
         ensure!(
             value <= Self::percentage_factor_as_u128(),
@@ -103,29 +95,21 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_min_subnet_registration_fee(value: u128) -> DispatchResult {
-        MinSubnetRegistrationFee::<T>::set(value);
+    // pub fn do_set_min_subnet_registration_fee(value: u128) -> DispatchResult {
+    //     MinSubnetRegistrationFee::<T>::set(value);
 
-        Self::deposit_event(Event::SetMinSubnetRegistrationFee(value));
+    //     Self::deposit_event(Event::SetMinSubnetRegistrationFee(value));
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    pub fn do_set_max_subnet_registration_fee(value: u128) -> DispatchResult {
-        MaxSubnetRegistrationFee::<T>::set(value);
+    // pub fn do_set_max_subnet_registration_fee(value: u128) -> DispatchResult {
+    //     MaxSubnetRegistrationFee::<T>::set(value);
 
-        Self::deposit_event(Event::SetMaxSubnetRegistrationFee(value));
+    //     Self::deposit_event(Event::SetMaxSubnetRegistrationFee(value));
 
-        Ok(())
-    }
-
-    pub fn do_set_subnet_registration_interval(value: u32) -> DispatchResult {
-        SubnetRegistrationInterval::<T>::set(value);
-
-        Self::deposit_event(Event::SetSubnetRegistrationInterval(value));
-
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn do_set_min_registration_cost(value: u128) -> DispatchResult {
         MinRegistrationCost::<T>::set(value);
@@ -232,9 +216,9 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_subnet_activation_enactment_epochs(value: u32) -> DispatchResult {
-        SubnetActivationEnactmentEpochs::<T>::set(value);
+        SubnetEnactmentEpochs::<T>::set(value);
 
-        Self::deposit_event(Event::SetSubnetActivationEnactmentEpochs(value));
+        Self::deposit_event(Event::SetSubnetEnactmentEpochs(value));
 
         Ok(())
     }
@@ -356,6 +340,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_min_attestation_percentage(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         MinAttestationPercentage::<T>::set(value);
 
         Self::deposit_event(Event::SetMinAttestationPercentage(value));
@@ -363,15 +352,11 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_min_vast_majority_attestation_percentage(value: u128) -> DispatchResult {
-        MinVastMajorityAttestationPercentage::<T>::set(value);
-
-        Self::deposit_event(Event::SetMinVastMajorityAttestationPercentage(value));
-
-        Ok(())
-    }
-
     pub fn do_set_super_majority_attestation_ratio(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
         SuperMajorityAttestationRatio::<T>::set(value);
 
         Self::deposit_event(Event::SetSuperMajorityAttestationRatio(value));
@@ -404,6 +389,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_reputation_increase_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         ReputationIncreaseFactor::<T>::set(value);
 
         Self::deposit_event(Event::SetReputationIncreaseFactor(value));
@@ -412,6 +402,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_reputation_decrease_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         ReputationDecreaseFactor::<T>::set(value);
 
         Self::deposit_event(Event::SetReputationDecreaseFactor(value));
@@ -619,7 +614,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_collective_remove_subnet(subnet_id: u32) -> DispatchResultWithPostInfo {
-        let weight = Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::Council);
+        let weight = Self::do_remove_subnet(subnet_id, SubnetRemovalReason::Council);
         Ok(Some(weight).into())
     }
 

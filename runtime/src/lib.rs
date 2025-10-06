@@ -171,8 +171,8 @@ pub const DAYS: BlockNumber = HOURS * 24;
 pub const YEAR: BlockNumber = DAYS * 365; // 5256000
 
 // Blocks per epoch
-pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
-                                       // pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
+// pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet
+pub const BLOCKS_PER_EPOCH: u32 = 20; // Local
 pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
 pub const TENSOR: u128 = 1_000_000_000_000_000_000; // 1e18
@@ -650,17 +650,6 @@ parameter_types! {
     pub const AuthorBlockEmissions: u128 = AUTHOR_BLOCK_EMISSIONS;
 }
 
-// pub struct AuraAccountAdapter;
-// impl frame_support::traits::FindAuthor<AccountId> for AuraAccountAdapter {
-// 	fn find_author<'a, I>(digests: I) -> Option<AccountId>
-// 		where I: 'a + IntoIterator<Item=(frame_support::ConsensusEngineId, &'a [u8])>
-// 	{
-// 		pallet_aura::AuraAuthorId::<Runtime>::find_author(digests).and_then(|k| {
-// 			AccountId::try_from(k.as_ref()).ok()
-// 		})
-// 	}
-// }
-
 impl pallet_author_subsidy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
@@ -675,7 +664,6 @@ parameter_types! {
     pub const EpochLength: u32 = BLOCKS_PER_EPOCH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
-    pub const MinProposalStake: u128 = 1_000_000_000_000_000_000; // 1 * 1e18
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
         BlockWeights::get().max_block;
@@ -691,11 +679,9 @@ impl pallet_network::Config for Runtime {
         pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 4, 5>;
     type EpochLength = EpochLength;
     type EpochsPerYear = EpochsPerYear;
-    type StringLimit = ConstU32<12288>;
     type InitialTxRateLimit = InitialTxRateLimit;
     type PalletId = NetworkPalletId;
     type Randomness = InsecureRandomnessCollectiveFlip;
-    type MinProposalStake = MinProposalStake;
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;
@@ -1493,6 +1479,10 @@ impl_runtime_apis! {
         }
         fn get_overwatch_reveals_for_epoch_and_node(epoch: u32, overwatch_node_id: u32) -> Vec<u8> {
             let result = Network::get_overwatch_reveals_for_epoch_and_node(epoch, overwatch_node_id);
+            result.encode()
+        }
+        fn get_elected_validator_info(subnet_id: u32, subnet_epoch: u32) -> Vec<u8> {
+            let result = Network::get_elected_validator_info(subnet_id, subnet_epoch);
             result.encode()
         }
     }

@@ -17,18 +17,15 @@ use super::*;
 
 impl<T: Config> Pallet<T> {
     /// The minimum delegate stake balance for a subnet to stay live
-    // pub fn get_min_subnet_delegate_stake_balance() -> u128 {
-    //     let total_network_issuance = Self::get_total_network_issuance();
-    //     let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
-    //     Self::percent_mul(total_network_issuance, factor)
-    // }
-
     /// Get total required subnet nodes based on total nodes
+    ///
+    /// We use electable node count to ensure users can spam registered
+    /// node slots or spam active node slots without being in-consensus
+    /// to being an actual node
     pub fn get_min_subnet_delegate_stake_balance_v2(subnet_id: u32) -> u128 {
         let total_network_issuance = Self::get_total_network_issuance();
-        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
+        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get(); // 0.1%
         let base_min = Self::percent_mul(total_network_issuance, factor);
-        // base_min
 
         let electable_node_count = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
         let multiplier = Self::get_subnet_min_delegate_staking_multiplier(electable_node_count);
@@ -36,7 +33,20 @@ impl<T: Config> Pallet<T> {
         Self::percent_mul(base_min, multiplier)
     }
 
-    /// Get the subnets minimum delegate stake multipler based on the current electable nodes count
+    /// Get the subnet's minimum delegate stake multiplier based on the current electable nodes count.
+    ///
+    /// Returns a multiplier that scales linearly between:
+    /// - `min_multiplier` (100%) when `electable_node_count <= MinSubnetNodes`
+    /// - `max_multiplier` (MaxMinDelegateStakeMultiplier) when `electable_node_count >= MaxSubnetNodes`
+    ///
+    /// For counts between min and max nodes, the multiplier is interpolated proportionally.
+    ///
+    /// # Example
+    /// If MinSubnetNodes = 10, MaxSubnetNodes = 100, and MaxMinDelegateStakeMultiplier = 500%:
+    /// - At 10 nodes: returns 100%
+    /// - At 55 nodes (midpoint): returns ~300%
+    /// - At 100+ nodes: returns 500%
+    /// The return value is then applied to the base minimum delegate stake balance
     pub fn get_subnet_min_delegate_staking_multiplier(electable_node_count: u32) -> u128 {
         let min_nodes = MinSubnetNodes::<T>::get();
         let max_nodes = MaxSubnetNodes::<T>::get();
@@ -56,11 +66,5 @@ impl<T: Config> Pallet<T> {
         let delta = max_multiplier.saturating_sub(min_multiplier);
 
         min_multiplier.saturating_add(Self::percent_mul(ratio, delta))
-    }
-
-    pub fn get_estimated_min_subnet_delegate_stake_balance(epoch: u32) -> u128 {
-        let total_network_issuance = Self::get_total_network_issuance();
-        let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
-        Self::percent_mul(total_network_issuance, factor)
     }
 }

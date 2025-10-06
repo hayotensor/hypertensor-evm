@@ -97,14 +97,7 @@ impl<T: Config> Pallet<T> {
         Self::decrease_account_overwatch_stake(&hotkey, stake_to_be_removed);
 
         // --- 9. We add the balancer to the coldkey.  If the above fails we will not credit this coldkey.
-        // Self::add_balance_to_unbonding_ledger(
-        //   &coldkey,
-        //   stake_to_be_removed,
-        //   StakeCooldownEpochs::<T>::get(),
-        //   block
-        // ).map_err(|e| e)?;
-
-        let result = Self::add_balance_to_unbonding_ledger_v2(
+        Self::add_balance_to_unbonding_ledger_v2(
             &coldkey,
             stake_to_be_removed,
             StakeCooldownEpochs::<T>::get() * T::EpochLength::get(),

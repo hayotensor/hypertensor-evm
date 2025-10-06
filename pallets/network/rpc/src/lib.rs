@@ -13,7 +13,6 @@ use sp_api::ProvideRuntimeApi;
 use fp_account::AccountId20;
 use frame_support::storage::bounded_vec::BoundedVec;
 pub use network_custom_rpc_runtime_api::NetworkRuntimeApi;
-use pallet_network::{DefaultMaxVectorLength, SubnetNodeClass};
 
 #[rpc(client, server)]
 pub trait NetworkCustomApi<BlockHash> {
@@ -75,6 +74,13 @@ pub trait NetworkCustomApi<BlockHash> {
         &self,
         epoch: u32,
         overwatch_node_id: u32,
+        at: Option<BlockHash>,
+    ) -> RpcResult<Vec<u8>>;
+    #[method(name = "network_getElectedValidatorInfo")]
+    fn get_elected_validator_info(
+        &self,
+        subnet_id: u32,
+        subnet_epoch: u32,
         at: Option<BlockHash>,
     ) -> RpcResult<Vec<u8>>;
 }
@@ -284,6 +290,20 @@ where
         api.get_overwatch_reveals_for_epoch_and_node(at, epoch, overwatch_node_id)
             .map_err(|e| {
                 Error::RuntimeError(format!("Unable to get overwatch node reveals: {:?}", e)).into()
+            })
+    }
+
+    fn get_elected_validator_info(
+        &self,
+        subnet_id: u32,
+        subnet_epoch: u32,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> RpcResult<Vec<u8>> {
+        let api = self.client.runtime_api();
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_elected_validator_info(at, subnet_id, subnet_epoch)
+            .map_err(|e| {
+                Error::RuntimeError(format!("Unable to get elected validator info: {:?}", e)).into()
             })
     }
 }

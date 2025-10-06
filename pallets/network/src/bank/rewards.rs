@@ -345,7 +345,7 @@ impl<T: Config> Pallet<T> {
         min_attestation_percentage: u128,
         reputation_increase_factor: u128,
         reputation_decrease_factor: u128,
-        min_vast_majority_attestation_percentage: u128,
+        super_majority_threshold: u128,
     ) {
         let db_weight = T::DbWeight::get();
 
@@ -353,8 +353,7 @@ impl<T: Config> Pallet<T> {
         let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
         let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
         let score_threshold = SubnetNodeScorePenaltyThreshold::<T>::get(subnet_id);
-        let super_majority_threshold = SuperMajorityAttestationRatio::<T>::get();
-        weight_meter.consume(db_weight.reads(5));
+        weight_meter.consume(db_weight.reads(4));
 
         // --- If under minimum attestation ratio, penalize validator, skip rewards
         if consensus_submission_data.attestation_ratio < min_attestation_percentage {
@@ -371,7 +370,7 @@ impl<T: Config> Pallet<T> {
                 reputation_decrease_factor,
                 current_epoch,
             );
-            // weight_meter.consume.saturating_add(T::WeightInfo::slash_validator());
+            weight_meter.consume(T::WeightInfo::slash_validator());
 
             SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
             // SubnetNodePenalties
@@ -394,18 +393,19 @@ impl<T: Config> Pallet<T> {
                 {
                     let node = queue.remove(index); // Remove from current position
                     queue.insert(0, node); // Insert at front (index 0)
-                    SubnetNodeQueue::<T>::insert(subnet_id, queue); // Update storage SubnetNodeQueue
+                    SubnetNodeQueue::<T>::insert(subnet_id, &queue); // Update storage SubnetNodeQueue
                     weight_meter.consume(db_weight.writes(1));
                 }
             }
         }
 
         if consensus_submission_data.attestation_ratio >= super_majority_threshold {
+            let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
+
             // Handle prioritize node - move to front
             if let Some(prioritize_queue_node_id) =
                 consensus_submission_data.prioritize_queue_node_id
             {
-                let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
                 weight_meter.consume(db_weight.reads(1));
 
                 if let Some(index) = queue
@@ -421,7 +421,7 @@ impl<T: Config> Pallet<T> {
                         0,
                     ));
 
-                    SubnetNodeQueue::<T>::insert(subnet_id, queue);
+                    SubnetNodeQueue::<T>::insert(subnet_id, &queue);
                     weight_meter.consume(db_weight.writes(1));
 
                     Self::deposit_event(Event::QueuedNodePrioritized {
@@ -435,17 +435,18 @@ impl<T: Config> Pallet<T> {
             // These are not yet activated nodes so this does not impact the emissions distribution
             if let Some(remove_queue_node_id) = consensus_submission_data.remove_queue_node_id {
                 // `perform_remove_subnet_node` handles SubnetNodeQueue retain
-                // if !weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32)) {
-                //     Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-                //     weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32));
+                if weight_meter
+                    .can_consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32))
+                {
+                    Self::perform_remove_subnet_node(subnet_id, remove_queue_node_id);
+                    weight_meter
+                        .consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32));
 
-                //     Self::deposit_event(Event::QueuedNodeRemoved {
-                //         subnet_id,
-                //         subnet_node_id: remove_queue_node_id,
-                //     });
-                // }
-
-                Self::perform_remove_subnet_node(subnet_id, remove_queue_node_id);
+                    Self::deposit_event(Event::QueuedNodeRemoved {
+                        subnet_id,
+                        subnet_node_id: remove_queue_node_id,
+                    });
+                }
 
                 Self::deposit_event(Event::QueuedNodeRemoved {
                     subnet_id,
@@ -458,6 +459,13 @@ impl<T: Config> Pallet<T> {
         // --- We are now in consensus
         //
 
+        let current_penalties_count = SubnetPenaltyCount::<T>::get(subnet_id);
+        weight_meter.consume(db_weight.reads(1));
+        if current_penalties_count > 0 {
+            SubnetPenaltyCount::<T>::insert(subnet_id, current_penalties_count.saturating_sub(1));
+            weight_meter.consume(db_weight.writes(1));
+        }
+
         // --- Reward owner
         match SubnetOwner::<T>::try_get(subnet_id) {
             Ok(coldkey) => {
@@ -468,7 +476,7 @@ impl<T: Config> Pallet<T> {
                         &coldkey,
                         subnet_owner_reward_as_currency.unwrap(),
                     );
-                    // weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
+                    weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
                 }
             }
             Err(()) => (),
@@ -496,12 +504,12 @@ impl<T: Config> Pallet<T> {
 
             if penalties > max_subnet_node_penalties {
                 // Remove node if they haven't already
-                // if !weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node()) {
-                //     Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-                //     weight_meter.consume(T::WeightInfo::perform_remove_subnet_node());
-                // }
+                // Note: We used 0u32 because the node is not in the queue
+                if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
+                    Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
+                    weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
+                }
 
-                Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
                 continue;
             }
 
@@ -512,7 +520,7 @@ impl<T: Config> Pallet<T> {
                 if subnet_node.classification.start_epoch + idle_epochs < current_subnet_epoch {
                     // Increase class if they exist
                     Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch);
-                    // weight_meter.consume(T::WeightInfo::graduate_class());
+                    weight_meter.consume(T::WeightInfo::graduate_class());
                 }
                 continue;
             }
@@ -528,9 +536,12 @@ impl<T: Config> Pallet<T> {
 
             if subnet_node_data_find.is_none() {
                 // Not included in consensus, increase
-                SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+                _penalties += 1;
+                SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
+                weight_meter.consume(db_weight.writes(1));
+                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
                 // SubnetNodePenalties
-                weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
+                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
 
                 // Break count of consecutive epochs of being included in in-consensus data
                 if subnet_node.classification.node_class == SubnetNodeClass::Included {
@@ -543,11 +554,15 @@ impl<T: Config> Pallet<T> {
                 // Is in consensus data, decrease
                 // If the validator submits themselves in the data and passes consensus, this also
                 // decreases the validators penalties
-                SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-                    n.saturating_dec()
-                });
-                // SubnetNodePenalties
-                weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
+                _penalties = _penalties.saturating_sub(1);
+                SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
+                weight_meter.consume(db_weight.writes(1));
+
+                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
+                //     n.saturating_dec()
+                // });
+                // // SubnetNodePenalties
+                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
             }
 
             //
@@ -565,10 +580,13 @@ impl<T: Config> Pallet<T> {
             // We don't automatically increase penalties if a node is at ZERO
             // Zero should represent they are not in the subnet
             if score_ratio < score_threshold {
-                SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-                // SubnetNodePenalties
-                weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
                 _penalties += 1;
+                SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
+                weight_meter.consume(db_weight.writes(1));
+
+                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+                // // SubnetNodePenalties
+                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
             }
 
             if subnet_node.classification.node_class == SubnetNodeClass::Included {
@@ -592,7 +610,7 @@ impl<T: Config> Pallet<T> {
                     if Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch) {
                         // --- Insert into election slot
                         Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
-                        // weight_meter.consume(T::WeightInfo::insert_node_into_election_slot());
+                        weight_meter.consume(T::WeightInfo::insert_node_into_election_slot());
 
                         // reset
                         SubnetNodeConsecutiveIncludedEpochs::<T>::remove(subnet_id, subnet_node.id);
@@ -616,24 +634,27 @@ impl<T: Config> Pallet<T> {
                     .get(&subnet_node.id)
                     .is_none()
                 {
-                    SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-                        *n += 1
-                    });
-                    // SubnetNodePenalties
-                    weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
                     _penalties += 1;
+                    SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
+                    weight_meter.consume(db_weight.writes(1));
+
+                    // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
+                    //     *n += 1
+                    // });
+                    // // SubnetNodePenalties
+                    // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
+                    // _penalties += 1;
                 }
                 // Node is in consensus (even though not attester), so we don't skip rewards for them
             }
 
             if _penalties > max_subnet_node_penalties {
                 // Remove node if they haven't already
-                // if !weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node()) {
-                //     Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-                //     weight_meter.consume(T::WeightInfo::perform_remove_subnet_node());
-                // }
+                if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
+                    Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
+                    weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
+                }
 
-                Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
                 continue;
             }
 
@@ -661,7 +682,7 @@ impl<T: Config> Pallet<T> {
                             reputation_increase_factor,
                             current_epoch,
                         );
-                        // weight_meter.consume(T::WeightInfo::increase_coldkey_reputation());
+                        weight_meter.consume(T::WeightInfo::increase_coldkey_reputation());
                     }
                     Err(()) => (),
                 };
@@ -690,10 +711,10 @@ impl<T: Config> Pallet<T> {
                         subnet_node.id,
                         node_delegate_reward,
                     );
-                    // reads
+                    // reads:
                     // NodeDelegateStakeBalance | TotalNodeDelegateStakeShares
                     //
-                    // writes
+                    // writes:
                     // TotalNodeDelegateStakeShares | NodeDelegateStakeBalance | TotalNodeDelegateStake
                     weight_meter.consume(db_weight.reads(5) + db_weight.writes(3));
 
@@ -705,7 +726,6 @@ impl<T: Config> Pallet<T> {
             Self::increase_account_stake(&subnet_node.hotkey, subnet_id, account_reward);
             // AccountSubnetStake | TotalSubnetStake | TotalStake
             weight_meter.consume(db_weight.writes(3) + db_weight.reads(3));
-            // weight_meter.consume(T::WeightInfo::increase_account_stake());
 
             node_rewards.push((subnet_node.id, account_reward));
         }
@@ -713,21 +733,20 @@ impl<T: Config> Pallet<T> {
         // --- Increase the delegate stake pool balance
         if rewards_data.delegate_stake_rewards != 0 {
             Self::do_increase_delegate_stake(subnet_id, rewards_data.delegate_stake_rewards);
-            // reads:
+            // reads::
             // TotalSubnetDelegateStakeShares | TotalSubnetDelegateStakeBalance | TotalDelegateStake
             //
-            // writes:
+            // writes::
             // TotalSubnetDelegateStakeBalance | | TotalSubnetDelegateStakeShares|
             // TotalSubnetDelegateStakeShares| TotalSubnetDelegateStakeBalance| TotalDelegateStake
             weight_meter.consume(db_weight.writes(3) + db_weight.reads(5));
-            // weight_meter.consume(T::WeightInfo::do_increase_delegate_stake());
         }
 
         Self::deposit_event(Event::SubnetRewards {
             subnet_id,
             node_rewards,
             delegate_stake_reward: rewards_data.delegate_stake_rewards,
-            node_delegate_stake_rewards
+            node_delegate_stake_rewards,
         });
     }
 }

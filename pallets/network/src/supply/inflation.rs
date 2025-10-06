@@ -206,7 +206,7 @@ impl<T: Config> Pallet<T> {
 
         (
             (total_issuance * validator_epoch_rate) as u128,
-            (total_issuance * validator_epoch_rate) as u128,
+            (total_issuance * foundation_epoch_rate) as u128,
         )
     }
 }

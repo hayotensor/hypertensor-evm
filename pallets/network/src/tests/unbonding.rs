@@ -3,7 +3,7 @@
 // use crate::{
 //     AccountSubnetStake, Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets,
 //     NetworkMinStakeBalance, RegisteredSubnetNodesData,
-//     StakeUnbondingLedgerV2, SubnetName, TotalActiveSubnets, TotalSubnetNodes,
+//     StakeUnbondingLedger, SubnetName, TotalActiveSubnets, TotalSubnetNodes,
 //     MaxUnbondings, StakeCooldownEpochs
 // };
 // use frame_support::traits::Currency;
@@ -100,7 +100,7 @@
 //         let epoch = System::block_number() / epoch_length;
 //         let block = System::block_number();
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         assert_eq!(unbondings.len(), 1);
 //         let (first_key, first_value) = unbondings.iter().next().unwrap();
 //         assert_eq!(
@@ -124,7 +124,7 @@
 //         assert_eq!(post_balance, starting_balance);
 
 //         // Check ledger removed the unbonding
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         assert_eq!(unbondings.len(), 0);
 //     });
 // }
@@ -218,7 +218,7 @@
 //         let epoch = System::block_number() / epoch_length;
 //         let block = System::block_number();
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         assert_eq!(unbondings.len(), 1);
 //         let (first_key, first_value) = unbondings.iter().next().unwrap();
 //         assert_eq!(
@@ -240,7 +240,7 @@
 //         let post_balance = Balances::free_balance(&coldkey.clone());
 //         assert_eq!(post_balance, starting_balance);
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         assert_eq!(unbondings.len(), 0);
 //     });
 // }
@@ -322,7 +322,7 @@
 //             stake_amount,
 //         ));
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         let ledger_balance: u128 = unbondings.values().copied().sum();
 //         assert_eq!(unbondings.len() as u32, 1);
 //         assert_eq!(ledger_balance, stake_amount);
@@ -339,7 +339,7 @@
 //             stake_amount,
 //         ));
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         let ledger_balance: u128 = unbondings.values().copied().sum();
 //         assert_eq!(unbondings.len() as u32, 1);
 //         assert_eq!(ledger_balance, stake_amount * 2);
@@ -361,7 +361,7 @@
 //             stake_amount,
 //         ));
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         let total_ledger_balance: u128 = unbondings.values().copied().sum();
 //         assert_eq!(unbondings.len() as u32, 2);
 //         assert_eq!(total_ledger_balance, stake_amount * 3);
@@ -385,7 +385,7 @@
 //         let ending_balance = Balances::free_balance(&coldkey.clone());
 //         assert_eq!(starting_balance + total_ledger_balance, ending_balance);
 
-//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//         let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //         assert_eq!(unbondings.len(), 0);
 //     });
 // }
@@ -536,7 +536,7 @@
 //                 ));
 
 //                 let unbondings: BTreeMap<u32, u128> =
-//                     StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+//                     StakeUnbondingLedger::<Test>::get(coldkey.clone());
 //                 assert_eq!(unbondings.len() as u32, _n);
 //             }
 //         }

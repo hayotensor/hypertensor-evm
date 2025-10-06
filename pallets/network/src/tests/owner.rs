@@ -2,25 +2,21 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    ChurnLimit, DefaultMaxVectorLength, Error, HotkeyOwner, HotkeySubnetNodeId,
-    IdleClassificationEpochs, IncludedClassificationEpochs, KeyType,
-    LastSubnetDelegateStakeRewardsUpdate, MaxDelegateStakePercentage, MaxIdleClassificationEpochs,
-    MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties,
-    MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess,
-    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMaxStake, MaxSubnetMinStake,
-    MaxSubnetNodePenalties, MaxSubnetNodes, MaxSubnets, MinDelegateStakePercentage,
-    MinIdleClassificationEpochs, MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
-    MinMaxSubnetNodePenalties, MinQueueEpochs, MinSubnetMaxStake, MinSubnetMinStake,
+    ChurnLimit, DefaultMaxVectorLength, Error, HotkeySubnetNodeId, IdleClassificationEpochs,
+    IncludedClassificationEpochs, KeyType, LastSubnetDelegateStakeRewardsUpdate,
+    MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
+    MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxQueueEpochs, MaxRegisteredNodes,
+    MaxSubnetBootnodeAccess, MaxSubnetNodePenalties, MaxSubnetNodes, MaxSubnets,
+    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
+    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinQueueEpochs, MinSubnetMinStake,
     NetworkMaxStakeBalance, NetworkMinStakeBalance, PendingSubnetOwner, RegisteredSubnetNodesData,
     SubnetBootnodeAccess, SubnetData, SubnetDelegateStakeRewardsPercentage,
     SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes, SubnetMaxStakeBalance,
     SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
     SubnetNodeQueueEpochs, SubnetOwner, SubnetPauseCooldownEpochs,
     SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
-    TotalActiveSubnetNodes,
 };
-use codec::{Decode, Encode};
-use frame_support::traits::Currency;
+use codec::Decode;
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::traits::TrailingZeroInput;
 use sp_runtime::BoundedVec;
@@ -2241,15 +2237,6 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
             ),
             Error::<Test>::NotSubnetOwner
         );
-
-        // assert_err!(
-        //     Network::do_owner_update_activation_grace_epochs(
-        //         RuntimeOrigin::signed(fake_owner),
-        //         subnet_id,
-        //         1
-        //     ),
-        //     Error::<Test>::NotSubnetOwner
-        // );
 
         assert_err!(
             Network::do_owner_update_idle_classification_epochs(

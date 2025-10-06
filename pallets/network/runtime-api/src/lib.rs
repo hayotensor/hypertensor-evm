@@ -19,10 +19,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use fp_account::AccountId20;
-use frame_support::BoundedVec;
-use pallet_network::{
-    ConsensusData, DefaultMaxVectorLength, SubnetInfo, SubnetNode, SubnetNodeInfo,
-};
 use sp_std::vec::Vec;
 
 sp_api::decl_runtime_apis! {
@@ -40,5 +36,6 @@ sp_api::decl_runtime_apis! {
     fn get_node_delegate_stakes(account_id: AccountId20) -> Vec<u8>;
     fn get_overwatch_commits_for_epoch_and_node(epoch: u32,overwatch_node_id: u32) -> Vec<u8>;
     fn get_overwatch_reveals_for_epoch_and_node(epoch: u32,overwatch_node_id: u32) -> Vec<u8>;
+    fn get_elected_validator_info(subnet_id: u32,subnet_epoch: u32) -> Vec<u8>;
   }
 }

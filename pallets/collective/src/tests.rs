@@ -121,7 +121,6 @@ parameter_types! {
     pub const EpochLength: u32 = EPOCH_LENGTH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
-    pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = sp_runtime::Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
@@ -136,27 +135,15 @@ impl pallet_network::Config for Test {
         pallet_collective::EnsureProportionAtLeast<AccountId, Instance1, 4, 5>;
     type EpochLength = EpochLength;
     type EpochsPerYear = EpochsPerYear;
-    type StringLimit = ConstU32<100>;
     type InitialTxRateLimit = ConstU32<0>;
     type Randomness = InsecureRandomnessCollectiveFlip;
     type PalletId = NetworkPalletId;
-    type MinProposalStake = MinProposalStake;
     type TreasuryAccount = ();
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;
 }
 
 pub type BlockNumber = u32;
-
-parameter_types! {
-    pub const VotingPeriod: BlockNumber = DAYS * 21;
-    pub const EnactmentPeriod: BlockNumber = DAYS * 7;
-    pub const VerifyPeriod: BlockNumber = DAYS * 4;
-    pub const MinProposerStake: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
-    pub const Quorum: u128 = 100_000_000_000_000_000_000; // 100 * 1e18
-    pub const CancelSlashPercent: u8 = 5;
-    pub const QuorumVotingPowerPercentage: u8 = 40;
-}
 
 parameter_types! {
     pub const MotionDuration: u64 = 3;

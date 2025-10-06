@@ -14,6 +14,8 @@
 // limitations under the License.
 
 use super::*;
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
+use frame_support::pallet_prelude::Pays;
 
 impl<T: Config> Pallet<T> {
     pub fn do_register_overwatch_node(
@@ -96,13 +98,13 @@ impl<T: Config> Pallet<T> {
         subnet_id: u32,
         overwatch_node_id: u32,
         peer_id: PeerId,
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
         let key: T::AccountId = ensure_signed(origin)?;
 
-        let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-            Ok(subnet) => subnet,
-            Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-        };
+        ensure!(
+            SubnetsData::<T>::contains_key(subnet_id),
+            Error::<T>::InvalidSubnetId
+        );
 
         ensure!(
             Self::is_overwatch_node_keys_owner(overwatch_node_id, key),
@@ -117,14 +119,14 @@ impl<T: Config> Pallet<T> {
             Error::<T>::PeerIdExist
         );
 
-        PeerIdOverwatchNode::<T>::insert(subnet_id, &peer_id, overwatch_node_id);
+        PeerIdOverwatchNodeId::<T>::insert(subnet_id, &peer_id, overwatch_node_id);
 
         // Add or replace PeerID under subnet ID
         OverwatchNodeIndex::<T>::mutate(overwatch_node_id, |map| {
             map.insert(subnet_id, peer_id);
         });
 
-        Ok(())
+        Ok(Pays::No.into())
     }
 
     pub fn is_overwatch_node_qualified(coldkey: &T::AccountId) -> bool {
@@ -167,6 +169,8 @@ impl<T: Config> Pallet<T> {
                     if !Self::get_active_subnet_node(*subnet_id, node_id).is_none() {
                         active_unique_node_count += 1;
                         // `break` to next subnet
+                        // We are only checking for subnet uniqueness. We only need to verify
+                        // there is one node per subnet to get the uniquness ratio
                         break;
                     }
                 }

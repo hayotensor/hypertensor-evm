@@ -3,12 +3,11 @@ use crate::tests::test_utils::*;
 use crate::{
     AccountOverwatchStake, ColdkeyHotkeys, Error, HotkeyOverwatchNodeId, HotkeyOwner,
     HotkeySubnetNodeId, MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes,
-    NetworkMinStakeBalance, OverwatchCommit, OverwatchCommits, OverwatchMinAge,
-    OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeBlacklist, OverwatchNodeIdHotkey,
-    OverwatchNodeIndex, OverwatchNodeWeights, OverwatchNodes, OverwatchReveal, OverwatchReveals,
-    OverwatchSubnetWeights, PeerId, PeerIdOverwatchNode, PeerIdSubnetNodeId, StakeCooldownEpochs,
-    StakeUnbondingLedgerV2, SubnetData, SubnetName, SubnetNodesData, SubnetState, SubnetsData,
-    TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake,
+    NetworkMinStakeBalance, OverwatchMinAge, OverwatchMinStakeBalance, OverwatchNodeBlacklist,
+    OverwatchNodeIdHotkey, OverwatchNodeIndex, OverwatchNodeWeights, OverwatchNodes,
+    OverwatchSubnetWeights, PeerId, PeerIdOverwatchNodeId, StakeCooldownEpochs,
+    StakeUnbondingLedger, SubnetName, SubnetNodesData, SubnetState, TotalOverwatchNodeUids,
+    TotalOverwatchNodes, TotalOverwatchStake,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -292,7 +291,7 @@ fn test_set_overwatch_peer_id() {
         ));
 
         assert_eq!(
-            PeerIdOverwatchNode::<Test>::get(subnet_id, peer_id.clone()),
+            PeerIdOverwatchNodeId::<Test>::get(subnet_id, peer_id.clone()),
             uid
         );
 
@@ -458,7 +457,7 @@ fn test_remove_overwatch_node() {
             Err(())
         );
         assert_eq!(
-            PeerIdOverwatchNode::<Test>::try_get(subnet_id, peer_id.clone()),
+            PeerIdOverwatchNodeId::<Test>::try_get(subnet_id, peer_id.clone()),
             Err(())
         );
         let map = OverwatchNodeIndex::<Test>::take(uid);
@@ -1165,7 +1164,7 @@ fn test_add_to_remove_overwatch_stake_unbond() {
 
         assert_eq!(starting_balance, Balances::free_balance(&coldkey.clone()));
 
-        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
         assert_eq!(unbondings.len(), 1);
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -1187,7 +1186,7 @@ fn test_add_to_remove_overwatch_stake_unbond() {
             starting_balance + remove_amount
         );
 
-        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
         assert_eq!(unbondings.len(), 0);
     });
 }

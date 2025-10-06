@@ -30,29 +30,29 @@ impl<T: Config> Pallet<T> {
             churn_limit: ChurnLimit::<T>::get(subnet_id),
             min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
             max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
-            delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
-            subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
             queue_immunity_epochs: QueueImmunityEpochs::<T>::get(subnet_id),
             target_node_registrations_per_epoch: TargetNodeRegistrationsPerEpoch::<T>::get(
                 subnet_id,
             ),
-            node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
+            subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
             idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
             included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
+            delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
+            node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
             max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
+            initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
             max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
+            owner: SubnetOwner::<T>::get(subnet_id),
+            pending_owner: PendingSubnetOwner::<T>::get(subnet_id),
+            registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
             key_types: SubnetKeyTypes::<T>::get(subnet_id),
+            slot_index: SubnetSlot::<T>::get(subnet_id),
             penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
             bootnode_access: SubnetBootnodeAccess::<T>::get(subnet_id),
             bootnodes: SubnetBootnodes::<T>::get(subnet_id),
             total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
             total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
             total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
-            initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
-            owner: SubnetOwner::<T>::get(subnet_id),
-            pending_owner: PendingSubnetOwner::<T>::get(subnet_id),
-            registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
-            slot_index: SubnetSlot::<T>::get(subnet_id),
         })
     }
 
@@ -71,17 +71,17 @@ impl<T: Config> Pallet<T> {
                 churn_limit: ChurnLimit::<T>::get(subnet_id),
                 min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
                 max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
-                delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(
-                    subnet_id,
-                ),
-                subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
                 queue_immunity_epochs: QueueImmunityEpochs::<T>::get(subnet_id),
                 target_node_registrations_per_epoch: TargetNodeRegistrationsPerEpoch::<T>::get(
                     subnet_id,
                 ),
-                node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
+                subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
                 idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
                 included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
+                delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(
+                    subnet_id,
+                ),
+                node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
                 max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
                 initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
                 max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
@@ -256,7 +256,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // Finally, check overwatch node
-        PeerIdOverwatchNode::<T>::try_get(subnet_id, peer_id).is_ok()
+        PeerIdOverwatchNodeId::<T>::try_get(subnet_id, peer_id).is_ok()
     }
 
     /// Get all bootnodes organized by the official bootnodes and node bootnodes

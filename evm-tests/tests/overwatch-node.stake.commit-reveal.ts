@@ -1,18 +1,21 @@
 import { getDevnetApi } from "../src/substrate"
 import { dev } from "@polkadot-api/descriptors"
-import { PolkadotSigner, TypedApi } from "polkadot-api";
+import { TypedApi } from "polkadot-api";
+import { blake2AsU8a } from '@polkadot/util-crypto';
+import { u8aConcat, u8aToHex } from '@polkadot/util';
 import { ethers } from "ethers"
 import { generateRandomEd25519PeerId, generateRandomEthersWallet, generateRandomString, getPublicClient, OVERWATCH_NODE_CONTRACT_ABI, OVERWATCH_NODE_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, SUBNET_CONTRACT_ADDRESS } from "../src/utils"
 import {
-    addToOverwatchStake,
+    advanceToRevealBlock,
     batchTransferBalanceFromSudoManual,
+    commitOverwatchSubnetWeights,
     createAndFinalizeBlock,
     createAndFinalizeBlocks,
     getCurrentRegistrationCost,
     registerOverwatchNode,
     registerSubnet,
     registerSubnetNode,
-    removeOverwatchStake,
+    revealOverwatchSubnetWeights,
 } from "../src/network"
 import { ETH_LOCAL_URL, SUB_LOCAL_URL } from "../src/config";
 import { PublicClient } from "viem";
@@ -20,8 +23,8 @@ import { ApiPromise, WsProvider } from "@polkadot/api";
 import { expect } from "chai";
 import { Option } from '@polkadot/types';
 
-// npm test -- -g "test overwatch nodes-0xDDDDDJUUK9996"
-describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
+// npm test -- -g "test overwatch view functions-0xfff90000"
+describe("test overwatch commit reveal-0xfff90000", () => {
     // init eth part
     const wallet0 = generateRandomEthersWallet();
     const wallet1 = generateRandomEthersWallet();
@@ -58,14 +61,17 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
     let ethersProvider: ethers.JsonRpcProvider;
 
     const sudoTransferAmount = BigInt(10000e18)
+    let overwatchMinStake;
 
     const subnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet0);
     const subnetContract1 = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, wallet1);
 
     const overwatchNodeContract1 = new ethers.Contract(OVERWATCH_NODE_CONTRACT_ADDRESS, OVERWATCH_NODE_CONTRACT_ABI, wallet1);
 
-    let subnetId: string;
+    let subnetId1: string;
+    let subnetId2: string;
     let subnetNodeId1: string;
+    let overwatchNodeId: string;
     before(async () => {
         
         publicClient = await getPublicClient(ETH_LOCAL_URL)
@@ -95,8 +101,8 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
         // Register subnet
         // ==============
         let cost = await getCurrentRegistrationCost(subnetContract, api)
-        const subnetName = generateRandomString(30)
-        const repo = generateRandomString(30)
+        let subnetName = generateRandomString(30)
+        let repo = generateRandomString(30)
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
         const churnLimit = await api.query.network.maxChurnLimit();
@@ -108,8 +114,6 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
         const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
         const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
         const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
-
-        console.log("registering subnet")
 
         await registerSubnet(
             subnetContract, 
@@ -136,8 +140,40 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
             true
         )
 
-        subnetId = await subnetContract.getSubnetId(subnetName);
-        console.log("subnetId", subnetId)
+        subnetId1 = await subnetContract.getSubnetId(subnetName);
+
+        await createAndFinalizeBlock(ethersProvider)
+
+        cost = await getCurrentRegistrationCost(subnetContract1, api)
+        subnetName = generateRandomString(30)
+        repo = generateRandomString(30)
+
+        await registerSubnet(
+            subnetContract1, 
+            wallet1.address,
+            cost,
+            subnetName,
+            repo,
+            description,
+            misc,
+            churnLimit.toString(),
+            minStake.toString(),
+            maxStake.toString(),
+            delegateStakePercentage.toString(),
+            subnetNodeQueueEpochs.toString(),
+            idleClassificationEpochs.toString(),
+            includedClassificationEpochs.toString(),
+            maxNodePenalties.toString(),
+            maxRegisteredNodes.toString(),
+            ALL_ACCOUNTS,
+            KEY_TYPES,
+            BOOTNODES,
+            cost,
+            ethersProvider,
+            true
+        )
+
+        subnetId2 = await subnetContract1.getSubnetId(subnetName);
 
         await createAndFinalizeBlock(ethersProvider)
 
@@ -157,11 +193,9 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
         const unique = generateRandomString(16)
         const nonUnique = generateRandomString(16)
 
-        console.log("registering node")
-
         await registerSubnetNode(
             subnetContract1, 
-            subnetId,
+            subnetId1,
             wallet4.address,
             peer1,
             peer2,
@@ -175,11 +209,10 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
             ethersProvider,
             true
         )
-        console.log("registering node complete")
 
         await createAndFinalizeBlock(ethersProvider)
 
-        let subnetNodeId1Fetched = await api.query.network.hotkeySubnetNodeId(subnetId, wallet4.address);
+        let subnetNodeId1Fetched = await api.query.network.hotkeySubnetNodeId(subnetId1, wallet4.address);
 
         const subnetNodeId1Opt = subnetNodeId1Fetched as Option<any>;
         expect(subnetNodeId1Opt.isSome);
@@ -193,138 +226,157 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
             expect(Number(subnetNodeId1)).to.be.greaterThan(0);
         }
         expect(subnetNode1Exists);
-    })
 
-    // Status: passing
-    // npm test -- -g "testing add overwatch stake-0xdgewve2346"
-    it("testing add overwatch stake-0xdgewve2346", async () => {
         let overwatch_epochs = await api.query.network.overwatchEpochLengthMultiplier();
 
         await createAndFinalizeBlocks(ethersProvider, Number(overwatch_epochs.toString()) * 300)
         
-        const minStake = await api.query.network.overwatchMinStakeBalance();
+        overwatchMinStake = await api.query.network.overwatchMinStakeBalance();
 
         await registerOverwatchNode(
             overwatchNodeContract1, 
             wallet5.address,
-            BigInt(minStake.toString()),
+            BigInt(overwatchMinStake.toString()),
             ethersProvider,
             true
         )
         await createAndFinalizeBlock(ethersProvider)
 
-        let overwatchNodeId;
         let hotkeyOverwatchNodeId = await api.query.network.hotkeyOverwatchNodeId(wallet5.address);
         let hotkeyOverwatchNodeIdOpt = hotkeyOverwatchNodeId as Option<any>;
         expect(hotkeyOverwatchNodeIdOpt.isSome);
         if (hotkeyOverwatchNodeIdOpt.isSome) {
             const data = hotkeyOverwatchNodeIdOpt.unwrap();
             const human = data.toHuman();
-            overwatchNodeId = human;
             expect(Number(human)).to.not.equal(0);
+            overwatchNodeId = human?.toString();
         }
+    })
 
-        const stakeAmount = BigInt(10e18);
-        await batchTransferBalanceFromSudoManual(
-            api,
-            papiApi,
-            ethersProvider,
-            [{
-                address: wallet5.address,
-                balance: stakeAmount
-            }]
-        )
+    // Status: passing
+    // npm test -- -g "testing overwatch commit-0x9"
+    it("testing overwatch commit-0x9", async () => {
+        const weight = BigInt(1e18);
+        const saltString = 'secret-salt';
+        const salt = new Uint8Array(Buffer.from(saltString));
 
-        await addToOverwatchStake(
-            overwatchNodeContract1, 
-            overwatchNodeId,
-            wallet5.address,
-            stakeAmount,
-            ethersProvider,
-            true
+        const saltArray = Array.from(salt);
+
+        const tupleType = api.registry.createType('(u128, Vec<u8>)', [weight, saltArray]);
+        const encodedTuple = tupleType.toU8a();
+
+        // Blake2-256 hash
+        const commitHash = u8aToHex(blake2AsU8a(encodedTuple, 256));
+
+        // Phase 1: Commit
+        const commits = [
+            { subnetId: Number(subnetId1), weight: commitHash },
+            { subnetId: Number(subnetId2), weight: commitHash },
+        ];
+
+        let currentOverwatchEpoch = await overwatchNodeContract1.getCurrentOverwatchEpoch();
+
+        await commitOverwatchSubnetWeights(
+          overwatchNodeContract1, 
+          overwatchNodeId!.toString(),
+          commits,
+          ethersProvider,
+          true,
         );
 
-        let stakeBalance = await api.query.network.accountOverwatchStake(wallet5.address);
-        expect(BigInt(stakeBalance.toString())).to.equal(stakeAmount)
+        let overwatchCommits = await api.query.network.overwatchCommits(currentOverwatchEpoch.toString(), overwatchNodeId!.toString(), subnetId1);
+        const overwatchCommitsOpt = overwatchCommits as Option<any>;
+        expect(overwatchCommitsOpt.isSome);
 
-        let precompileStakeBalance = await overwatchNodeContract1.accountOverwatchStake(wallet5.address);
-        expect(BigInt(stakeBalance.toString())).to.be.equal(BigInt(precompileStakeBalance.toString()))
+        let overwatchCommitsOptExists: boolean = false;
+        if (overwatchCommitsOpt.isSome) {
+            overwatchCommitsOptExists = true;
+            const overwatchCommitsUnwrapped = overwatchCommitsOpt.unwrap();
+            const human = overwatchCommitsUnwrapped.toHuman();
+        }
+        expect(overwatchCommitsOptExists).to.equal(true)
 
-        console.log("✅ Registering overwatch node testing complete")
+        let precompileCurrentOverwatchEpochS1 = await overwatchNodeContract1.overwatchCommits(currentOverwatchEpoch.toString(), overwatchNodeId!.toString(), subnetId1);
+        expect(precompileCurrentOverwatchEpochS1.toString()).to.equal(commits[0].weight.toString())
+
+        let precompileCurrentOverwatchEpochS2 = await overwatchNodeContract1.overwatchCommits(currentOverwatchEpoch.toString(), overwatchNodeId!.toString(), subnetId2);
+        expect(precompileCurrentOverwatchEpochS2.toString()).to.equal(commits[1].weight.toString())
+
+        console.log("✅ Overwat node commit testing complete")
     })
 
-    // Status: passing
-    // npm test -- -g "testing remove overwatch stake-0xSERBMS5sS"
-    it("testing remove overwatch stake-0xSERBMS5sS", async () => {
-        let overwatch_epochs = await api.query.network.overwatchEpochLengthMultiplier();
+    // Status: pending
+    // npm test -- -g "testing overwatch reveal-0x9910169321"
+    it("testing overwatch reveal-0x9910169321", async () => {
+        const weight = BigInt(1e18);
+        const saltString = 'secret-salt';
+        const salt = new Uint8Array(Buffer.from(saltString));
 
-        await createAndFinalizeBlocks(ethersProvider, Number(overwatch_epochs.toString()) * 300)
+        const saltArray = Array.from(salt);
+
+        const tupleType = api.registry.createType('(u128, Vec<u8>)', [weight, saltArray]);
+        const encodedTuple = tupleType.toU8a();
+
+        // Blake2-256 hash
+        const commitHash = u8aToHex(blake2AsU8a(encodedTuple, 256));
+
+        // Phase 1: Commit
+        const commits = [
+            { subnetId: Number(subnetId1), weight: commitHash },
+            { subnetId: Number(subnetId2), weight: commitHash },
+        ];
+
+        const reveals = [
+            { 
+                subnetId: Number(subnetId1), 
+                weight: weight,
+                salt: saltArray  // Use the same saltArray
+            },
+            { 
+                subnetId: Number(subnetId2), 
+                weight: weight,
+                salt: saltArray
+            },
+        ];
+
+        let currentOverwatchEpoch = await overwatchNodeContract1.getCurrentOverwatchEpoch();
+
+        await commitOverwatchSubnetWeights(
+          overwatchNodeContract1, 
+          overwatchNodeId!.toString(),
+          commits,
+          ethersProvider,
+          true,
+        );
+
+        let precompileCommitS1 = await overwatchNodeContract1.overwatchCommits(currentOverwatchEpoch.toString(), overwatchNodeId!.toString(), subnetId1);
+        expect(precompileCommitS1.toString()).to.equal(commits[0].weight.toString())
+
+        let precompileCommitS2 = await overwatchNodeContract1.overwatchCommits(currentOverwatchEpoch.toString(), overwatchNodeId!.toString(), subnetId2);
+        expect(precompileCommitS2.toString()).to.equal(commits[1].weight.toString())
+
+        currentOverwatchEpoch = await overwatchNodeContract1.getCurrentOverwatchEpoch();
+
+        await advanceToRevealBlock(
+          api,
+          ethersProvider,
+          Number(currentOverwatchEpoch.toString())
+        )
         
-        const minStake = await api.query.network.overwatchMinStakeBalance();
+        await revealOverwatchSubnetWeights(
+          overwatchNodeContract1, 
+          overwatchNodeId!.toString(),
+          reveals,
+          ethersProvider,
+          true,
+        );
 
-        await registerOverwatchNode(
-            overwatchNodeContract1, 
-            wallet5.address,
-            BigInt(minStake.toString()),
-            ethersProvider,
-            true
-        )
-        await createAndFinalizeBlock(ethersProvider)
+        let precompileRevealS1 = await overwatchNodeContract1.overwatchReveals(currentOverwatchEpoch.toString(), subnetId1, overwatchNodeId!.toString());
+        expect(precompileRevealS1.toString()).to.equal(reveals[0].weight.toString())
 
-        let afterRegisterStakeBalance = await api.query.network.accountOverwatchStake(wallet5.address);
-        expect(BigInt(afterRegisterStakeBalance.toString())).to.equal(BigInt(minStake.toString()))
-        let afterRegisterPrecompileStakeBalance = await overwatchNodeContract1.accountOverwatchStake(wallet5.address);
-        expect(BigInt(afterRegisterPrecompileStakeBalance.toString())).to.be.equal(BigInt(minStake.toString()))
+        let precompileRevealS2 = await overwatchNodeContract1.overwatchReveals(currentOverwatchEpoch.toString(), subnetId2, overwatchNodeId!.toString());
+        expect(precompileRevealS2.toString()).to.equal(reveals[1].weight.toString())
 
-        let overwatchNodeId;
-        let hotkeyOverwatchNodeId = await api.query.network.hotkeyOverwatchNodeId(wallet5.address);
-        let hotkeyOverwatchNodeIdOpt = hotkeyOverwatchNodeId as Option<any>;
-        expect(hotkeyOverwatchNodeIdOpt.isSome);
-        if (hotkeyOverwatchNodeIdOpt.isSome) {
-            const data = hotkeyOverwatchNodeIdOpt.unwrap();
-            const human = data.toHuman();
-            overwatchNodeId = human;
-            expect(Number(human)).to.not.equal(0);
-        }
-
-        const stakeAmount = BigInt(10e18);
-        await batchTransferBalanceFromSudoManual(
-            api,
-            papiApi,
-            ethersProvider,
-            [{
-                address: wallet5.address,
-                balance: stakeAmount
-            }]
-        )
-
-        await addToOverwatchStake(
-            overwatchNodeContract1, 
-            overwatchNodeId,
-            wallet5.address,
-            stakeAmount,
-            ethersProvider,
-            true
-        )
-
-        let beforeStakeBalance = await api.query.network.accountOverwatchStake(wallet5.address);
-        expect(BigInt(beforeStakeBalance.toString())).to.equal(BigInt(afterRegisterStakeBalance.toString()) + stakeAmount)
-        let beforePrecompileStakeBalance = await overwatchNodeContract1.accountOverwatchStake(wallet5.address);
-        expect(BigInt(beforeStakeBalance.toString())).to.be.equal(BigInt(afterRegisterStakeBalance.toString()) + stakeAmount)
-
-        await removeOverwatchStake(
-            overwatchNodeContract1, 
-            wallet5.address,
-            BigInt(1e18),
-            ethersProvider,
-            true
-        )
-
-        let stakeBalance = await api.query.network.accountOverwatchStake(wallet5.address);
-        let precompileStakeBalance = await overwatchNodeContract1.accountOverwatchStake(wallet5.address);
-        expect(Number(beforeStakeBalance.toString())).to.be.greaterThan(Number(stakeBalance.toString()))
-        expect(Number(beforePrecompileStakeBalance.toString())).to.be.greaterThan(Number(precompileStakeBalance.toString()))
-
-        console.log("✅ Remove overwatch node testing complete")
+        console.log("✅ Overwat node reveal testing complete")
     })
 });

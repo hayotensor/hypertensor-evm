@@ -1,5 +1,4 @@
 use super::mock::*;
-use crate::tests::test_utils::*;
 use frame_support::traits::OnInitialize;
 use sp_runtime::traits::Header;
 
@@ -34,15 +33,6 @@ pub fn setup_blocks(blocks: u32) {
 }
 
 #[test]
-fn test_randomness() {
-    new_test_ext().execute_with(|| {
-        setup_blocks(38);
-        let gen_rand_num = Network::generate_random_number(1);
-        let rand_num = Network::get_random_number_with_max(96, 0);
-    });
-}
-
-#[test]
 fn test_randomness_v2() {
     new_test_ext().execute_with(|| {
         setup_blocks(38);
@@ -56,28 +46,6 @@ fn test_randomness_v2() {
         let gen_rand_num = Network::generate_random_number(1);
         log::error!("gen_rand_num_old {:?}", gen_rand_num_old);
         log::error!("gen_rand_num     {:?}", gen_rand_num);
-    });
-}
-
-#[test]
-fn test_random_number_within_range() {
-    new_test_ext().execute_with(|| {
-        let max = 100;
-        let seed = 123;
-
-        let random = Network::get_random_number_with_max(max, seed);
-        assert!(random < max);
-    });
-}
-
-#[test]
-fn test_random_number_zero_max() {
-    new_test_ext().execute_with(|| {
-        let max = 0;
-        let seed = 123;
-
-        let random = Network::get_random_number_with_max(max, seed);
-        assert_eq!(random, 0);
     });
 }
 

@@ -3,17 +3,13 @@ use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
     AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs,
-    Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MaxUnbondings, MinDelegateStakeDeposit,
-    NetworkMinStakeBalance, NextSwapId, NodeDelegateStakeBalance, QueuedSwapCall, QueuedSwapItem,
-    StakeUnbondingLedgerV2, SubnetName, SubnetRemovalReason, SubnetsData, SwapCallQueue,
-    SwapQueueOrder, TotalActiveSubnets, TotalDelegateStake, TotalNodeDelegateStakeShares,
-    TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares, TotalSubnetNodes,
+    HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, NetworkMinStakeBalance, NextSwapQueueId,
+    QueuedSwapCall, QueuedSwapItem, SubnetName, SwapCallQueue, SwapQueueOrder,
+    TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares,
 };
-use frame_support::pallet_prelude::Weight;
+use frame_support::assert_ok;
 use frame_support::traits::Currency;
 use frame_support::weights::WeightMeter;
-use frame_support::{assert_err, assert_ok};
-use sp_std::collections::btree_map::BTreeMap;
 
 //
 //
@@ -32,7 +28,7 @@ use sp_std::collections::btree_map::BTreeMap;
 //
 
 fn insert_to_subnet_swap_call_queue(account_id: AccountIdOf<Test>, subnet_id: u32, balance: u128) {
-    let id = NextSwapId::<Test>::get();
+    let id = NextSwapQueueId::<Test>::get();
 
     let call = QueuedSwapCall::SwapToSubnetDelegateStake {
         account_id: account_id,
@@ -55,7 +51,7 @@ fn insert_to_subnet_swap_call_queue(account_id: AccountIdOf<Test>, subnet_id: u3
         let _ = queue.try_push(id); // Handle error if queue is full
     });
 
-    NextSwapId::<Test>::mutate(|next_id| *next_id = next_id.saturating_add(1));
+    NextSwapQueueId::<Test>::mutate(|next_id| *next_id = next_id.saturating_add(1));
 }
 
 fn insert_to_node_swap_call_queue(
@@ -64,7 +60,7 @@ fn insert_to_node_swap_call_queue(
     subnet_node_id: u32,
     balance: u128,
 ) {
-    let id = NextSwapId::<Test>::get();
+    let id = NextSwapQueueId::<Test>::get();
 
     let call = QueuedSwapCall::SwapToNodeDelegateStake {
         account_id: account_id,
@@ -88,7 +84,7 @@ fn insert_to_node_swap_call_queue(
         let _ = queue.try_push(id); // Handle error if queue is full
     });
 
-    NextSwapId::<Test>::mutate(|next_id| *next_id = next_id.saturating_add(1));
+    NextSwapQueueId::<Test>::mutate(|next_id| *next_id = next_id.saturating_add(1));
 }
 
 #[test]
@@ -160,7 +156,7 @@ fn test_update_swap_queue() {
 
         let prev_total_subnet_delegate_stake_balance =
             TotalSubnetDelegateStakeBalance::<Test>::get(from_subnet_id);
-        let prev_next_id = NextSwapId::<Test>::get();
+        let prev_next_id = NextSwapQueueId::<Test>::get();
 
         assert_ok!(Network::swap_delegate_stake(
             RuntimeOrigin::signed(account(n_account)),
@@ -198,7 +194,7 @@ fn test_update_swap_queue() {
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
         };
 
-        let next_id = NextSwapId::<Test>::get();
+        let next_id = NextSwapQueueId::<Test>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<Test>::get();
         assert!(queue

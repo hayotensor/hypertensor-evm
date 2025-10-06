@@ -136,7 +136,7 @@ impl<T: Config> Pallet<T> {
             TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
 
         // --- Get amount to be added as shares based on stake to balance added to account
-        let mut delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
+        let delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
             delegate_stake_to_be_added,
             total_subnet_delegated_stake_shares,
             total_subnet_delegated_stake_balance,

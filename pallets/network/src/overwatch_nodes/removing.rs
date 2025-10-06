@@ -47,7 +47,7 @@ impl<T: Config> Pallet<T> {
         // Remove all peer IDs in all subnets
         let map = OverwatchNodeIndex::<T>::take(overwatch_node_id);
         for (subnet_id, peer_id) in map {
-            PeerIdOverwatchNode::<T>::remove(subnet_id, peer_id);
+            PeerIdOverwatchNodeId::<T>::remove(subnet_id, peer_id);
         }
 
         TotalOverwatchNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());

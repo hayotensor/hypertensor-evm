@@ -1,4 +1,6 @@
 use super::*;
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
+use frame_support::pallet_prelude::Pays;
 use sp_runtime::traits::Hash;
 
 impl<T: Config> Pallet<T> {
@@ -6,7 +8,7 @@ impl<T: Config> Pallet<T> {
         origin: T::RuntimeOrigin,
         overwatch_node_id: u32,
         mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
         let key: T::AccountId = ensure_signed(origin)?;
 
         let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
@@ -33,7 +35,7 @@ impl<T: Config> Pallet<T> {
     pub fn perform_commit_overwatch_subnet_weights(
         overwatch_node_id: u32,
         mut commit_weights: Vec<OverwatchCommit<T::Hash>>,
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
         // Remove dups
         commit_weights.dedup_by(|a, b| a.subnet_id == b.subnet_id);
 
@@ -51,7 +53,7 @@ impl<T: Config> Pallet<T> {
                 .map_err(|e| e)?;
         }
 
-        Ok(())
+        Ok(Pays::No.into())
     }
 
     pub fn do_commit_subnet_weight(
@@ -80,7 +82,7 @@ impl<T: Config> Pallet<T> {
         origin: T::RuntimeOrigin,
         overwatch_node_id: u32,
         reveals: Vec<OverwatchReveal>,
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
         let key: T::AccountId = ensure_signed(origin)?;
 
         let (hotkey, coldkey) = match Self::get_overwatch_node_hotkey_coldkey(overwatch_node_id) {
@@ -107,7 +109,7 @@ impl<T: Config> Pallet<T> {
     pub fn perform_reveal_overwatch_subnet_weights(
         overwatch_node_id: u32,
         reveals: Vec<OverwatchReveal>,
-    ) -> DispatchResult {
+    ) -> DispatchResultWithPostInfo {
         let overwatch_epoch = Self::get_current_overwatch_epoch_as_u32();
         let percentage_factor = Self::percentage_factor_as_u128();
 
@@ -130,6 +132,6 @@ impl<T: Config> Pallet<T> {
             OverwatchReveals::<T>::insert((overwatch_epoch, subnet_id, overwatch_node_id), weight);
         }
 
-        Ok(())
+        Ok(Pays::No.into())
     }
 }

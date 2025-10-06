@@ -78,7 +78,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
+        fn on_initialize(_block_number: BlockNumberFor<T>) -> Weight {
             let digest = frame_system::Pallet::<T>::digest();
             let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
             let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();

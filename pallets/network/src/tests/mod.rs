@@ -14,6 +14,8 @@ mod owner;
 mod randomization;
 mod registration_queue;
 mod reputation;
+mod rpc;
+mod slot;
 mod staking_new;
 mod staking_queue;
 mod staking_utils;

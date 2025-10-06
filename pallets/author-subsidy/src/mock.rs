@@ -19,26 +19,15 @@ use core::str::FromStr;
 use fp_account::EthereumSignature;
 use frame_support::weights::constants::WEIGHT_REF_TIME_PER_MILLIS;
 use frame_support::ConsensusEngineId;
-use frame_support::{
-    derive_impl, parameter_types,
-    traits::{
-        tokens::{PayFromAccount, UnityAssetBalanceConversion},
-        Everything,
-    },
-    weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight},
-    PalletId,
-};
+use frame_support::{derive_impl, parameter_types, traits::Everything, weights::Weight, PalletId};
 use frame_system as system;
-pub use frame_system::{EnsureRoot, EnsureRootWithSuccess};
 use pallet_evm::IdentityAddressMapping;
 use sp_core::H160;
-use sp_core::{ConstU128, ConstU32, ConstU64, H256, U256};
-use sp_runtime::traits::{AccountIdLookup, BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_core::{ConstU128, ConstU32, H256};
+use sp_runtime::traits::{AccountIdLookup, BlakeTwo256, IdentifyAccount, Verify};
 use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
-use sp_runtime::Permill;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlockU32<Test>;
 
 frame_support::construct_runtime!(
@@ -65,7 +54,6 @@ pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
 // NOTE: Currently it is not possible to change the slot duration after the chain has started.
 //       Attempting to do so will brick block production.
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 // Time is measured by number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -73,9 +61,6 @@ pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 pub const YEAR: BlockNumber = DAYS * 365;
 pub const BLOCKS_PER_HALVING: BlockNumber = YEAR * 2;
-pub const TARGET_MAX_TOTAL_SUPPLY: u128 = 2_800_000_000_000_000_000_000_000;
-pub const INITIAL_REWARD_PER_BLOCK: u128 =
-    (TARGET_MAX_TOTAL_SUPPLY / 2) / BLOCKS_PER_HALVING as u128;
 
 pub const SECS_PER_BLOCK: u32 = 6000 / 1000;
 

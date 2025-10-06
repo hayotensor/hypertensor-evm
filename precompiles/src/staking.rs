@@ -129,9 +129,6 @@ where
         let subnet_id = try_u256_to_u32(subnet_id)?;
         let stake_to_be_added: u128 = stake_to_be_added.unique_saturated_into();
 
-        let value_sent: U256 = handle.context().apparent_value;
-        let value_balance: u128 = value_sent.unique_saturated_into();
-
         let call = pallet_network::Call::<R>::add_to_delegate_stake {
             subnet_id,
             stake_to_be_added,

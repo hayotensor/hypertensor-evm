@@ -23,7 +23,7 @@ use frame_support::{
         tokens::{PayFromAccount, UnityAssetBalanceConversion},
         Everything,
     },
-    weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight},
+    weights::Weight,
     PalletId,
 };
 use frame_system as system;
@@ -157,11 +157,6 @@ parameter_types! {
     pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
     pub const CouncilMaxProposals: u32 = 100;
     pub const CouncilMaxMembers: u32 = 100;
-    // pub BlockWeights: frame_system::limits::BlockWeights =
-    //     frame_system::limits::BlockWeights::with_sensible_defaults(
-    //     Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
-    //     NORMAL_DISPATCH_RATIO,
-    //     );
     pub MaxCollectivesProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
 
@@ -215,7 +210,6 @@ parameter_types! {
     pub const EpochLength: u32 = EPOCH_LENGTH; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const EpochsPerYear: u32 = EPOCHS_PER_YEAR; // Testnet 600 blocks per erpoch / 69 mins per epoch, Local 10
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
-    pub const MinProposalStake: u128 = 1_000_000_000_000_000_000;
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
         BlockWeights::get().max_block;
@@ -231,11 +225,9 @@ impl Config for Test {
         pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 4, 5>;
     type EpochLength = EpochLength;
     type EpochsPerYear = EpochsPerYear;
-    type StringLimit = ConstU32<100>;
     type InitialTxRateLimit = ConstU32<0>;
     type Randomness = InsecureRandomnessCollectiveFlip;
     type PalletId = NetworkPalletId;
-    type MinProposalStake = MinProposalStake;
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;

@@ -126,7 +126,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidSubnetId
         );
 
-        Self::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::Owner);
+        Self::do_remove_subnet(subnet_id, SubnetRemovalReason::Owner);
 
         Ok(())
     }
@@ -516,79 +516,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // /// Owner activates to remove subnet node from its subnet
-    // ///
-    // /// This function can only be called by the current owner of the subnet.
-    // ///
-    // /// This pushes a registered node to the front of the queue and activates them on the following epoch
-    // ///
-    // /// # Parameters
-    // /// - `origin`: The caller, must be the current subnet owner.
-    // /// - `subnet_id`: The ID of the subnet.
-    // /// - `activate_subnet_node_id`: The ID of the subnet node to activate.
-    // /// - `remove_subnet_node_id`: The ID of the subnet node to remove.
-    // ///       - Only removes node if the subnet is at maximum node slots.
-    // ///
-    // /// # Errors
-    // /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
-    // /// - [`SubnetNotActive`]: Subnet must be active.
-    // pub fn do_owner_activate_subnet_node(
-    //     origin: T::RuntimeOrigin,
-    //     subnet_id: u32,
-    //     activate_subnet_node_id: u32,
-    //     remove_subnet_node_id: u32,
-    // ) -> DispatchResult {
-    //     // must have EnableOwnerActivation?
-    //     let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    //     ensure!(
-    //         Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-    //         Error::<T>::NotSubnetOwner
-    //     );
-
-    //     let subnet = match SubnetsData::<T>::try_get(subnet_id) {
-    //         Ok(subnet) => subnet,
-    //         Err(()) => return Err(Error::<T>::InvalidSubnetId.into()),
-    //     };
-
-    //     let subnet_epoch: u32 = Self::get_current_subnet_epoch_as_u32(subnet_id);
-
-    //     ensure!(
-    //         subnet.state == SubnetState::Active,
-    //         Error::<T>::SubnetNotActive
-    //     );
-
-    //     let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-    //     let max_nodes = MaxSubnetNodes::<T>::get();
-
-    //     // --- If subnet is full, the owner must supply a node to remove
-    //     if total_nodes >= max_nodes {
-    //         // --- Ensure node exists
-    //         let subnet_node = match SubnetNodesData::<T>::try_get(subnet_id, remove_subnet_node_id)
-    //         {
-    //             Ok(subnet_node) => subnet_node,
-    //             Err(()) => return Err(Error::<T>::InvalidSubnetNodeId.into()),
-    //         };
-    //         // --- Remove node
-    //         Self::perform_remove_subnet_node(subnet_id, remove_subnet_node_id);
-    //     }
-
-    //     let mut subnet_node =
-    //         RegisteredSubnetNodesData::<T>::take(subnet_id, activate_subnet_node_id);
-    //     let activating_subnet_node_coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
-
-    //     Self::perform_activate_subnet_node(
-    //         activating_subnet_node_coldkey,
-    //         subnet_id,
-    //         subnet.state,
-    //         subnet_node,
-    //         subnet_epoch,
-    //     )
-    //     .map_err(|e| e)?;
-
-    //     Ok(())
-    // }
-
     // /// Owner calls to remove subnet node from its subnet
     // ///
     // /// This function can only be called by the current owner of the subnet.
@@ -974,7 +901,7 @@ impl<T: Config> Pallet<T> {
 
         let max_registrations = MaxRegisteredNodes::<T>::get(subnet_id);
         ensure!(
-            value <= max_registrations,
+            value <= max_registrations && value > 0,
             Error::<T>::InvalidTargetNodeRegistrationsPerEpoch
         );
 

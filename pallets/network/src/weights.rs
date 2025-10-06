@@ -174,10 +174,10 @@ pub trait WeightInfo {
 	fn set_max_unbondings() -> Weight;
 	fn set_sigmoid_midpoint() -> Weight;
 	fn update_swap_queue() -> Weight;
-	fn elect_validator_v3(x: u32, ) -> Weight;
+	fn elect_validator(x: u32, ) -> Weight;
 	fn handle_increase_account_delegate_stake() -> Weight;
 	fn handle_increase_account_node_delegate_stake_shares() -> Weight;
-	fn do_remove_subnet_v2(x: u32, ) -> Weight;
+	fn do_remove_subnet(x: u32, ) -> Weight;
 	fn add_balance_to_treasury() -> Weight;
 	fn perform_remove_subnet_node(x: u32, ) -> Weight;
 	fn slash_validator() -> Weight;
@@ -346,8 +346,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::MaxMinDelegateStakeMultiplier` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SubnetRegistrationEpochs` (r:1 w:0)
 	/// Proof: `Network::SubnetRegistrationEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetActivationEnactmentEpochs` (r:1 w:0)
-	/// Proof: `Network::SubnetActivationEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetEnactmentEpochs` (r:1 w:0)
+	/// Proof: `Network::SubnetEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalActiveSubnets` (r:1 w:1)
 	/// Proof: `Network::TotalActiveSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1346,8 +1346,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::StakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::StakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1369,8 +1369,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Account` (r:1 w:1)
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(116), added: 2591, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1447,8 +1447,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1507,8 +1507,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::DelegateStakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::DelegateStakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1616,8 +1616,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1676,8 +1676,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::NodeDelegateStakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::NodeDelegateStakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1746,8 +1746,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1785,8 +1785,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -1918,8 +1918,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::HotkeyOwner` (r:1 w:1)
 	/// Proof: `Network::HotkeyOwner` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:2 w:2)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:2 w:2)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ColdkeyHotkeys` (r:2 w:2)
 	/// Proof: `Network::ColdkeyHotkeys` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ColdkeyIdentity` (r:1 w:0)
@@ -1996,8 +1996,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -2056,8 +2056,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -2089,8 +2089,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:2)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -2247,8 +2247,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:1)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:1)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::OverwatchNodeIndex` (r:1 w:1)
 	/// Proof: `Network::OverwatchNodeIndex` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_overwatch_node_peer_id() -> Weight {
@@ -2400,8 +2400,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalOverwatchStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::StakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::StakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn remove_overwatch_stake() -> Weight {
@@ -3012,8 +3012,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetActivationEnactmentEpochs` (r:0 w:1)
-	/// Proof: `Network::SubnetActivationEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetEnactmentEpochs` (r:0 w:1)
+	/// Proof: `Network::SubnetEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_subnet_activation_enactment_epochs() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -4009,7 +4009,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: `InsecureRandomnessCollectiveFlip::RandomMaterial` (r:1 w:0)
 	/// Proof: `InsecureRandomnessCollectiveFlip::RandomMaterial` (`max_values`: Some(1), `max_size`: Some(2594), added: 3089, mode: `MaxEncodedLen`)
 	/// The range of component `x` is `[3, 512]`.
-	fn elect_validator_v3(x: u32, ) -> Weight {
+	fn elect_validator(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `681 + x * (4 ±0)`
 		//  Estimated: `4145 + x * (4 ±0)`
@@ -4142,7 +4142,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
 	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `x` is `[3, 512]`.
-	fn do_remove_subnet_v2(x: u32, ) -> Weight {
+	fn do_remove_subnet(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1440 + x * (367 ±0)`
 		//  Estimated: `4908 + x * (2842 ±0)`
@@ -4522,8 +4522,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::MaxMinDelegateStakeMultiplier` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SubnetRegistrationEpochs` (r:1 w:0)
 	/// Proof: `Network::SubnetRegistrationEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetActivationEnactmentEpochs` (r:1 w:0)
-	/// Proof: `Network::SubnetActivationEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetEnactmentEpochs` (r:1 w:0)
+	/// Proof: `Network::SubnetEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalActiveSubnets` (r:1 w:1)
 	/// Proof: `Network::TotalActiveSubnets` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5522,8 +5522,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::StakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::StakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5545,8 +5545,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Account` (r:1 w:1)
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(116), added: 2591, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5623,8 +5623,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5683,8 +5683,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::DelegateStakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::DelegateStakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5792,8 +5792,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5852,8 +5852,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::NodeDelegateStakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::NodeDelegateStakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5922,8 +5922,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -5961,8 +5961,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxRateLimit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalDelegateStake` (r:1 w:1)
 	/// Proof: `Network::TotalDelegateStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NextSwapId` (r:1 w:1)
-	/// Proof: `Network::NextSwapId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NextSwapQueueId` (r:1 w:1)
+	/// Proof: `Network::NextSwapQueueId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SwapQueueOrder` (r:1 w:1)
 	/// Proof: `Network::SwapQueueOrder` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -6094,8 +6094,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::HotkeyOwner` (r:1 w:1)
 	/// Proof: `Network::HotkeyOwner` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:2 w:2)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:2 w:2)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ColdkeyHotkeys` (r:2 w:2)
 	/// Proof: `Network::ColdkeyHotkeys` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ColdkeyIdentity` (r:1 w:0)
@@ -6172,8 +6172,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -6232,8 +6232,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -6265,8 +6265,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:2)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:0)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:0)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::ExecutionPhase` (r:1 w:0)
@@ -6423,8 +6423,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::BootnodePeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ClientPeerIdSubnetNodeId` (r:1 w:0)
 	/// Proof: `Network::ClientPeerIdSubnetNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::PeerIdOverwatchNode` (r:1 w:1)
-	/// Proof: `Network::PeerIdOverwatchNode` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::PeerIdOverwatchNodeId` (r:1 w:1)
+	/// Proof: `Network::PeerIdOverwatchNodeId` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::OverwatchNodeIndex` (r:1 w:1)
 	/// Proof: `Network::OverwatchNodeIndex` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_overwatch_node_peer_id() -> Weight {
@@ -6576,8 +6576,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalOverwatchStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::StakeCooldownEpochs` (r:1 w:0)
 	/// Proof: `Network::StakeCooldownEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::StakeUnbondingLedgerV2` (r:1 w:1)
-	/// Proof: `Network::StakeUnbondingLedgerV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::StakeUnbondingLedger` (r:1 w:1)
+	/// Proof: `Network::StakeUnbondingLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxUnbondings` (r:1 w:0)
 	/// Proof: `Network::MaxUnbondings` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn remove_overwatch_stake() -> Weight {
@@ -7188,8 +7188,8 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetActivationEnactmentEpochs` (r:0 w:1)
-	/// Proof: `Network::SubnetActivationEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetEnactmentEpochs` (r:0 w:1)
+	/// Proof: `Network::SubnetEnactmentEpochs` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_subnet_activation_enactment_epochs() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -8185,7 +8185,7 @@ impl WeightInfo for () {
 	/// Storage: `InsecureRandomnessCollectiveFlip::RandomMaterial` (r:1 w:0)
 	/// Proof: `InsecureRandomnessCollectiveFlip::RandomMaterial` (`max_values`: Some(1), `max_size`: Some(2594), added: 3089, mode: `MaxEncodedLen`)
 	/// The range of component `x` is `[3, 512]`.
-	fn elect_validator_v3(x: u32, ) -> Weight {
+	fn elect_validator(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `681 + x * (4 ±0)`
 		//  Estimated: `4145 + x * (4 ±0)`
@@ -8318,7 +8318,7 @@ impl WeightInfo for () {
 	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
 	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `x` is `[3, 512]`.
-	fn do_remove_subnet_v2(x: u32, ) -> Weight {
+	fn do_remove_subnet(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1440 + x * (367 ±0)`
 		//  Estimated: `4908 + x * (2842 ±0)`

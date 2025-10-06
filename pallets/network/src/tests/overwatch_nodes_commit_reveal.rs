@@ -8,7 +8,6 @@ use crate::{
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
-use sp_runtime::traits::Hash;
 
 //
 //

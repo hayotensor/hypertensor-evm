@@ -8,13 +8,12 @@ use crate::{
     MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMaxStakeBalance, NetworkMinStakeBalance,
     OverwatchCommitCutoffPercent, OverwatchEpochLengthMultiplier, OverwatchMinAge,
     OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeIdHotkey, OverwatchNodes,
-    OverwatchReveals, PeerIdSubnetNodeId, Proposals, RegisteredSubnetNodesData,
-    RegistrationSubnetData, Reputation, StakeCooldownEpochs, StakeUnbondingLedgerV2,
-    SubnetConsensusSubmission, SubnetData, SubnetElectedValidator, SubnetMaxStakeBalance,
-    SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
-    SubnetNodeConsensusData, SubnetNodeElectionSlots, SubnetNodeIdHotkey,
-    SubnetNodeNonUniqueParamLastSet, SubnetNodePenalties, SubnetNodeUniqueParam, SubnetNodesData,
-    SubnetOwner, SubnetPenaltyCount, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
+    OverwatchReveals, PeerIdSubnetNodeId, RegisteredSubnetNodesData, RegistrationSubnetData,
+    Reputation, StakeCooldownEpochs, StakeUnbondingLedger, SubnetConsensusSubmission, SubnetData,
+    SubnetElectedValidator, SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode,
+    SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData, SubnetNodeElectionSlots,
+    SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner,
+    SubnetPenaltyCount, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
     SubnetRegistrationInitialColdkeys, SubnetSlot, SubnetState, SubnetsData, TotalActiveNodes,
     TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
     TotalOverwatchStake, TotalStake, TotalSubnetDelegateStakeBalance, TotalSubnetNodeUids,
@@ -31,7 +30,6 @@ use sp_io::hashing::blake2_128;
 use sp_runtime::traits::Hash;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
-// use sp_io::hashing::keccak_256;
 
 pub type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 pub const PERCENTAGE_FACTOR: u128 = 1000000000000000000_u128;
@@ -1121,7 +1119,6 @@ pub fn build_registered_nodes_in_queue(
         assert!(!subnet_node_data.has_classification(&SubnetNodeClass::Validator, u32::MAX));
         assert!(!subnet_node_data.has_classification(&SubnetNodeClass::Idle, u32::MAX));
         assert!(!subnet_node_data.has_classification(&SubnetNodeClass::Included, u32::MAX));
-        // assert!(!subnet_node_data.has_classification(&SubnetNodeClass::Deactivated, u32::MAX));
 
         let subnet_node_account = PeerIdSubnetNodeId::<Test>::get(subnet_id, peer_id.clone());
         assert_eq!(subnet_node_account, hotkey_subnet_node_id);
@@ -2176,11 +2173,7 @@ pub fn post_subnet_removal_ensures(
         SubnetConsensusSubmission::<Test>::iter_prefix(subnet_id).count(),
         0
     );
-    assert_eq!(Proposals::<Test>::iter_prefix(subnet_id).count(), 0);
-    assert_eq!(
-        SubnetNodeNonUniqueParamLastSet::<Test>::iter_prefix(subnet_id).count(),
-        0
-    );
+
     assert_eq!(
         SubnetNodePenalties::<Test>::iter_prefix(subnet_id).count(),
         0
@@ -2236,7 +2229,7 @@ pub fn post_subnet_removal_ensures(
             System::block_number() + ((epoch_length + 1) * stake_cooldown_epochs),
         );
         let starting_balance = Balances::free_balance(&coldkey.clone());
-        let unbondings = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+        let unbondings = StakeUnbondingLedger::<Test>::get(coldkey.clone());
         // assert_eq!(unbondings.len(), 1);
         // let (ledger_epoch, ledger_balance) = unbondings.iter().next().unwrap();
         let ledger_balance: u128 = unbondings.values().copied().sum();
@@ -2524,6 +2517,7 @@ pub fn to_bounded<Len: frame_support::traits::Get<u32>>(s: &str) -> BoundedVec<u
     BoundedVec::try_from(s.as_bytes().to_vec()).expect("String too long")
 }
 
+// When using this function, manually add stake because some tests require fine tuning stake
 pub fn insert_overwatch_node(coldkey_n: u32, hotkey_n: u32) -> u32 {
     let coldkey = account(coldkey_n);
     let hotkey = account(hotkey_n);

@@ -1,12 +1,12 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs,
-    Error, MaxUnbondings, MinDelegateStakeDeposit, NetworkMinStakeBalance, NextSwapId,
-    NodeDelegateStakeBalance, QueuedSwapCall, StakeUnbondingLedgerV2, SubnetName,
-    SubnetRemovalReason, SubnetsData, SwapCallQueue, SwapQueueOrder, TotalActiveSubnets,
-    TotalDelegateStake, TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance,
-    TotalSubnetDelegateStakeShares, TotalSubnetNodes,
+    AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs, Error, MaxUnbondings,
+    MinDelegateStakeDeposit, NetworkMinStakeBalance, NextSwapQueueId, NodeDelegateStakeBalance,
+    QueuedSwapCall, StakeUnbondingLedger, SubnetName, SubnetRemovalReason, SubnetsData,
+    SwapCallQueue, SwapQueueOrder, TotalActiveSubnets, TotalDelegateStake,
+    TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares,
+    TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -491,7 +491,7 @@ fn test_delegate_math_with_storage_deposit() {
         );
 
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(total_subnet_nodes + 1));
+            StakeUnbondingLedger::<Test>::get(account(total_subnet_nodes + 1));
         assert_eq!(unbondings.len(), 1);
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -590,7 +590,7 @@ fn test_remove_delegate_stake() {
 
         // Should be sent to unbondings
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(total_subnet_nodes + 1));
+            StakeUnbondingLedger::<Test>::get(account(total_subnet_nodes + 1));
         assert_eq!(unbondings.len(), 1);
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -770,7 +770,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
                 && (delegate_balance < amount)
         );
 
-        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 
@@ -784,7 +784,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
         ));
 
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(total_subnet_nodes + 1));
+            StakeUnbondingLedger::<Test>::get(account(total_subnet_nodes + 1));
         assert_eq!(unbondings.len(), 1);
         // let (ledger_epoch, ledger_balance) = unbondings.iter().next().unwrap();
         // assert_eq!(*ledger_epoch, &epoch + DelegateStakeCooldownEpochs::<Test>::get());
@@ -813,7 +813,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
         );
 
         let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(total_subnet_nodes + 1));
+            StakeUnbondingLedger::<Test>::get(account(total_subnet_nodes + 1));
         assert_eq!(unbondings.len(), 0);
     });
 }
@@ -1017,8 +1017,7 @@ fn test_claim_removal_of_delegate_stake() {
         let post_balance = Balances::free_balance(&account(n_account));
         assert_eq!(post_balance, balance);
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 1);
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -1052,8 +1051,7 @@ fn test_claim_removal_of_delegate_stake() {
         log::error!("post_balance               {:?}", post_balance);
         log::error!("ledger_balance             {:?}", ledger_balance);
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 0);
     });
 }
@@ -1132,7 +1130,7 @@ fn test_remove_to_delegate_stake_max_unlockings_reached_err() {
                     1000,
                 ));
                 let unbondings: BTreeMap<u32, u128> =
-                    StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+                    StakeUnbondingLedger::<Test>::get(account(n_account));
                 assert_eq!(unbondings.len() as u32, n);
             }
         }
@@ -1208,7 +1206,7 @@ fn test_swap_delegate_stake() {
 
         let prev_total_subnet_delegate_stake_balance =
             TotalSubnetDelegateStakeBalance::<Test>::get(from_subnet_id);
-        let prev_next_id = NextSwapId::<Test>::get();
+        let prev_next_id = NextSwapQueueId::<Test>::get();
 
         assert_ok!(Network::swap_delegate_stake(
             RuntimeOrigin::signed(account(n_account)),
@@ -1275,7 +1273,7 @@ fn test_swap_delegate_stake() {
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
         };
 
-        let next_id = NextSwapId::<Test>::get();
+        let next_id = NextSwapQueueId::<Test>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<Test>::get();
         assert!(queue
@@ -1468,7 +1466,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
         let epoch_length = EpochLength::get();
         let cooldown_epochs = DelegateStakeCooldownEpochs::<Test>::get();
 
-        Network::do_remove_subnet_v2(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
+        Network::do_remove_subnet(subnet_id, SubnetRemovalReason::MinSubnetDelegateStake);
 
         assert_eq!(SubnetsData::<Test>::contains_key(subnet_id), false);
 
@@ -1486,8 +1484,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
         let post_balance = Balances::free_balance(&account(n_account));
         assert_eq!(post_balance, balance);
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 1);
         let (ledger_block, ledger_balance) = unbondings.iter().next().unwrap();
         assert_eq!(
@@ -1514,8 +1511,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
                 && (post_balance < starting_delegator_balance)
         );
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 0);
     });
 }
@@ -1593,12 +1589,11 @@ fn test_swap_from_subnet_to_node() {
         // The first depositor will lose a percentage of their deposit depending on the size
         // https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 0);
         let before_transfer_tensor = Balances::free_balance(&account(n_account));
 
-        let prev_next_id = NextSwapId::<Test>::get();
+        let prev_next_id = NextSwapQueueId::<Test>::get();
 
         assert_ok!(Network::swap_from_subnet_to_node(
             RuntimeOrigin::signed(account(n_account)),
@@ -1608,8 +1603,7 @@ fn test_swap_from_subnet_to_node() {
             delegate_shares,
         ));
 
-        let unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(unbondings.len(), 0);
         let after_transfer_tensor = Balances::free_balance(&account(n_account));
         assert_eq!(after_transfer_tensor, before_transfer_tensor);
@@ -1639,7 +1633,7 @@ fn test_swap_from_subnet_to_node() {
             }
         };
 
-        let next_id = NextSwapId::<Test>::get();
+        let next_id = NextSwapQueueId::<Test>::get();
         assert_eq!(prev_next_id + 1, next_id);
         let queue = SwapQueueOrder::<Test>::get();
         assert!(queue
@@ -2018,17 +2012,17 @@ fn test_transfer_delegate_stake() {
 
         // no ledger balances
         // let n_account_unbondings: BTreeMap<u32, u128> =
-        //     StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+        //     StakeUnbondingLedger::<Test>::get(account(n_account));
         // assert_eq!(n_account_unbondings.len(), 0);
         // let to_n_account_unbondings: BTreeMap<u32, u128> =
-        //     StakeUnbondingLedgerV2::<Test>::get(account(to_n_account));
+        //     StakeUnbondingLedger::<Test>::get(account(to_n_account));
         // assert_eq!(to_n_account_unbondings.len(), 0);
 
         let n_account_unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(n_account));
+            StakeUnbondingLedger::<Test>::get(account(n_account));
         assert_eq!(n_account_unbondings.len(), 0);
         let to_n_account_unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(account(to_n_account));
+            StakeUnbondingLedger::<Test>::get(account(to_n_account));
         assert_eq!(to_n_account_unbondings.len(), 0);
 
         let after_delegate_shares =

@@ -3,7 +3,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
 import { ApiPromise } from "@polkadot/api";
 import { ethers, getAddress } from "ethers"
 import { ETH_LOCAL_URL } from "./config"
-import OverwatchNode from "../build/contracts/OverwatchNode.json";
+import IOverwatchNode from "../build/contracts/IOverwatchNode.json";
 import Subnet from "../build/contracts/Subnet.json";
 import Staking from "../build/contracts/Staking.json";
 import PeerId from 'peer-id'
@@ -13,7 +13,7 @@ export const TEST_PATH = "subnet-test-name";
 export const GENESIS_ACCOUNT = "0x6be02d1d3665660d22ff9624b7be0551ee1ac91b";
 export const GENESIS_ACCOUNT_PRIVATE_KEY = "0x99B3C12287537E38C90A9219D4CB074A89A16E9CDB20BF85728EBD97C343E342";
 
-export const OVERWATCH_NODE_CONTRACT_ABI = OverwatchNode.abi;
+export const OVERWATCH_NODE_CONTRACT_ABI = IOverwatchNode.abi;
 export const OVERWATCH_NODE_CONTRACT_ADDRESS = hash(2050);
 
 export const SUBNET_CONTRACT_ABI = Subnet.abi;

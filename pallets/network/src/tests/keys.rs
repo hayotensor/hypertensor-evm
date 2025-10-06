@@ -7,7 +7,7 @@ use crate::{
     DefaultMaxVectorLength, Error, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId,
     HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinActiveNodeStakeEpochs,
     NetworkMinStakeBalance, OverwatchMinStakeBalance, OverwatchNodeIdHotkey, OverwatchNodes,
-    StakeUnbondingLedgerV2, SubnetName, SubnetNodeIdHotkey, SubnetNodesData, TotalActiveSubnets,
+    StakeUnbondingLedger, SubnetName, SubnetNodeIdHotkey, SubnetNodesData, TotalActiveSubnets,
     TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
@@ -120,12 +120,12 @@ fn test_update_coldkey() {
         ));
 
         let original_unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+            StakeUnbondingLedger::<Test>::get(coldkey.clone());
         let original_ledger_balance: u128 = original_unbondings.values().copied().sum();
         assert_eq!(original_unbondings.len() as u32, 1);
         assert_eq!(original_ledger_balance, remove_stake_amount);
 
-        /// Update the coldkey to unused key
+        // Update the coldkey to unused key
         //
         //
         // Coldkey = coldkey
@@ -153,7 +153,7 @@ fn test_update_coldkey() {
         //
 
         // check old coldkey balance is now removed because it was swapped to the new one
-        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedgerV2::<Test>::get(coldkey.clone());
+        let unbondings: BTreeMap<u32, u128> = StakeUnbondingLedger::<Test>::get(coldkey.clone());
         let ledger_balance: u128 = unbondings.values().copied().sum();
         assert_eq!(unbondings.len() as u32, 0);
         assert_eq!(ledger_balance, 0);
@@ -172,7 +172,7 @@ fn test_update_coldkey() {
         // Check new coldkey
         //
         let new_unbondings: BTreeMap<u32, u128> =
-            StakeUnbondingLedgerV2::<Test>::get(new_coldkey.clone());
+            StakeUnbondingLedger::<Test>::get(new_coldkey.clone());
         let new_ledger_balance: u128 = new_unbondings.values().copied().sum();
         assert_eq!(
             new_unbondings.len() as u32,
