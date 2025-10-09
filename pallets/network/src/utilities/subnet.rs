@@ -19,9 +19,8 @@ use frame_support::pallet_prelude::DispatchError;
 impl<T: Config> Pallet<T> {
     pub fn assign_subnet_slot(subnet_id: u32) -> Result<u32, DispatchError> {
         let epoch_length = T::EpochLength::get();
-        // See `on_initialize` for why there are 4 epoch designated
-        let max_slots = epoch_length - 4;
-        // Max slots must always be > 2
+        // See `on_initialize` for why there are 3 epoch designated
+        let max_slots = epoch_length - T::DesignatedEpochSlots::get();
 
         // Get currently assigned slots
         let mut assigned_slots = AssignedSlots::<T>::get();
@@ -32,11 +31,11 @@ impl<T: Config> Pallet<T> {
         );
 
         // Find first free slot [3..epoch_length)
-        // Slot 1: Electing validators
-        // Slot 2: Overwatch weights
-        // Slot 3: Generating weights
+        // Slot 0: Electing validators
+        // Slot 1: Overwatch weights
+        // Slot 2: Generating weights
         // See `on_initialize`
-        let free_slot = (3..epoch_length)
+        let free_slot = (T::DesignatedEpochSlots::get()..epoch_length)
             .find(|slot| !assigned_slots.contains(slot))
             .ok_or(Error::<T>::NoAvailableSlots)?;
 
@@ -278,7 +277,7 @@ impl<T: Config> Pallet<T> {
 
         let subnet_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
         let min_subnet_delegate_stake_balance =
-            Self::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+            Self::get_min_subnet_delegate_stake_balance(subnet_id);
 
         if subnet_delegate_stake_balance < min_subnet_delegate_stake_balance {
             return (false, Some(SubnetRemovalReason::MinSubnetDelegateStake));

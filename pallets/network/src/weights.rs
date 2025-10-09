@@ -48,7 +48,6 @@ pub trait WeightInfo {
 	fn owner_update_idle_classification_epochs() -> Weight;
 	fn owner_update_included_classification_epochs() -> Weight;
 	fn owner_update_max_node_penalties() -> Weight;
-	fn owner_add_initial_coldkeys() -> Weight;
 	fn owner_remove_initial_coldkeys() -> Weight;
 	fn owner_update_key_types() -> Weight;
 	fn owner_update_min_stake() -> Weight;
@@ -62,7 +61,7 @@ pub trait WeightInfo {
 	fn remove_subnet_node() -> Weight;
 	fn register_or_update_identity() -> Weight;
 	fn remove_identity() -> Weight;
-	fn update_delegate_reward_rate() -> Weight;
+	fn update_node_delegate_reward_rate() -> Weight;
 	fn add_stake() -> Weight;
 	fn remove_stake() -> Weight;
 	fn claim_unbondings() -> Weight;
@@ -148,7 +147,7 @@ pub trait WeightInfo {
 	fn set_network_max_stake_balance() -> Weight;
 	fn set_min_active_nodes_stake_epochs() -> Weight;
 	fn set_min_delegate_stake_deposit() -> Weight;
-	fn set_reward_rate_update_period() -> Weight;
+	fn set_node_reward_rate_update_period() -> Weight;
 	fn set_max_reward_rate_decrease() -> Weight;
 	fn set_subnet_distribution_power() -> Weight;
 	fn set_delegate_stake_weight_factor() -> Weight;
@@ -185,7 +184,7 @@ pub trait WeightInfo {
 	fn graduate_class() -> Weight;
 	fn insert_node_into_election_slot() -> Weight;
 	fn increase_coldkey_reputation() -> Weight;
-	fn get_min_subnet_delegate_stake_balance_v2() -> Weight;
+	fn get_min_subnet_delegate_stake_balance() -> Weight;
 }
 
 /// Weights for `pallet_network` using the Substrate node and recommended hardware.
@@ -876,31 +875,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn owner_add_initial_coldkeys() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `743`
-		//  Estimated: `4208`
-		// Minimum execution time: 30_578_000 picoseconds.
-		Weight::from_parts(32_115_000, 4208)
-			.saturating_add(T::DbWeight::get().reads(8_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
-	}
-	/// Storage: `Network::TxPause` (r:1 w:0)
-	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetOwner` (r:1 w:0)
-	/// Proof: `Network::SubnetOwner` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetsData` (r:1 w:0)
-	/// Proof: `Network::SubnetsData` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetRegistrationInitialColdkeys` (r:1 w:1)
-	/// Proof: `Network::SubnetRegistrationInitialColdkeys` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `System::Number` (r:1 w:0)
-	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `System::ExecutionPhase` (r:1 w:0)
-	/// Proof: `System::ExecutionPhase` (`max_values`: Some(1), `max_size`: Some(5), added: 500, mode: `MaxEncodedLen`)
-	/// Storage: `System::EventCount` (r:1 w:1)
-	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `System::Events` (r:1 w:1)
-	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn owner_remove_initial_coldkeys() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `743`
@@ -1256,8 +1230,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::MaxRewardRateDecrease` (r:1 w:0)
 	/// Proof: `Network::MaxRewardRateDecrease` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::RewardRateUpdatePeriod` (r:1 w:0)
-	/// Proof: `Network::RewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NodeRewardRateUpdatePeriod` (r:1 w:0)
+	/// Proof: `Network::NodeRewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxDelegateStakePercentage` (r:1 w:0)
 	/// Proof: `Network::MaxDelegateStakePercentage` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SubnetNodesData` (r:1 w:1)
@@ -1268,7 +1242,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn update_delegate_reward_rate() -> Weight {
+	fn update_node_delegate_reward_rate() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1823`
 		//  Estimated: `5288`
@@ -3506,9 +3480,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::RewardRateUpdatePeriod` (r:0 w:1)
-	/// Proof: `Network::RewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_reward_rate_update_period() -> Weight {
+	/// Storage: `Network::NodeRewardRateUpdatePeriod` (r:0 w:1)
+	/// Proof: `Network::NodeRewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn set_node_reward_rate_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
 		//  Estimated: `1510`
@@ -4355,7 +4329,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::MaxSubnetNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxMinDelegateStakeMultiplier` (r:1 w:0)
 	/// Proof: `Network::MaxMinDelegateStakeMultiplier` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn get_min_subnet_delegate_stake_balance_v2() -> Weight {
+	fn get_min_subnet_delegate_stake_balance() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3703`
 		//  Estimated: `7168`
@@ -5052,31 +5026,6 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn owner_add_initial_coldkeys() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `743`
-		//  Estimated: `4208`
-		// Minimum execution time: 30_578_000 picoseconds.
-		Weight::from_parts(32_115_000, 4208)
-			.saturating_add(RocksDbWeight::get().reads(8_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
-	}
-	/// Storage: `Network::TxPause` (r:1 w:0)
-	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetOwner` (r:1 w:0)
-	/// Proof: `Network::SubnetOwner` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetsData` (r:1 w:0)
-	/// Proof: `Network::SubnetsData` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetRegistrationInitialColdkeys` (r:1 w:1)
-	/// Proof: `Network::SubnetRegistrationInitialColdkeys` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `System::Number` (r:1 w:0)
-	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `System::ExecutionPhase` (r:1 w:0)
-	/// Proof: `System::ExecutionPhase` (`max_values`: Some(1), `max_size`: Some(5), added: 500, mode: `MaxEncodedLen`)
-	/// Storage: `System::EventCount` (r:1 w:1)
-	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
-	/// Storage: `System::Events` (r:1 w:1)
-	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn owner_remove_initial_coldkeys() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `743`
@@ -5432,8 +5381,8 @@ impl WeightInfo for () {
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::MaxRewardRateDecrease` (r:1 w:0)
 	/// Proof: `Network::MaxRewardRateDecrease` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::RewardRateUpdatePeriod` (r:1 w:0)
-	/// Proof: `Network::RewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::NodeRewardRateUpdatePeriod` (r:1 w:0)
+	/// Proof: `Network::NodeRewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxDelegateStakePercentage` (r:1 w:0)
 	/// Proof: `Network::MaxDelegateStakePercentage` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::SubnetNodesData` (r:1 w:1)
@@ -5444,7 +5393,7 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn update_delegate_reward_rate() -> Weight {
+	fn update_node_delegate_reward_rate() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1823`
 		//  Estimated: `5288`
@@ -7682,9 +7631,9 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::RewardRateUpdatePeriod` (r:0 w:1)
-	/// Proof: `Network::RewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_reward_rate_update_period() -> Weight {
+	/// Storage: `Network::NodeRewardRateUpdatePeriod` (r:0 w:1)
+	/// Proof: `Network::NodeRewardRateUpdatePeriod` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn set_node_reward_rate_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
 		//  Estimated: `1510`
@@ -8531,7 +8480,7 @@ impl WeightInfo for () {
 	/// Proof: `Network::MaxSubnetNodes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MaxMinDelegateStakeMultiplier` (r:1 w:0)
 	/// Proof: `Network::MaxMinDelegateStakeMultiplier` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn get_min_subnet_delegate_stake_balance_v2() -> Weight {
+	fn get_min_subnet_delegate_stake_balance() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3703`
 		//  Estimated: `7168`

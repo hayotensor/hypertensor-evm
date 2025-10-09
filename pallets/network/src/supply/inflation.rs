@@ -184,7 +184,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// *(validator emissions, foundation emissions)
     ///
-    pub fn get_epoch_emissions_v2(epoch: u32) -> (u128, u128) {
+    pub fn get_epoch_emissions(epoch: u32) -> (u128, u128) {
         let mid = Self::get_percent_as_f64(SigmoidMidpoint::<T>::get());
         let k = SigmoidSteepness::<T>::get() as f64;
 

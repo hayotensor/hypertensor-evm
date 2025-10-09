@@ -6,10 +6,10 @@ use crate::{
     ClientPeerIdSubnetNodeId, ColdkeyReputation, DefaultMaxVectorLength, Error,
     HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId,
     MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
-    MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMinStakeBalance,
+    MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs,
     NodeDelegateStakeBalance,
     NodeSlotIndex, PeerIdSubnetNodeId, SubnetNodeQueue,
-    RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, RewardRateUpdatePeriod,
+    RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, NodeRewardRateUpdatePeriod,
     SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
     SubnetNodeClassification, SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeUniqueParam,
     SubnetNodesData, SubnetOwner, SubnetRegistrationEpochs, SubnetState, SubnetsData,
@@ -49,7 +49,7 @@ fn test_register_subnet_node_v2() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -131,7 +131,7 @@ fn test_register_subnet_node_v2_and_activate() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -249,7 +249,7 @@ fn test_register_subnet_node_v2_and_activate_max_churn_limit() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();

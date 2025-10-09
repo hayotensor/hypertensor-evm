@@ -667,6 +667,7 @@ parameter_types! {
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
         BlockWeights::get().max_block;
+    pub const DesignatedEpochSlots: u32 = 3;
 }
 
 impl pallet_network::Config for Runtime {
@@ -685,6 +686,7 @@ impl pallet_network::Config for Runtime {
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;
+    type DesignatedEpochSlots = DesignatedEpochSlots;
 }
 
 impl pallet_evm_chain_id::Config for Runtime {}

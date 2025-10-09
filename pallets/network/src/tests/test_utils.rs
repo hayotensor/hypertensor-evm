@@ -4,8 +4,8 @@ use crate::{
     AccountOverwatchStake, AccountSubnetDelegateStakeShares, AccountSubnetStake, AttestEntry,
     BootnodePeerIdSubnetNodeId, ColdkeyHotkeys, ColdkeyReputation, ColdkeySubnetNodes,
     ConsensusData, HotkeyOverwatchNodeId, HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId, KeyType,
-    MaxMaxRegisteredNodes, MaxOverwatchNodes, MaxSubnetMaxStake, MaxSubnetNodes, MaxSubnets,
-    MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMaxStakeBalance, NetworkMinStakeBalance,
+    MaxMaxRegisteredNodes, MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetMinStake,
+    MinSubnetNodes, MinSubnetRegistrationEpochs, NetworkMaxStakeBalance,
     OverwatchCommitCutoffPercent, OverwatchEpochLengthMultiplier, OverwatchMinAge,
     OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeIdHotkey, OverwatchNodes,
     OverwatchReveals, PeerIdSubnetNodeId, RegisteredSubnetNodesData, RegistrationSubnetData,
@@ -171,7 +171,7 @@ pub fn peer(id: u32) -> PeerId {
 // 12D3KooWD3eckifWpRn9wQpMG9R9hX3sD158z7EqHWmweQAJU5SA
 
 pub fn get_min_stake_balance() -> u128 {
-    NetworkMinStakeBalance::<Test>::get()
+    MinSubnetMinStake::<Test>::get()
 }
 
 pub fn get_min_overwatch_stake_balance() -> u128 {
@@ -234,7 +234,6 @@ pub fn build_activated_subnet_new(
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -371,8 +370,7 @@ pub fn build_activated_subnet_new(
 
     let delegate_staker_account = 1;
     // Add 100e18 to account for block increase on activation
-    let mut min_subnet_delegate_stake =
-        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+    let mut min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id);
     min_subnet_delegate_stake = min_subnet_delegate_stake
         + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
 
@@ -473,7 +471,6 @@ pub fn build_activated_subnet_new_excess_subnets(
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -604,8 +601,7 @@ pub fn build_activated_subnet_new_excess_subnets(
 
     let delegate_staker_account = 1;
     // Add 100e18 to account for block increase on activation
-    let mut min_subnet_delegate_stake =
-        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+    let mut min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id);
     min_subnet_delegate_stake = min_subnet_delegate_stake
         + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
 
@@ -657,6 +653,7 @@ pub fn build_registered_subnet_new(
     deposit_amount: u128,
     amount: u128,
     delegate_stake_conditional: bool,
+    add_subnet_data: Option<RegistrationSubnetData<AccountId>>,
 ) {
     let alice = account(0);
     if Balances::free_balance(alice) == 0 {
@@ -666,8 +663,6 @@ pub fn build_registered_subnet_new(
     let epoch_length = EpochLength::get();
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
-    // let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-    // increase_epochs(next_registration_epoch.saturating_sub(epoch));
 
     let subnets = TotalActiveSubnets::<Test>::get() + 1;
     let max_subnets = MaxSubnets::<Test>::get();
@@ -695,18 +690,21 @@ pub fn build_registered_subnet_new(
         initial_coldkeys_end = min_nodes;
     }
 
-    let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
-        subnets,
-        max_subnet_nodes,
-        subnet_name.clone().into(),
-        start,
-        initial_coldkeys_end,
-    );
+    let add_subnet_data = if add_subnet_data.is_none() {
+        default_registration_subnet_data(
+            subnets,
+            max_subnet_nodes,
+            subnet_name.clone().into(),
+            start,
+            initial_coldkeys_end,
+        )
+    } else {
+        add_subnet_data.unwrap()
+    };
 
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -826,7 +824,7 @@ pub fn build_registered_subnet_new(
         let delegate_staker_account = 1;
         // Add 100e18 to account for block increase on activation
         let mut min_subnet_delegate_stake =
-            Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+            Network::get_min_subnet_delegate_stake_balance(subnet_id);
         min_subnet_delegate_stake = min_subnet_delegate_stake
             + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
         if Balances::free_balance(&alice.clone()) <= min_subnet_delegate_stake {
@@ -910,7 +908,6 @@ pub fn build_registered_subnet_and_subnet_nodes(
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -1019,7 +1016,7 @@ pub fn build_registered_subnet_and_subnet_nodes(
         let delegate_staker_account = 1;
         // Add 100e18 to account for block increase on activation
         let mut min_subnet_delegate_stake =
-            Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+            Network::get_min_subnet_delegate_stake_balance(subnet_id);
         min_subnet_delegate_stake = min_subnet_delegate_stake
             + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
         assert_ok!(Balances::transfer(
@@ -1193,7 +1190,6 @@ pub fn build_activated_subnet_with_overwatch_nodes(
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -1436,8 +1432,7 @@ pub fn build_activated_subnet_with_overwatch_nodes(
 
     let delegate_staker_account = 1;
     // Add 100e18 to account for block increase on activation
-    let mut min_subnet_delegate_stake =
-        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+    let mut min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id);
     min_subnet_delegate_stake = min_subnet_delegate_stake
         + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
     // let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
@@ -1459,7 +1454,7 @@ pub fn build_activated_subnet_with_overwatch_nodes(
     let total_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
     assert_eq!(total_delegate_stake_balance, min_subnet_delegate_stake);
 
-    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id);
 
     let min_registration_epochs = MinSubnetRegistrationEpochs::<Test>::get();
     increase_epochs(min_registration_epochs + 1);
@@ -1542,7 +1537,6 @@ pub fn build_activated_subnet_with_overwatch_nodes_v2(
         // --- Register subnet for activation
         assert_ok!(Network::register_subnet(
             RuntimeOrigin::signed(owner_coldkey.clone()),
-            owner_hotkey.clone(),
             100000000000000000000000,
             add_subnet_data,
         ));
@@ -1679,7 +1673,7 @@ pub fn build_activated_subnet_with_overwatch_nodes_v2(
         let delegate_staker_account = 1;
         // Add 100e18 to account for block increase on activation
         let mut min_subnet_delegate_stake =
-            Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+            Network::get_min_subnet_delegate_stake_balance(subnet_id);
         min_subnet_delegate_stake = min_subnet_delegate_stake
             + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
         // let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
@@ -1701,8 +1695,7 @@ pub fn build_activated_subnet_with_overwatch_nodes_v2(
         let total_delegate_stake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
         assert_eq!(total_delegate_stake_balance, min_subnet_delegate_stake);
 
-        let min_subnet_delegate_stake =
-            Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+        let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id);
 
         assert_ok!(Network::activate_subnet(
             RuntimeOrigin::signed(owner_coldkey.clone()),
@@ -1833,7 +1826,6 @@ pub fn build_activated_subnet_with_delegator_rewards(
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
         RuntimeOrigin::signed(owner_coldkey.clone()),
-        owner_hotkey.clone(),
         100000000000000000000000,
         add_subnet_data,
     ));
@@ -1916,7 +1908,7 @@ pub fn build_activated_subnet_with_delegator_rewards(
     let delegate_staker_account = 1000;
     // Add 100e18 to account for block increase on activation
     let min_subnet_delegate_stake =
-        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id) + 100e+18 as u128;
+        Network::get_min_subnet_delegate_stake_balance(subnet_id) + 100e+18 as u128;
 
     let _ = Balances::deposit_creating(
         &account(delegate_staker_account),
@@ -2018,20 +2010,57 @@ pub fn build_overwatch_nodes(start: u32, mut end: u32, amount: u128) {
     assert_eq!(total_staked, stake);
 }
 
+// pub fn get_initial_coldkeys(
+//     subnets: u32,
+//     max_subnet_nodes: u32,
+//     start: u32,
+//     end: u32,
+// ) -> BTreeSet<AccountId> {
+//     let mut whitelist = BTreeSet::new();
+//     for n in start..end {
+//         let _n = n + 1;
+//         let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+//         whitelist.insert(coldkey);
+//     }
+//     whitelist
+// }
+
 pub fn get_initial_coldkeys(
     subnets: u32,
     max_subnet_nodes: u32,
     start: u32,
     end: u32,
-) -> BTreeSet<AccountId> {
-    let mut whitelist = BTreeSet::new();
+) -> BTreeMap<AccountId, u32> {
+    let mut whitelist = BTreeMap::new();
     for n in start..end {
         let _n = n + 1;
         let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
-        whitelist.insert(coldkey);
+        whitelist.insert(coldkey, 1);
     }
     whitelist
 }
+
+// pub fn get_initial_coldkeys_with_onodes(
+//     subnets: u32,
+//     max_subnets: u32,
+//     max_subnet_nodes: u32,
+//     max_onodes: u32,
+//     start: u32,
+//     end: u32,
+//     overwatch_count: u32,
+// ) -> BTreeSet<AccountId> {
+//     let mut whitelist = BTreeSet::new();
+//     for n in start..end + overwatch_count {
+//         let _n = n + 1;
+//         let mut coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+//         if _n >= end {
+//             let o_n = _n - end + 1;
+//             coldkey = get_overwatch_coldkey(max_subnet_nodes, max_subnets, max_onodes, o_n);
+//         }
+//         whitelist.insert(coldkey);
+//     }
+//     whitelist
+// }
 
 pub fn get_initial_coldkeys_with_onodes(
     subnets: u32,
@@ -2041,8 +2070,8 @@ pub fn get_initial_coldkeys_with_onodes(
     start: u32,
     end: u32,
     overwatch_count: u32,
-) -> BTreeSet<AccountId> {
-    let mut whitelist = BTreeSet::new();
+) -> BTreeMap<AccountId, u32> {
+    let mut whitelist = BTreeMap::new();
     for n in start..end + overwatch_count {
         let _n = n + 1;
         let mut coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
@@ -2050,7 +2079,7 @@ pub fn get_initial_coldkeys_with_onodes(
             let o_n = _n - end + 1;
             coldkey = get_overwatch_coldkey(max_subnet_nodes, max_subnets, max_onodes, o_n);
         }
-        whitelist.insert(coldkey);
+        whitelist.insert(coldkey, 1);
     }
     whitelist
 }
@@ -2069,11 +2098,10 @@ pub fn default_registration_subnet_data(
         description: Vec::new(),
         misc: Vec::new(),
         churn_limit: 4,
-        min_stake: NetworkMinStakeBalance::<Test>::get(),
+        min_stake: MinSubnetMinStake::<Test>::get(),
         max_stake: NetworkMaxStakeBalance::<Test>::get(),
         delegate_stake_percentage: 100000000000000000, // 10%
         subnet_node_queue_epochs: 4,
-        // activation_grace_epochs: 4,
         idle_classification_epochs: 4,
         included_classification_epochs: 4,
         max_node_penalties: 3,
@@ -2102,7 +2130,7 @@ pub fn default_registration_subnet_data_with_onodes(
         description: Vec::new(),
         misc: Vec::new(),
         churn_limit: 4,
-        min_stake: NetworkMinStakeBalance::<Test>::get(),
+        min_stake: MinSubnetMinStake::<Test>::get(),
         max_stake: NetworkMaxStakeBalance::<Test>::get(),
         delegate_stake_percentage: 100000000000000000, // 10%
         subnet_node_queue_epochs: 4,
@@ -2135,8 +2163,6 @@ pub fn post_subnet_removal_ensures(
 ) {
     assert_eq!(SubnetsData::<Test>::try_get(subnet_id), Err(()));
     assert_eq!(SubnetName::<Test>::try_get(name), Err(()));
-    // assert_eq!(LastSubnetRegistration::<Test>::try_get(subnet_id), Err(()));
-    // assert_eq!(SubnetRegistrationEpoch::<Test>::try_get(subnet_id), Err(()));
     assert_eq!(
         SubnetRegistrationInitialColdkeys::<Test>::try_get(subnet_id),
         Err(())
@@ -2241,20 +2267,6 @@ pub fn post_subnet_removal_ensures(
         System::set_block_number(starting_block_number);
     }
 }
-
-// pub fn build_for_submit_consensus_data(subnet_id: u32, start: u32, end: u32, start_data: u32, end_data: u32) {
-//   let subnet_node_data_vec = get_subnet_node_consensus_data(start_data, end_data);
-
-//   for n in start+1..end+1 {
-//     assert_ok!(
-//       Network::submit_consensus_data(
-//         RuntimeOrigin::signed(account(n)),
-//         subnet_id,
-//         subnet_node_data_vec.clone(),
-//       )
-//     );
-//   }
-// }
 
 pub fn increase_blocks(blocks: u32) {
     System::set_block_number(System::block_number() + blocks);
@@ -2579,7 +2591,7 @@ pub fn insert_subnet(id: u32, state: SubnetState, start_epoch: u32) {
 pub fn insert_subnet_requirements(id: u32) {
     let delegate_staker_account = 1;
     // Add 100e18 to account for block increase on activation
-    let mut min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance_v2(id);
+    let mut min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(id);
     min_subnet_delegate_stake = min_subnet_delegate_stake
         + Network::percent_mul(min_subnet_delegate_stake, 10000000000000000);
     // let _ = Balances::deposit_creating(&account(delegate_staker_account), min_subnet_delegate_stake+500);
@@ -2836,7 +2848,7 @@ pub fn make_overwatch_qualified_sim(coldkey_n: u32) {
 
     let max_subnets = MaxSubnets::<Test>::get();
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
-    let amount = NetworkMinStakeBalance::<Test>::get();
+    let amount = MinSubnetMinStake::<Test>::get();
 
     let mut subnet_nodes: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
 

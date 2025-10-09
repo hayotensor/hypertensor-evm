@@ -16,14 +16,14 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
-    pub fn do_update_delegate_reward_rate(
+    pub fn do_update_node_delegate_reward_rate(
         subnet_id: u32,
         subnet_node_id: u32,
         new_delegate_reward_rate: u128,
     ) -> DispatchResult {
         let block: u32 = Self::get_current_block_as_u32();
         let max_reward_rate_decrease = MaxRewardRateDecrease::<T>::get();
-        let reward_rate_update_period = RewardRateUpdatePeriod::<T>::get();
+        let reward_rate_update_period = NodeRewardRateUpdatePeriod::<T>::get();
 
         // --- Ensure rate doesn't surpass 100% and MaxDelegateStakePercentage
         ensure!(
@@ -37,7 +37,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
                 |maybe_params| -> DispatchResult {
-                    Self::perform_update_delegate_reward_rate(
+                    Self::perform_update_node_delegate_reward_rate(
                         maybe_params,
                         subnet_id,
                         block,
@@ -54,7 +54,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
                 |maybe_params| -> DispatchResult {
-                    Self::perform_update_delegate_reward_rate(
+                    Self::perform_update_node_delegate_reward_rate(
                         maybe_params,
                         subnet_id,
                         block,
@@ -72,7 +72,7 @@ impl<T: Config> Pallet<T> {
         Err(Error::<T>::InvalidSubnetNodeId.into())
     }
 
-    fn perform_update_delegate_reward_rate(
+    fn perform_update_node_delegate_reward_rate(
         maybe_params: &mut Option<SubnetNode<T::AccountId>>,
         subnet_id: u32,
         block: u32,

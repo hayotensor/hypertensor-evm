@@ -2,7 +2,7 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
     AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs, Error, MaxUnbondings,
-    MinDelegateStakeDeposit, NetworkMinStakeBalance, NextSwapQueueId, NodeDelegateStakeBalance,
+    MinDelegateStakeDeposit, MinSubnetMinStake, NextSwapQueueId, NodeDelegateStakeBalance,
     QueuedSwapCall, StakeUnbondingLedger, SubnetName, SubnetRemovalReason, SubnetsData,
     SwapCallQueue, SwapQueueOrder, TotalActiveSubnets, TotalDelegateStake,
     TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares,
@@ -34,7 +34,7 @@ fn test_add_to_delegate_stake() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000e+18 as u128;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -118,7 +118,7 @@ fn test_add_to_delegate_stake_not_enough_balance_error() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000e+18 as u128;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -149,7 +149,7 @@ fn test_add_to_delegate_stake_balance_withdraw_error() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000e+18 as u128;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -182,7 +182,7 @@ fn test_add_to_delegate_stake_min_delegate_stake_deposit_not_reached_error() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000e+18 as u128;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -411,7 +411,7 @@ fn test_delegate_math_with_storage_deposit() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000; // 1000
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -508,7 +508,7 @@ fn test_remove_delegate_stake() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000; // 1000
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -607,7 +607,7 @@ fn test_remove_delegate_stake_not_enough_stake_to_withdraw() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000; // 1000
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
@@ -727,7 +727,7 @@ fn test_remove_claim_delegate_stake_after_remove_subnet() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -825,7 +825,7 @@ fn test_add_to_delegate_stake_increase_pool_check_balance() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -940,7 +940,7 @@ fn test_claim_removal_of_delegate_stake() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -1067,7 +1067,7 @@ fn test_remove_to_delegate_stake_max_unlockings_reached_err() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -1142,7 +1142,7 @@ fn test_swap_delegate_stake() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(from_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
@@ -1289,7 +1289,7 @@ fn test_switch_delegate_stake_not_enough_stake_err() {
 
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(from_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
@@ -1398,7 +1398,7 @@ fn test_remove_delegate_stake_after_subnet_remove() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 
@@ -1521,7 +1521,7 @@ fn test_swap_from_subnet_to_node() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(
@@ -1920,7 +1920,7 @@ fn test_transfer_delegate_stake() {
 
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
@@ -2066,7 +2066,7 @@ fn test_transfer_delegate_stake_min_delegate_stake_deposit_not_reached() {
 
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
@@ -2148,7 +2148,7 @@ fn test_donate_delegate_stake() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000; // 1000
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
 

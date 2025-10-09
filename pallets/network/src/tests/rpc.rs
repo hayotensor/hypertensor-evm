@@ -1,7 +1,7 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
-use crate::{MaxSubnetNodes, MaxSubnets, NetworkMinStakeBalance, SubnetName, TotalActiveSubnets};
+use crate::{MaxSubnetNodes, MaxSubnets, MinSubnetMinStake, SubnetName, TotalActiveSubnets};
 
 #[test]
 fn test_get_coldkey_subnet_nodes_info() {
@@ -11,7 +11,7 @@ fn test_get_coldkey_subnet_nodes_info() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -37,7 +37,7 @@ fn test_proof_of_stake() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();

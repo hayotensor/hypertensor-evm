@@ -15,6 +15,7 @@ use sp_runtime::{
     Vec,
     traits::{Dispatchable, StaticLookup, UniqueSaturatedInto},
 };
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec;
 
@@ -47,12 +48,11 @@ where
     <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
 {
     #[precompile::public(
-        "registerSubnet(address,uint256,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,address[],uint256[],string[])"
+        "registerSubnet(uint256,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,(address,uint256)[],uint256[],string[])"
     )]
     #[precompile::payable]
     fn register_subnet(
         handle: &mut impl PrecompileHandle,
-        hotkey: Address,
         max_cost: U256,
         name: BoundedString<ConstU32<256>>,
         repo: BoundedString<ConstU32<1024>>,
@@ -67,13 +67,12 @@ where
         included_classification_epochs: U256,
         max_node_penalties: U256,
         max_registered_nodes: U256,
-        initial_coldkeys: Vec<Address>,
+        initial_coldkeys: Vec<(Address, U256)>,
         key_types: Vec<U256>,
         bootnodes: Vec<BoundedString<ConstU32<1024>>>,
     ) -> EvmResult<()> {
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
-        let hotkey = R::AddressMapping::into_account_id(hotkey.into());
         let max_cost: u128 = max_cost.unique_saturated_into();
         let churn_limit = try_u256_to_u32(churn_limit)?;
         let min_stake: u128 = min_stake.unique_saturated_into();
@@ -84,10 +83,15 @@ where
         let included_classification_epochs = try_u256_to_u32(included_classification_epochs)?;
         let max_node_penalties = try_u256_to_u32(max_node_penalties)?;
         let max_registered_nodes = try_u256_to_u32(max_registered_nodes)?;
-        let initial_coldkeys: BTreeSet<R::AccountId> = initial_coldkeys
+        let initial_coldkeys: BTreeMap<R::AccountId, u32> = initial_coldkeys
             .into_iter()
-            .map(|a| R::AddressMapping::into_account_id(a.into()))
-            .collect();
+            .map(|(addr, count)| {
+                Ok::<_, PrecompileFailure>((
+                    R::AddressMapping::into_account_id(addr.into()),
+                    try_u256_to_u32(count)?,
+                ))
+            })
+            .collect::<Result<_, _>>()?;
         let key_types: BTreeSet<KeyType> = key_types
             .into_iter()
             .map(|val| key_type_from_u256(val).ok_or_else(|| revert("Invalid KeyType value")))
@@ -121,7 +125,6 @@ where
         };
 
         let call = pallet_network::Call::<R>::register_subnet {
-            hotkey,
             max_cost,
             subnet_data: subnet_data,
         };
@@ -165,24 +168,6 @@ where
         Ok(())
     }
 
-    #[precompile::public("removeSubnet(uint256)")]
-    #[precompile::payable]
-    fn remove_subnet(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<()> {
-        let subnet_id = try_u256_to_u32(subnet_id)?;
-
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::remove_subnet { subnet_id };
-
-        RuntimeHelper::<R>::try_dispatch(
-            handle,
-            RawOrigin::Signed(origin.clone()).into(),
-            call,
-            0,
-        )?;
-
-        Ok(())
-    }
-
     #[precompile::public("getSubnetId(string)")]
     #[precompile::view]
     fn get_subnet_id(
@@ -209,8 +194,7 @@ where
 
         let subnet_id = try_u256_to_u32(subnet_id)?;
 
-        let result =
-            pallet_network::Pallet::<R>::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+        let result = pallet_network::Pallet::<R>::get_min_subnet_delegate_stake_balance(subnet_id);
 
         Ok(result)
     }
@@ -302,7 +286,7 @@ where
 
     #[precompile::public("updateDelegateRewardRate(uint256,uint256,uint256)")]
     #[precompile::payable]
-    fn update_delegate_reward_rate(
+    fn update_node_delegate_reward_rate(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
         subnet_node_id: U256,
@@ -313,7 +297,7 @@ where
         let new_delegate_reward_rate = new_delegate_reward_rate.unique_saturated_into();
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::update_delegate_reward_rate {
+        let call = pallet_network::Call::<R>::update_node_delegate_reward_rate {
             subnet_id,
             subnet_node_id,
             new_delegate_reward_rate,
@@ -906,20 +890,25 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerAddInitialColdkeys(uint256,address[])")]
-    fn owner_add_initial_coldkeys(
+    #[precompile::public("ownerAddOrUpdateInitialColdkeys(uint256,(address,uint256)[])")]
+    fn owner_add_or_update_initial_coldkeys(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        coldkeys: Vec<Address>,
+        coldkeys: Vec<(Address, U256)>,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
-        let coldkeys: BTreeSet<R::AccountId> = coldkeys
+        let coldkeys: BTreeMap<R::AccountId, u32> = coldkeys
             .into_iter()
-            .map(|a| R::AddressMapping::into_account_id(a.into()))
-            .collect();
+            .map(|(addr, count)| {
+                Ok::<_, PrecompileFailure>((
+                    R::AddressMapping::into_account_id(addr.into()),
+                    try_u256_to_u32(count)?,
+                ))
+            })
+            .collect::<Result<_, _>>()?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_add_initial_coldkeys {
+        let call = pallet_network::Call::<R>::owner_add_or_update_initial_coldkeys {
             subnet_id,
             coldkeys,
         };
@@ -1151,8 +1140,8 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerUpdateTargetRegistrationsPerEpoch(uint256,uint256)")]
-    fn owner_update_target_registrations_per_epoch(
+    #[precompile::public("ownerUpdateTargetNodeRegistrationsPerEpoch(uint256,uint256)")]
+    fn owner_update_target_node_registrations_per_epoch(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
         value: U256,
@@ -1161,7 +1150,7 @@ where
         let value = try_u256_to_u32(value)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_update_target_registrations_per_epoch {
+        let call = pallet_network::Call::<R>::owner_update_target_node_registrations_per_epoch {
             subnet_id,
             value,
         };
@@ -1211,6 +1200,50 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call =
             pallet_network::Call::<R>::owner_update_queue_immunity_epochs { subnet_id, value };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("updateBootnodes(uint256,string[],string[])")]
+    fn update_bootnodes(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        add: Vec<BoundedString<ConstU32<1024>>>,
+        remove: Vec<BoundedString<ConstU32<1024>>>,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+
+        let add: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> = add
+            .into_iter()
+            .map(|add| -> Result<_, PrecompileFailure> {
+                let value: BoundedVec<u8, DefaultMaxVectorLength> =
+                    bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&add)?;
+                Ok(value)
+            })
+            .collect::<Result<_, _>>()?;
+
+        let remove: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>> = remove
+            .into_iter()
+            .map(|remove| -> Result<_, PrecompileFailure> {
+                let value: BoundedVec<u8, DefaultMaxVectorLength> =
+                    bounded_string_to_bounded_vec::<1024, DefaultMaxVectorLength>(&remove)?;
+                Ok(value)
+            })
+            .collect::<Result<_, _>>()?;
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::update_bootnodes {
+            subnet_id,
+            add,
+            remove,
+        };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1354,16 +1387,20 @@ where
     fn get_initial_coldkeys(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-    ) -> EvmResult<Vec<Address>> {
+    ) -> EvmResult<Vec<(Address, U256)>> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let result = pallet_network::SubnetRegistrationInitialColdkeys::<R>::try_get(subnet_id)
             .map_err(|_| revert("SubnetRegistrationInitialColdkeys not found for subnet"))?;
 
-        let coldkeys: Vec<Address> = result
+        let coldkeys: Vec<(Address, U256)> = result
             .into_iter()
-            .map(|acc| Address(sp_core::H160::from(acc.into())))
+            .map(|(acc, c)| {
+                let address = Address(sp_core::H160::from(acc.into()));
+                let count = U256::from(c);
+                (address, count)
+            })
             .collect();
 
         Ok(coldkeys)
@@ -1433,6 +1470,12 @@ where
 }
 
 fn try_u256_to_u32(value: U256) -> Result<u32, PrecompileFailure> {
+    value.try_into().map_err(|_| PrecompileFailure::Error {
+        exit_status: ExitError::Other("u32 out of bounds".into()),
+    })
+}
+
+fn try_u32_to_u256(value: u32) -> Result<U256, PrecompileFailure> {
     value.try_into().map_err(|_| PrecompileFailure::Error {
         exit_status: ExitError::Other("u32 out of bounds".into()),
     })

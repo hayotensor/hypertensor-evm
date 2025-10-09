@@ -46,7 +46,7 @@ impl<T: Config> Pallet<T> {
         // Account for the first 3 block steps in an epoch
         // Do not go over epoch length - 3 to ensure each subnet has a slot in each epoch
         ensure!(
-            value <= T::EpochLength::get() - 3,
+            value <= T::EpochLength::get() - T::DesignatedEpochSlots::get(),
             Error::<T>::InvalidMaxSubnets
         );
 
@@ -68,8 +68,6 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_max_subnet_bootnodes_access(value: u32) -> DispatchResult {
-        // Account for the first 3 block steps in an epoch
-        // Do not go over epoch length - 3 to ensure each subnet has a slot in each epoch
         ensure!(value <= 256, Error::<T>::InvalidMaxSubnetBootnodeAccess);
 
         MaxSubnetBootnodeAccess::<T>::set(value);
@@ -94,22 +92,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
-    // pub fn do_set_min_subnet_registration_fee(value: u128) -> DispatchResult {
-    //     MinSubnetRegistrationFee::<T>::set(value);
-
-    //     Self::deposit_event(Event::SetMinSubnetRegistrationFee(value));
-
-    //     Ok(())
-    // }
-
-    // pub fn do_set_max_subnet_registration_fee(value: u128) -> DispatchResult {
-    //     MaxSubnetRegistrationFee::<T>::set(value);
-
-    //     Self::deposit_event(Event::SetMaxSubnetRegistrationFee(value));
-
-    //     Ok(())
-    // }
 
     pub fn do_set_min_registration_cost(value: u128) -> DispatchResult {
         MinRegistrationCost::<T>::set(value);
@@ -144,6 +126,10 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_max_min_delegate_stake_multiplier(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
         MaxMinDelegateStakeMultiplier::<T>::set(value);
 
         Self::deposit_event(Event::SetMaxMinDelegateStakeMultiplier(value));
@@ -182,22 +168,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
-    // pub fn do_set_min_activation_grace_epochs(value: u32) -> DispatchResult {
-    //     MinActivationGraceEpochs::<T>::set(value);
-
-    //     Self::deposit_event(Event::SetMinActivationGraceEpochs(value));
-
-    //     Ok(())
-    // }
-
-    // pub fn do_set_max_activation_grace_epochs(value: u32) -> DispatchResult {
-    //     MaxActivationGraceEpochs::<T>::set(value);
-
-    //     Self::deposit_event(Event::SetMaxActivationGraceEpochs(value));
-
-    //     Ok(())
-    // }
 
     pub fn do_set_min_idle_classification_epochs(value: u32) -> DispatchResult {
         MinIdleClassificationEpochs::<T>::set(value);
@@ -271,22 +241,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_min_subnet_max_stake(value: u128) -> DispatchResult {
-        MinSubnetMaxStake::<T>::set(value);
-
-        Self::deposit_event(Event::SetMinSubnetMaxStake(value));
-
-        Ok(())
-    }
-
-    pub fn do_set_max_subnet_max_stake(value: u128) -> DispatchResult {
-        MaxSubnetMaxStake::<T>::set(value);
-
-        Self::deposit_event(Event::SetMaxSubnetMaxStake(value));
-
-        Ok(())
-    }
-
     pub fn do_set_min_delegate_stake_percentage(value: u128) -> DispatchResult {
         MinDelegateStakePercentage::<T>::set(value);
 
@@ -341,7 +295,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn do_set_min_attestation_percentage(value: u128) -> DispatchResult {
         ensure!(
-            value <= Self::percentage_factor_as_u128(),
+            value <= Self::percentage_factor_as_u128()
+                && value > Self::percentage_factor_as_u128() / 2,
             Error::<T>::InvalidPercent
         );
 
@@ -414,26 +369,10 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_network_min_stake_balance(value: u128) -> DispatchResult {
-        NetworkMinStakeBalance::<T>::set(value);
-
-        Self::deposit_event(Event::SetNetworkMinStakeBalance(value));
-
-        Ok(())
-    }
-
     pub fn do_set_network_max_stake_balance(value: u128) -> DispatchResult {
         NetworkMaxStakeBalance::<T>::set(value);
 
         Self::deposit_event(Event::SetNetworkMaxStakeBalance(value));
-
-        Ok(())
-    }
-
-    pub fn do_set_min_active_nodes_stake_epochs(value: u32) -> DispatchResult {
-        MinActiveNodeStakeEpochs::<T>::set(value);
-
-        Self::deposit_event(Event::SetMinActiveNodeStakeEpochs(value));
 
         Ok(())
     }
@@ -448,10 +387,10 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_set_reward_rate_update_period(value: u32) -> DispatchResult {
-        RewardRateUpdatePeriod::<T>::set(value);
+    pub fn do_set_node_reward_rate_update_period(value: u32) -> DispatchResult {
+        NodeRewardRateUpdatePeriod::<T>::set(value);
 
-        Self::deposit_event(Event::SetRewardRateUpdatePeriod(value));
+        Self::deposit_event(Event::SetNodeRewardRateUpdatePeriod(value));
 
         Ok(())
     }
@@ -473,6 +412,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_delegate_stake_weight_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         DelegateStakeWeightFactor::<T>::set(value);
 
         Self::deposit_event(Event::SetDelegateStakeWeightFactor(value));
@@ -634,7 +578,7 @@ impl<T: Config> Pallet<T> {
         coldkey: T::AccountId,
         value: bool,
     ) -> DispatchResult {
-        OverwatchNodeBlacklist::<T>::insert(&coldkey, true);
+        OverwatchNodeBlacklist::<T>::insert(&coldkey, value);
 
         Self::deposit_event(Event::OverwatchNodeBlacklist(coldkey.clone(), value));
 
@@ -729,14 +673,11 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_maximum_hooks_weight(value: u32) -> DispatchResult {
-        ensure!(
-            value > 100 && value <= 100,
-            Error::<T>::InvalidPerbillPercent
-        );
+        ensure!(value > 0 && value <= 100, Error::<T>::InvalidPerbillPercent);
 
-        MaximumHooksWeightV2::<T>::put(
-            sp_runtime::Perbill::from_percent(value) * T::BlockWeights::get().max_block,
-        );
+        let new_value = sp_runtime::Perbill::from_percent(value) * T::BlockWeights::get().max_block;
+
+        MaximumHooksWeightV2::<T>::put(new_value);
 
         Self::deposit_event(Event::SetMaximumHooksWeight(value));
 
@@ -766,6 +707,60 @@ impl<T: Config> Pallet<T> {
         MaxNodeBurnRate::<T>::put(value);
 
         Self::deposit_event(Event::SetMaxNodeBurnRate(value));
+
+        Ok(())
+    }
+    pub fn do_set_delegate_stake_subnet_removal_interval(value: u32) -> DispatchResult {
+        ensure!(
+            value > 0,
+            Error::<T>::InvalidDelegateStakeSubnetRemovalInterval
+        );
+
+        DelegateStakeSubnetRemovalInterval::<T>::put(value);
+
+        Self::deposit_event(Event::SetDelegateStakeSubnetRemovalInterval(value));
+
+        Ok(())
+    }
+    pub fn do_set_min_subnet_removal_interval(value: u32) -> DispatchResult {
+        MinSubnetRemovalInterval::<T>::put(value);
+
+        Self::deposit_event(Event::SetMinSubnetRemovalInterval(value));
+
+        Ok(())
+    }
+    pub fn do_set_max_subnet_removal_interval(value: u32) -> DispatchResult {
+        ensure!(value > 0, Error::<T>::InvalidMaxSubnetRemovalInterval);
+
+        MaxSubnetRemovalInterval::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxSubnetRemovalInterval(value));
+
+        Ok(())
+    }
+    pub fn do_set_subnet_pause_cooldown_epochs(value: u32) -> DispatchResult {
+        SubnetPauseCooldownEpochs::<T>::put(value);
+
+        Self::deposit_event(Event::SetSubnetPauseCooldownEpochs(value));
+
+        Ok(())
+    }
+    pub fn do_set_max_swap_queue_calls_per_block(value: u32) -> DispatchResult {
+        MaxSwapQueueCallsPerBlock::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxSwapQueueCallsPerBlock(value));
+
+        Ok(())
+    }
+    pub fn do_set_max_subnet_node_score_penalty_threshold(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MaxSubnetNodeScorePenaltyThreshold::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxSubnetNodeScorePenaltyThreshold(value));
 
         Ok(())
     }

@@ -281,7 +281,7 @@ impl<T: Config> Pallet<T> {
 
         // --- We add the balancer to the account_id.  If the above fails we will not credit this account_id.
         if add_to_ledger {
-            let result = Self::add_balance_to_unbonding_ledger_v2(
+            let result = Self::add_balance_to_unbonding_ledger(
                 &account_id,
                 node_delegate_stake_to_be_removed,
                 NodeDelegateStakeCooldownEpochs::<T>::get() * T::EpochLength::get(),

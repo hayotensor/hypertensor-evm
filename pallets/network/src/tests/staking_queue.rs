@@ -3,7 +3,7 @@ use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
     AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs,
-    HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, NetworkMinStakeBalance, NextSwapQueueId,
+    HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinSubnetMinStake, NextSwapQueueId,
     QueuedSwapCall, QueuedSwapItem, SubnetName, SwapCallQueue, SwapQueueOrder,
     TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares,
 };
@@ -92,7 +92,7 @@ fn test_update_swap_queue() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
         build_activated_subnet_new(from_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
@@ -309,7 +309,7 @@ fn test_execute_ready_swap_calls() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let max_subnets = MaxSubnets::<Test>::get();
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let end = 4;

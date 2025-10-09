@@ -213,6 +213,7 @@ parameter_types! {
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = Perbill::from_percent(50) *
         BlockWeights::get().max_block;
+    pub const DesignatedEpochSlots: u32 = 3;
 }
 
 impl Config for Test {
@@ -231,6 +232,7 @@ impl Config for Test {
     type TreasuryAccount = TreasuryAccount;
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;
+    type DesignatedEpochSlots = DesignatedEpochSlots;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

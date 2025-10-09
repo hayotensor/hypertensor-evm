@@ -6,7 +6,7 @@
 // use frame_support::traits::Currency;
 // use crate::{
 //   SubnetName, 
-//   NetworkMinStakeBalance,
+//   MinSubnetMinStake,
 //   RegistrationQueue,
 //   ChurnLimit,
 //   SubnetNodeQueueEpochs,
@@ -37,7 +37,7 @@
 //     let amount: u128 = 1000000000000000000000;
 
 //     let n_peers = 8;
-//     let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+//     let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
 //     build_activated_subnet(subnet_name.clone(), 0, n_peers, deposit_amount, stake_amount);
 

@@ -21,7 +21,7 @@ impl<T: Config> Pallet<T> {
     /// Used to mint dead shares on first deposit
     pub const MIN_LIQUIDITY: u128 = 1000;
 
-    pub fn add_balance_to_unbonding_ledger_v2(
+    pub fn add_balance_to_unbonding_ledger(
         coldkey: &T::AccountId,
         amount: u128,
         cooldown_blocks: u32,
@@ -34,7 +34,7 @@ impl<T: Config> Pallet<T> {
         // --- Ensure we don't surpass max unlockings by attempting to unlock unbondings
         // if unbondings.len() as u32 == T::MaxUnbondings::get() {
         if unbondings.len() as u32 == MaxUnbondings::<T>::get() {
-            Self::do_claim_unbondings_v2(&coldkey);
+            Self::do_claim_unbondings(&coldkey);
         }
 
         // --- Get updated unbondings after claiming unbondings
@@ -56,7 +56,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_claim_unbondings_v2(coldkey: &T::AccountId) -> u32 {
+    pub fn do_claim_unbondings(coldkey: &T::AccountId) -> u32 {
         let block = Self::get_current_block_as_u32();
         let unbondings = StakeUnbondingLedger::<T>::get(&coldkey);
 

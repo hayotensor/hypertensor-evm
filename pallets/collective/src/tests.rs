@@ -123,6 +123,7 @@ parameter_types! {
     pub const NetworkPalletId: PalletId = PalletId(*b"/network");
     pub const OverwatchEpochEmissions: u128 = OVERWATCH_EPOCH_EMISSIONS;
     pub MaximumHooksWeight: Weight = sp_runtime::Perbill::from_percent(50) * BlockWeights::get().max_block;
+    pub const DesignatedEpochSlots: u32 = 3;
 }
 
 impl pallet_network::Config for Test {
@@ -141,6 +142,7 @@ impl pallet_network::Config for Test {
     type TreasuryAccount = ();
     type OverwatchEpochEmissions = OverwatchEpochEmissions;
     type MaximumHooksWeight = MaximumHooksWeight;
+    type DesignatedEpochSlots = DesignatedEpochSlots;
 }
 
 pub type BlockNumber = u32;

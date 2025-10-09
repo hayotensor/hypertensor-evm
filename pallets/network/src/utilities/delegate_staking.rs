@@ -22,7 +22,7 @@ impl<T: Config> Pallet<T> {
     /// We use electable node count to ensure users can spam registered
     /// node slots or spam active node slots without being in-consensus
     /// to being an actual node
-    pub fn get_min_subnet_delegate_stake_balance_v2(subnet_id: u32) -> u128 {
+    pub fn get_min_subnet_delegate_stake_balance(subnet_id: u32) -> u128 {
         let total_network_issuance = Self::get_total_network_issuance();
         let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get(); // 0.1%
         let base_min = Self::percent_mul(total_network_issuance, factor);

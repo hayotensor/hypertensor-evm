@@ -295,7 +295,7 @@ fn test_on_initialize() {
                     let total_delegate_stake_balance =
                         TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
                     let mut min_subnet_delegate_stake =
-                        Network::get_min_subnet_delegate_stake_balance_v2(subnet_id);
+                        Network::get_min_subnet_delegate_stake_balance(subnet_id);
                     if total_delegate_stake_balance < min_subnet_delegate_stake {
                         let mut delta = min_subnet_delegate_stake - total_delegate_stake_balance;
                         assert_ok!(Network::add_to_delegate_stake(

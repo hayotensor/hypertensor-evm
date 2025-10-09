@@ -1,10 +1,10 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    Error, HotkeyOverwatchNodeId, HotkeyOwner, MinSubnetNodes, NetworkMinStakeBalance,
-    OverwatchCommit, OverwatchCommits, OverwatchNode, OverwatchNodeBlacklist,
-    OverwatchNodeIdHotkey, OverwatchNodes, OverwatchReveal, OverwatchReveals, SubnetData,
-    SubnetName, SubnetState, SubnetsData, TotalOverwatchNodeUids,
+    Error, HotkeyOverwatchNodeId, HotkeyOwner, MinSubnetMinStake, MinSubnetNodes, OverwatchCommit,
+    OverwatchCommits, OverwatchNode, OverwatchNodeBlacklist, OverwatchNodeIdHotkey, OverwatchNodes,
+    OverwatchReveal, OverwatchReveals, SubnetData, SubnetName, SubnetState, SubnetsData,
+    TotalOverwatchNodeUids,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -345,7 +345,7 @@ fn test_commit_and_reveal_extrinsics() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -429,7 +429,7 @@ fn test_reveal_overwatch_subnet_weights_not_key_owner_error() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -524,7 +524,7 @@ fn test_reveal_overwatch_subnet_weights_blacklisted_error() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -608,7 +608,7 @@ fn test_reveal_overwatch_subnet_weights_no_commit_found_error() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -675,7 +675,7 @@ fn test_reveal_overwatch_subnet_weights_reveal_mismatch_error() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -910,7 +910,7 @@ fn test_commit_and_reveal_phase_errors() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);

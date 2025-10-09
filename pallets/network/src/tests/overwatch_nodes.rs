@@ -2,8 +2,8 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
     AccountOverwatchStake, ColdkeyHotkeys, Error, HotkeyOverwatchNodeId, HotkeyOwner,
-    HotkeySubnetNodeId, MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes,
-    NetworkMinStakeBalance, OverwatchMinAge, OverwatchMinStakeBalance, OverwatchNodeBlacklist,
+    HotkeySubnetNodeId, MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetMinStake,
+    MinSubnetNodes, OverwatchMinAge, OverwatchMinStakeBalance, OverwatchNodeBlacklist,
     OverwatchNodeIdHotkey, OverwatchNodeIndex, OverwatchNodeWeights, OverwatchNodes,
     OverwatchSubnetWeights, PeerId, PeerIdOverwatchNodeId, StakeCooldownEpochs,
     StakeUnbondingLedger, SubnetName, SubnetNodesData, SubnetState, TotalOverwatchNodeUids,
@@ -254,7 +254,7 @@ fn test_set_overwatch_peer_id() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -369,7 +369,7 @@ fn test_set_overwatch_peer_id_errors() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name-999".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -403,7 +403,7 @@ fn test_remove_overwatch_node() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
@@ -473,7 +473,7 @@ fn test_anyone_remove_overwatch_node() {
         // subnet
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);

@@ -53,6 +53,7 @@ impl<T: Config> Pallet<T> {
             total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
             total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
             total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
+            current_min_delegate_stake: Self::get_min_subnet_delegate_stake_balance(subnet_id),
         })
     }
 
@@ -96,6 +97,7 @@ impl<T: Config> Pallet<T> {
                 total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
                 total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
                 total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
+                current_min_delegate_stake: Self::get_min_subnet_delegate_stake_balance(subnet_id),
             })
         }
 
@@ -182,20 +184,6 @@ impl<T: Config> Pallet<T> {
             Err(()) => None,
         }
     }
-
-    // pub fn get_subnet_node_by_unique(
-    //     subnet_id: u32,
-    //     unique: BoundedVec<u8, DefaultMaxVectorLength>,
-    // ) -> Option<SubnetNode<T::AccountId>> {
-    //     if !SubnetsData::<T>::contains_key(subnet_id) {
-    //         return None;
-    //     }
-
-    //     SubnetNodesData::<T>::iter_prefix_values(subnet_id).find(|x| {
-    //         // Find by ``unique``, a unique parameter
-    //         x.unique == Some(unique.clone())
-    //     })
-    // }
 
     /// Proof-of-stake
     ///

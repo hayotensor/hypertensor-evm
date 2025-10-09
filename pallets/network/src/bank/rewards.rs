@@ -17,324 +17,7 @@ use super::*;
 use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
-    // pub fn distribute_rewards(
-    //     subnet_id: u32,
-    //     block: u32,
-    //     current_epoch: u32,
-    //     current_subnet_epoch: u32,
-    //     consensus_submission_data: ConsensusSubmissionData<T::AccountId>,
-    //     rewards_data: RewardsData,
-    //     min_attestation_percentage: u128,
-    //     reputation_increase_factor: u128,
-    //     reputation_decrease_factor: u128,
-    //     min_vast_majority_attestation_percentage: u128,
-    // ) -> Weight {
-    //     let mut weight = Weight::zero();
-    //     let db_weight = T::DbWeight::get();
-
-    //     let idle_epochs = IdleClassificationEpochs::<T>::get(subnet_id);
-    //     let included_epochs = IncludedClassificationEpochs::<T>::get(subnet_id);
-    //     let max_subnet_node_penalties = MaxSubnetNodePenalties::<T>::get(subnet_id);
-    //     let score_threshold = SubnetNodeScorePenaltyThreshold::<T>::get(subnet_id);
-    //     let super_majority_threshold = SuperMajorityAttestationRatio::<T>::get();
-    //     weight = weight.saturating_add(db_weight.reads(5));
-
-    //     // --- If under minimum attestation ratio, penalize validator, skip rewards
-    //     if consensus_submission_data.attestation_ratio < min_attestation_percentage {
-    //         // --- Slash validator
-    //         // Slashes stake balance
-    //         // Decreases reputation
-    //         // Increases penalties
-    //         // Possibly removes them if above maximum penalties
-    //         let slash_validator_weight = Self::slash_validator(
-    //             subnet_id,
-    //             consensus_submission_data.validator_subnet_node_id,
-    //             consensus_submission_data.attestation_ratio,
-    //             min_attestation_percentage,
-    //             reputation_decrease_factor,
-    //             current_epoch,
-    //         );
-    //         // weight = weight.saturating_add(T::WeightInfo::slash_validator());
-
-    //         SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-    //         // SubnetNodePenalties
-    //         weight = weight.saturating_add(db_weight.reads(1));
-    //         weight = weight.saturating_add(db_weight.writes(1));
-    //         return weight.saturating_add(slash_validator_weight);
-    //     }
-
-    //     // Super majority, update queue to prioritize node ID that subnet wants in front
-    //     // In other blockchains, the queue is usually in order and usually with no max nodes
-    //     // We want the top performing nodes in first.
-    //     if consensus_submission_data.attestation_ratio >= super_majority_threshold {
-    //         if let Some(prioritize_queue_node_id) =
-    //             consensus_submission_data.prioritize_queue_node_id
-    //         {
-    //             let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             if let Some(index) = queue
-    //                 .iter()
-    //                 .position(|node| node.id == prioritize_queue_node_id)
-    //             {
-    //                 let node = queue.remove(index); // Remove from current position
-    //                 queue.insert(0, node); // Insert at front (index 0)
-    //                 SubnetNodeQueue::<T>::insert(subnet_id, queue); // Update storage SubnetNodeQueue
-    //                 weight = weight.saturating_add(db_weight.writes(1));
-    //             }
-    //         }
-    //     }
-
-    //     //
-    //     // --- We are now in consensus
-    //     //
-
-    //     // --- Reward owner
-    //     match SubnetOwner::<T>::try_get(subnet_id) {
-    //         Ok(coldkey) => {
-    //             let subnet_owner_reward_as_currency =
-    //                 Self::u128_to_balance(rewards_data.subnet_owner_reward);
-    //             if subnet_owner_reward_as_currency.is_some() {
-    //                 Self::add_balance_to_coldkey_account(
-    //                     &coldkey,
-    //                     subnet_owner_reward_as_currency.unwrap(),
-    //                 );
-    //                 // weight = weight.saturating_add(T::WeightInfo::add_balance_to_coldkey_account());
-    //             }
-    //         }
-    //         Err(()) => (),
-    //     };
-    //     weight = weight.saturating_add(db_weight.reads(1));
-
-    //     // Iterate each node, emit rewards, graduate, or penalize
-    //     for subnet_node in &consensus_submission_data.subnet_nodes {
-    //         let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node.id);
-    //         weight = weight.saturating_add(db_weight.reads(1));
-
-    //         // locally tracking of penalties, avoid hitting db
-    //         let mut _penalties = penalties;
-
-    //         if penalties > max_subnet_node_penalties {
-    //             // Remove node if they haven't already
-    //             Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-    //             // 112_050_000
-    //             // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
-    //             continue;
-    //         }
-
-    //         if subnet_node.classification.node_class == SubnetNodeClass::Idle {
-    //             // Idle classified nodes can't be included in consensus data and can't have penalties
-    //             // so we check the class immediately.
-    //             // --- Upgrade to Included if past the queue epochs
-    //             if subnet_node.classification.start_epoch + idle_epochs < current_subnet_epoch {
-    //                 // Increase class if they exist
-    //                 Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch);
-    //                 // weight = weight.saturating_add(T::WeightInfo::graduate_class());
-    //             }
-    //             continue;
-    //         }
-
-    //         //
-    //         // All nodes are at least SubnetNodeClass::Included from here
-    //         //
-
-    //         let subnet_node_data_find = consensus_submission_data
-    //             .data
-    //             .iter()
-    //             .find(|data| data.subnet_node_id == subnet_node.id);
-
-    //         if subnet_node_data_find.is_none() {
-    //             // Not included in consensus, increase
-    //             SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-    //             // SubnetNodePenalties
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             weight = weight.saturating_add(db_weight.writes(1));
-
-    //             // Break count of consecutive epochs of being included in in-consensus data
-    //             if subnet_node.classification.node_class == SubnetNodeClass::Included {
-    //                 SubnetNodeConsecutiveIncludedEpochs::<T>::insert(subnet_id, subnet_node.id, 0);
-    //                 weight = weight.saturating_add(db_weight.writes(1));
-    //             }
-    //             continue;
-    //         } else if penalties != 0 {
-    //             // Is in consensus data, decrease
-    //             // If the validator submits themselves in the data and passes consensus, this also
-    //             // decreases the validators penalties
-    //             SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-    //                 n.saturating_dec()
-    //             });
-    //             // SubnetNodePenalties
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             weight = weight.saturating_add(db_weight.writes(1));
-    //         }
-
-    //         //
-    //         // --- Consensus formed on node
-    //         //
-
-    //         // Safely unwrap node_weight, we already confirmed it's not None
-    //         let node_weight = subnet_node_data_find.unwrap().score;
-
-    //         // --- Calculate node weight percentage of peer versus the weighted sum
-    //         let score_ratio: u128 =
-    //             Self::percent_div(node_weight, consensus_submission_data.weight_sum);
-
-    //         // Increase penalties if under subnets penalty score threshold
-    //         // We don't automatically increase penalties if a node is at ZERO
-    //         // Zero should represent they are not in the subnet
-    //         if score_ratio < score_threshold {
-    //             SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-    //             // SubnetNodePenalties
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             weight = weight.saturating_add(db_weight.writes(1));
-    //             _penalties += 1;
-    //         }
-
-    //         if subnet_node.classification.node_class == SubnetNodeClass::Included {
-    //             SubnetNodeConsecutiveIncludedEpochs::<T>::mutate(
-    //                 subnet_id,
-    //                 subnet_node.id,
-    //                 |n: &mut u32| *n += 1,
-    //             );
-
-    //             // SubnetNodeConsecutiveIncludedEpochs
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             weight = weight.saturating_add(db_weight.writes(1));
-
-    //             let consecutive_included_epochs =
-    //                 SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node.id);
-
-    //             // SubnetNodeConsecutiveIncludedEpochs
-    //             weight = weight.saturating_add(db_weight.reads(1));
-
-    //             // --- Upgrade to Validator if no penalties and included in weights
-    //             if _penalties == 0 && consecutive_included_epochs >= included_epochs {
-    //                 if Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch) {
-    //                     // --- Insert into election slot
-    //                     Self::insert_node_into_election_slot(subnet_id, subnet_node.id);
-    //                     // weight = weight.saturating_add(T::WeightInfo::insert_node_into_election_slot());
-
-    //                     // reset
-    //                     SubnetNodeConsecutiveIncludedEpochs::<T>::remove(subnet_id, subnet_node.id);
-    //                     weight = weight.saturating_add(db_weight.writes(1));
-    //                 }
-    //             }
-
-    //             // SubnetNodeClass::Included does not get rewards yet, they must pass the gauntlet
-    //             continue;
-    //         }
-
-    //         //
-    //         // All nodes are at least SubnetNodeClass::Validator from here
-    //         //
-
-    //         // Check if attested in super majority
-    //         if consensus_submission_data.attestation_ratio >= super_majority_threshold {
-    //             // If node didn't attest in super majority, accrue penalty
-    //             if consensus_submission_data
-    //                 .attests
-    //                 .get(&subnet_node.id)
-    //                 .is_none()
-    //             {
-    //                 SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-    //                     *n += 1
-    //                 });
-    //                 // SubnetNodePenalties
-    //                 weight = weight.saturating_add(db_weight.reads(1));
-    //                 weight = weight.saturating_add(db_weight.writes(1));
-    //                 _penalties += 1;
-    //             }
-    //             // Node is in consensus (even though not attester), so we don't skip rewards for them
-    //         }
-
-    //         if _penalties > max_subnet_node_penalties {
-    //             // Remove node if they haven't already
-    //             Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-    //             // 112_050_000
-    //             // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
-    //             continue;
-    //         }
-
-    //         if score_ratio == 0 {
-    //             continue;
-    //         }
-
-    //         // --- Calculate node_weight percentage of total subnet generated epoch rewards
-    //         let mut account_reward: u128 =
-    //             Self::percent_mul(score_ratio, rewards_data.subnet_node_rewards);
-
-    //         // --- Increase reward if validator
-    //         if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
-    //             account_reward +=
-    //                 Self::get_validator_reward(consensus_submission_data.attestation_ratio);
-    //             // Add get_validator_reward (At least 1 read, up to 2)
-    //             weight = weight.saturating_add(db_weight.reads(2));
-    //             match HotkeyOwner::<T>::try_get(&subnet_node.hotkey) {
-    //                 Ok(coldkey) => {
-    //                     Self::increase_coldkey_reputation(
-    //                         coldkey,
-    //                         consensus_submission_data.attestation_ratio,
-    //                         min_attestation_percentage,
-    //                         reputation_increase_factor,
-    //                         current_epoch,
-    //                     );
-    //                     // weight = weight.saturating_add(T::WeightInfo::increase_coldkey_reputation());
-    //                 }
-    //                 Err(()) => (),
-    //             };
-    //             // HotkeyOwner
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //         }
-
-    //         // --- Skip if no rewards to give
-    //         // Unlikely to happen
-    //         if account_reward == 0 {
-    //             continue;
-    //         }
-
-    //         if subnet_node.delegate_reward_rate != 0 {
-    //             // --- Ensure users are staked to subnet node
-    //             let total_node_delegated_stake_shares =
-    //                 TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node.id);
-    //             weight = weight.saturating_add(db_weight.reads(1));
-    //             if total_node_delegated_stake_shares != 0 {
-    //                 let node_delegate_reward =
-    //                     Self::percent_mul(account_reward, subnet_node.delegate_reward_rate);
-    //                 account_reward = account_reward - node_delegate_reward;
-    //                 Self::do_increase_node_delegate_stake(
-    //                     subnet_id,
-    //                     subnet_node.id,
-    //                     node_delegate_reward,
-    //                 );
-    //                 // TotalNodeDelegateStakeShares | NodeDelegateStakeBalance | TotalNodeDelegateStake
-    //                 weight = weight.saturating_add(db_weight.writes(3));
-    //                 // NodeDelegateStakeBalance | TotalNodeDelegateStakeShares
-    //                 weight = weight.saturating_add(db_weight.reads(5));
-    //             }
-    //         }
-
-    //         // --- Increase account stake and emit event
-    //         Self::increase_account_stake(&subnet_node.hotkey, subnet_id, account_reward);
-    //         // AccountSubnetStake | TotalSubnetStake | TotalStake
-    //         weight = weight.saturating_add(db_weight.writes(3));
-    //         weight = weight.saturating_add(db_weight.reads(3));
-    //         // weight = weight.saturating_add(T::WeightInfo::increase_account_stake());
-    //     }
-
-    //     // --- Increase the delegate stake pool balance
-    //     if rewards_data.delegate_stake_rewards != 0 {
-    //         Self::do_increase_delegate_stake(subnet_id, rewards_data.delegate_stake_rewards);
-    //         // TotalSubnetDelegateStakeShares | TotalSubnetDelegateStakeBalance | TotalDelegateStake
-    //         weight = weight.saturating_add(db_weight.writes(3));
-    //         // TotalSubnetDelegateStakeBalance | | TotalSubnetDelegateStakeShares|
-    //         // TotalSubnetDelegateStakeShares| TotalSubnetDelegateStakeBalance| TotalDelegateStake
-    //         weight = weight.saturating_add(db_weight.reads(5));
-    //         // weight = weight.saturating_add(T::WeightInfo::do_increase_delegate_stake());
-    //     }
-
-    //     weight
-    // }
-
-    pub fn distribute_rewards_v2(
+    pub fn distribute_rewards(
         weight_meter: &mut WeightMeter,
         subnet_id: u32,
         block: u32,
@@ -378,27 +61,12 @@ impl<T: Config> Pallet<T> {
             return;
         }
 
-        // Super majority, update queue to prioritize node ID that subnet wants in front
-        // In other blockchains, the queue is usually in order and usually with no max nodes
-        // We want the top performing nodes in first.
-        if consensus_submission_data.attestation_ratio >= super_majority_threshold {
-            if let Some(prioritize_queue_node_id) =
-                consensus_submission_data.prioritize_queue_node_id
-            {
-                let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
-                weight_meter.consume(db_weight.reads(1));
-                if let Some(index) = queue
-                    .iter()
-                    .position(|node| node.id == prioritize_queue_node_id)
-                {
-                    let node = queue.remove(index); // Remove from current position
-                    queue.insert(0, node); // Insert at front (index 0)
-                    SubnetNodeQueue::<T>::insert(subnet_id, &queue); // Update storage SubnetNodeQueue
-                    weight_meter.consume(db_weight.writes(1));
-                }
-            }
-        }
+        //
+        // --- We are now in consensus
+        //
 
+        // Super majority, update queue to prioritize node ID that subnet form a consensus to cut the line
+        // and or update queue to remove a node ID the subnet forms a consensus to be removed (if passed immunity period)
         if consensus_submission_data.attestation_ratio >= super_majority_threshold {
             let mut queue = SubnetNodeQueue::<T>::get(subnet_id);
 
@@ -447,21 +115,16 @@ impl<T: Config> Pallet<T> {
                         subnet_node_id: remove_queue_node_id,
                     });
                 }
-
-                Self::deposit_event(Event::QueuedNodeRemoved {
-                    subnet_id,
-                    subnet_node_id: remove_queue_node_id,
-                });
             }
         }
 
-        //
-        // --- We are now in consensus
-        //
-
+        // Subtract penalties because subnet consensus is successful
+        // Only subtract if subnet has >= min subnet nodes
         let current_penalties_count = SubnetPenaltyCount::<T>::get(subnet_id);
         weight_meter.consume(db_weight.reads(1));
-        if current_penalties_count > 0 {
+        if current_penalties_count > 0
+            && consensus_submission_data.data_length >= MinSubnetNodes::<T>::get()
+        {
             SubnetPenaltyCount::<T>::insert(subnet_id, current_penalties_count.saturating_sub(1));
             weight_meter.consume(db_weight.writes(1));
         }
@@ -499,11 +162,11 @@ impl<T: Config> Pallet<T> {
             // SubnetNodePenalties
             weight_meter.consume(db_weight.reads(1));
 
-            // locally tracking of penalties, avoid hitting db
+            // locally tracking of penalties, avoid db reads
             let mut _penalties = penalties;
 
             if penalties > max_subnet_node_penalties {
-                // Remove node if they haven't already
+                // Remove node if they haven't already been removed
                 // Note: We used 0u32 because the node is not in the queue
                 if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
                     Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
@@ -539,9 +202,6 @@ impl<T: Config> Pallet<T> {
                 _penalties += 1;
                 SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
                 weight_meter.consume(db_weight.writes(1));
-                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-                // SubnetNodePenalties
-                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
 
                 // Break count of consecutive epochs of being included in in-consensus data
                 if subnet_node.classification.node_class == SubnetNodeClass::Included {
@@ -551,18 +211,12 @@ impl<T: Config> Pallet<T> {
                 }
                 continue;
             } else if penalties != 0 {
-                // Is in consensus data, decrease
+                // --- Is in consensus data, decrease penalties
                 // If the validator submits themselves in the data and passes consensus, this also
                 // decreases the validators penalties
                 _penalties = _penalties.saturating_sub(1);
                 SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
                 weight_meter.consume(db_weight.writes(1));
-
-                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-                //     n.saturating_dec()
-                // });
-                // // SubnetNodePenalties
-                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
             }
 
             //
@@ -583,10 +237,6 @@ impl<T: Config> Pallet<T> {
                 _penalties += 1;
                 SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
                 weight_meter.consume(db_weight.writes(1));
-
-                // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
-                // // SubnetNodePenalties
-                // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
             }
 
             if subnet_node.classification.node_class == SubnetNodeClass::Included {
@@ -637,13 +287,6 @@ impl<T: Config> Pallet<T> {
                     _penalties += 1;
                     SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
                     weight_meter.consume(db_weight.writes(1));
-
-                    // SubnetNodePenalties::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| {
-                    //     *n += 1
-                    // });
-                    // // SubnetNodePenalties
-                    // weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
-                    // _penalties += 1;
                 }
                 // Node is in consensus (even though not attester), so we don't skip rewards for them
             }

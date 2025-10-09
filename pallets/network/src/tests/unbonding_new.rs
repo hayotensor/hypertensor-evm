@@ -3,9 +3,9 @@ use crate::tests::test_utils::*;
 use crate::{
     AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, AccountSubnetStake,
     DelegateStakeCooldownEpochs, Error, HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets,
-    MaxUnbondings, NetworkMinStakeBalance, NodeDelegateStakeCooldownEpochs,
-    RegisteredSubnetNodesData, StakeCooldownEpochs, StakeUnbondingLedger, SubnetName,
-    SubnetNodeQueueEpochs, TotalActiveSubnets, TotalSubnetNodes,
+    MaxUnbondings, MinSubnetMinStake, NodeDelegateStakeCooldownEpochs, RegisteredSubnetNodesData,
+    StakeCooldownEpochs, StakeUnbondingLedger, SubnetName, SubnetNodeQueueEpochs,
+    TotalActiveSubnets, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::weights::WeightMeter;
@@ -35,7 +35,7 @@ fn test_register_remove_claim_stake_unbondings() {
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -140,7 +140,7 @@ fn test_register_remove_delegate_claim_stake_unbondings() {
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -219,7 +219,7 @@ fn test_register_remove_node_delegate_claim_stake_unbondings() {
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -305,7 +305,7 @@ fn test_register_activate_remove_claim_stake_unbondings() {
         let deposit_amount: u128 = 1000000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -442,7 +442,7 @@ fn test_remove_stake_twice_in_epoch() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -593,7 +593,7 @@ fn test_claim_stake_unbondings_no_unbondings_err() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
@@ -677,7 +677,7 @@ fn test_remove_to_stake_max_unlockings_reached_err() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();

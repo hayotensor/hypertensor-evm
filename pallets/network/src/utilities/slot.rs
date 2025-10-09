@@ -102,7 +102,9 @@ impl<T: Config> Pallet<T> {
                 *value = Self::percent_div(*value, total_adjusted);
             }
 
-            // Score subnets
+            //
+            // --- Score subnets
+            //
             OverwatchSubnetWeights::<T>::insert(
                 current_overwatch_epoch.saturating_sub(1),
                 subnet_id,
@@ -130,10 +132,15 @@ impl<T: Config> Pallet<T> {
         }
 
         // 4-5
+
+        //
         // Step 4: Normalize node scores
+        //
         let total_final_score: u128 = node_total_scores.values().sum();
 
+        //
         // Step 5: Reward nodes
+        //
         let ow_emissions = T::OverwatchEpochEmissions::get();
 
         let mut node_rewards: Vec<(u32, u128)> = Vec::new();
@@ -171,7 +178,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// - Generates emissions variables to distribute emissions: `precheck_subnet_consensus_submission`
-    /// - Distributes emissions: `distribute_rewards_v2`
+    /// - Distributes emissions: `distribute_rewards`
     /// - Elects validator: `elect_validator`
     /// - Handles registration queue (i.e., activates nodes from the queue): `handle_registration_queue`
     /// = Updates burn rate EMA: `update_burn_rate_for_epoch`
@@ -184,7 +191,8 @@ impl<T: Config> Pallet<T> {
     ) {
         let db_weight = T::DbWeight::get();
 
-        // Get all subnet weights calculated at the start of the blockchains epoch
+        // Get all active subnet weights calculated at the start of the blockchains epoch
+        // (Only subnets that were active)
         if let Ok(subnet_emission_weights) = FinalSubnetEmissionWeights::<T>::try_get(current_epoch)
         {
             // FinalSubnetEmissionWeights
@@ -222,7 +230,7 @@ impl<T: Config> Pallet<T> {
                     weight_meter.consume(db_weight.reads(4));
 
                     // Distribute rewards
-                    Self::distribute_rewards_v2(
+                    Self::distribute_rewards(
                         weight_meter,
                         subnet_id,
                         block,
@@ -235,18 +243,22 @@ impl<T: Config> Pallet<T> {
                         rep_decrease,
                         super_majority,
                     );
-                } else {
-                    // Validator didn't submit consensus, but we checked
-                    // SubnetConsensusSubmission in `precheck_subnet_consensus_submission`
-                    weight_meter.consume(db_weight.reads(1));
                 }
+
+                //
+                // Subnet has weights and is currently active
+                //
 
                 // --- Elect new validator for the current epoch
                 // The current epoch is the start of the subnets epoch
                 // We only elect if the subnet has weights, otherwise it isn't active yet
                 // See `calculate_subnet_weights`
                 Self::elect_validator(subnet_id, current_subnet_epoch, block);
-                // weight_meter.consume(T::WeightInfo::elect_validator());
+                // TotalSubnetElectableNodes
+                weight_meter.consume(db_weight.reads(1));
+                weight_meter.consume(T::WeightInfo::elect_validator(
+                    TotalSubnetElectableNodes::<T>::get(subnet_id),
+                ));
 
                 // After election, we activate nodes in the queue
                 // We execute the queue here only if the subnet has weights
@@ -379,11 +391,11 @@ impl<T: Config> Pallet<T> {
 
         // Store weights and handle foundation
         if !subnet_weights.is_empty() {
-            let (validator_emissions, foundation_emissions) = Self::get_epoch_emissions_v2(epoch);
+            let (validator_emissions, foundation_emissions) = Self::get_epoch_emissions(epoch);
             let foundation_emissions_as_balance = Self::u128_to_balance(foundation_emissions);
             if foundation_emissions_as_balance.is_some() {
                 Self::add_balance_to_treasury(foundation_emissions_as_balance.unwrap());
-                // weight = weight.saturating_add(T::WeightInfo::add_balance_to_treasury());
+                weight = weight.saturating_add(T::WeightInfo::add_balance_to_treasury());
             }
             let data = DistributionData {
                 validator_emissions: validator_emissions,
@@ -513,13 +525,19 @@ impl<T: Config> Pallet<T> {
             Ok(submission) => submission,
             Err(()) => {
                 if let Some(subnet) = SubnetsData::<T>::get(subnet_id) {
-                    // If subnet should be submitting consensus data, penalize subnet if none exists
-                    if subnet.start_epoch <= current_epoch {
-                        SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-                        // SubnetNodePenalties
-                        weight = weight.saturating_add(db_weight.reads(1));
-                        weight = weight.saturating_add(db_weight.writes(1));
-                    };
+                    if subnet.start_epoch <= current_epoch && subnet.state == SubnetState::Active {
+                        // If subnet should be submitting consensus data,
+                        // penalize subnet if validator didn't submit
+                        if let Some(_validator_id) =
+                            SubnetElectedValidator::<T>::get(subnet_id, prev_subnet_epoch)
+                        {
+                            SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+                            // SubnetNodePenalties | SubnetElectedValidator
+                            weight = weight.saturating_add(db_weight.reads(2));
+                            // SubnetNodePenalties
+                            weight = weight.saturating_add(db_weight.writes(1));
+                        }
+                    }
                 };
                 return (None, weight);
             }
@@ -549,6 +567,7 @@ impl<T: Config> Pallet<T> {
             attestation_ratio = percentage_factor;
         }
 
+        // unused
         let data_length = submission.data.len() as u32;
 
         // --- Get sum of subnet total scores for use of divvying rewards

@@ -35,7 +35,7 @@ impl<T: Config> Pallet<T> {
         // Ensure subnet pause period has been reached to pause again
         ensure!(
             PreviousSubnetPauseEpoch::<T>::get(subnet_id) + SubnetPauseCooldownEpochs::<T>::get()
-                < epoch,
+                <= epoch,
             Error::<T>::SubnetPauseCooldownActive
         );
 
@@ -422,10 +422,10 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_owner_add_initial_coldkeys(
+    pub fn do_owner_add_or_update_initial_coldkeys(
         origin: T::RuntimeOrigin,
         subnet_id: u32,
-        coldkeys: BTreeSet<T::AccountId>,
+        coldkeys: BTreeMap<T::AccountId, u32>,
     ) -> DispatchResult {
         let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -439,12 +439,17 @@ impl<T: Config> Pallet<T> {
             Error::<T>::SubnetMustBeRegistering
         );
 
+        ensure!(
+            coldkeys.values().all(|&value| value >= 1),
+            Error::<T>::InvalidSubnetRegistrationInitialColdkeys
+        );
+
         SubnetRegistrationInitialColdkeys::<T>::mutate(subnet_id, |accounts| {
-            let accounts_set = accounts.get_or_insert_with(BTreeSet::new);
-            accounts_set.extend(coldkeys.iter().cloned());
+            let accounts_set = accounts.get_or_insert_with(BTreeMap::new);
+            accounts_set.extend(coldkeys.iter().map(|(k, v)| (k.clone(), *v)));
         });
 
-        Self::deposit_event(Event::AddSubnetRegistrationInitialColdkeys {
+        Self::deposit_event(Event::AddSubnetRegistrationInitialColdkeysV2 {
             subnet_id: subnet_id,
             owner: coldkey,
             coldkeys: coldkeys,
@@ -516,31 +521,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // /// Owner calls to remove subnet node from its subnet
-    // ///
-    // /// This function can only be called by the current owner of the subnet.
-    // ///
-    // /// # Parameters
-    // /// - `origin`: The caller, must be the current subnet owner.
-    // /// - `subnet_id`: The ID of the subnet.
-    // /// - `subnet_node_id`: The ID of the subnet node.
-    // ///
-    // /// # Errors
-    // /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
-    // /// - See `perform_remove_subnet_node`
-    // pub fn do_owner_remove_subnet_node(origin: T::RuntimeOrigin, subnet_id: u32, subnet_node_id: u32) -> DispatchResult {
-    //   let coldkey: T::AccountId = ensure_signed(origin)?;
-
-    //   ensure!(
-    //     Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-    //     Error::<T>::NotSubnetOwner
-    //   );
-
-    //   Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-
-    //   Ok(())
-    // }
-
     /// Update minimum stake balance per subnet node
     ///
     /// This function can only be called by the current owner of the subnet.  
@@ -566,13 +546,8 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotSubnetOwner
         );
 
-        // ensure!(
-        //     value >= MinSubnetMinStake::<T>::get() && value <= MaxSubnetMinStake::<T>::get(),
-        //     Error::<T>::InvalidSubnetMinStake
-        // );
         ensure!(
-            value >= NetworkMinStakeBalance::<T>::get()
-                && value <= NetworkMaxStakeBalance::<T>::get(),
+            value >= MinSubnetMinStake::<T>::get() && value <= MaxSubnetMinStake::<T>::get(),
             Error::<T>::InvalidSubnetMinStake
         );
 
@@ -618,13 +593,8 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotSubnetOwner
         );
 
-        // ensure!(
-        //     value >= MinSubnetMaxStake::<T>::get() && value <= MaxSubnetMaxStake::<T>::get(),
-        //     Error::<T>::InvalidSubnetMaxStake
-        // );
         ensure!(
-            value >= NetworkMinStakeBalance::<T>::get()
-                && value <= NetworkMaxStakeBalance::<T>::get(),
+            value <= NetworkMaxStakeBalance::<T>::get(),
             Error::<T>::InvalidSubnetMaxStake
         );
 
@@ -887,7 +857,7 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    pub fn do_owner_update_target_registrations_per_epoch(
+    pub fn do_owner_update_target_node_registrations_per_epoch(
         origin: T::RuntimeOrigin,
         subnet_id: u32,
         value: u32,
@@ -959,6 +929,34 @@ impl<T: Config> Pallet<T> {
         QueueImmunityEpochs::<T>::insert(subnet_id, value);
 
         Self::deposit_event(Event::QueueImmunityEpochsUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_subnet_node_score_penalty_threshold(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= MaxSubnetNodeScorePenaltyThreshold::<T>::get(),
+            Error::<T>::InvalidPercent
+        );
+
+        SubnetNodeScorePenaltyThreshold::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::SubnetNodeScorePenaltyThresholdUpdate {
             subnet_id: subnet_id,
             owner: coldkey,
             value,

@@ -2,7 +2,7 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
     AccountOverwatchStake, FinalSubnetEmissionWeights, HotkeySubnetNodeId, MaxSubnetNodes,
-    MaxSubnets, NetworkMinStakeBalance, NewRegistrationCostMultiplier, OverwatchReveals,
+    MaxSubnets, MinSubnetMinStake, NewRegistrationCostMultiplier, OverwatchReveals,
     QueueImmunityEpochs, RegisteredSubnetNodesData, SubnetConsensusSubmission,
     SubnetDelegateStakeRewardsPercentage, SubnetElectedValidator, SubnetName, SubnetNodeQueue,
     TotalActiveSubnets,
@@ -203,7 +203,7 @@ fn test_precheck_subnet_consensus_submission() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let max_subnets = MaxSubnets::<Test>::get();
@@ -322,7 +322,7 @@ fn test_calculate_rewards() {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
 
-        let stake_amount: u128 = NetworkMinStakeBalance::<Test>::get();
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let subnets = TotalActiveSubnets::<Test>::get() + 1;
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let max_subnets = MaxSubnets::<Test>::get();

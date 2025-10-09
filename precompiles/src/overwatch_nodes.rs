@@ -205,7 +205,6 @@ where
             })
             .collect::<Result<_, _>>()?;
 
-
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
         let call = pallet_network::Call::<R>::commit_overwatch_subnet_weights {
