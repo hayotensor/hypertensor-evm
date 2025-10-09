@@ -223,10 +223,8 @@ export async function batchTransferBalanceFromSudoManual(
 // ==================
 // Subnet interaction
 // ==================
-
 export async function registerSubnet(
   contract: Contract, 
-  hotkey: string,
   maxCost: string,
   name: string,
   repo: string,
@@ -241,7 +239,7 @@ export async function registerSubnet(
   includedClassificationEpochs: string,
   maxNodePenalties: string,
   maxRegisteredNodes: string,
-  initialColdkeys: string[],
+  initialColdkeys: any,
   keyTypes: number[],
   bootnodes: string[],
   fee: bigint,
@@ -249,7 +247,6 @@ export async function registerSubnet(
   manualSeal?: boolean,
 ) {
   const tx = await contract.registerSubnet(
-    hotkey,
     maxCost,
     name,
     repo,
@@ -882,12 +879,12 @@ export async function ownerUpdateMaxNodePenalties(
   await tx.wait();
 }
 
-export async function ownerAddInitialColdkeys(
+export async function ownerAddOrUpdateInitialColdkeys(
   contract: Contract, 
   subnetId: string,
-  coldkeys: string[]
+  coldkeys: any
 ) {
-  const tx = await contract.ownerAddInitialColdkeys(
+  const tx = await contract.ownerAddOrUpdateInitialColdkeys(
     subnetId,
     coldkeys
   );
@@ -968,6 +965,97 @@ export async function ownerUpdateMaxRegisteredNodes(
   const tx = await contract.ownerUpdateMaxRegisteredNodes(
     subnetId,
     value
+  );
+
+  await tx.wait();
+}
+
+export async function transferSubnetOwnership(
+  contract: Contract, 
+  subnetId: string,
+  address: string,
+) {
+  const tx = await contract.transferSubnetOwnership(
+    subnetId,
+    address
+  );
+
+  await tx.wait();
+}
+
+export async function acceptSubnetOwnership(
+  contract: Contract, 
+  subnetId: string,
+) {
+  const tx = await contract.acceptSubnetOwnership(
+    subnetId,
+  );
+
+  await tx.wait();
+}
+
+export async function ownerAddBootnodeAccess(
+  contract: Contract, 
+  subnetId: string,
+  newAccount: string,
+) {
+  const tx = await contract.ownerAddBootnodeAccess(
+    subnetId,
+    newAccount
+  );
+
+  await tx.wait();
+}
+
+export async function ownerUpdateTargetNodeRegistrationsPerEpoch(
+  contract: Contract, 
+  subnetId: string,
+  value: string,
+) {
+  const tx = await contract.ownerUpdateTargetNodeRegistrationsPerEpoch(
+    subnetId,
+    value
+  );
+
+  await tx.wait();
+}
+
+export async function ownerUpdateNodeBurnRateAlpha(
+  contract: Contract, 
+  subnetId: string,
+  value: string,
+) {
+  const tx = await contract.ownerUpdateNodeBurnRateAlpha(
+    subnetId,
+    value
+  );
+
+  await tx.wait();
+}
+
+export async function ownerUpdateQueueImmunityEpochs(
+  contract: Contract, 
+  subnetId: string,
+  value: string,
+) {
+  const tx = await contract.ownerUpdateQueueImmunityEpochs(
+    subnetId,
+    value
+  );
+
+  await tx.wait();
+}
+
+export async function updateBootnodes(
+  contract: Contract, 
+  subnetId: string,
+  add: any,
+  remove: any
+) {
+  const tx = await contract.updateBootnodes(
+    subnetId,
+    add,
+    remove
   );
 
   await tx.wait();

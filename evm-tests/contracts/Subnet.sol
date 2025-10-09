@@ -3,8 +3,12 @@
 pragma solidity ^0.8.0;
 
 interface Subnet  {
+  struct InitialColdkeys {
+    address coldkey;
+    uint256 count;
+  }
+
   function registerSubnet(
-    address hotkey,
     uint256 maxCost,
     string memory name,
     string memory repo,
@@ -19,7 +23,7 @@ interface Subnet  {
     uint256 includedClassificationEpochs,
     uint256 maxNodePenalties,
     uint256 maxRegisteredNodes,
-    address[] memory initialColdkeys,
+    InitialColdkeys[] calldata initialColdkeys,
     uint256[] memory keyTypes,
     string[] memory bootnodes
   ) external payable;
@@ -41,10 +45,6 @@ interface Subnet  {
   function getCurrentRegistrationCost(uint256) external view returns (uint256);
 
   function activateSubnet(
-    uint256 subnetId
-  ) external;
-
-  function removeSubnet(
     uint256 subnetId
   ) external;
 
@@ -148,7 +148,7 @@ interface Subnet  {
 
   function ownerUpdateMaxNodePenalties(uint256 subnetId, uint256 value) external;
 
-  function ownerAddInitialColdkeys(uint256 subnetId, address[] memory coldkeys) external;
+  function ownerAddOrUpdateInitialColdkeys(uint256 subnetId, InitialColdkeys[] calldata initialColdkeys) external;
 
   function ownerRemoveInitialColdkeys(uint256 subnetId, address[] memory coldkeys) external;
 
@@ -168,9 +168,13 @@ interface Subnet  {
   
   function ownerAddBootnodeAccess(uint256 subnetId, address newAccount) external;
   
-  function ownerUpdateTargetRegistrationsPerEpoch(uint256 subnetId, uint256 value) external;
+  function ownerUpdateTargetNodeRegistrationsPerEpoch(uint256 subnetId, uint256 value) external;
   
   function ownerUpdateNodeBurnRateAlpha(uint256 subnetId, uint256 value) external;
   
   function ownerUpdateQueueImmunityEpochs(uint256 subnetId, uint256 value) external;
+
+  function ownerUpdateTargetRegistrationsPerEpoch(uint256 subnetId, uint256 value) external;
+
+  function updateBootnodes(uint256 subnetId, string[] memory add, string[] memory remove) external;
 }

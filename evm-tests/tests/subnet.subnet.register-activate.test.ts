@@ -49,6 +49,40 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
         wallet7.address,
         wallet8.address,
     ]
+    const initialColdkeys = [
+        {
+            coldkey: wallet1.address,
+            count: 1
+        },
+        {
+            coldkey: wallet2.address,
+            count: 1
+        },
+        {
+            coldkey: wallet3.address,
+            count: 1
+        },
+        {
+            coldkey: wallet4.address,
+            count: 1
+        },
+        {
+            coldkey: wallet5.address,
+            count: 1
+        },
+        {
+            coldkey: wallet6.address,
+            count: 1
+        },
+        {
+            coldkey: wallet7.address,
+            count: 1
+        },
+        {
+            coldkey: wallet8.address,
+            count: 1
+        },
+    ];
 
     const KEY_TYPES = [1, 2]
 
@@ -94,7 +128,7 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
         const churnLimit = await api.query.network.maxChurnLimit();
-        const minStake = await api.query.network.networkMinStakeBalance();
+        const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
         const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
@@ -105,7 +139,6 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
 
         await registerSubnet(
             subnetContract, 
-            wallet1.address,
             cost,
             subnetName,
             repo,
@@ -120,7 +153,7 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
             includedClassificationEpochs.toString(),
             maxNodePenalties.toString(),
             maxRegisteredNodes.toString(),
-            ALL_ACCOUNTS,
+            initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
             cost
@@ -173,7 +206,7 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
         const churnLimit = await api.query.network.maxChurnLimit();
-        const minStake = await api.query.network.networkMinStakeBalance();
+        const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
         const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
@@ -184,7 +217,6 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
 
         await registerSubnet(
             subnetContract, 
-            wallet1.address,
             cost,
             subnetName,
             repo,
@@ -199,7 +231,7 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
             includedClassificationEpochs.toString(),
             maxNodePenalties.toString(),
             maxRegisteredNodes.toString(),
-            ALL_ACCOUNTS,
+            initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
             cost
@@ -211,7 +243,7 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
         const subnetId = await subnetContract.getSubnetId(subnetName);
         expect(BigInt(subnetId)).to.not.equal(BigInt(0))
 
-        const minStakeAmount = (await api.query.network.networkMinStakeBalance()).toString();
+        const minStakeAmount = (await api.query.network.minSubnetMinStake()).toString();
         const delegateRewardRate = "0";
 
         const coldkeys = Array.from(ALL_WALLETS.keys());

@@ -11,7 +11,7 @@ import {
     batchTransferBalanceFromSudo,
     getCurrentRegistrationCost,
     getMinSubnetDelegateStakeBalance,
-    ownerAddInitialColdkeys,
+    ownerAddOrUpdateInitialColdkeys,
     ownerDeactivateSubnet,
     ownerPauseSubnet,
     ownerRemoveInitialColdkeys,
@@ -30,6 +30,13 @@ import {
     ownerUpdateName,
     ownerUpdateRegistrationQueueEpochs,
     ownerUpdateRepo,
+    transferSubnetOwnership,
+    acceptSubnetOwnership,
+    ownerAddBootnodeAccess,
+    ownerUpdateTargetNodeRegistrationsPerEpoch,
+    ownerUpdateNodeBurnRateAlpha,
+    ownerUpdateQueueImmunityEpochs,
+    updateBootnodes,
     registerSubnet,
     registerSubnetNode,
     transferBalanceFromSudo
@@ -58,16 +65,40 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         [wallet7, wallet8],
     ]);
 
-    const ALL_ACCOUNTS = [
-        wallet1.address,
-        wallet2.address,
-        wallet3.address,
-        wallet4.address,
-        wallet5.address,
-        wallet6.address,
-        wallet7.address,
-        wallet8.address,
-    ]
+    const initialColdkeys = [
+        {
+            coldkey: wallet1.address,
+            count: 1
+        },
+        {
+            coldkey: wallet2.address,
+            count: 1
+        },
+        {
+            coldkey: wallet3.address,
+            count: 1
+        },
+        {
+            coldkey: wallet4.address,
+            count: 1
+        },
+        {
+            coldkey: wallet5.address,
+            count: 1
+        },
+        {
+            coldkey: wallet6.address,
+            count: 1
+        },
+        {
+            coldkey: wallet7.address,
+            count: 1
+        },
+        {
+            coldkey: wallet8.address,
+            count: 1
+        },
+    ];
 
     const KEY_TYPES = [1, 2]
 
@@ -113,18 +144,17 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
         const churnLimit = await api.query.network.maxChurnLimit();
-        const minStake = await api.query.network.networkMinStakeBalance();
+        const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
         const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
         const idleClassificationEpochs = await api.query.network.minIdleClassificationEpochs();
         const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
         const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
-        const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
+        const maxRegisteredNodes = await api.query.network.maxMaxRegisteredNodes();
 
         await registerSubnet(
             subnetContract, 
-            wallet1.address,
             cost,
             subnetName,
             repo,
@@ -139,7 +169,7 @@ describe("Test subnet owner-0xuhnrfvok", () => {
             includedClassificationEpochs.toString(),
             maxNodePenalties.toString(),
             maxRegisteredNodes.toString(),
-            ALL_ACCOUNTS,
+            initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
             cost
@@ -151,7 +181,7 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         const subnetId = await subnetContract.getSubnetId(subnetName);
         expect(BigInt(subnetId)).to.not.equal(BigInt(0))
 
-        const minStakeAmount = (await api.query.network.networkMinStakeBalance()).toString();
+        const minStakeAmount = (await api.query.network.minSubnetMinStake()).toString();
         const delegateRewardRate = "0";
 
         const coldkeys = Array.from(ALL_WALLETS.keys());
@@ -167,8 +197,6 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         )
         // Get enough nodes registered to meet min nodes requirement
         await Promise.all([...ALL_WALLETS.entries()].map(async ([coldkey, hotkey]) => {
-            console.log("registering node coldkey", coldkey.address)
-            console.log("registering node hotkey", hotkey.address)
             const accountSubnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, coldkey);
 
             const peer1 = await generateRandomEd25519PeerId()
@@ -194,34 +222,6 @@ describe("Test subnet owner-0xuhnrfvok", () => {
             );
         }));
 
-        // get enough delegate stake to meet min delegate stake requirement
-        const minDelegateStake = await getMinSubnetDelegateStakeBalance(
-          subnetContract, 
-          subnetId.toString()
-        );
-
-        const delegateStakerBalanceBefore = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
-
-        await transferBalanceFromSudo(
-            api,
-            papiApi,
-            SUB_LOCAL_URL,
-            wallet1.address,
-            BigInt(minDelegateStake + BigInt(100000)),
-        )
-
-        const delegateStakerBalance = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
-        expect(Number(delegateStakerBalance)).to.be.greaterThanOrEqual(Number(minDelegateStake));
-
-        // Delegate stake
-        const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
-        await addToDelegateStake(
-            stakingContract, 
-            subnetId,
-            minDelegateStake,
-            BigInt(0)
-        );
-
         //
         // Subnet owner functions
         //
@@ -231,7 +231,7 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         const newDescription = generateRandomString(30)
         const newMisc = generateRandomString(30)
         const newChurnLimit = (BigInt((await api.query.network.maxChurnLimit()).toString()) - BigInt(1)).toString();
-        const newMinStake = (BigInt((await api.query.network.networkMinStakeBalance()).toString()) + BigInt(1)).toString();
+        const newMinStake = (BigInt((await api.query.network.minSubnetMinStake()).toString()) + BigInt(1)).toString();
         const newMaxStake = (BigInt((await api.query.network.networkMaxStakeBalance()).toString()) - BigInt(1)).toString();
         const newDelegateStakePercentage = (BigInt((await api.query.network.minDelegateStakePercentage()).toString()) + BigInt(1)).toString();
         const newSubnetNodeQueueEpochs = (BigInt((await api.query.network.minQueueEpochs()).toString()) + BigInt(1)).toString();
@@ -239,11 +239,12 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         const newIncludedClassificationEpochs = (BigInt((await api.query.network.minIncludedClassificationEpochs()).toString()) + BigInt(1)).toString();
         const newMaxNodePenalties = (BigInt((await api.query.network.minMaxSubnetNodePenalties()).toString()) + BigInt(1)).toString();
         const newMaxRegisteredNodes = (BigInt((await api.query.network.minMaxRegisteredNodes()).toString()) + BigInt(1)).toString();
+        const newTargetNodeRegistrationsPerEpoch = (BigInt(newMaxRegisteredNodes) - BigInt(1)).toString();
+        const newNodeBurnRateAlpha = (BigInt((await api.query.network.nodeBurnRateAlpha(subnetId)).toString()) - BigInt(1)).toString();
+        const newQueueImmunityEpochs = (BigInt((await api.query.network.queueImmunityEpochs(subnetId)).toString()) - BigInt(1)).toString();
 
         const wallet9 = generateRandomEthersWallet();
         const wallet10 = generateRandomEthersWallet();
-        const addColdkeys = [wallet9.address, wallet10.address]
-        const removeColdkeys = [wallet10.address]
 
         const newKeyTypes = [3]
         // 0 => Some(KeyType::Rsa),
@@ -313,16 +314,44 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         await ownerUpdateMaxNodePenalties(subnetContract, subnetId, newMaxNodePenalties)
         expect((await api.query.network.maxSubnetNodePenalties(subnetId)).toString()).to.be.equal(newMaxNodePenalties)
 
-        await ownerAddInitialColdkeys(subnetContract, subnetId, addColdkeys)
+        const addColdkeys = [
+            {
+                coldkey: wallet9.address,
+                count: 5
+            },
+            {
+                coldkey: wallet10.address,
+                count: 3
+            }
+        ];
+
+        await ownerAddOrUpdateInitialColdkeys(subnetContract, subnetId, addColdkeys)
         let currentColdkeys = await api.query.network.subnetRegistrationInitialColdkeys(subnetId)
         expect(currentColdkeys != undefined);
         let currentColdkeysOpt = currentColdkeys as Option<any>;
         expect(currentColdkeysOpt.isSome);
         if (currentColdkeysOpt.isSome) {
-            const currentColdkeys = currentColdkeysOpt.unwrap();
-            const human = currentColdkeys.toHuman();
-            expect(addColdkeys.every(value => human.includes(value)))
+            const coldkeysMap = currentColdkeysOpt.unwrap();
+            
+            // Convert to a plain object for easier comparison
+            const coldkeysObj = coldkeysMap.toJSON();
+            
+            // Check each coldkey exists with the correct count
+            for (const entry of addColdkeys) {
+                expect(coldkeysObj[entry.coldkey]).to.equal(entry.count);
+            }
+            
+            // Or check all at once
+            initialColdkeys.forEach(entry => {
+                expect(coldkeysObj[entry.coldkey]).to.equal(entry.count);
+            });
+
+            addColdkeys.forEach(entry => {
+                expect(coldkeysObj[entry.coldkey]).to.equal(entry.count);
+            });
         }
+
+        const removeColdkeys = [wallet10.address]
 
         await ownerRemoveInitialColdkeys(subnetContract, subnetId, removeColdkeys)
         currentColdkeys = await api.query.network.subnetRegistrationInitialColdkeys(subnetId)
@@ -330,9 +359,11 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         currentColdkeysOpt = currentColdkeys as Option<any>;
         expect(currentColdkeysOpt.isSome);
         if (currentColdkeysOpt.isSome) {
-            const currentColdkeys = currentColdkeysOpt.unwrap();
-            const human = currentColdkeys.toHuman();
-            expect([addColdkeys[0]].every(value => !human.includes(value)))
+            const coldkeysMap = currentColdkeysOpt.unwrap();
+            const coldkeysJson = coldkeysMap.toJSON();
+            
+            // Check that wallet10 doesn't exist
+            expect(coldkeysJson[wallet10.address]).to.equal(undefined);
         }
 
         await ownerUpdateKeyTypes(subnetContract, subnetId, newKeyTypes)
@@ -340,23 +371,120 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         expect(currentKeyTypes != undefined);
         expect(currentKeyTypes.toHuman() == newKeyTypes)
 
+
         await ownerUpdateMinStake(subnetContract, subnetId, newMinStake)
         expect((await api.query.network.subnetMinStakeBalance(subnetId)).toString()).to.be.equal(newMinStake)
+
 
         await ownerUpdateMaxStake(subnetContract, subnetId, newMaxStake)
         expect((await api.query.network.subnetMaxStakeBalance(subnetId)).toString()).to.be.equal(newMaxStake)
 
-        // Updating requires waiting 1 block, must be greater than min update period
-        await waitForBlocks(api, 1);
+
+        const lastSubnetDelegateStakeRewardsUpdate = Number((await api.query.network.lastSubnetDelegateStakeRewardsUpdate(subnetId)).toString());
+
+        // Updating requires to be greater than min update period
+        const subnetDelegateStakeRewardsUpdatePeriod = Number((await api.query.network.subnetDelegateStakeRewardsUpdatePeriod()).toString());
+
+        await waitForBlocks(api, subnetDelegateStakeRewardsUpdatePeriod + 2);
         await ownerUpdateDelegateStakePercentage(subnetContract, subnetId, newDelegateStakePercentage)
         expect((await api.query.network.subnetDelegateStakeRewardsPercentage(subnetId)).toString()).to.be.equal(newDelegateStakePercentage)
+
 
         await ownerUpdateMaxRegisteredNodes(subnetContract, subnetId, newMaxRegisteredNodes)
         expect((await api.query.network.maxRegisteredNodes(subnetId)).toString()).to.be.equal(newMaxRegisteredNodes)
 
+
+        await ownerUpdateTargetNodeRegistrationsPerEpoch(subnetContract, subnetId, newTargetNodeRegistrationsPerEpoch)
+        expect((await api.query.network.targetNodeRegistrationsPerEpoch(subnetId)).toString()).to.be.equal(newTargetNodeRegistrationsPerEpoch)
+
+
+        await ownerUpdateNodeBurnRateAlpha(subnetContract, subnetId, newNodeBurnRateAlpha)
+        expect((await api.query.network.nodeBurnRateAlpha(subnetId)).toString()).to.be.equal(newNodeBurnRateAlpha)
+
+
+        await ownerUpdateQueueImmunityEpochs(subnetContract, subnetId, newQueueImmunityEpochs)
+        expect((await api.query.network.queueImmunityEpochs(subnetId)).toString()).to.be.equal(newQueueImmunityEpochs)
+
+
+        const addBootnodes = [generateRandomString(6)]
+        const removeBootnodes = [BOOTNODES[0]];
+
+        await updateBootnodes(
+            subnetContract,
+            subnetId,
+            addBootnodes,
+            removeBootnodes
+        )
+        const newBootnodes = await api.query.network.subnetBootnodes(subnetId)
+        expect(newBootnodes != undefined);
+        const newBootnodesOpt = newBootnodes as Option<any>;
+        expect(newBootnodesOpt.isSome);
+        if (newBootnodesOpt.isSome) {
+            const bootnodesMap = newBootnodesOpt.unwrap();
+            const bootnodesJson = bootnodesMap.toJSON();
+
+            expect(bootnodesJson.includes(BOOTNODES[0])).to.equal(false);
+
+            BOOTNODES.slice(1).forEach(bootnode => {
+                expect(bootnodesJson.has(bootnode)).to.equal(true);
+            });
+
+            addBootnodes.forEach(bootnode => {
+                expect(bootnodesJson.includes(bootnode)).to.equal(true);
+            });
+        }
+
+        const newAccessWallet = generateRandomEthersWallet();
+        await ownerAddBootnodeAccess(
+            subnetContract,
+            subnetId,
+            newAccessWallet.address,
+        )
+        const newAccess = await api.query.network.subnetBootnodeAccess(subnetId)
+        expect(newAccess != undefined);
+        const newAccessOpt = newAccess as Option<any>;
+        expect(newAccessOpt.isSome);
+        if (newAccessOpt.isSome) {
+            const newAccessMap = newAccessOpt.unwrap();
+            const newAccessMapJson = newAccessMap.toJSON();
+
+            const accessSet = new Set(newAccessMapJson.map((addr: string) => addr.toLowerCase()));
+            expect(accessSet.has(newAccessWallet.address.toLowerCase())).to.equal(true);
+        }
+
+
         // ================
         // Activate subnet before calling pause, unpause, and deactivate (required to pause and unpause)
         // ================
+        // get enough delegate stake to meet min delegate stake requirement
+        let minDelegateStake = await getMinSubnetDelegateStakeBalance(
+          subnetContract, 
+          subnetId.toString()
+        );
+
+        if (Number(minDelegateStake) < 1000) {
+            minDelegateStake = BigInt(1e18);
+        }
+
+        await transferBalanceFromSudo(
+            api,
+            papiApi,
+            SUB_LOCAL_URL,
+            wallet1.address,
+            BigInt(minDelegateStake + BigInt(1000000)),
+        )
+
+        const delegateStakerBalance = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
+        expect(Number(delegateStakerBalance)).to.be.greaterThanOrEqual(Number(minDelegateStake));
+
+        // Delegate stake
+        const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
+        await addToDelegateStake(
+            stakingContract, 
+            subnetId,
+            minDelegateStake,
+            BigInt(0)
+        );
 
         await activateSubnet(
             subnetContract, 
@@ -398,8 +526,24 @@ describe("Test subnet owner-0xuhnrfvok", () => {
             const human = subnetData.toHuman();
             expect(human.state).to.equal("Active")
         }
-        
-        await ownerDeactivateSubnet(subnetContract, subnetId)
+
+        const newOwner = generateRandomEthersWallet();
+        await transferSubnetOwnership(subnetContract, subnetId, newOwner.address)
+
+        await transferBalanceFromSudo(
+            api,
+            papiApi,
+            SUB_LOCAL_URL,
+            newOwner.address,
+            BigInt(1e18),
+        )
+
+        const newOwnerSubnetContract = new ethers.Contract(SUBNET_CONTRACT_ADDRESS, SUBNET_CONTRACT_ABI, newOwner);
+        await acceptSubnetOwnership(newOwnerSubnetContract, subnetId)
+        const subnetOwner = (await api.query.network.subnetOwner(subnetId)).toString()
+        expect(subnetOwner).to.equal(newOwner.address)
+
+        await ownerDeactivateSubnet(newOwnerSubnetContract, subnetId)
         subnetData = await api.query.network.subnetsData(subnetId)
         expect(subnetData == undefined);
 
