@@ -1927,8 +1927,74 @@ mod benchmarks {
         assert_eq!(key_types, new_keytypes.clone());
     }
 
+    // #[benchmark]
+    // fn owner_update_min_stake() {
+    //     let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+    //     build_activated_subnet::<T>(
+    //         DEFAULT_SUBNET_NAME.into(),
+    //         0,
+    //         max_subnet_nodes,
+    //         DEFAULT_DEPOSIT_AMOUNT,
+    //         DEFAULT_SUBNET_NODE_STAKE,
+    //     );
+    //     let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+    //     let min_nodes = MinSubnetNodes::<T>::get();
+    //     let max_subnets = MaxSubnets::<T>::get();
+    //     let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+    //     let owner_coldkey =
+    //         funded_initializer::<T>("subnet_owner", subnet_id * max_subnets * max_subnet_nodes);
+
+    //     let current_value = SubnetMinStakeBalance::<T>::get(subnet_id);
+    //     let new_value = current_value + 1;
+
+    //     #[extrinsic_call]
+    //     owner_update_min_stake(
+    //         RawOrigin::Signed(owner_coldkey.clone()),
+    //         subnet_id,
+    //         new_value,
+    //     );
+
+    //     let value = SubnetMinStakeBalance::<T>::get(subnet_id);
+    //     assert_eq!(value, new_value);
+    // }
+
+    // #[benchmark]
+    // fn owner_update_subnet_node_consecutive_included_epochs() {
+    //     let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+    //     build_activated_subnet::<T>(
+    //         DEFAULT_SUBNET_NAME.into(),
+    //         0,
+    //         max_subnet_nodes,
+    //         DEFAULT_DEPOSIT_AMOUNT,
+    //         DEFAULT_SUBNET_NODE_STAKE,
+    //     );
+    //     let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
+
+    //     let min_nodes = MinSubnetNodes::<T>::get();
+    //     let max_subnets = MaxSubnets::<T>::get();
+    //     let max_subnet_nodes = MaxSubnetNodes::<T>::get();
+
+    //     let owner_coldkey =
+    //         funded_initializer::<T>("subnet_owner", subnet_id * max_subnets * max_subnet_nodes);
+
+    //     let current_value = SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id)
+    //     let new_value = current_value + 1;
+
+    //     #[extrinsic_call]
+    //     do_owner_update_subnet_node_consecutive_included_epochs(
+    //         RawOrigin::Signed(owner_coldkey.clone()),
+    //         subnet_id,
+    //         new_value,
+    //     );
+
+    //     let value = SubnetMinStakeBalance::<T>::get(subnet_id);
+    //     assert_eq!(value, new_value);
+    // }
+
     #[benchmark]
-    fn owner_update_min_stake() {
+    fn owner_update_min_max_stake() {
         let max_subnet_nodes = MaxSubnetNodes::<T>::get();
         build_activated_subnet::<T>(
             DEFAULT_SUBNET_NAME.into(),
@@ -1946,49 +2012,18 @@ mod benchmarks {
         let owner_coldkey =
             funded_initializer::<T>("subnet_owner", subnet_id * max_subnets * max_subnet_nodes);
 
-        let current_value = SubnetMinStakeBalance::<T>::get(subnet_id);
+        let min = SubnetMinStakeBalance::<T>::get(subnet_id);
+        let new_min = min + 1;
 
-        let new_value = current_value + 1;
-
-        #[extrinsic_call]
-        owner_update_min_stake(
-            RawOrigin::Signed(owner_coldkey.clone()),
-            subnet_id,
-            new_value,
-        );
-
-        let value = SubnetMinStakeBalance::<T>::get(subnet_id);
-        assert_eq!(value, new_value);
-    }
-
-    #[benchmark]
-    fn owner_update_max_stake() {
-        let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-        build_activated_subnet::<T>(
-            DEFAULT_SUBNET_NAME.into(),
-            0,
-            max_subnet_nodes,
-            DEFAULT_DEPOSIT_AMOUNT,
-            DEFAULT_SUBNET_NODE_STAKE,
-        );
-        let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-        let min_nodes = MinSubnetNodes::<T>::get();
-        let max_subnets = MaxSubnets::<T>::get();
-        let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-
-        let owner_coldkey =
-            funded_initializer::<T>("subnet_owner", subnet_id * max_subnets * max_subnet_nodes);
-
-        let current_value = SubnetMaxStakeBalance::<T>::get(subnet_id);
-
-        let new_value = current_value - 1;
+        let max = SubnetMaxStakeBalance::<T>::get(subnet_id);
+        let new_max = max - 1;
 
         #[extrinsic_call]
-        owner_update_max_stake(
+        owner_update_min_max_stake(
             RawOrigin::Signed(owner_coldkey.clone()),
             subnet_id,
-            new_value,
+            new_min,
+            new_max
         );
 
         let value = SubnetMaxStakeBalance::<T>::get(subnet_id);
@@ -4740,19 +4775,6 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_max_subnet_nodes() {
-        let value = MaxSubnetNodes::<T>::get();
-        let new_value = value - 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_subnet_nodes(new_value);
-        }
-
-        assert_eq!(MaxSubnetNodes::<T>::get(), new_value);
-    }
-
-    #[benchmark]
     fn set_min_subnet_delegate_stake_factor() {
         let value = MinSubnetDelegateStakeFactor::<T>::get();
         let new_value = value - 1;
@@ -4856,15 +4878,17 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_subnet_removal_interval() {
-        let new_value = 1;
+    fn set_subnet_removal_intervals() {
+        let min = 1;
+        let max = 2;
 
         #[block]
         {
-            Network::<T>::do_set_min_subnet_removal_interval(new_value);
+            Network::<T>::do_set_subnet_removal_intervals(min, max);
         }
 
-        assert_eq!(MinSubnetRemovalInterval::<T>::get(), new_value);
+        assert_eq!(MinSubnetRemovalInterval::<T>::get(), min);
+        assert_eq!(MaxSubnetRemovalInterval::<T>::get(), max);
     }
 
     #[benchmark]
@@ -4945,68 +4969,25 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_churn_limit() {
-        let value = MinChurnLimit::<T>::get();
-        let new_value = value - 1;
-
+    fn set_churn_limits() {
         #[block]
         {
-            Network::<T>::do_set_min_churn_limit(new_value);
+            Network::<T>::do_set_churn_limits(1, 2);
         }
 
-        assert_eq!(MinChurnLimit::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_churn_limit() {
-        let value = MaxChurnLimit::<T>::get();
-        let new_value = value - 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_churn_limit(new_value);
-        }
-
-        assert_eq!(MaxChurnLimit::<T>::get(), new_value);
+        assert_eq!(MinChurnLimit::<T>::get(), 1);
+        assert_eq!(MaxChurnLimit::<T>::get(), 2);
     }
 
     #[benchmark]
     fn set_min_queue_epochs() {
-        let value = MinQueueEpochs::<T>::get();
-        let new_value = value - 1;
-
         #[block]
         {
-            Network::<T>::do_set_min_queue_epochs(new_value);
+            Network::<T>::do_set_queue_epochs(1, 2);
         }
 
-        assert_eq!(MinQueueEpochs::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_queue_epochs() {
-        let value = MaxQueueEpochs::<T>::get();
-        let new_value = value - 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_queue_epochs(new_value);
-        }
-
-        assert_eq!(MaxQueueEpochs::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_subnet_removal_interval() {
-        let value = MaxSubnetRemovalInterval::<T>::get();
-        let new_value = value + 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_subnet_removal_interval(new_value);
-        }
-
-        assert_eq!(MaxSubnetRemovalInterval::<T>::get(), new_value);
+        assert_eq!(MinQueueEpochs::<T>::get(), 1);
+        assert_eq!(MaxQueueEpochs::<T>::get(), 2);
     }
 
     #[benchmark]
@@ -5068,183 +5049,75 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_included_classification_epochs() {
-        let value = MinIncludedClassificationEpochs::<T>::get();
-        let new_value = value - 1;
+    fn set_included_classification_epochs() {
+        let min = 1;
+        let max = 2;
 
         let account = get_account::<T>("account", 0);
 
         #[block]
         {
-            Network::<T>::do_set_min_included_classification_epochs(new_value);
+            Network::<T>::do_set_included_classification_epochs(min, max);
         }
 
-        assert_eq!(MinIncludedClassificationEpochs::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_included_classification_epochs() {
-        let value = MaxIncludedClassificationEpochs::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_max_included_classification_epochs(new_value);
-        }
-
-        assert_eq!(MaxIncludedClassificationEpochs::<T>::get(), new_value);
+        assert_eq!(MinIncludedClassificationEpochs::<T>::get(), min);
+        assert_eq!(MaxIncludedClassificationEpochs::<T>::get(), max);
     }
 
     #[benchmark]
     fn set_min_max_subnet_node_penalties() {
-        let value = MinMaxSubnetNodePenalties::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
+        let min = 5;
+        let max = 6;
 
         #[block]
         {
-            Network::<T>::do_set_min_max_subnet_node_penalties(new_value);
+            Network::<T>::do_set_max_subnet_node_penalties(min, max);
         }
 
-        assert_eq!(MinMaxSubnetNodePenalties::<T>::get(), new_value);
+        assert_eq!(MinMaxSubnetNodePenalties::<T>::get(), min);
+        assert_eq!(MaxMaxSubnetNodePenalties::<T>::get(), max);
     }
 
     #[benchmark]
-    fn set_max_max_subnet_node_penalties() {
-        let value = MaxMaxSubnetNodePenalties::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
+    fn set_subnet_min_stakes() {
+        let min = 5;
+        let max = 6;
 
         #[block]
         {
-            Network::<T>::do_set_max_max_subnet_node_penalties(new_value);
+            Network::<T>::do_set_subnet_min_stakes(min, max);
         }
 
-        assert_eq!(MaxMaxSubnetNodePenalties::<T>::get(), new_value);
+        assert_eq!(MinSubnetMinStake::<T>::get(), min);
+        assert_eq!(MaxSubnetMinStake::<T>::get(), max);
+    }
+    
+    #[benchmark]
+    fn set_delegate_stake_percentages() {
+        let min = 5;
+        let max = 6;
+
+        #[block]
+        {
+            Network::<T>::do_set_delegate_stake_percentages(min, max);
+        }
+
+        assert_eq!(MinDelegateStakePercentage::<T>::get(), min);
+        assert_eq!(MaxDelegateStakePercentage::<T>::get(), max);
     }
 
     #[benchmark]
-    fn set_min_subnet_min_stake() {
-        let value = MinSubnetMinStake::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
+    fn set_max_registered_nodes() {
+        let min = 5;
+        let max = 6;
 
         #[block]
         {
-            Network::<T>::do_set_min_subnet_min_stake(new_value);
+            Network::<T>::do_set_max_registered_nodes(min, max);
         }
 
-        assert_eq!(MinSubnetMinStake::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_subnet_min_stake() {
-        let value = MaxSubnetMinStake::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_max_subnet_min_stake(new_value);
-        }
-
-        assert_eq!(MaxSubnetMinStake::<T>::get(), new_value);
-    }
-
-    // #[benchmark]
-    // fn set_min_subnet_max_stake() {
-    //     let value = MinSubnetMaxStake::<T>::get();
-    //     let new_value = value - 1;
-
-    //     let account = get_account::<T>("account", 0);
-
-    //     #[block]
-    //     {
-    //         Network::<T>::do_set_min_subnet_max_stake(new_value);
-    //     }
-
-    //     assert_eq!(MinSubnetMaxStake::<T>::get(), new_value);
-    // }
-
-    // #[benchmark]
-    // fn set_max_subnet_max_stake() {
-    //     let value = MaxSubnetMaxStake::<T>::get();
-    //     let new_value = value - 1;
-
-    //     let account = get_account::<T>("account", 0);
-
-    //     #[block]
-    //     {
-    //         Network::<T>::do_set_max_subnet_max_stake(new_value);
-    //     }
-
-    //     assert_eq!(MaxSubnetMaxStake::<T>::get(), new_value);
-    // }
-
-    #[benchmark]
-    fn set_min_delegate_stake_percentage() {
-        let value = MinDelegateStakePercentage::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_min_delegate_stake_percentage(new_value);
-        }
-
-        assert_eq!(MinDelegateStakePercentage::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_delegate_stake_percentage() {
-        let value = MaxDelegateStakePercentage::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_max_delegate_stake_percentage(new_value);
-        }
-
-        assert_eq!(MaxDelegateStakePercentage::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_min_max_registered_nodes() {
-        let value = MinMaxRegisteredNodes::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_min_max_registered_nodes(new_value);
-        }
-
-        assert_eq!(MinMaxRegisteredNodes::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_max_registered_nodes() {
-        let value = MaxMaxRegisteredNodes::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_max_max_registered_nodes(new_value);
-        }
-
-        assert_eq!(MaxMaxRegisteredNodes::<T>::get(), new_value);
+        assert_eq!(MinMaxRegisteredNodes::<T>::get(), min);
+        assert_eq!(MaxMaxRegisteredNodes::<T>::get(), max);
     }
 
     #[benchmark]
@@ -5629,18 +5502,17 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_subnet_nodes() {
-        let value = MinSubnetNodes::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
+    fn set_min_max_subnet_node() {
+        let min = 1;
+        let max = 2;
 
         #[block]
         {
-            Network::<T>::do_set_min_subnet_nodes(new_value);
+            Network::<T>::do_set_min_max_subnet_node(min, max);
         }
 
-        assert_eq!(MinSubnetNodes::<T>::get(), new_value);
+        assert_eq!(MinSubnetNodes::<T>::get(), min);
+        assert_eq!(MaxSubnetNodes::<T>::get(), max);
     }
 
     #[benchmark]
@@ -5821,29 +5693,17 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_node_burn_rate() {
-        let max_rate = MaxNodeBurnRate::<T>::get();
-        let new_value = max_rate - 1;
+    fn set_node_burn_rates() {
+        let min = 1;
+        let max = 2;
 
         #[block]
         {
-            Network::<T>::do_set_min_node_burn_rate(new_value);
+            Network::<T>::do_set_node_burn_rates(min, max);
         }
 
-        assert_eq!(MinNodeBurnRate::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_node_burn_rate() {
-        let min_rate = MinNodeBurnRate::<T>::get();
-        let new_value = min_rate + 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_node_burn_rate(new_value);
-        }
-
-        assert_eq!(MaxNodeBurnRate::<T>::get(), new_value);
+        assert_eq!(MinNodeBurnRate::<T>::get(), min);
+        assert_eq!(MaxNodeBurnRate::<T>::get(), max);
     }
 
     #[benchmark]

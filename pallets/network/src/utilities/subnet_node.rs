@@ -879,6 +879,11 @@ impl<T: Config> Pallet<T> {
                         node_class: node_data.classification.node_class.next(),
                         start_epoch,
                     };
+                    Self::deposit_event(Event::NodeClassGraduation {
+                        subnet_id,
+                        subnet_node_id,
+                        classification: node_data.classification.clone(),
+                    });
                     Ok(true)
                 } else {
                     Ok(false)

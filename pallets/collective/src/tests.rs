@@ -1735,9 +1735,10 @@ fn genesis_build_panics_with_duplicate_members() {
 #[test]
 fn proposal_network_pallet_vote_2_3() {
     ExtBuilder::default().build_and_execute(|| {
-        let value = pallet_network::MaxSubnetNodes::<Test>::get();
+        let min = pallet_network::MinSubnetRemovalInterval::<Test>::get() + 2;
+        let max = pallet_network::MaxSubnetRemovalInterval::<Test>::get() + 2;
         let proposal =
-            RuntimeCall::Network(pallet_network::Call::set_max_subnet_nodes { value: 999 });
+            RuntimeCall::Network(pallet_network::Call::set_subnet_removal_interval { min: min, max: max });
         let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
         let proposal_weight = proposal.get_dispatch_info().call_weight;
         let hash = BlakeTwo256::hash_of(&proposal);
@@ -1760,17 +1761,19 @@ fn proposal_network_pallet_vote_2_3() {
             proposal_weight,
             proposal_len
         ));
-        let value_call = pallet_network::MaxSubnetNodes::<Test>::get();
-        assert_ne!(value, value_call);
+
+        assert_ne!(pallet_network::MinSubnetRemovalInterval::<Test>::get(), min);
+        assert_ne!(pallet_network::MaxSubnetRemovalInterval::<Test>::get(), max);
     })
 }
 
 #[test]
 fn proposal_network_pallet_vote_1_3() {
     ExtBuilder::default().build_and_execute(|| {
-        let value = pallet_network::MaxSubnetNodes::<Test>::get();
+        let min = pallet_network::MinSubnetRemovalInterval::<Test>::get();
+        let max = pallet_network::MaxSubnetRemovalInterval::<Test>::get();
         let proposal =
-            RuntimeCall::Network(pallet_network::Call::set_max_subnet_nodes { value: 999 });
+            RuntimeCall::Network(pallet_network::Call::set_subnet_removal_interval { min: min, max: max });
         let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
         let proposal_weight = proposal.get_dispatch_info().call_weight;
         let hash = BlakeTwo256::hash_of(&proposal);
@@ -1793,8 +1796,8 @@ fn proposal_network_pallet_vote_1_3() {
             proposal_weight,
             proposal_len
         ));
-        let value_call = pallet_network::MaxSubnetNodes::<Test>::get();
-        assert_eq!(value, value_call);
+        assert_eq!(pallet_network::MinSubnetRemovalInterval::<Test>::get(), min);
+        assert_eq!(pallet_network::MaxSubnetRemovalInterval::<Test>::get(), max);
     })
 }
 

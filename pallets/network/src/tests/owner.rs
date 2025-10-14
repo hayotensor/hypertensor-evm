@@ -1807,8 +1807,231 @@ fn test_owner_remove_subnet_node() {
     });
 }
 
+// #[test]
+// fn test_owner_update_subnet_node_consecutive_included_epochs() {
+//     new_test_ext().execute_with(|| {
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+//         let original_owner = account(1);
+
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         let epoch = Network::get_current_epoch_as_u32();
+
+//         let min = MinSubnetNodeConsecutiveIncludedEpochs::<Test>::get(subnet_id);
+//         let max = MaxSubnetNodeConsecutiveIncludedEpochs::<Test>::get();
+
+//         let new_min = min + 1;
+//         let new_max = max - 1;
+
+//         assert_ok!(Network::owner_update_subnet_node_consecutive_included_epochs(
+//             RuntimeOrigin::signed(original_owner.clone()),
+//             subnet_id,
+//             new_min
+//         ));
+
+//         let value = SubnetNodeConsecutiveIncludedEpochs::<Test>::get(subnet_id);
+//         assert_eq!(value, new_min);
+
+//         assert_eq!(
+//             *network_events().last().unwrap(),
+//             Event::SubnetNodeConsecutiveIncludedEpochsUpdate {
+//                 subnet_id: subnet_id,
+//                 owner: original_owner.clone(),
+//                 value: min_stake
+//             }
+//         );
+
+//         assert_err!(
+//             Network::owner_update_subnet_node_consecutive_included_epochs(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 min-1
+//             ),
+//             Error::<Teset>::InvalidSubnetNodeConsecutiveIncludedEpochs
+//         );
+
+//         assert_err!(
+//             Network::owner_update_subnet_node_consecutive_included_epochs(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 max+1
+//             ),
+//             Error::<Teset>::InvalidSubnetNodeConsecutiveIncludedEpochs
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_owner_update_min_stake() {
+//     new_test_ext().execute_with(|| {
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+//         let original_owner = account(1);
+
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         let epoch = Network::get_current_epoch_as_u32();
+
+//         let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
+
+//         let new_min_stake = min_stake + 1;
+//         assert_ok!(Network::owner_update_min_stake(
+//             RuntimeOrigin::signed(original_owner.clone()),
+//             subnet_id,
+//             new_min_stake
+//         ));
+
+//         let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
+//         assert_eq!(min_stake, new_min_stake);
+
+//         assert_eq!(
+//             *network_events().last().unwrap(),
+//             Event::SubnetMinStakeBalanceUpdate {
+//                 subnet_id: subnet_id,
+//                 owner: original_owner.clone(),
+//                 value: min_stake
+//             }
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_owner_update_min_stake_invalid_min_stake() {
+//     new_test_ext().execute_with(|| {
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+//         let original_owner = account(1);
+
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         let epoch = Network::get_current_epoch_as_u32();
+
+//         let value = MinSubnetMinStake::<Test>::get() - 1;
+
+//         assert_err!(
+//             Network::owner_update_min_stake(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 value
+//             ),
+//             Error::<Test>::InvalidSubnetMinStake
+//         );
+
+//         let value = MaxSubnetMinStake::<Test>::get() + 1;
+
+//         assert_err!(
+//             Network::owner_update_min_stake(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 value
+//             ),
+//             Error::<Test>::InvalidSubnetMinStake
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_owner_update_max_stake() {
+//     new_test_ext().execute_with(|| {
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+//         let original_owner = account(1);
+
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         let epoch = Network::get_current_epoch_as_u32();
+
+//         let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
+
+//         let new_max_stake = max_stake - 1;
+//         assert_ok!(Network::owner_update_max_stake(
+//             RuntimeOrigin::signed(original_owner.clone()),
+//             subnet_id,
+//             new_max_stake
+//         ));
+
+//         let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
+//         assert_eq!(max_stake, new_max_stake);
+
+//         assert_eq!(
+//             *network_events().last().unwrap(),
+//             Event::SubnetMaxStakeBalanceUpdate {
+//                 subnet_id: subnet_id,
+//                 owner: original_owner.clone(),
+//                 value: max_stake
+//             }
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_owner_update_max_stake_invalid_max_stake() {
+//     new_test_ext().execute_with(|| {
+//         let subnet_name: Vec<u8> = "subnet-name".into();
+//         let deposit_amount: u128 = 10000000000000000000000;
+//         let amount: u128 = 1000000000000000000000;
+//         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+//         let original_owner = account(1);
+
+//         // Set initial owner
+//         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+//         let epoch = Network::get_current_epoch_as_u32();
+
+//         let value = NetworkMaxStakeBalance::<Test>::get() + 1;
+
+//         assert_err!(
+//             Network::owner_update_max_stake(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 value
+//             ),
+//             Error::<Test>::InvalidSubnetMaxStake
+//         );
+
+//         let value = NetworkMaxStakeBalance::<Test>::get() + 1;
+
+//         assert_err!(
+//             Network::owner_update_max_stake(
+//                 RuntimeOrigin::signed(original_owner.clone()),
+//                 subnet_id,
+//                 value
+//             ),
+//             Error::<Test>::InvalidSubnetMaxStake
+//         );
+//     });
+// }
+
 #[test]
-fn test_owner_update_min_stake() {
+fn test_owner_update_min_max_stake() {
     new_test_ext().execute_with(|| {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let deposit_amount: u128 = 10000000000000000000000;
@@ -1825,144 +2048,59 @@ fn test_owner_update_min_stake() {
         let epoch = Network::get_current_epoch_as_u32();
 
         let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
+        let max_stake = NetworkMaxStakeBalance::<Test>::get();
 
         let new_min_stake = min_stake + 1;
-        assert_ok!(Network::owner_update_min_stake(
-            RuntimeOrigin::signed(original_owner.clone()),
-            subnet_id,
-            new_min_stake
-        ));
-
-        let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
-        assert_eq!(min_stake, new_min_stake);
-
-        assert_eq!(
-            *network_events().last().unwrap(),
-            Event::SubnetMinStakeBalanceUpdate {
-                subnet_id: subnet_id,
-                owner: original_owner.clone(),
-                value: min_stake
-            }
-        );
-    });
-}
-
-#[test]
-fn test_owner_update_min_stake_invalid_min_Stake() {
-    new_test_ext().execute_with(|| {
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
-
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
-        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-
-        let original_owner = account(1);
-
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-        let epoch = Network::get_current_epoch_as_u32();
-
-        let value = MinSubnetMinStake::<Test>::get() - 1;
-
-        assert_err!(
-            Network::owner_update_min_stake(
-                RuntimeOrigin::signed(original_owner.clone()),
-                subnet_id,
-                value
-            ),
-            Error::<Test>::InvalidSubnetMinStake
-        );
-
-        let value = MaxSubnetMinStake::<Test>::get() + 1;
-
-        assert_err!(
-            Network::owner_update_min_stake(
-                RuntimeOrigin::signed(original_owner.clone()),
-                subnet_id,
-                value
-            ),
-            Error::<Test>::InvalidSubnetMinStake
-        );
-    });
-}
-
-#[test]
-fn test_owner_update_max_stake() {
-    new_test_ext().execute_with(|| {
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
-
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
-        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-
-        let original_owner = account(1);
-
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-        let epoch = Network::get_current_epoch_as_u32();
-
-        let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
-
         let new_max_stake = max_stake - 1;
-        assert_ok!(Network::owner_update_max_stake(
+
+        assert_ok!(Network::owner_update_min_max_stake(
             RuntimeOrigin::signed(original_owner.clone()),
             subnet_id,
+            new_min_stake,
             new_max_stake
         ));
 
-        let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
-        assert_eq!(max_stake, new_max_stake);
+        let result_min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
+        assert_eq!(result_min_stake, new_min_stake);
+
+        let result_max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
+        assert_eq!(result_max_stake, new_max_stake);
 
         assert_eq!(
             *network_events().last().unwrap(),
             Event::SubnetMaxStakeBalanceUpdate {
                 subnet_id: subnet_id,
                 owner: original_owner.clone(),
-                value: max_stake
+                value: new_max_stake
             }
         );
-    });
-}
-
-#[test]
-fn test_owner_update_max_stake_invalid_max_stake() {
-    new_test_ext().execute_with(|| {
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
-
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
-        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-
-        let original_owner = account(1);
-
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-        let epoch = Network::get_current_epoch_as_u32();
-
-        let value = NetworkMaxStakeBalance::<Test>::get() + 1;
 
         assert_err!(
-            Network::owner_update_max_stake(
+            Network::owner_update_min_max_stake(
                 RuntimeOrigin::signed(original_owner.clone()),
                 subnet_id,
-                value
+                100,
+                99
             ),
-            Error::<Test>::InvalidSubnetMaxStake
+            Error::<Test>::InvalidValues
         );
 
-        let value = NetworkMaxStakeBalance::<Test>::get() + 1;
-
         assert_err!(
-            Network::owner_update_max_stake(
+            Network::owner_update_min_max_stake(
                 RuntimeOrigin::signed(original_owner.clone()),
                 subnet_id,
-                value
+                min_stake-1,
+                max_stake
+            ),
+            Error::<Test>::InvalidSubnetMinStake
+        );
+
+        assert_err!(
+            Network::owner_update_min_max_stake(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                min_stake,
+                max_stake+1
             ),
             Error::<Test>::InvalidSubnetMaxStake
         );

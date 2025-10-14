@@ -10,7 +10,8 @@ use crate::{
     SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs, SubnetNodeIdHotkey, SubnetNodePenalties,
     SubnetNodeQueue, SubnetNodeQueueEpochs, SubnetNodesData, SubnetPenaltyCount,
     SuperMajorityAttestationRatio, TotalActiveSubnets, TotalNodeDelegateStakeShares,
-    TotalSubnetDelegateStakeBalance, TotalSubnetNodes,
+    TotalSubnetDelegateStakeBalance, TotalSubnetNodes, MaxSubnetPenaltyCount,
+    SubnetRemovalReason, AccountSubnetDelegateStakeShares
 };
 use frame_support::traits::Currency;
 use frame_support::weights::WeightMeter;
@@ -2213,4 +2214,81 @@ fn test_distribute_rewards_node_delegate_stake() {
             NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
         assert!(post_delegate_stake_balance > delegate_stake_balance);
     });
+}
+
+#[test]
+fn test_do_epoch_preliminaries_deactivate_max_penalties() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+
+    let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+    let max_subnet_penalty_count = MaxSubnetPenaltyCount::<Test>::get();
+    SubnetPenaltyCount::<Test>::insert(subnet_id, max_subnet_penalty_count + 1);
+
+    increase_epochs(1);
+    let block_number = System::block_number();
+
+    let epoch_length = EpochLength::get();
+    let epoch = System::block_number() / epoch_length;
+
+    Network::do_epoch_preliminaries(&mut WeightMeter::new(), block_number, epoch);
+    assert_eq!(
+      *network_events().last().unwrap(),
+      Event::SubnetDeactivated {
+        subnet_id: subnet_id, 
+        reason: SubnetRemovalReason::MaxPenalties
+      }
+    ); 
+  });
+}
+
+#[test]
+fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
+    
+    let deposit_amount: u128 = 10000000000000000000000;
+    let amount: u128 = 1000000000000000000000;
+
+    let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+    build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+    // --- Remove delegate stake to force MinSubnetDelegateStake removal reason
+    let delegate_shares = AccountSubnetDelegateStakeShares::<Test>::get(account(1), subnet_id);
+    assert_ok!(
+      Network::remove_delegate_stake(
+        RuntimeOrigin::signed(account(1)),
+        subnet_id,
+        delegate_shares,
+      ) 
+    );
+
+    increase_epochs(1);
+    let block_number = System::block_number();
+
+    let epoch_length = EpochLength::get();
+    let epoch = System::block_number() / epoch_length;  
+
+    Network::do_epoch_preliminaries(&mut WeightMeter::new(), block_number, epoch);
+    assert_eq!(
+      *network_events().last().unwrap(),
+      Event::SubnetDeactivated {
+        subnet_id: subnet_id, 
+        reason: SubnetRemovalReason::MinSubnetDelegateStake
+      }
+    ); 
+  });
 }

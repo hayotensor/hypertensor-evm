@@ -32,6 +32,7 @@ use crate::{
   TotalActiveSubnets,
   SubnetDelegateStakeRewardsPercentage,
   MaxSubnetNodes,
+  SubnetEnactmentEpochs,
 };
 use sp_io::crypto::sr25519_sign;
 use sp_runtime::{MultiSigner, MultiSignature};
@@ -1320,79 +1321,93 @@ fn test_reward_subnets_v2_account_penalty_count() {
 
 
 
-// #[test]
-// fn test_do_epoch_preliminaries_deactivate_subnet_enactment_period() {
-//   new_test_ext().execute_with(|| {
-//     let subnet_name: Vec<u8> = "subnet-name".into();
+#[test]
+fn test_do_epoch_preliminaries_deactivate_subnet_enactment_period() {
+  new_test_ext().execute_with(|| {
+    let subnet_name: Vec<u8> = "subnet-name".into();
 
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
+    let epoch_length = EpochLength::get();
+    let block_number = System::block_number();
+    let epoch = System::block_number().saturating_div(epoch_length);
   
-//     let cost = Network::registration_cost(epoch);
+    let cost = Network::registration_cost(epoch);
   
-//     let _ = Balances::deposit_creating(&account(1), cost+1000);
+    let _ = Balances::deposit_creating(&account(1), cost+1000);
   
-//     let add_subnet_data = RegistrationSubnetData {
-//       name: subnet_name.clone().into(),
-//       max_node_registration_epochs: 16,
-//       node_registration_interval: 0,
-//       node_queue_period: 1,
-      // initial_coldkeys: Some(BTreeSet::new()),
-      // initial_coldkeys: None,
-//     };
+    let add_subnet_data = RegistrationSubnetData {
+      name: subnet_name.clone().into(),
+      max_node_registration_epochs: 16,
+      node_registration_interval: 0,
+      node_queue_period: 1,
+      initial_coldkeys: Some(BTreeSet::new()),
+      initial_coldkeys: None,
+    };
   
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-//     increase_epochs(next_registration_epoch - epoch);
+    let epoch_length = EpochLength::get();
+    let block_number = System::block_number();
+    let epoch = System::block_number().saturating_div(epoch_length);
+    let next_registration_epoch = Network::get_next_registration_epoch(epoch);
+    increase_epochs(next_registration_epoch - epoch);
 
-//     // --- Register subnet for activation
-//     assert_ok!(
-//       Network::register_subnet(
-//         RuntimeOrigin::signed(account(1)),
-//         add_subnet_data,
-//       )
-//     );
+    // --- Register subnet for activation
+    assert_ok!(
+      Network::register_subnet(
+        RuntimeOrigin::signed(account(1)),
+        add_subnet_data,
+      )
+    );
 
-//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-//     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
+    let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+    let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
 
-//     let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
-//     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+1000);
+    let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance();
+    let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+1000);
   
-//     let mut subnet_registering = true;
-//     let subnet_activation_enactment_blocks = SubnetActivationEnactmentBlocks::<Test>::get();
+    let mut subnet_registering = true;
+    // let subnet_activation_enactment_blocks = SubnetActivationEnactmentBlocks::<Test>::get();
 
-//     while subnet_registering {
-//       increase_epochs(1);
-//       let block_number = System::block_number();
+    let subnet_activation_enactment_epoch = SubnetEnactmentEpochs::<Test>::get();
 
-//       let epoch_length = EpochLength::get();
-//       let epoch = System::block_number() / epoch_length;  
+    while subnet_registering {
+      increase_epochs(1);
+      let block_number = System::block_number();
 
-//       Network::do_epoch_preliminaries(block_number, epoch, epoch_length);
+      let epoch_length = EpochLength::get();
+      let epoch = System::block_number() / epoch_length;  
+
+      Network::do_epoch_preliminaries(block_number, epoch, epoch_length);
       
-//       if block_number > max_registration_block + subnet_activation_enactment_blocks {
-//         assert_eq!(
-//           *network_events().last().unwrap(),
-//           Event::SubnetDeactivated {
-//             subnet_id: subnet_id, 
-//             reason: SubnetRemovalReason::EnactmentPeriod
-//           }
-//         );
+      if block_number > max_registration_block + subnet_activation_enactment_blocks {
+        assert_eq!(
+          *network_events().last().unwrap(),
+          Event::SubnetDeactivated {
+            subnet_id: subnet_id, 
+            reason: SubnetRemovalReason::EnactmentPeriod
+          }
+        );
 
-//         let removed_subnet = SubnetsData::<Test>::try_get(subnet_id);
-//         assert_eq!(removed_subnet, Err(()));
-//         subnet_registering = false;
-//       } else {
-//         let registered_subnet = SubnetsData::<Test>::try_get(subnet_id).unwrap();
-//         assert_eq!(registered_subnet.id, subnet_id);
-//       }
-//     }
-//   });
-// }
+        let removed_subnet = SubnetsData::<Test>::try_get(subnet_id);
+        assert_eq!(removed_subnet, Err(()));
+        subnet_registering = false;
+      // if epoch > max_registration_block + subnet_activation_enactment_epoch {
+      //   assert_eq!(
+      //     *network_events().last().unwrap(),
+      //     Event::SubnetDeactivated {
+      //       subnet_id: subnet_id, 
+      //       reason: SubnetRemovalReason::EnactmentPeriod
+      //     }
+      //   );
+
+      //   let removed_subnet = SubnetsData::<Test>::try_get(subnet_id);
+      //   assert_eq!(removed_subnet, Err(()));
+      //   subnet_registering = false;
+      } else {
+        let registered_subnet = SubnetsData::<Test>::try_get(subnet_id).unwrap();
+        assert_eq!(registered_subnet.id, subnet_id);
+      }
+    }
+  });
+}
 
 #[test]
 fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {

@@ -979,39 +979,63 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerUpdateMinStake(uint256,uint256)")]
-    fn owner_update_min_stake(
+    // #[precompile::public("ownerUpdateMinStake(uint256,uint256)")]
+    // fn owner_update_min_stake(
+    //     handle: &mut impl PrecompileHandle,
+    //     subnet_id: U256,
+    //     value: U256,
+    // ) -> EvmResult<()> {
+    //     let subnet_id = try_u256_to_u32(subnet_id)?;
+    //     let value: u128 = value.unique_saturated_into();
+
+    //     let origin = R::AddressMapping::into_account_id(handle.context().caller);
+    //     let call = pallet_network::Call::<R>::owner_update_min_stake { subnet_id, value };
+
+    //     RuntimeHelper::<R>::try_dispatch(
+    //         handle,
+    //         RawOrigin::Signed(origin.clone()).into(),
+    //         call,
+    //         0,
+    //     )?;
+
+    //     Ok(())
+    // }
+
+    // #[precompile::public("ownerUpdateMaxStake(uint256,uint256)")]
+    // fn owner_update_max_stake(
+    //     handle: &mut impl PrecompileHandle,
+    //     subnet_id: U256,
+    //     value: U256,
+    // ) -> EvmResult<()> {
+    //     let subnet_id = try_u256_to_u32(subnet_id)?;
+    //     let value: u128 = value.unique_saturated_into();
+
+    //     let origin = R::AddressMapping::into_account_id(handle.context().caller);
+    //     let call = pallet_network::Call::<R>::owner_update_max_stake { subnet_id, value };
+
+    //     RuntimeHelper::<R>::try_dispatch(
+    //         handle,
+    //         RawOrigin::Signed(origin.clone()).into(),
+    //         call,
+    //         0,
+    //     )?;
+
+    //     Ok(())
+    // }
+
+    #[precompile::public("ownerUpdateMinMaxStake(uint256,uint256,uint256)")]
+    fn owner_update_min_max_stake(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,
-        value: U256,
+        min: U256,
+        max: U256,
     ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
-        let value: u128 = value.unique_saturated_into();
+        let min: u128 = min.unique_saturated_into();
+        let max: u128 = max.unique_saturated_into();
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_update_min_stake { subnet_id, value };
-
-        RuntimeHelper::<R>::try_dispatch(
-            handle,
-            RawOrigin::Signed(origin.clone()).into(),
-            call,
-            0,
-        )?;
-
-        Ok(())
-    }
-
-    #[precompile::public("ownerUpdateMaxStake(uint256,uint256)")]
-    fn owner_update_max_stake(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-        value: U256,
-    ) -> EvmResult<()> {
-        let subnet_id = try_u256_to_u32(subnet_id)?;
-        let value: u128 = value.unique_saturated_into();
-
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_update_max_stake { subnet_id, value };
+        let call = pallet_network::Call::<R>::owner_update_min_max_stake { subnet_id, min, max };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,

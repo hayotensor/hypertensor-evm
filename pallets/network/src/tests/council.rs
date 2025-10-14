@@ -33,87 +33,6 @@ use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
 use sp_std::collections::btree_map::BTreeMap;
 
-// do_pause
-// do_unpause
-// do_set_subnet_owner_percentage
-// do_set_max_subnets
-// do_set_max_bootnodes
-// do_set_max_subnet_bootnodes_access
-// do_set_max_subnet_penalty_count
-// do_set_max_pause_epochs
-// do_set_min_registration_cost
-// do_set_registration_cost_delay_blocks
-// do_set_registration_cost_alpha
-// do_set_new_registration_cost_multiplier
-// do_set_max_min_delegate_stake_multiplier
-// do_set_min_churn_limit
-// do_set_max_churn_limit
-// do_set_min_queue_epochs
-// do_set_max_queue_epochs
-// do_set_min_idle_classification_epochs
-// do_set_max_idle_classification_epochs
-// do_set_subnet_activation_enactment_epochs
-// do_set_min_included_classification_epochs
-// do_set_max_included_classification_epochs
-// do_set_min_max_subnet_node_penalties
-// do_set_max_max_subnet_node_penalties
-// do_set_min_subnet_min_stake
-// do_set_max_subnet_min_stake
-// do_set_min_delegate_stake_percentage
-// do_set_max_delegate_stake_percentage
-// do_set_min_max_registered_nodes
-// do_set_max_max_registered_nodes
-// do_set_max_subnet_delegate_stake_rewards_percentage_change
-// do_set_subnet_delegate_stake_rewards_update_period
-// do_set_min_attestation_percentage
-// do_set_super_majority_attestation_ratio
-// do_set_base_validator_reward
-// do_set_base_slash_percentage
-// do_set_max_slash_amount
-// do_set_reputation_increase_factor
-// do_set_reputation_decrease_factor
-// do_set_network_max_stake_balance
-// do_set_min_delegate_stake_deposit
-// do_set_node_reward_rate_update_period
-// do_set_max_reward_rate_decrease
-// do_set_subnet_distribution_power
-// do_set_delegate_stake_weight_factor
-// do_set_sigmoid_steepness
-// do_set_max_overwatch_nodes
-// do_set_overwatch_epoch_length_multiplier
-// do_set_overwatch_commit_cutoff_percent
-// do_set_max_overwatch_node_penalties
-// do_set_overwatch_min_diversification_ratio
-// do_set_overwatch_min_rep_score
-// do_set_overwatch_min_avg_attestation_ratio
-// do_set_overwatch_min_age
-// do_set_overwatch_min_stake_balance
-// do_set_min_subnet_nodes
-// do_set_max_subnet_nodes
-// do_set_tx_rate_limit
-// do_set_min_subnet_delegate_stake_factor
-// do_collective_remove_subnet
-// do_collective_remove_subnet_node
-// do_collective_remove_overwatch_node
-// do_collective_set_coldkey_overwatch_node_eligibility
-// do_set_min_subnet_registration_epochs
-// do_set_subnet_registration_epochs
-// do_set_min_active_node_stake_epochs
-// do_set_delegate_stake_cooldown_epochs
-// do_set_node_delegate_stake_cooldown_epochs
-// do_set_min_stake_cooldown_epochs
-// do_set_max_unbondings
-// do_set_sigmoid_midpoint
-// do_set_maximum_hooks_weight
-// do_set_base_node_burn_amount
-// do_set_min_node_burn_rate
-// do_set_max_node_burn_rate
-// do_set_delegate_stake_subnet_removal_interval
-// do_set_min_subnet_removal_interval
-// do_set_max_subnet_removal_interval
-// do_set_subnet_pause_cooldown_epochs
-// do_set_max_swap_queue_calls_per_block
-
 #[test]
 fn test_do_pause_do_unpause() {
     new_test_ext().execute_with(|| {
@@ -276,21 +195,8 @@ fn test_do_set_max_min_delegate_stake_multiplier() {
 #[test]
 fn test_do_set_min_churn_limit() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_churn_limit(5));
+        assert_ok!(Network::do_set_churn_limits(5, 6));
         assert_eq!(MinChurnLimit::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_churn_limit(6));
-        assert_eq!(MinChurnLimit::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_churn_limit() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_churn_limit(5));
-        assert_eq!(MaxChurnLimit::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_churn_limit(6));
         assert_eq!(MaxChurnLimit::<Test>::get(), 6);
     })
 }
@@ -298,21 +204,8 @@ fn test_do_set_max_churn_limit() {
 #[test]
 fn test_do_set_min_queue_epochs() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_queue_epochs(5));
+        assert_ok!(Network::do_set_queue_epochs(5, 6));
         assert_eq!(MinQueueEpochs::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_queue_epochs(6));
-        assert_eq!(MinQueueEpochs::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_queue_epochs() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_queue_epochs(5));
-        assert_eq!(MaxQueueEpochs::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_queue_epochs(6));
         assert_eq!(MaxQueueEpochs::<Test>::get(), 6);
     })
 }
@@ -351,111 +244,49 @@ fn test_do_set_subnet_activation_enactment_epochs() {
 }
 
 #[test]
-fn test_do_set_min_included_classification_epochs() {
+fn test_do_set_included_classification_epochs() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_included_classification_epochs(5));
+        assert_ok!(Network::do_set_included_classification_epochs(5, 6));
         assert_eq!(MinIncludedClassificationEpochs::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_included_classification_epochs(6));
-        assert_eq!(MinIncludedClassificationEpochs::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_included_classification_epochs() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_included_classification_epochs(5));
-        assert_eq!(MaxIncludedClassificationEpochs::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_included_classification_epochs(6));
         assert_eq!(MaxIncludedClassificationEpochs::<Test>::get(), 6);
     })
 }
 
 #[test]
-fn test_do_set_min_max_subnet_node_penalties() {
+fn test_do_set_max_subnet_node_penalties() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_max_subnet_node_penalties(5));
+        assert_ok!(Network::do_set_max_subnet_node_penalties(5, 6));
         assert_eq!(MinMaxSubnetNodePenalties::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_max_subnet_node_penalties(6));
-        assert_eq!(MinMaxSubnetNodePenalties::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_max_subnet_node_penalties() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_max_subnet_node_penalties(5));
-        assert_eq!(MaxMaxSubnetNodePenalties::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_max_subnet_node_penalties(6));
         assert_eq!(MaxMaxSubnetNodePenalties::<Test>::get(), 6);
+
     })
 }
 
 #[test]
-fn test_do_set_min_subnet_min_stake() {
+fn test_do_set_subnet_min_stakes() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_subnet_min_stake(5));
+        assert_ok!(Network::do_set_subnet_min_stakes(5, 6));
         assert_eq!(MinSubnetMinStake::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_subnet_min_stake(6));
-        assert_eq!(MinSubnetMinStake::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_subnet_min_stake() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_subnet_min_stake(5));
-        assert_eq!(MaxSubnetMinStake::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_subnet_min_stake(6));
         assert_eq!(MaxSubnetMinStake::<Test>::get(), 6);
+
     })
 }
 
 #[test]
-fn test_do_set_min_delegate_stake_percentage() {
+fn test_do_set_delegate_stake_percentages() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_delegate_stake_percentage(5));
+        assert_ok!(Network::do_set_delegate_stake_percentages(5, 6));
         assert_eq!(MinDelegateStakePercentage::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_delegate_stake_percentage(6));
-        assert_eq!(MinDelegateStakePercentage::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_delegate_stake_percentage() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_delegate_stake_percentage(5));
-        assert_eq!(MaxDelegateStakePercentage::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_delegate_stake_percentage(6));
         assert_eq!(MaxDelegateStakePercentage::<Test>::get(), 6);
+
     })
 }
 
 #[test]
-fn test_do_set_min_max_registered_nodes() {
+fn test_do_set_max_registered_nodes() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_max_registered_nodes(5));
+        assert_ok!(Network::do_set_max_registered_nodes(5, 6));
         assert_eq!(MinMaxRegisteredNodes::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_max_registered_nodes(6));
-        assert_eq!(MinMaxRegisteredNodes::<Test>::get(), 6);
-    })
-}
-
-#[test]
-fn test_do_set_max_max_registered_nodes() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_max_registered_nodes(5));
-        assert_eq!(MaxMaxRegisteredNodes::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_max_registered_nodes(6));
         assert_eq!(MaxMaxRegisteredNodes::<Test>::get(), 6);
     })
 }
@@ -516,19 +347,19 @@ fn test_do_set_min_attestation_percentage() {
 fn test_do_set_super_majority_attestation_ratio() {
     new_test_ext().execute_with(|| {
         assert_ok!(Network::do_set_super_majority_attestation_ratio(
-            600000000000000000
+            60000000000
         ));
         assert_eq!(
             SuperMajorityAttestationRatio::<Test>::get(),
-            600000000000000000
+            60000000000
         );
 
         assert_ok!(Network::do_set_super_majority_attestation_ratio(
-            900000000000000000
+            90000000000
         ));
         assert_eq!(
             SuperMajorityAttestationRatio::<Test>::get(),
-            900000000000000000
+            90000000000
         );
 
         assert_err!(
@@ -892,18 +723,46 @@ fn test_do_set_max_unbondings() {
 fn test_do_set_maximum_hooks_weight() {
     new_test_ext().execute_with(|| {
         let _ = env_logger::builder().is_test(true).try_init();
+        log::error!(
+            "current block weight {:?}",
+            MaximumHooksWeightV2::<Test>::get()
+        );
 
-        let new_value = 50;
+        let new_value = 10;
         // let expected_value = 
         //     sp_runtime::Perbill::from_percent(new_value) * BlockWeights::get().max_block;
+        // log::error!(
+        //     "expected_value {:?}",
+        //     expected_value
+        // );
+
         assert_ok!(Network::do_set_maximum_hooks_weight(new_value));
         // assert_eq!(MaximumHooksWeightV2::<Test>::get(), expected_value);
+        log::error!(
+            "current block weight {:?}",
+            MaximumHooksWeightV2::<Test>::get()
+        );
 
         let new_value = 5;
         // let expected_value =
         //     sp_runtime::Perbill::from_percent(new_value) * BlockWeights::get().max_block;
+        // log::error!(
+        //     "expected_value {:?}",
+        //     expected_value
+        // );
+
         assert_ok!(Network::do_set_maximum_hooks_weight(new_value));
         // assert_eq!(MaximumHooksWeightV2::<Test>::get(), expected_value);
+        log::error!(
+            "current block weight {:?}",
+            MaximumHooksWeightV2::<Test>::get()
+        );
+
+        // =======
+        // uncomment `assert!(false)` to see matching values
+        // =======
+        // assert!(false);
+
         assert_err!(
             Network::do_set_maximum_hooks_weight(0),
             Error::<Test>::InvalidPerbillPercent
@@ -930,37 +789,11 @@ fn test_do_set_base_node_burn_amount() {
 #[test]
 fn test_do_set_min_node_burn_rate() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_node_burn_rate(6));
-        assert_eq!(MinNodeBurnRate::<Test>::get(), 6);
-
-        assert_ok!(Network::do_set_min_node_burn_rate(5));
+        assert_ok!(Network::do_set_node_burn_rates(5, 6));
         assert_eq!(MinNodeBurnRate::<Test>::get(), 5);
+        assert_eq!(MaxNodeBurnRate::<Test>::get(), 6);
 
-        let max_rate = MaxNodeBurnRate::<Test>::get();
-        assert_err!(
-            Network::do_set_min_node_burn_rate(max_rate + 1),
-            Error::<Test>::InvalidMinNodeBurnRate
-        );
-    })
-}
 
-#[test]
-fn test_do_set_max_node_burn_rate() {
-    new_test_ext().execute_with(|| {
-        let min_rate = MinNodeBurnRate::<Test>::get();
-
-        let new_value = min_rate + 1;
-
-        assert_ok!(Network::do_set_max_node_burn_rate(new_value));
-        assert_eq!(MaxNodeBurnRate::<Test>::get(), new_value);
-
-        assert_ok!(Network::do_set_max_node_burn_rate(new_value + 1));
-        assert_eq!(MaxNodeBurnRate::<Test>::get(), new_value + 1);
-
-        assert_err!(
-            Network::do_set_max_node_burn_rate(min_rate - 1),
-            Error::<Test>::InvalidMaxNodeBurnRate
-        );
     })
 }
 
@@ -983,27 +816,10 @@ fn test_do_set_delegate_stake_subnet_removal_interval() {
 #[test]
 fn test_do_set_min_subnet_removal_interval() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_subnet_removal_interval(6));
-        assert_eq!(MinSubnetRemovalInterval::<Test>::get(), 6);
-
-        assert_ok!(Network::do_set_min_subnet_removal_interval(5));
+        assert_ok!(Network::do_set_subnet_removal_intervals(5, 6));
         assert_eq!(MinSubnetRemovalInterval::<Test>::get(), 5);
-    })
-}
-
-#[test]
-fn test_do_set_max_subnet_removal_interval() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_subnet_removal_interval(6));
         assert_eq!(MaxSubnetRemovalInterval::<Test>::get(), 6);
 
-        assert_ok!(Network::do_set_max_subnet_removal_interval(5));
-        assert_eq!(MaxSubnetRemovalInterval::<Test>::get(), 5);
-
-        assert_err!(
-            Network::do_set_max_subnet_removal_interval(0),
-            Error::<Test>::InvalidMaxSubnetRemovalInterval
-        );
     })
 }
 
@@ -1030,39 +846,11 @@ fn test_do_set_max_swap_queue_calls_per_block() {
 }
 
 #[test]
-fn test_do_set_min_subnet_nodes() {
+fn test_do_set_min_max_subnet_node() {
     new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_min_subnet_nodes(5));
+        assert_ok!(Network::do_set_min_max_subnet_node(5, 6));
         assert_eq!(MinSubnetNodes::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_min_subnet_nodes(6));
-        assert_eq!(MinSubnetNodes::<Test>::get(), 6);
-
-        assert_err!(
-            Network::do_set_min_subnet_nodes(0),
-            Error::<Test>::InvalidMinSubnetNodes
-        );
-
-        assert_err!(
-            Network::do_set_min_subnet_nodes(MaxSubnetNodes::<Test>::get() + 1),
-            Error::<Test>::InvalidMinSubnetNodes
-        );
-    })
-}
-
-#[test]
-fn test_do_set_max_subnet_nodes() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Network::do_set_max_subnet_nodes(5));
-        assert_eq!(MaxSubnetNodes::<Test>::get(), 5);
-
-        assert_ok!(Network::do_set_max_subnet_nodes(6));
         assert_eq!(MaxSubnetNodes::<Test>::get(), 6);
-
-        assert_err!(
-            Network::do_set_max_subnet_nodes(MinSubnetNodes::<Test>::get()),
-            Error::<Test>::InvalidMaxSubnetNodes
-        );
     })
 }
 

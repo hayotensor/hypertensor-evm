@@ -615,6 +615,52 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    pub fn do_owner_update_min_max_stake(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        min: u128,
+        max: u128
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            min <= max,
+            Error::<T>::InvalidValues
+        );
+
+        ensure!(
+            min >= MinSubnetMinStake::<T>::get() && min <= MaxSubnetMinStake::<T>::get(),
+            Error::<T>::InvalidSubnetMinStake
+        );
+
+        ensure!(
+            max <= NetworkMaxStakeBalance::<T>::get(),
+            Error::<T>::InvalidSubnetMaxStake
+        );
+
+        SubnetMinStakeBalance::<T>::insert(subnet_id, min);
+        SubnetMaxStakeBalance::<T>::insert(subnet_id, max);
+
+        Self::deposit_event(Event::SubnetMinStakeBalanceUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey.clone(),
+            value: min,
+        });
+
+        Self::deposit_event(Event::SubnetMaxStakeBalanceUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey.clone(),
+            value: max,
+        });
+
+        Ok(())
+    }
+
     /// Update delegate stake percentage
     ///
     /// This function can only be called by the current owner of the subnet.  
