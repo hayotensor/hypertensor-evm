@@ -2441,6 +2441,7 @@ pub fn get_simulated_consensus_data(
 
     ConsensusData {
         validator_id: subnet_id * max_subnet_nodes,
+        validator_epoch_progress: 0,
         attests,
         data,
         prioritize_queue_node_id: None,

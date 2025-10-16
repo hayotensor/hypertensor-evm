@@ -312,7 +312,10 @@ impl<T: Config> Pallet<T> {
             // --- Increase reward if validator
             if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
                 account_reward +=
-                    Self::get_validator_reward(consensus_submission_data.attestation_ratio);
+                    Self::get_validator_reward(
+                        consensus_submission_data.attestation_ratio,
+                        consensus_submission_data.validator_epoch_progress
+                    );
                 // Add get_validator_reward (At least 1 read, up to 2)
                 // MinAttestationPercentage | BaseValidatorReward
                 weight_meter.consume(db_weight.reads(2));

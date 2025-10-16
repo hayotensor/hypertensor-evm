@@ -5353,7 +5353,7 @@ mod benchmarks {
 
     #[benchmark]
     fn set_sigmoid_steepness() {
-        let value = SigmoidSteepness::<T>::get();
+        let value = InflationSigmoidSteepness::<T>::get();
         let new_value = value - 1;
 
         let account = get_account::<T>("account", 0);
@@ -5363,7 +5363,7 @@ mod benchmarks {
             Network::<T>::do_set_sigmoid_steepness(new_value);
         }
 
-        assert_eq!(SigmoidSteepness::<T>::get(), new_value);
+        assert_eq!(InflationSigmoidSteepness::<T>::get(), new_value);
     }
 
     #[benchmark]
@@ -5655,7 +5655,7 @@ mod benchmarks {
 
     #[benchmark]
     fn set_sigmoid_midpoint() {
-        let value = SigmoidMidpoint::<T>::get();
+        let value = InflationSigmoidMidpoint::<T>::get();
         let new_value = value + 1;
 
         #[block]
@@ -5663,7 +5663,7 @@ mod benchmarks {
             Network::<T>::do_set_sigmoid_midpoint(new_value);
         }
 
-        assert_eq!(SigmoidMidpoint::<T>::get(), new_value);
+        assert_eq!(InflationSigmoidMidpoint::<T>::get(), new_value);
     }
 
     #[benchmark]

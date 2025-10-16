@@ -1,7 +1,7 @@
 use super::mock::*;
 use crate::inflation::Inflation;
 use crate::tests::test_utils::*;
-use crate::{SigmoidMidpoint, SigmoidSteepness};
+use crate::{InflationSigmoidMidpoint, InflationSigmoidSteepness};
 
 //
 //
@@ -96,8 +96,8 @@ fn test_get_interest_rate_total() {
 
         let inflation = Inflation::default();
 
-        let mid = Network::get_percent_as_f64(SigmoidMidpoint::<Test>::get());
-        let k = SigmoidSteepness::<Test>::get() as f64;
+        let mid = Network::get_percent_as_f64(InflationSigmoidMidpoint::<Test>::get());
+        let k = InflationSigmoidSteepness::<Test>::get() as f64;
 
         for u in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
             let (validator_rate, foundation_rate) = {

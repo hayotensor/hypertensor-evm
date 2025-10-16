@@ -48,18 +48,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::MaxStakeReached
         );
 
-        // ensure!(
-        //     account_stake_balance.saturating_add(stake_to_be_added)
-        //         >= NetworkMinStakeBalance::<T>::get(),
-        //     Error::<T>::MinStakeNotReached
-        // );
-
-        // ensure!(
-        //     account_stake_balance.saturating_add(stake_to_be_added)
-        //         <= NetworkMaxStakeBalance::<T>::get(),
-        //     Error::<T>::MaxStakeReached
-        // );
-
         // --- Ensure the callers coldkey has enough stake to perform the transaction.
         ensure!(
             Self::can_remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()),

@@ -578,6 +578,7 @@ impl<T: Config> Pallet<T> {
 
         let consensus_data = ConsensusSubmissionData {
             validator_subnet_node_id: submission.validator_id,
+            validator_epoch_progress: submission.validator_epoch_progress,
             attestation_ratio: attestation_ratio,
             weight_sum: weight_sum,
             data_length: data_length,

@@ -104,10 +104,59 @@ impl<T: Config> Pallet<T> {
         }
 
         // Example: 150 = 200-50
-        let offset_block = current_block - subnet_slot;
+        let offset_block = current_block.saturating_sub(subnet_slot);
 
-        // Example: 150 = 150 / 100
-        offset_block / epoch_length
+        // Example: 1 = 150 / 100
+        offset_block.saturating_div(epoch_length)
+    }
+
+    pub fn get_subnet_epoch_progression(subnet_id: u32) -> u128 {
+        let epoch_length = T::EpochLength::get();
+        let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
+            Ok(slot) => slot,
+            Err(_) => 0,
+        };
+        if subnet_slot == 0 {
+            return 0;
+        }
+
+        let current_block = Self::get_current_block_as_u32();
+
+        if current_block < subnet_slot {
+            return 0;
+        }
+
+        let offset_block = current_block.saturating_sub(subnet_slot);
+        let blocks_into_epoch = offset_block % epoch_length;
+        Self::percent_div(blocks_into_epoch as u128, epoch_length as u128)
+    }
+
+    /// Returns true if < last subnet epoch block
+    pub fn can_propose_attestation(subnet_id: u32) -> bool {
+        let epoch_length = T::EpochLength::get();
+        let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
+            Ok(slot) => slot,
+            Err(_) => 0,
+        };
+        if subnet_slot == 0 {
+            return false;
+        }
+
+        let current_block = Self::get_current_block_as_u32();
+
+        if current_block < subnet_slot {
+            return false;
+        }
+
+        let offset_block = current_block.saturating_sub(subnet_slot);
+
+        let current_subnet_epoch = offset_block.saturating_div(epoch_length);
+
+        // Get last subnet epoch block, start of next epoch
+        let last_epoch_block = subnet_slot + (current_subnet_epoch + 1) * epoch_length;
+
+        // Check if we are at the last block
+        current_block < last_epoch_block
     }
 
     /// Performs preliminary subnet checks and maintenance at the start of each epoch.

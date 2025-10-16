@@ -23,11 +23,11 @@ use crate::{
     OverwatchMinDiversificationRatio, OverwatchMinRepScore, OverwatchMinStakeBalance,
     OverwatchNodeBlacklist, OverwatchNodeIdHotkey, OverwatchNodes, RegistrationCostAlpha,
     RegistrationCostDecayBlocks, ReputationDecreaseFactor, ReputationIncreaseFactor,
-    SigmoidMidpoint, SigmoidSteepness, StakeCooldownEpochs, SubnetDelegateStakeRewardsUpdatePeriod,
+    InflationSigmoidMidpoint, InflationSigmoidSteepness, StakeCooldownEpochs, SubnetDelegateStakeRewardsUpdatePeriod,
     SubnetDistributionPower, SubnetEnactmentEpochs, SubnetName, SubnetOwnerPercentage,
     SubnetPauseCooldownEpochs, SubnetRegistrationEpochs, SubnetRemovalReason,
     SuperMajorityAttestationRatio, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
-    TxPause, TxRateLimit,
+    TxPause, TxRateLimit, ValidatorRewardK, ValidatorRewardMidpoint
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -509,10 +509,10 @@ fn test_do_set_delegate_stake_weight_factor() {
 fn test_do_set_sigmoid_steepness() {
     new_test_ext().execute_with(|| {
         assert_ok!(Network::do_set_sigmoid_steepness(6));
-        assert_eq!(SigmoidSteepness::<Test>::get(), 6);
+        assert_eq!(InflationSigmoidSteepness::<Test>::get(), 6);
 
         assert_ok!(Network::do_set_sigmoid_steepness(5));
-        assert_eq!(SigmoidSteepness::<Test>::get(), 5);
+        assert_eq!(InflationSigmoidSteepness::<Test>::get(), 5);
     })
 }
 
@@ -969,10 +969,10 @@ fn test_do_collective_remove_overwatch_node() {
 fn test_do_set_sigmoid_midpoint() {
     new_test_ext().execute_with(|| {
         assert_ok!(Network::do_set_sigmoid_midpoint(100));
-        assert_eq!(SigmoidMidpoint::<Test>::get(), 100);
+        assert_eq!(InflationSigmoidMidpoint::<Test>::get(), 100);
 
         assert_ok!(Network::do_set_sigmoid_midpoint(200));
-        assert_eq!(SigmoidMidpoint::<Test>::get(), 200);
+        assert_eq!(InflationSigmoidMidpoint::<Test>::get(), 200);
 
         assert_err!(
             Network::do_set_sigmoid_midpoint(Network::percentage_factor_as_u128() + 1),
@@ -1040,8 +1040,6 @@ fn test_do_set_subnet_registration_epochs() {
 #[test]
 fn test_do_set_max_subnet_node_score_penalty_threshold() {
     new_test_ext().execute_with(|| {
-        let min_registration_epochs = MinSubnetRegistrationEpochs::<Test>::get();
-
         assert_ok!(Network::do_set_max_subnet_node_score_penalty_threshold(1));
         assert_eq!(MaxSubnetNodeScorePenaltyThreshold::<Test>::get(), 1);
 
@@ -1050,9 +1048,42 @@ fn test_do_set_max_subnet_node_score_penalty_threshold() {
 
         assert_err!(
             Network::do_set_max_subnet_node_score_penalty_threshold(
-                (Network::percentage_factor_as_u128() + 1)
+                Network::percentage_factor_as_u128() + 1
             ),
             Error::<Test>::InvalidPercent
         );
     })
 }
+
+#[test]
+fn test_do_set_validator_reward_k() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(Network::do_set_validator_reward_k(1));
+        assert_eq!(ValidatorRewardK::<Test>::get(), 1);
+
+        assert_ok!(Network::do_set_validator_reward_k(2));
+        assert_eq!(ValidatorRewardK::<Test>::get(), 2);
+
+        assert_err!(
+            Network::do_set_validator_reward_k(0),
+            Error::<Test>::InvalidValidatorRewardK
+        );
+    })
+}
+
+#[test]
+fn test_do_set_validator_reward_midpoint() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(Network::do_set_validator_reward_midpoint(1));
+        assert_eq!(ValidatorRewardMidpoint::<Test>::get(), 1);
+
+        assert_ok!(Network::do_set_validator_reward_midpoint(2));
+        assert_eq!(ValidatorRewardMidpoint::<Test>::get(), 2);
+
+        assert_err!(
+            Network::do_set_validator_reward_midpoint(Network::percentage_factor_as_u128() + 1),
+            Error::<Test>::InvalidPercent
+        );
+    })
+}
+

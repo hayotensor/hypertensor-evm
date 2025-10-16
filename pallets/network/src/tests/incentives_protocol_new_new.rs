@@ -68,13 +68,6 @@ fn test_propose_attestation() {
         let subnet_node_data_vec =
             get_subnet_node_consensus_data(subnets, max_subnet_nodes, 0, total_subnet_nodes);
 
-        // for x in subnet_node_data_vec.iter() {
-        //   let subnet_node = SubnetNodesData::<Test>::get(
-        //     subnet_id,
-        //     x.subnet_node_id
-        //   );
-        // }
-
         let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
         assert!(validator_id != None, "Validator is None");
 
@@ -91,7 +84,7 @@ fn test_propose_attestation() {
             None,
         ));
 
-        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
 
         assert_eq!(
             *network_events().last().unwrap(),
@@ -446,7 +439,7 @@ fn test_attest() {
             None,
         ));
 
-        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
 
         assert_eq!(submission.validator_id, validator_id.unwrap());
         assert_eq!(submission.data.len(), subnet_node_data_vec.len());
@@ -599,7 +592,7 @@ fn test_attest_already_attested_err() {
             ));
         }
 
-        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, epoch).unwrap();
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
 
         assert_eq!(submission.validator_id, validator_id.unwrap());
         assert_eq!(submission.data.len(), subnet_node_data_vec.len());
@@ -2291,4 +2284,348 @@ fn test_do_epoch_preliminaries_deactivate_min_subnet_delegate_stake() {
       }
     ); 
   });
+}
+
+#[test]
+fn test_propose_attestation_epoch_progression_0() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+
+        build_activated_subnet_new(
+            subnet_name.clone(),
+            0,
+            max_subnet_nodes,
+            deposit_amount,
+            stake_amount,
+        );
+
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let node_coldkey = get_coldkey(subnets, max_subnet_nodes, max_subnets);
+        let node_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, max_subnets);
+        let subnet_node_id =
+            HotkeySubnetNodeId::<Test>::get(subnet_id, node_hotkey.clone()).unwrap();
+
+        // Update node to have delegate stake rate
+        SubnetNodesData::<Test>::mutate(subnet_id, subnet_node_id, |params| {
+            params.delegate_reward_rate = 100000000000000000;
+        });
+
+        // increase shares manually
+        // *Distribution requires shares to distribute to stakers*
+        TotalNodeDelegateStakeShares::<Test>::insert(subnet_id, subnet_node_id, 1);
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let epoch_length = EpochLength::get();
+        let block_number = System::block_number();
+        let epoch = block_number / epoch_length;
+
+        // ⸺ Generate subnet weights from stake/node count weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+        let subnet_emission_weights = FinalSubnetEmissionWeights::<Test>::get(epoch);
+
+        let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+        assert!(subnet_weight.is_some());
+
+        // ⸺ Submit consnesus data
+        // run_subnet_consensus_step(subnet_id, None, None);
+        set_block_to_subnet_slot_epoch(epoch, subnet_id);
+
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        Network::elect_validator(subnet_id, subnet_epoch, block_number);
+
+        let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
+        assert!(validator_id != None, "Validator is None");
+        assert!(validator_id != Some(0), "Validator is 0");
+
+        let mut validator =
+            SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let subnet_node_data_vec =
+            get_subnet_node_consensus_data(subnet_id, max_subnet_nodes, 0, total_subnet_nodes);
+
+        assert_ok!(Network::propose_attestation(
+            RuntimeOrigin::signed(validator.clone()),
+            subnet_id,
+            subnet_node_data_vec.clone(),
+            None,
+            None,
+            None,
+            None,
+        ));
+
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
+
+        assert_eq!(submission.validator_epoch_progress, 0);
+    });
+}
+
+#[test]
+fn test_propose_attestation_epoch_progression_50() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+
+        build_activated_subnet_new(
+            subnet_name.clone(),
+            0,
+            max_subnet_nodes,
+            deposit_amount,
+            stake_amount,
+        );
+
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let node_coldkey = get_coldkey(subnets, max_subnet_nodes, max_subnets);
+        let node_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, max_subnets);
+        let subnet_node_id =
+            HotkeySubnetNodeId::<Test>::get(subnet_id, node_hotkey.clone()).unwrap();
+
+        // Update node to have delegate stake rate
+        SubnetNodesData::<Test>::mutate(subnet_id, subnet_node_id, |params| {
+            params.delegate_reward_rate = 100000000000000000;
+        });
+
+        // increase shares manually
+        // *Distribution requires shares to distribute to stakers*
+        TotalNodeDelegateStakeShares::<Test>::insert(subnet_id, subnet_node_id, 1);
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let epoch_length = EpochLength::get();
+        let block_number = System::block_number();
+        let epoch = block_number / epoch_length;
+
+        // ⸺ Generate subnet weights from stake/node count weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+        let subnet_emission_weights = FinalSubnetEmissionWeights::<Test>::get(epoch);
+
+        let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+        assert!(subnet_weight.is_some());
+
+        // ⸺ Submit consnesus data
+        set_block_to_subnet_slot_epoch(epoch, subnet_id);
+
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        Network::elect_validator(subnet_id, subnet_epoch, block_number);
+
+        let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
+        assert!(validator_id != None, "Validator is None");
+        assert!(validator_id != Some(0), "Validator is 0");
+
+        let mut validator =
+            SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let subnet_node_data_vec =
+            get_subnet_node_consensus_data(subnet_id, max_subnet_nodes, 0, total_subnet_nodes);
+
+        System::set_block_number(System::block_number() + epoch_length / 2);
+        
+        assert_ok!(Network::propose_attestation(
+            RuntimeOrigin::signed(validator.clone()),
+            subnet_id,
+            subnet_node_data_vec.clone(),
+            None,
+            None,
+            None,
+            None,
+        ));
+
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
+
+        assert_eq!(submission.validator_epoch_progress, 500000000000000000);
+    });
+}
+
+#[test]
+fn test_propose_attestation_epoch_progression_99() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+
+        build_activated_subnet_new(
+            subnet_name.clone(),
+            0,
+            max_subnet_nodes,
+            deposit_amount,
+            stake_amount,
+        );
+
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let node_coldkey = get_coldkey(subnets, max_subnet_nodes, max_subnets);
+        let node_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, max_subnets);
+        let subnet_node_id =
+            HotkeySubnetNodeId::<Test>::get(subnet_id, node_hotkey.clone()).unwrap();
+
+        // Update node to have delegate stake rate
+        SubnetNodesData::<Test>::mutate(subnet_id, subnet_node_id, |params| {
+            params.delegate_reward_rate = 100000000000000000;
+        });
+
+        // increase shares manually
+        // *Distribution requires shares to distribute to stakers*
+        TotalNodeDelegateStakeShares::<Test>::insert(subnet_id, subnet_node_id, 1);
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let epoch_length = EpochLength::get();
+        let block_number = System::block_number();
+        let epoch = block_number / epoch_length;
+
+        // ⸺ Generate subnet weights from stake/node count weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+        let subnet_emission_weights = FinalSubnetEmissionWeights::<Test>::get(epoch);
+
+        let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+        assert!(subnet_weight.is_some());
+
+        // ⸺ Submit consnesus data
+        set_block_to_subnet_slot_epoch(epoch, subnet_id);
+
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        Network::elect_validator(subnet_id, subnet_epoch, block_number);
+
+        let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
+        assert!(validator_id != None, "Validator is None");
+        assert!(validator_id != Some(0), "Validator is 0");
+
+        let mut validator =
+            SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let subnet_node_data_vec =
+            get_subnet_node_consensus_data(subnet_id, max_subnet_nodes, 0, total_subnet_nodes);
+
+        System::set_block_number(System::block_number() + (Network::percent_mul(epoch_length as u128, 990000000000000000) as u32));
+        
+        assert_ok!(Network::propose_attestation(
+            RuntimeOrigin::signed(validator.clone()),
+            subnet_id,
+            subnet_node_data_vec.clone(),
+            None,
+            None,
+            None,
+            None,
+        ));
+
+        let submission = SubnetConsensusSubmission::<Test>::get(subnet_id, subnet_epoch).unwrap();
+
+        assert_eq!(submission.validator_epoch_progress, 990000000000000000);
+    });
+}
+
+#[test]
+fn test_propose_attestation_epoch_progression_100() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let subnets = TotalActiveSubnets::<Test>::get() + 1;
+        let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
+        let max_subnets = MaxSubnets::<Test>::get();
+
+        build_activated_subnet_new(
+            subnet_name.clone(),
+            0,
+            max_subnet_nodes,
+            deposit_amount,
+            stake_amount,
+        );
+
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let node_coldkey = get_coldkey(subnets, max_subnet_nodes, max_subnets);
+        let node_hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, max_subnets);
+        let subnet_node_id =
+            HotkeySubnetNodeId::<Test>::get(subnet_id, node_hotkey.clone()).unwrap();
+
+        // Update node to have delegate stake rate
+        SubnetNodesData::<Test>::mutate(subnet_id, subnet_node_id, |params| {
+            params.delegate_reward_rate = 100000000000000000;
+        });
+
+        // increase shares manually
+        // *Distribution requires shares to distribute to stakers*
+        TotalNodeDelegateStakeShares::<Test>::insert(subnet_id, subnet_node_id, 1);
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let epoch_length = EpochLength::get();
+        let block_number = System::block_number();
+        let epoch = block_number / epoch_length;
+
+        // ⸺ Generate subnet weights from stake/node count weights
+        let _ = Network::handle_subnet_emission_weights(epoch);
+        let subnet_emission_weights = FinalSubnetEmissionWeights::<Test>::get(epoch);
+
+        let subnet_weight = subnet_emission_weights.weights.get(&subnet_id);
+        assert!(subnet_weight.is_some());
+
+        // ⸺ Submit consnesus data
+        set_block_to_subnet_slot_epoch(epoch, subnet_id);
+
+        let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+        Network::elect_validator(subnet_id, subnet_epoch, block_number);
+
+        let validator_id = SubnetElectedValidator::<Test>::get(subnet_id, subnet_epoch);
+        assert!(validator_id != None, "Validator is None");
+        assert!(validator_id != Some(0), "Validator is 0");
+
+        let mut validator =
+            SubnetNodeIdHotkey::<Test>::get(subnet_id, validator_id.unwrap()).unwrap();
+
+        let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let subnet_node_data_vec =
+            get_subnet_node_consensus_data(subnet_id, max_subnet_nodes, 0, total_subnet_nodes);
+
+        System::set_block_number(System::block_number() + epoch_length);
+
+        // Note that LastSubnetEpochBlock should not be called because a validator
+        // won't be elected yet.
+        assert_err!(
+            Network::propose_attestation(
+                RuntimeOrigin::signed(validator.clone()),
+                subnet_id,
+                subnet_node_data_vec.clone(),
+                None,
+                None,
+                None,
+                None,
+            ),
+            Error::<Test>::NoElectedValidator
+        );
+    });
 }

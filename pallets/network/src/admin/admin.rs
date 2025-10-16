@@ -397,7 +397,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_sigmoid_steepness(value: u128) -> DispatchResult {
-        SigmoidSteepness::<T>::set(value);
+        InflationSigmoidSteepness::<T>::set(value);
 
         Self::deposit_event(Event::SetSigmoidSteepness(value));
 
@@ -611,7 +611,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidPercent
         );
 
-        SigmoidMidpoint::<T>::put(value);
+        InflationSigmoidMidpoint::<T>::put(value);
 
         Self::deposit_event(Event::SetSigmoidMidpoint(value));
 
@@ -701,18 +701,28 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    // pub fn do_set_min_max_subnet_node_consecutive_included_epochs(min: u32, max: u32) -> DispatchResult {
-    //     ensure!(
-    //         min < max,
-    //         Error::<T>::InvalidValues
-    //     );
+    pub fn do_set_validator_reward_k(value: u128) -> DispatchResult {
+        ensure!(
+            value > 0,
+            Error::<T>::InvalidValidatorRewardK
+        );
 
-    //     MinSubnetNodeConsecutiveIncludedEpochs::<T>::put(min);
-    //     MaxSubnetNodeConsecutiveIncludedEpochs::<T>::put(max);
+        ValidatorRewardK::<T>::put(value);
 
-    //     Self::deposit_event(Event::SetMinSubnetNodeConsecutiveIncludedEpochs(min));
-    //     Self::deposit_event(Event::SetMaxSubnetNodeConsecutiveIncludedEpochs(max));
+        Self::deposit_event(Event::SetValidatorRewardK(value));
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
+    pub fn do_set_validator_reward_midpoint(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ValidatorRewardMidpoint::<T>::put(value);
+
+        Self::deposit_event(Event::SetValidatorRewardMidpoint(value));
+
+        Ok(())
+    }
 }

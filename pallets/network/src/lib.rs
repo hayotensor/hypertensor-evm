@@ -380,6 +380,8 @@ pub mod pallet {
         SetSubnetPauseCooldownEpochs(u32),
         SetMaxSwapQueueCallsPerBlock(u32),
         SetMaxSubnetNodeScorePenaltyThreshold(u128),
+        SetValidatorRewardK(u128),
+        SetValidatorRewardMidpoint(u128),
         OverwatchNodeBlacklist(T::AccountId, bool),
         SetSigmoidSteepness(u128),
         SetMaxOverwatchNodes(u32),
@@ -715,6 +717,7 @@ pub mod pallet {
         InvalidMaxSubnetNodes,
         /// Invalid percent number, must be in 1e18 format. Used for elements that only require correct format
         InvalidPercent,
+        InvalidValidatorRewardK,
         InvalidSuperMajorityAttestationRatio,
         /// Invalid values
         InvalidValues,
@@ -773,6 +776,8 @@ pub mod pallet {
         // Validation and Attestation
         /// Subnet rewards data already submitted by validator
         SubnetRewardsAlreadySubmitted,
+        /// Cannot submit on the last subnet epoch block
+        LastSubnetEpochBlock,
         /// Not epoch validator
         InvalidValidator,
         /// Validator not elected on subnet epoch
@@ -1451,6 +1456,8 @@ pub mod pallet {
     ///
     /// * `validator_subnet_node_id` - The subnet node ID of the validator who originally
     ///   proposed this consensus data.
+    /// * `validator_epoch_progress` - The percent process of the epoch when the validator submitted
+    ///   consensus data, represented as 1e18.
     /// * `attestation_ratio` - The ratio of validators who have attested to this consensus
     ///   submission, represented as a fixed-point number (where 1e18 = 100%). This indicates
     ///   the level of agreement among validators for this submission.
@@ -1476,6 +1483,7 @@ pub mod pallet {
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusSubmissionData<AccountId> {
         pub validator_subnet_node_id: u32,
+        pub validator_epoch_progress: u128,
         pub attestation_ratio: u128,
         pub weight_sum: u128,
         pub data_length: u32,
@@ -1533,6 +1541,8 @@ pub mod pallet {
     /// * `validator_id` - The subnet node ID of the elected validator for this epoch who
     ///   proposed the consensus data. This validator is responsible for submitting the initial
     ///   scores and queue management decisions.
+    /// * `validator_epoch_progress` - The percent process of the epoch when the validator submitted
+    ///   consensus data, represented as 1e18.
     /// * `attests` - A map of subnet node IDs to their attestation entries, tracking which
     ///   validators have attested to this consensus submission. Each entry contains the block
     ///   number when the attestation was made and optional attestation data. The proposing
@@ -1557,6 +1567,7 @@ pub mod pallet {
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusData<AccountId> {
         pub validator_id: u32,                   // Chosen validator of the epoch
+        pub validator_epoch_progress: u128,
         pub attests: BTreeMap<u32, AttestEntry>, // Count of attestations of the submitted data (node ID, (block, data))
         pub subnet_nodes: Vec<SubnetNode<AccountId>>,
         pub prioritize_queue_node_id: Option<u32>,
@@ -1938,6 +1949,18 @@ pub mod pallet {
         1e+18 as u128
     }
     /// Used in:
+    /// - ValidatorRewardK
+    #[pallet::type_value]
+    pub fn DefaultValidatorRewardK() -> u128 {
+        20
+    }
+    
+    #[pallet::type_value]
+    pub fn DefaultValidatorRewardMidpoint() -> u128 {
+        // 50.0%
+        500000000000000000
+    }
+    /// Used in:
     /// - MaxSubnetNodePenalties
     #[pallet::type_value]
     pub fn DefaultMaxSubnetNodePenalties() -> u32 {
@@ -2047,14 +2070,14 @@ pub mod pallet {
         230000000000000000
     }
     /// Used in:
-    /// - SigmoidMidpoint
+    /// - InflationSigmoidMidpoint
     #[pallet::type_value]
     pub fn DefaultSigmoidMidpoint() -> u128 {
         // 50.0%
         500000000000000000
     }
     /// Used in:
-    /// - SigmoidSteepness
+    /// - InflationSigmoidSteepness
     #[pallet::type_value]
     pub fn DefaultSigmoidSteepness() -> u128 {
         7
@@ -2844,6 +2867,12 @@ pub mod pallet {
     #[pallet::storage]
     pub type BaseValidatorReward<T> = StorageValue<_, u128, ValueQuery, DefaultBaseValidatorReward>;
 
+    #[pallet::storage]
+    pub type ValidatorRewardK<T> = StorageValue<_, u128, ValueQuery, DefaultValidatorRewardK>;
+
+    #[pallet::storage]
+    pub type ValidatorRewardMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultValidatorRewardMidpoint>;
+
     /// Base percentage slash is based off of
     #[pallet::storage]
     pub type BaseSlashPercentage<T> = StorageValue<_, u128, ValueQuery, DefaultBaseSlashPercentage>;
@@ -2873,11 +2902,11 @@ pub mod pallet {
 
     /// Inflation grpah midpoint (sigmoid)
     #[pallet::storage]
-    pub type SigmoidMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
+    pub type InflationSigmoidMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
 
     /// Inflation grpah midpoint (sigmoid)
     #[pallet::storage]
-    pub type SigmoidSteepness<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidSteepness>;
+    pub type InflationSigmoidSteepness<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidSteepness>;
 
     //
     // Subnet owner
@@ -6107,12 +6136,31 @@ pub mod pallet {
         #[pallet::weight({0})]
         pub fn set_max_subnet_node_score_penalty_threshold(
             origin: OriginFor<T>,
-            id: u32,
             value: u128,
         ) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_subnet_node_score_penalty_threshold(value)
         }
+
+        #[pallet::call_index(140)]
+        #[pallet::weight({0})]
+        pub fn set_validator_reward_k(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_validator_reward_k(value)
+        }
+
+        #[pallet::call_index(141)]
+        #[pallet::weight({0})]
+        pub fn set_validator_reward_midpoint(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_validator_reward_midpoint(value)
+        }        
     }
 
     impl<T: Config> Pallet<T> {
@@ -6582,13 +6630,13 @@ pub mod pallet {
             NodeBurnRateAlpha::<T>::remove(subnet_id);
             PreviousSubnetPauseEpoch::<T>::remove(subnet_id);
             QueueImmunityEpochs::<T>::remove(subnet_id);
-            NodeBurnRateAlpha::<T>::remove(subnet_id);
             SubnetBootnodeAccess::<T>::remove(subnet_id);
             MaxSubnetNodePenalties::<T>::remove(subnet_id);
             InitialColdkeyData::<T>::remove(subnet_id);
 
             weight = weight.saturating_add(T::DbWeight::get().writes(29));
 
+            // Remove from slot
             Self::free_slot_of_subnet(subnet_id);
             // Add weight here of `free_slot_of_subnet`
             // AssignedSlots
@@ -6620,6 +6668,10 @@ pub mod pallet {
 
         // Only called from `do_remove_subnet`
         // If we call this anywhere else, must include a way to ensure subnet exists
+        // Note that `HotkeySubnetId` `ColdkeyHotkeys` `HotkeyOwner` are removed when
+        // the node stake balance hits 0, plus `ColdkeySubnetNodes` is filtered.
+        // `ColdkeySubnetNodes` is filtered on each node registration as well via
+        // `clean_coldkey_subnet_nodes`
         pub fn clean_subnet_nodes(subnet_id: u32) -> Weight {
             let mut weight_acc = WeightAccumulator::<T>::new();
 
@@ -6672,10 +6724,6 @@ pub mod pallet {
                 SubnetNodePenalties::<T>::clear_prefix(subnet_id, u32::MAX, None);
             weight_acc.add_clear_prefix(subnet_node_penalties.unique);
 
-            let node_slot_index_removed =
-                NodeSlotIndex::<T>::clear_prefix(subnet_id, u32::MAX, None);
-            weight_acc.add_clear_prefix(node_slot_index_removed.unique);
-
             let subnet_node_consecutive_included_epochs_removed =
                 SubnetNodeConsecutiveIncludedEpochs::<T>::clear_prefix(subnet_id, u32::MAX, None);
             weight_acc.add_clear_prefix(subnet_node_consecutive_included_epochs_removed.unique);
@@ -6686,6 +6734,10 @@ pub mod pallet {
             let subnet_elected_validator =
                 SubnetElectedValidator::<T>::clear_prefix(subnet_id, u32::MAX, None);
             weight_acc.add_clear_prefix(subnet_elected_validator.unique);
+
+            let node_slot_index_removed =
+                NodeSlotIndex::<T>::clear_prefix(subnet_id, u32::MAX, None);
+            weight_acc.add_clear_prefix(node_slot_index_removed.unique);
 
             let electable_nodes = SubnetNodeElectionSlots::<T>::take(subnet_id).len() as u32;
             weight_acc.add_take();
@@ -6946,6 +6998,15 @@ pub mod pallet {
             hotkeys.insert(hotkey.clone());
             ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
 
+            // Insert ColdkeySubnetNodes
+            // Used in overwatch node subnet diversity
+            ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
+                node_map
+                    .entry(subnet_id)
+                    .or_insert_with(BTreeSet::new)
+                    .insert(subnet_node_id);
+            });
+
             // To ensure the AccountId that owns the PeerId, the subnet should use signature authentication
             // This ensures others cannot claim to own a PeerId they are not the owner of
 
@@ -6985,13 +7046,6 @@ pub mod pallet {
             TotalNodes::<T>::mutate(|n: &mut u32| *n += 1);
 
             Self::clean_coldkey_subnet_nodes(coldkey.clone());
-
-            ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
-                node_map
-                    .entry(subnet_id)
-                    .or_insert_with(BTreeSet::new)
-                    .insert(subnet_node_id);
-            });
 
             // Push into queue
             if subnet.state == SubnetState::Registered {
@@ -7220,12 +7274,14 @@ pub mod pallet {
             {
                 // Calculate Overwatch Node Weights
                 let block_step_weight = Self::calculate_overwatch_rewards();
+                // `consume(..)` saturates at zero
                 weight_meter.consume(block_step_weight);
             } else if (block - 2) >= epoch_length && (block - 2) % epoch_length == 0 {
                 // Calculate rewards
                 // Distribute to foundation/treasury
                 // Calculate emissions based on subnet weights (delegate stake/node count based)
                 let block_step_weight = Self::handle_subnet_emission_weights(current_epoch);
+                // `consume(..)` saturates at zero
                 weight_meter.consume(block_step_weight);
             } else if let Some(subnet_id) = SlotAssignment::<T>::get(epoch_slot) {
                 // SlotAssignment
@@ -7233,6 +7289,7 @@ pub mod pallet {
 
                 let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
 
+                // Uses `WeightMeter` so we don't consume after
                 Self::emission_step(
                     &mut weight_meter,
                     block,
@@ -7241,6 +7298,7 @@ pub mod pallet {
                     subnet_id,
                 );
             } else {
+                // If we make it here, SlotAssignment was read
                 // SlotAssignment
                 weight_meter.consume(db_weight.reads(1));
             }

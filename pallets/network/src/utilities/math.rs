@@ -15,7 +15,7 @@
 //
 
 use super::*;
-use libm::pow;
+use libm::{exp, pow};
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
@@ -69,6 +69,10 @@ impl<T: Config> Pallet<T> {
         1_000_000_000_000_000_000
     }
 
+    pub fn percentage_factor_as_f64() -> f64 {
+        1_000_000_000_000_000_000.0
+    }
+
     /// Get percentage in decimal format that uses `PERCENTAGE_FACTOR` as f64
     pub fn get_percent_as_f64(v: u128) -> f64 {
         v as f64 / Self::percentage_factor_as_u128() as f64
@@ -87,5 +91,18 @@ impl<T: Config> Pallet<T> {
             return None;
         }
         x.checked_mul(y)?.checked_div(z)
+    }
+
+    pub fn sigmoid(x: f64, mid: f64, k: f64) -> f64 {
+        let c = (x - mid).abs();
+        let d = k * c;
+        let exp = exp(d);
+        let sigmoid = if x > mid {
+            1.0 / (1.0 + exp)
+        } else {
+            exp / (1.0 + exp)
+        };
+
+        sigmoid.clamp(0.0, 1.0)
     }
 }

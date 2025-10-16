@@ -3556,8 +3556,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SigmoidSteepness` (r:0 w:1)
-	/// Proof: `Network::SigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::InflationSigmoidSteepness` (r:0 w:1)
+	/// Proof: `Network::InflationSigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_sigmoid_steepness() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -3942,8 +3942,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SigmoidMidpoint` (r:0 w:1)
-	/// Proof: `Network::SigmoidMidpoint` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::InflationSigmoidMidpoint` (r:0 w:1)
+	/// Proof: `Network::InflationSigmoidMidpoint` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_sigmoid_midpoint() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -7707,8 +7707,8 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SigmoidSteepness` (r:0 w:1)
-	/// Proof: `Network::SigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::InflationSigmoidSteepness` (r:0 w:1)
+	/// Proof: `Network::InflationSigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_sigmoid_steepness() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -8093,8 +8093,8 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SigmoidMidpoint` (r:0 w:1)
-	/// Proof: `Network::SigmoidMidpoint` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::InflationSigmoidMidpoint` (r:0 w:1)
+	/// Proof: `Network::InflationSigmoidMidpoint` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_sigmoid_midpoint() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`

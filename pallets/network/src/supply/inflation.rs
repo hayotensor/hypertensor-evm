@@ -75,11 +75,11 @@ impl Inflation {
     }
 
     /// inflation rate at year
-    pub fn total(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
-        let c = (u - mid).abs();
+    pub fn total(&self, x: f64, mid: f64, k: f64, year: f64) -> f64 {
+        let c = (x - mid).abs();
         let d = k * c;
         let exp = exp(d);
-        let sigmoid = if u > mid {
+        let sigmoid = if x > mid {
             1.0 / (1.0 + exp)
         } else {
             exp / (1.0 + exp)
@@ -123,39 +123,31 @@ impl Inflation {
     /// `initial_min`: Min interest rate
     /// `terminal`: Min interest rate
     ///
-    /// *u: Node utilization ratio
+    /// *x: Node utilization ratio
     /// *mid: Sigmoid midpoint
     /// *f: Sigmoid steepness
-    pub fn inflation(&self, u: f64, mid: f64, k: f64, year: f64) -> f64 {
-        let c = (u - mid).abs();
-        let d = k * c;
-        let exp = exp(d);
-        let sigmoid = if u > mid {
-            1.0 / (1.0 + exp)
-        } else {
-            exp / (1.0 + exp)
-        };
-
+    /// *sigmoid_fn: Sigmoid function
+    pub fn inflation<F>(&self, x: f64, mid: f64, k: f64, year: f64, sigmoid_fn: F) -> f64
+        where
+            F: Fn(f64, f64, f64) -> f64,
+    {
         let max = self.current_max_rate(year);
-
         if max == self.terminal {
             return max;
         }
-
         let min = self.current_min_rate(year);
-
-        min + (max - min) * sigmoid
+        min + (max - min) * sigmoid_fn(x, mid, k)
     }
 }
 
 impl<T: Config> Pallet<T> {
     pub fn get_inflation(node_utilization: f64, year: f64) -> f64 {
-        let mid = Self::get_percent_as_f64(SigmoidMidpoint::<T>::get());
-        let k = SigmoidSteepness::<T>::get() as f64;
+        let mid = Self::get_percent_as_f64(InflationSigmoidMidpoint::<T>::get());
+        let k = InflationSigmoidSteepness::<T>::get() as f64;
 
         let inflation = Inflation::default();
 
-        inflation.inflation(node_utilization, mid, k, year)
+        inflation.inflation(node_utilization, mid, k, year, Self::sigmoid)
     }
 
     pub fn get_epoch_inflation_rate(epoch: u32, node_utilization: f64) -> f64 {
@@ -185,8 +177,8 @@ impl<T: Config> Pallet<T> {
     /// *(validator emissions, foundation emissions)
     ///
     pub fn get_epoch_emissions(epoch: u32) -> (u128, u128) {
-        let mid = Self::get_percent_as_f64(SigmoidMidpoint::<T>::get());
-        let k = SigmoidSteepness::<T>::get() as f64;
+        let mid = Self::get_percent_as_f64(InflationSigmoidMidpoint::<T>::get());
+        let k = InflationSigmoidSteepness::<T>::get() as f64;
 
         let epochs_per_year: f64 = T::EpochsPerYear::get() as f64;
         let year: f64 = epoch as f64 / epochs_per_year;
