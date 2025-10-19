@@ -128,15 +128,15 @@ impl Inflation {
     /// *f: Sigmoid steepness
     /// *sigmoid_fn: Sigmoid function
     pub fn inflation<F>(&self, x: f64, mid: f64, k: f64, year: f64, sigmoid_fn: F) -> f64
-        where
-            F: Fn(f64, f64, f64) -> f64,
+    where
+        F: Fn(f64, f64, f64, f64, f64) -> f64,
     {
         let max = self.current_max_rate(year);
         if max == self.terminal {
             return max;
         }
         let min = self.current_min_rate(year);
-        min + (max - min) * sigmoid_fn(x, mid, k)
+        min + (max - min) * sigmoid_fn(x, mid, k, 0.0, 1.0)
     }
 }
 
@@ -147,7 +147,7 @@ impl<T: Config> Pallet<T> {
 
         let inflation = Inflation::default();
 
-        inflation.inflation(node_utilization, mid, k, year, Self::sigmoid)
+        inflation.inflation(node_utilization, mid, k, year, Self::sigmoid_decreasing)
     }
 
     pub fn get_epoch_inflation_rate(epoch: u32, node_utilization: f64) -> f64 {

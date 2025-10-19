@@ -4,13 +4,13 @@ use crate::Event;
 use crate::{
     BaseNodeBurnAmount, BaseSlashPercentage, BaseValidatorReward, ColdkeyHotkeys,
     DelegateStakeCooldownEpochs, DelegateStakeSubnetRemovalInterval, DelegateStakeWeightFactor,
-    Error, HotkeyOverwatchNodeId, HotkeySubnetNodeId, MaxBootnodes, MaxChurnLimit,
-    MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
-    MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxMinDelegateStakeMultiplier,
-    MaxNodeBurnRate, MaxOverwatchNodePenalties, MaxOverwatchNodes, MaxQueueEpochs,
-    MaxRewardRateDecrease, MaxSlashAmount, MaxSubnetBootnodeAccess,
-    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
-    MaxSubnetNodeScorePenaltyThreshold, MaxSubnetNodes, MaxSubnetPauseEpochs,
+    Error, HotkeyOverwatchNodeId, HotkeySubnetNodeId, InflationSigmoidMidpoint,
+    InflationSigmoidSteepness, MaxBootnodes, MaxChurnLimit, MaxDelegateStakePercentage,
+    MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
+    MaxMaxSubnetNodePenalties, MaxMinDelegateStakeMultiplier, MaxNodeBurnRate,
+    MaxOverwatchNodePenalties, MaxOverwatchNodes, MaxQueueEpochs, MaxRewardRateDecrease,
+    MaxSlashAmount, MaxSubnetBootnodeAccess, MaxSubnetDelegateStakeRewardsPercentageChange,
+    MaxSubnetMinStake, MaxSubnetNodeScorePenaltyThreshold, MaxSubnetNodes, MaxSubnetPauseEpochs,
     MaxSubnetPenaltyCount, MaxSubnetRemovalInterval, MaxSubnets, MaxSwapQueueCallsPerBlock,
     MaxUnbondings, MaximumHooksWeightV2, MinActiveNodeStakeEpochs, MinAttestationPercentage,
     MinChurnLimit, MinDelegateStakeDeposit, MinDelegateStakePercentage,
@@ -23,11 +23,11 @@ use crate::{
     OverwatchMinDiversificationRatio, OverwatchMinRepScore, OverwatchMinStakeBalance,
     OverwatchNodeBlacklist, OverwatchNodeIdHotkey, OverwatchNodes, RegistrationCostAlpha,
     RegistrationCostDecayBlocks, ReputationDecreaseFactor, ReputationIncreaseFactor,
-    InflationSigmoidMidpoint, InflationSigmoidSteepness, StakeCooldownEpochs, SubnetDelegateStakeRewardsUpdatePeriod,
-    SubnetDistributionPower, SubnetEnactmentEpochs, SubnetName, SubnetOwnerPercentage,
-    SubnetPauseCooldownEpochs, SubnetRegistrationEpochs, SubnetRemovalReason,
-    SuperMajorityAttestationRatio, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
-    TxPause, TxRateLimit, ValidatorRewardK, ValidatorRewardMidpoint
+    StakeCooldownEpochs, SubnetDelegateStakeRewardsUpdatePeriod, SubnetDistributionPower,
+    SubnetEnactmentEpochs, SubnetName, SubnetOwnerPercentage, SubnetPauseCooldownEpochs,
+    SubnetRegistrationEpochs, SubnetRemovalReason, SuperMajorityAttestationRatio,
+    TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes, TxPause, TxRateLimit,
+    ValidatorRewardK, ValidatorRewardMidpoint,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -56,7 +56,7 @@ fn test_do_set_subnet_owner_percentage() {
         assert_eq!(SubnetOwnerPercentage::<Test>::get(), 2);
 
         assert_err!(
-            Network::do_set_subnet_owner_percentage(Network::percentage_factor_as_u128() + 1),
+            Network::do_set_subnet_owner_percentage(Network::percentage_factor_as_u128() / 2 + 1),
             Error::<Test>::InvalidPercent
         );
     })
@@ -258,7 +258,6 @@ fn test_do_set_max_subnet_node_penalties() {
         assert_ok!(Network::do_set_max_subnet_node_penalties(5, 6));
         assert_eq!(MinMaxSubnetNodePenalties::<Test>::get(), 5);
         assert_eq!(MaxMaxSubnetNodePenalties::<Test>::get(), 6);
-
     })
 }
 
@@ -268,7 +267,6 @@ fn test_do_set_subnet_min_stakes() {
         assert_ok!(Network::do_set_subnet_min_stakes(5, 6));
         assert_eq!(MinSubnetMinStake::<Test>::get(), 5);
         assert_eq!(MaxSubnetMinStake::<Test>::get(), 6);
-
     })
 }
 
@@ -278,7 +276,6 @@ fn test_do_set_delegate_stake_percentages() {
         assert_ok!(Network::do_set_delegate_stake_percentages(5, 6));
         assert_eq!(MinDelegateStakePercentage::<Test>::get(), 5);
         assert_eq!(MaxDelegateStakePercentage::<Test>::get(), 6);
-
     })
 }
 
@@ -349,18 +346,12 @@ fn test_do_set_super_majority_attestation_ratio() {
         assert_ok!(Network::do_set_super_majority_attestation_ratio(
             60000000000
         ));
-        assert_eq!(
-            SuperMajorityAttestationRatio::<Test>::get(),
-            60000000000
-        );
+        assert_eq!(SuperMajorityAttestationRatio::<Test>::get(), 60000000000);
 
         assert_ok!(Network::do_set_super_majority_attestation_ratio(
             90000000000
         ));
-        assert_eq!(
-            SuperMajorityAttestationRatio::<Test>::get(),
-            90000000000
-        );
+        assert_eq!(SuperMajorityAttestationRatio::<Test>::get(), 90000000000);
 
         assert_err!(
             Network::do_set_super_majority_attestation_ratio(1000000000000000000000),
@@ -729,7 +720,7 @@ fn test_do_set_maximum_hooks_weight() {
         );
 
         let new_value = 10;
-        // let expected_value = 
+        // let expected_value =
         //     sp_runtime::Perbill::from_percent(new_value) * BlockWeights::get().max_block;
         // log::error!(
         //     "expected_value {:?}",
@@ -792,8 +783,6 @@ fn test_do_set_min_node_burn_rate() {
         assert_ok!(Network::do_set_node_burn_rates(5, 6));
         assert_eq!(MinNodeBurnRate::<Test>::get(), 5);
         assert_eq!(MaxNodeBurnRate::<Test>::get(), 6);
-
-
     })
 }
 
@@ -819,7 +808,6 @@ fn test_do_set_min_subnet_removal_interval() {
         assert_ok!(Network::do_set_subnet_removal_intervals(5, 6));
         assert_eq!(MinSubnetRemovalInterval::<Test>::get(), 5);
         assert_eq!(MaxSubnetRemovalInterval::<Test>::get(), 6);
-
     })
 }
 
@@ -1086,4 +1074,3 @@ fn test_do_set_validator_reward_midpoint() {
         );
     })
 }
-

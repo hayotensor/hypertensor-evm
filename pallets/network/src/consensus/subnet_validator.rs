@@ -17,7 +17,7 @@ use super::*;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_support::pallet_prelude::Pays;
 use frame_support::pallet_prelude::Weight;
-use libm::{exp, fmin, fmax};
+use libm::{exp, fmax, fmin};
 
 impl<T: Config> Pallet<T> {
     /// Proposes attestation and submits consensus data for a subnet epoch.
@@ -83,7 +83,11 @@ impl<T: Config> Pallet<T> {
         // Each subnet epoch overlaps with the blockchains epochs, and can submit consensus data for epoch
         // 2 on epoch 1 (if after slot) or 2 (if before slot).
         // If a subnet is on slot 3 of 5 slots, we make sure it can submit on the current blockchains epoch.
-        let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+        let subnet_epoch_data = Self::get_current_subnet_epoch_data(subnet_id)
+            .ok_or(Error::<T>::SubnetEpochDataIsNone)?;
+
+        let subnet_epoch = subnet_epoch_data.subnet_epoch;
+        let subnet_epoch_progression = subnet_epoch_data.subnet_epoch_progression;
 
         // --- Ensure current subnet validator by its hotkey
         let validator_id = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch)
@@ -102,12 +106,6 @@ impl<T: Config> Pallet<T> {
         ensure!(
             !SubnetConsensusSubmission::<T>::contains_key(subnet_id, subnet_epoch),
             Error::<T>::SubnetRewardsAlreadySubmitted
-        );
-        
-        // This is redundant as NoElectedValidator will be called if `can_propose_attestation` is not true
-        ensure!(
-            Self::can_propose_attestation(subnet_id),
-            Error::<T>::LastSubnetEpochBlock
         );
 
         //
@@ -142,6 +140,8 @@ impl<T: Config> Pallet<T> {
             validator_id,
             AttestEntry {
                 block: block,
+                attestor_progress: 0,
+                reward_factor: Self::percentage_factor_as_u128(),
                 data: attest_data,
             },
         )]);
@@ -192,13 +192,18 @@ impl<T: Config> Pallet<T> {
                 remove_queue_node_id = None;
             }
         }
-        
-        // Get the epoch progress percentage the validator submitted
-        let epoch_progress = Self::get_subnet_epoch_progression(subnet_id);
+
+        let reward_factor = Self::get_validator_reward_multiplier(
+            subnet_epoch_progression,
+        );
 
         let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
             validator_id: validator_id,
-            validator_epoch_progress: epoch_progress,
+            block,
+            validator_epoch_progress: subnet_epoch_progression,
+            validator_reward_factor: Self::get_validator_reward_multiplier(
+                subnet_epoch_progression,
+            ),
             attests: attests,
             subnet_nodes: subnet_nodes,
             prioritize_queue_node_id: prioritize_queue_node_id,
@@ -263,11 +268,25 @@ impl<T: Config> Pallet<T> {
                     Error::<T>::InvalidSubnetNodeId
                 );
 
+                let block = params.block;
+                let subnet_epoch_data = Self::attestor_subnet_epoch_data(subnet_id, block)
+                    .ok_or(Error::<T>::SubnetEpochDataIsNone)?;
+                let subnet_epoch_progression = subnet_epoch_data.subnet_epoch_progression;
+
+                let reward_factor = Self::get_attestor_reward_multiplier(subnet_epoch_progression);
+
                 let mut attests = &mut params.attests;
 
                 ensure!(
-                    // attests.insert(subnet_node_id, (block, data)) == None,
-                    attests.insert(subnet_node_id, AttestEntry { block, data }) == None,
+                    attests.insert(
+                        subnet_node_id,
+                        AttestEntry {
+                            block,
+                            attestor_progress: subnet_epoch_progression,
+                            reward_factor,
+                            data
+                        }
+                    ) == None,
                     Error::<T>::AlreadyAttested
                 );
 
@@ -285,44 +304,36 @@ impl<T: Config> Pallet<T> {
         Ok(Pays::No.into())
     }
 
-    // pub fn get_reward_multiplier(progress: u128, k: f64) -> u128 {
-    //     let ONE: f64 = Self::percentage_factor_as_f64();
+    pub fn get_attestor_reward_multiplier(progress: u128) -> u128 {
+        Self::get_f64_as_percentage(
+            Self::concave_down_decreasing(
+                Self::get_percent_as_f64(progress),
+                AttestorRewardExponent::<T>::get() as f64,
+                Self::get_percent_as_f64(AttestorMinRewardFactor::<T>::get()),
+                1.0,
+            ) 
+        ).clamp(0, Self::percentage_factor_as_u128())
+    }
 
-    //     // Clamp to [0, 1]
-    //     let p = fmin(1.0, fmax(0.0, Self::get_percent_as_f64(progress)));
-
-    //     // concave-down exponential curve
-    //     // f(p) = (1 - e^{k(p - 1)}) / (1 - e^{-k})
-    //     let numerator = 1.0 - exp(k * (p - 1.0));
-    //     let denominator = 1.0 - exp(-k);
-    //     let f = numerator / denominator;
-
-    //     // Scale to 1e18 fixed point
-    //     let scaled = (f * ONE) as u128;
-    //     if scaled > ONE as u128 {
-    //         ONE as u128
-    //     } else {
-    //         scaled
-    //     }
-    // }
-
-    pub fn get_reward_multiplier(progress: u128) -> u128 {
-        (Self::sigmoid(
-            Self::get_percent_as_f64(progress),
-            Self::get_percent_as_f64(ValidatorRewardMidpoint::<T>::get()),
-            Self::get_percent_as_f64(ValidatorRewardK::<T>::get())
-        ) as u128)
-            .saturating_mul(Self::percentage_factor_as_u128())
+    pub fn get_validator_reward_multiplier(progress: u128) -> u128 {
+        Self::get_f64_as_percentage(
+            Self::sigmoid_decreasing(
+                Self::get_percent_as_f64(progress),
+                Self::get_percent_as_f64(ValidatorRewardMidpoint::<T>::get()),
+                ValidatorRewardK::<T>::get() as f64,
+                0.0,
+                1.0,
+            ) 
+        ).clamp(0, Self::percentage_factor_as_u128())
     }
 
     /// Return the validators reward that submitted data on the previous epoch
     // The attestation percentage must be greater than the MinAttestationPercentage
-    pub fn get_validator_reward(attestation_percentage: u128, validator_epoch_progress: u128) -> u128 {
+    pub fn get_validator_reward(attestation_percentage: u128, reward_factor: u128) -> u128 {
         if MinAttestationPercentage::<T>::get() > attestation_percentage {
             return 0;
         }
-        let multiplier = Self::get_reward_multiplier(validator_epoch_progress);
-        Self::percent_mul(BaseValidatorReward::<T>::get(), multiplier)
+        Self::percent_mul(BaseValidatorReward::<T>::get(), reward_factor)
     }
 
     /// Slash subnet validator node

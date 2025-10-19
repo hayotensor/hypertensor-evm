@@ -1,5 +1,6 @@
 mod council;
 mod delegate_staking;
+mod era;
 mod identity;
 mod incentives_protocol_new_new;
 mod inflation;
@@ -25,5 +26,4 @@ mod subnet_cost;
 mod subnet_node_new_new;
 mod test_utils;
 mod unbonding_new;
-mod era;
 // mod emissions_stake_weight;

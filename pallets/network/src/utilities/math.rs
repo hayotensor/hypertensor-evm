@@ -69,6 +69,7 @@ impl<T: Config> Pallet<T> {
         1_000_000_000_000_000_000
     }
 
+    /// Get percentage as f64 (full 1e18 with decimals)
     pub fn percentage_factor_as_f64() -> f64 {
         1_000_000_000_000_000_000.0
     }
@@ -78,8 +79,9 @@ impl<T: Config> Pallet<T> {
         v as f64 / Self::percentage_factor_as_u128() as f64
     }
 
+    /// Get decimal f64 1.0 converted to u128 1e18
     pub fn get_f64_as_percentage(v: f64) -> u128 {
-        (v * Self::percentage_factor_as_u128() as f64) as u128
+        (v * 1_000_000_000_000_000_000.0) as u128
     }
 
     pub fn pow(x: f64, exp: f64) -> f64 {
@@ -93,16 +95,32 @@ impl<T: Config> Pallet<T> {
         x.checked_mul(y)?.checked_div(z)
     }
 
-    pub fn sigmoid(x: f64, mid: f64, k: f64) -> f64 {
+    pub fn sigmoid_decreasing(x: f64, mid: f64, k: f64, min: f64, max: f64) -> f64 {
         let c = (x - mid).abs();
         let d = k * c;
         let exp = exp(d);
+
+        // symmetric sigmoid around mid
         let sigmoid = if x > mid {
             1.0 / (1.0 + exp)
         } else {
             exp / (1.0 + exp)
         };
 
-        sigmoid.clamp(0.0, 1.0)
+        // scale sigmoid from [0, 1] → [min, max]
+        let scaled = min + (max - min) * sigmoid;
+
+        scaled.clamp(min, max)
+    }
+
+    pub fn concave_down_decreasing(x: f64, power: f64, min: f64, max: f64) -> f64 {
+        // normalize x to [0, 1]
+        let t = ((x - min) / (max - min)).clamp(0.0, 1.0);
+
+        // concave-down decreasing curve
+        let curve = 1.0 - pow(t, power);
+
+        // scale back to [min, max]
+        min + (max - min) * curve
     }
 }

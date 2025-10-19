@@ -223,12 +223,12 @@ impl<T: Config> Pallet<T> {
             // --- Consensus formed on node
             //
 
-            // Safely unwrap node_weight, we already confirmed it's not None
-            let node_weight = subnet_node_data_find.unwrap().score;
+            // Safely unwrap node_score, we already confirmed it's not None
+            let node_score = subnet_node_data_find.unwrap().score;
 
             // --- Calculate node weight percentage of peer versus the weighted sum
             let score_ratio: u128 =
-                Self::percent_div(node_weight, consensus_submission_data.weight_sum);
+                Self::percent_div(node_score, consensus_submission_data.weight_sum);
 
             // Increase penalties if under subnets penalty score threshold
             // We don't automatically increase penalties if a node is at ZERO
@@ -276,19 +276,21 @@ impl<T: Config> Pallet<T> {
             // All nodes are at least SubnetNodeClass::Validator from here
             //
 
-            // Check if attested in super majority
-            if consensus_submission_data.attestation_ratio >= super_majority_threshold {
-                // If node didn't attest in super majority, accrue penalty
-                if consensus_submission_data
-                    .attests
-                    .get(&subnet_node.id)
-                    .is_none()
-                {
-                    _penalties += 1;
-                    SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
-                    weight_meter.consume(db_weight.writes(1));
+            let reward_factor = match consensus_submission_data.attests.get(&subnet_node.id) {
+                Some(data) => data.reward_factor,
+                None => {
+                    // If node didn't attest in super majority, accrue penalty
+                    if consensus_submission_data.attestation_ratio >= super_majority_threshold {
+                        _penalties += 1;
+                        SubnetNodePenalties::<T>::insert(subnet_id, subnet_node.id, _penalties);
+                        weight_meter.consume(db_weight.writes(1));
+                    }
+                    Self::percentage_factor_as_u128()
                 }
-                // Node is in consensus (even though not attester), so we don't skip rewards for them
+            };
+
+            if reward_factor == 0 {
+                continue;
             }
 
             if _penalties > max_subnet_node_penalties {
@@ -305,17 +307,16 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
 
-            // --- Calculate node_weight percentage of total subnet generated epoch rewards
+            // --- Calculate node_score percentage of total subnet generated epoch rewards
             let mut account_reward: u128 =
                 Self::percent_mul(score_ratio, rewards_data.subnet_node_rewards);
-
+            
             // --- Increase reward if validator
             if subnet_node.id == consensus_submission_data.validator_subnet_node_id {
-                account_reward +=
-                    Self::get_validator_reward(
-                        consensus_submission_data.attestation_ratio,
-                        consensus_submission_data.validator_epoch_progress
-                    );
+                account_reward += Self::get_validator_reward(
+                    consensus_submission_data.attestation_ratio,
+                    consensus_submission_data.validator_reward_factor,
+                );
                 // Add get_validator_reward (At least 1 read, up to 2)
                 // MinAttestationPercentage | BaseValidatorReward
                 weight_meter.consume(db_weight.reads(2));
@@ -336,6 +337,8 @@ impl<T: Config> Pallet<T> {
                 weight_meter.consume(db_weight.reads(1));
             }
 
+            account_reward = Self::percent_mul(account_reward, reward_factor);
+
             // --- Skip if no rewards to give
             // Unlikely to happen
             if account_reward == 0 {
@@ -351,7 +354,7 @@ impl<T: Config> Pallet<T> {
                 if total_node_delegated_stake_shares != 0 {
                     let node_delegate_reward =
                         Self::percent_mul(account_reward, subnet_node.delegate_reward_rate);
-                    account_reward = account_reward - node_delegate_reward;
+                    account_reward = account_reward.saturating_sub(node_delegate_reward);
                     Self::do_increase_node_delegate_stake(
                         subnet_id,
                         subnet_node.id,

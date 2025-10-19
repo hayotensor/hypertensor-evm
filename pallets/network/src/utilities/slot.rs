@@ -558,14 +558,8 @@ impl<T: Config> Pallet<T> {
             })
             .collect();
 
-        let mut attestation_ratio = Self::percent_div(attestations, validators.len() as u128);
-
-        // Redundant
-        // Each attestor is checked in `do_attest` to be in the SubnetConsensusSubmission `subnet_nodes` Vec
-        let percentage_factor = Self::percentage_factor_as_u128();
-        if attestation_ratio > percentage_factor {
-            attestation_ratio = percentage_factor;
-        }
+        let mut attestation_ratio = Self::percent_div(attestations, validators.len() as u128)
+            .clamp(0, Self::percentage_factor_as_u128());
 
         // unused
         let data_length = submission.data.len() as u32;
@@ -579,6 +573,7 @@ impl<T: Config> Pallet<T> {
         let consensus_data = ConsensusSubmissionData {
             validator_subnet_node_id: submission.validator_id,
             validator_epoch_progress: submission.validator_epoch_progress,
+            validator_reward_factor: submission.validator_reward_factor,
             attestation_ratio: attestation_ratio,
             weight_sum: weight_sum,
             data_length: data_length,

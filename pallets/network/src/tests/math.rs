@@ -159,3 +159,25 @@ fn test_checked_mul_div() {
         assert_eq!(Network::checked_mul_div(large_x, large_y, denom), None);
     });
 }
+
+#[test]
+fn test_sigmoid_decreasing() {
+    new_test_ext().execute_with(|| {
+        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 1.0);
+        assert_eq!(y, 0.5);
+
+        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 2.0);
+        assert_eq!(y, 1.0);
+
+        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 1.0, 2.0);
+        assert_eq!(y, 1.5);
+    });
+}
+
+#[test]
+fn test_concave_down_decreasing() {
+    new_test_ext().execute_with(|| {
+        let y = Network::concave_down_decreasing(0.0, 10.0, 0.0, 1.0);
+        assert_eq!(y, 1.0);
+    });
+}

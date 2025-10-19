@@ -619,7 +619,7 @@ impl<T: Config> Pallet<T> {
         origin: T::RuntimeOrigin,
         subnet_id: u32,
         min: u128,
-        max: u128
+        max: u128,
     ) -> DispatchResult {
         let coldkey: T::AccountId = ensure_signed(origin)?;
 
@@ -628,10 +628,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotSubnetOwner
         );
 
-        ensure!(
-            min <= max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min <= max, Error::<T>::InvalidValues);
 
         ensure!(
             min >= MinSubnetMinStake::<T>::get() && min <= MaxSubnetMinStake::<T>::get(),

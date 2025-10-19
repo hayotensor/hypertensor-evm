@@ -28,8 +28,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_subnet_owner_percentage(value: u128) -> DispatchResult {
+        // Ensure under 50%
         ensure!(
-            value <= Self::percentage_factor_as_u128(),
+            value <= Self::percentage_factor_as_u128() / 2,
             Error::<T>::InvalidPercent
         );
 
@@ -134,10 +135,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_churn_limits(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinChurnLimit::<T>::set(min);
         MaxChurnLimit::<T>::set(max);
@@ -149,10 +147,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_queue_epochs(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinQueueEpochs::<T>::set(min);
         MaxQueueEpochs::<T>::set(max);
@@ -184,10 +179,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_included_classification_epochs(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinIncludedClassificationEpochs::<T>::set(min);
         MaxIncludedClassificationEpochs::<T>::set(max);
@@ -198,11 +190,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_max_subnet_node_penalties(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
-
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinMaxSubnetNodePenalties::<T>::set(min);
         MaxMaxSubnetNodePenalties::<T>::set(max);
@@ -213,10 +201,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_subnet_min_stakes(min: u128, max: u128) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinSubnetMinStake::<T>::set(min);
         MaxSubnetMinStake::<T>::set(max);
@@ -227,10 +212,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_delegate_stake_percentages(min: u128, max: u128) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinDelegateStakePercentage::<T>::set(min);
         MaxDelegateStakePercentage::<T>::set(max);
@@ -241,10 +223,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_max_registered_nodes(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinMaxRegisteredNodes::<T>::set(min);
         MaxMaxRegisteredNodes::<T>::set(max);
@@ -476,10 +455,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn do_set_min_max_subnet_node(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max && min > 0,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max && min > 0, Error::<T>::InvalidValues);
 
         MinSubnetNodes::<T>::set(min);
         MaxSubnetNodes::<T>::set(max);
@@ -636,10 +612,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_node_burn_rates(min: u128, max: u128) -> DispatchResult {
-        ensure!(
-            min < max && min > 0,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max && min > 0, Error::<T>::InvalidValues);
 
         MinNodeBurnRate::<T>::put(min);
         MaxNodeBurnRate::<T>::put(max);
@@ -662,10 +635,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
     pub fn do_set_subnet_removal_intervals(min: u32, max: u32) -> DispatchResult {
-        ensure!(
-            min < max,
-            Error::<T>::InvalidValues
-        );
+        ensure!(min < max, Error::<T>::InvalidValues);
 
         MinSubnetRemovalInterval::<T>::put(min);
         MaxSubnetRemovalInterval::<T>::put(max);
@@ -701,11 +671,8 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_validator_reward_k(value: u128) -> DispatchResult {
-        ensure!(
-            value > 0,
-            Error::<T>::InvalidValidatorRewardK
-        );
+    pub fn do_set_validator_reward_k(value: u64) -> DispatchResult {
+        ensure!(value > 0, Error::<T>::InvalidValidatorRewardK);
 
         ValidatorRewardK::<T>::put(value);
 
@@ -722,6 +689,29 @@ impl<T: Config> Pallet<T> {
         ValidatorRewardMidpoint::<T>::put(value);
 
         Self::deposit_event(Event::SetValidatorRewardMidpoint(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_attestor_reward_exponent(value: u64) -> DispatchResult {
+        ensure!(value > 0, Error::<T>::InvalidAttestorRewardExponent);
+
+        AttestorRewardExponent::<T>::put(value);
+
+        Self::deposit_event(Event::SetAttestorRewardExponent(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_attestor_min_reward_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        AttestorMinRewardFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetAttestorMinRewardFactor(value));
 
         Ok(())
     }

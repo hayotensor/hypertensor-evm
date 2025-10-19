@@ -955,6 +955,8 @@ pub fn get_simulated_consensus_data<T: Config>(
             node_id,
             AttestEntry {
                 block: block_number,
+                subnet_epoch_progression: 0,
+                reward_factor: Network::<T>::percentage_factor_as_u128(),
                 data: None,
             },
         );
@@ -973,6 +975,9 @@ pub fn get_simulated_consensus_data<T: Config>(
 
     ConsensusData {
         validator_id: subnet_id * max_subnet_nodes,
+        block: block_number,
+        validator_epoch_progress: 0,
+        validator_reward_factor: Network::<T>::percentage_factor_as_u128(),
         attests,
         data,
         prioritize_queue_node_id: None,
@@ -2023,7 +2028,7 @@ mod benchmarks {
             RawOrigin::Signed(owner_coldkey.clone()),
             subnet_id,
             new_min,
-            new_max
+            new_max,
         );
 
         let value = SubnetMaxStakeBalance::<T>::get(subnet_id);
@@ -5091,7 +5096,7 @@ mod benchmarks {
         assert_eq!(MinSubnetMinStake::<T>::get(), min);
         assert_eq!(MaxSubnetMinStake::<T>::get(), max);
     }
-    
+
     #[benchmark]
     fn set_delegate_stake_percentages() {
         let min = 5;

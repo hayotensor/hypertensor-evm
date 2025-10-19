@@ -2427,6 +2427,8 @@ pub fn get_simulated_consensus_data(
             node_id,
             AttestEntry {
                 block: block_number,
+                attestor_progress: 0,
+                reward_factor: Network::percentage_factor_as_u128(),
                 data: None,
             },
         );
@@ -2441,7 +2443,9 @@ pub fn get_simulated_consensus_data(
 
     ConsensusData {
         validator_id: subnet_id * max_subnet_nodes,
+        block: block_number,
         validator_epoch_progress: 0,
+        validator_reward_factor: Network::percentage_factor_as_u128(),
         attests,
         data,
         prioritize_queue_node_id: None,

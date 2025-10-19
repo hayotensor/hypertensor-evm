@@ -1035,7 +1035,11 @@ where
         let max: u128 = max.unique_saturated_into();
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_update_min_max_stake { subnet_id, min, max };
+        let call = pallet_network::Call::<R>::owner_update_min_max_stake {
+            subnet_id,
+            min,
+            max,
+        };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,

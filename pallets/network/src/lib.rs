@@ -380,7 +380,9 @@ pub mod pallet {
         SetSubnetPauseCooldownEpochs(u32),
         SetMaxSwapQueueCallsPerBlock(u32),
         SetMaxSubnetNodeScorePenaltyThreshold(u128),
-        SetValidatorRewardK(u128),
+        SetValidatorRewardK(u64),
+        SetAttestorRewardExponent(u64),
+        SetAttestorMinRewardFactor(u128),
         SetValidatorRewardMidpoint(u128),
         OverwatchNodeBlacklist(T::AccountId, bool),
         SetSigmoidSteepness(u128),
@@ -718,6 +720,7 @@ pub mod pallet {
         /// Invalid percent number, must be in 1e18 format. Used for elements that only require correct format
         InvalidPercent,
         InvalidValidatorRewardK,
+        InvalidAttestorRewardExponent,
         InvalidSuperMajorityAttestationRatio,
         /// Invalid values
         InvalidValues,
@@ -776,6 +779,7 @@ pub mod pallet {
         // Validation and Attestation
         /// Subnet rewards data already submitted by validator
         SubnetRewardsAlreadySubmitted,
+        SubnetEpochDataIsNone,
         /// Cannot submit on the last subnet epoch block
         LastSubnetEpochBlock,
         /// Not epoch validator
@@ -1438,6 +1442,8 @@ pub mod pallet {
     /// * `block` - The block number at which this attestation was made. This provides
     ///   a timestamp for when the validator attested and can be used to track attestation
     ///   timing relative to the consensus submission.
+    /// * `attestor_progress` - The percentage progress from the validator proposal to when attestor attests
+    /// * `reward_factor` - The percentage factor against the reward the attestor receives
     /// * `data` - Optional arbitrary attestation data that the validator can include.
     ///   This data is not used in any onchain logic but allows validators to attach
     ///   metadata, signatures, or other information for off-chain verification or
@@ -1445,6 +1451,8 @@ pub mod pallet {
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct AttestEntry {
         pub block: u32,
+        pub attestor_progress: u128,
+        pub reward_factor: u128,
         pub data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
     }
 
@@ -1484,6 +1492,7 @@ pub mod pallet {
     pub struct ConsensusSubmissionData<AccountId> {
         pub validator_subnet_node_id: u32,
         pub validator_epoch_progress: u128,
+        pub validator_reward_factor: u128,
         pub attestation_ratio: u128,
         pub weight_sum: u128,
         pub data_length: u32,
@@ -1541,6 +1550,7 @@ pub mod pallet {
     /// * `validator_id` - The subnet node ID of the elected validator for this epoch who
     ///   proposed the consensus data. This validator is responsible for submitting the initial
     ///   scores and queue management decisions.
+    /// * `block` - Block proposed.
     /// * `validator_epoch_progress` - The percent process of the epoch when the validator submitted
     ///   consensus data, represented as 1e18.
     /// * `attests` - A map of subnet node IDs to their attestation entries, tracking which
@@ -1566,14 +1576,28 @@ pub mod pallet {
     ///   that validators can use for off-chain validation or coordination purposes.
     #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub struct ConsensusData<AccountId> {
-        pub validator_id: u32,                   // Chosen validator of the epoch
+        pub validator_id: u32, // Chosen validator of the epoch
+        pub block: u32,
         pub validator_epoch_progress: u128,
+        pub validator_reward_factor: u128,
         pub attests: BTreeMap<u32, AttestEntry>, // Count of attestations of the submitted data (node ID, (block, data))
         pub subnet_nodes: Vec<SubnetNode<AccountId>>,
         pub prioritize_queue_node_id: Option<u32>,
         pub remove_queue_node_id: Option<u32>,
         pub data: Vec<SubnetNodeConsensusData>, // Data submitted by chosen validator
         pub args: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>, // Optional arguements to pass for subnet to validate
+    }
+
+    /// Subnet epoch data
+    ///
+    /// # Fields
+    ///
+    /// * `subnet_epoch` - The subnet epoch
+    /// * `subnet_epoch_progression` - The subnet epoch progression as a percentage using 1e18 as 1.0
+    #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub struct SubnetEpochData {
+        pub subnet_epoch: u32,
+        pub subnet_epoch_progression: u128,
     }
 
     /// This struct represents the breakdown of how total subnet rewards are allocated
@@ -1951,14 +1975,22 @@ pub mod pallet {
     /// Used in:
     /// - ValidatorRewardK
     #[pallet::type_value]
-    pub fn DefaultValidatorRewardK() -> u128 {
+    pub fn DefaultValidatorRewardK() -> u64 {
         20
     }
-    
     #[pallet::type_value]
     pub fn DefaultValidatorRewardMidpoint() -> u128 {
         // 50.0%
         500000000000000000
+    }
+    #[pallet::type_value]
+    pub fn DefaultAttestorRewardExponent() -> u64 {
+        10
+    }
+    #[pallet::type_value]
+    pub fn DefaultAttestorMinRewardFactor() -> u128 {
+        // 33.0%
+        330000000000000000
     }
     /// Used in:
     /// - MaxSubnetNodePenalties
@@ -2691,7 +2723,6 @@ pub mod pallet {
     pub type MaxSubnetPenaltyCount<T> =
         StorageValue<_, u32, ValueQuery, DefaultMaxSubnetPenaltyCount>;
 
-
     /// Max number of accounts that can access updating the main bootnodes for a subnet
     #[pallet::storage]
     pub type MaxSubnetBootnodeAccess<T> =
@@ -2867,11 +2898,24 @@ pub mod pallet {
     #[pallet::storage]
     pub type BaseValidatorReward<T> = StorageValue<_, u128, ValueQuery, DefaultBaseValidatorReward>;
 
+    /// Sigmoid steepness for getting factor of what percentage of the base reward a validator receives
+    /// Used in `get_validator_reward_multiplier`
     #[pallet::storage]
-    pub type ValidatorRewardK<T> = StorageValue<_, u128, ValueQuery, DefaultValidatorRewardK>;
+    pub type ValidatorRewardK<T> = StorageValue<_, u64, ValueQuery, DefaultValidatorRewardK>;
+
+    /// Sigmoid midpoint for getting factor of what percentage of the base reward a validator receives
+    /// Used in `get_validator_reward_multiplier`
+    #[pallet::storage]
+    pub type ValidatorRewardMidpoint<T> =
+        StorageValue<_, u128, ValueQuery, DefaultValidatorRewardMidpoint>;
 
     #[pallet::storage]
-    pub type ValidatorRewardMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultValidatorRewardMidpoint>;
+    pub type AttestorRewardExponent<T> =
+        StorageValue<_, u64, ValueQuery, DefaultAttestorRewardExponent>;
+
+    #[pallet::storage]
+    pub type AttestorMinRewardFactor<T> =
+        StorageValue<_, u128, ValueQuery, DefaultAttestorMinRewardFactor>;
 
     /// Base percentage slash is based off of
     #[pallet::storage]
@@ -2902,11 +2946,13 @@ pub mod pallet {
 
     /// Inflation grpah midpoint (sigmoid)
     #[pallet::storage]
-    pub type InflationSigmoidMidpoint<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
+    pub type InflationSigmoidMidpoint<T> =
+        StorageValue<_, u128, ValueQuery, DefaultSigmoidMidpoint>;
 
     /// Inflation grpah midpoint (sigmoid)
     #[pallet::storage]
-    pub type InflationSigmoidSteepness<T> = StorageValue<_, u128, ValueQuery, DefaultSigmoidSteepness>;
+    pub type InflationSigmoidSteepness<T> =
+        StorageValue<_, u128, ValueQuery, DefaultSigmoidSteepness>;
 
     //
     // Subnet owner
@@ -2974,8 +3020,16 @@ pub mod pallet {
     /// Count of epochs in a row an Included node has been in consensus
     /// subnet_id --> uid --> count of epochs in a row
     #[pallet::storage]
-    pub type SubnetNodeConsecutiveIncludedEpochs<T> =
-        StorageDoubleMap<_, Identity, u32, Identity, u32, u32, ValueQuery, DefaultSubnetNodeConsecutiveIncludedEpochs>;
+    pub type SubnetNodeConsecutiveIncludedEpochs<T> = StorageDoubleMap<
+        _,
+        Identity,
+        u32,
+        Identity,
+        u32,
+        u32,
+        ValueQuery,
+        DefaultSubnetNodeConsecutiveIncludedEpochs,
+    >;
 
     /// Immunity period for queued nodes to not be removed from queue
     /// See `remove_queue_node_id` parameter in `propose_attestation`
@@ -3947,7 +4001,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             subnet_id: u32,
             min: u128,
-            max: u128
+            max: u128,
         ) -> DispatchResult {
             Self::is_paused()?;
             Self::do_owner_update_min_max_stake(origin, subnet_id, min, max)
@@ -5645,7 +5699,11 @@ pub mod pallet {
 
         #[pallet::call_index(82)]
         #[pallet::weight({0})]
-        pub fn set_subnet_removal_interval(origin: OriginFor<T>, min: u32, max: u32) -> DispatchResult {
+        pub fn set_subnet_removal_interval(
+            origin: OriginFor<T>,
+            min: u32,
+            max: u32,
+        ) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_subnet_removal_intervals(min, max)
         }
@@ -5763,7 +5821,7 @@ pub mod pallet {
         pub fn set_included_classification_epochs(
             origin: OriginFor<T>,
             min: u32,
-            max: u32
+            max: u32,
         ) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_included_classification_epochs(min, max)
@@ -5774,7 +5832,7 @@ pub mod pallet {
         pub fn set_min_max_subnet_node_penalties(
             origin: OriginFor<T>,
             min: u32,
-            max: u32
+            max: u32,
         ) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_subnet_node_penalties(min, max)
@@ -5792,7 +5850,7 @@ pub mod pallet {
         pub fn set_delegate_stake_percentages(
             origin: OriginFor<T>,
             min: u128,
-            max: u128
+            max: u128,
         ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_delegate_stake_percentages(min, max)
@@ -5803,7 +5861,7 @@ pub mod pallet {
         pub fn set_min_max_registered_nodes(
             origin: OriginFor<T>,
             min: u32,
-            max: u32
+            max: u32,
         ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_max_registered_nodes(min, max)
@@ -6144,23 +6202,31 @@ pub mod pallet {
 
         #[pallet::call_index(140)]
         #[pallet::weight({0})]
-        pub fn set_validator_reward_k(
-            origin: OriginFor<T>,
-            value: u128,
-        ) -> DispatchResult {
+        pub fn set_validator_reward_k(origin: OriginFor<T>, value: u64) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_validator_reward_k(value)
         }
 
         #[pallet::call_index(141)]
         #[pallet::weight({0})]
-        pub fn set_validator_reward_midpoint(
-            origin: OriginFor<T>,
-            value: u128,
-        ) -> DispatchResult {
+        pub fn set_validator_reward_midpoint(origin: OriginFor<T>, value: u128) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_validator_reward_midpoint(value)
-        }        
+        }
+
+        #[pallet::call_index(142)]
+        #[pallet::weight({0})]
+        pub fn set_attestor_reward_exponent(origin: OriginFor<T>, value: u64) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_attestor_reward_exponent(value)
+        }
+
+        #[pallet::call_index(143)]
+        #[pallet::weight({0})]
+        pub fn set_attestor_min_reward_factor(origin: OriginFor<T>, value: u128) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_attestor_min_reward_factor(value)
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -7471,18 +7537,18 @@ pub mod pallet {
             use sp_core::U256;
 
             if self.subnet_name.last().is_none() {
-            	return
+                return;
             }
 
             let subnet_id = 1;
 
             let subnet_data = SubnetData {
-            	id: subnet_id,
-            	name: self.subnet_name.clone(),
-            	repo: Vec::new(),
-            	description: Vec::new(),
-            	misc: Vec::new(),
-            	state: SubnetState::Active,
+                id: subnet_id,
+                name: self.subnet_name.clone(),
+                repo: Vec::new(),
+                description: Vec::new(),
+                misc: Vec::new(),
+                state: SubnetState::Active,
                 start_epoch: 0,
             };
 
@@ -7516,9 +7582,9 @@ pub mod pallet {
             let total_node_delegate_staked: u128 = TotalNodeDelegateStake::<T>::get();
 
             let total_network_issuance = total_issuance
-            	.saturating_add(total_staked)
-            	.saturating_add(total_delegate_staked)
-            	.saturating_add(total_node_delegate_staked);
+                .saturating_add(total_staked)
+                .saturating_add(total_delegate_staked)
+                .saturating_add(total_node_delegate_staked);
 
             let factor: u128 = MinSubnetDelegateStakeFactor::<T>::get();
 
@@ -7532,12 +7598,15 @@ pub mod pallet {
             let min_subnet_delegate_stake_balance: u128 = result.try_into().unwrap_or(u128::MAX);
 
             // --- Mitigate inflation attack
-            TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(1000));
+            TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| {
+                n.saturating_accrue(1000)
+            });
 
             // =================
             // convert_to_shares
             // =================
-            let total_subnet_delegated_stake_balance = TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
+            let total_subnet_delegated_stake_balance =
+                TotalSubnetDelegateStakeBalance::<T>::get(subnet_id);
 
             let balance = U256::from(min_subnet_delegate_stake_balance);
             let total_shares = U256::from(0) + U256::from(10_u128.pow(1));
@@ -7550,12 +7619,16 @@ pub mod pallet {
             // increase_account_delegate_stake
             // =====================================
             // -- increase total subnet delegate stake balance
-            TotalSubnetDelegateStakeBalance::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(min_subnet_delegate_stake_balance));
+            TotalSubnetDelegateStakeBalance::<T>::mutate(subnet_id, |mut n| {
+                n.saturating_accrue(min_subnet_delegate_stake_balance)
+            });
             // -- increase total subnet delegate stake shares
-            TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(shares));
+            TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| {
+                n.saturating_accrue(shares)
+            });
             TotalDelegateStake::<T>::set(min_subnet_delegate_stake_balance);
 
-            			// Store subnet data
+            // Store subnet data
             SubnetsData::<T>::insert(subnet_id, &subnet_data);
 
             // Store owner
@@ -7605,82 +7678,87 @@ pub mod pallet {
 
             let mut count = 0;
             for (account_id, peer_id) in &self.subnet_nodes {
-            	// Redundant
-            	// Unique subnet_id -> PeerId
-            	// Ensure peer ID doesn't already exist within subnet regardless of account_id
-            	let peer_exists: bool = match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id.clone()) {
-            		Ok(_) => true,
-            		Err(()) => false,
-            	};
+                // Redundant
+                // Unique subnet_id -> PeerId
+                // Ensure peer ID doesn't already exist within subnet regardless of account_id
+                let peer_exists: bool =
+                    match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id.clone()) {
+                        Ok(_) => true,
+                        Err(()) => false,
+                    };
 
-            	if peer_exists {
-            		continue;
-            	}
+                if peer_exists {
+                    continue;
+                }
 
-            	// ====================
-            	// Initiate stake logic
-            	// ====================
-            	// T::Currency::withdraw(
-            	// 	&account_id,
-            	// 	stake_amount,
-            	// 	WithdrawReasons::except(WithdrawReasons::TIP),
-            	// 	ExistenceRequirement::KeepAlive,
-            	// );
+                // ====================
+                // Initiate stake logic
+                // ====================
+                // T::Currency::withdraw(
+                // 	&account_id,
+                // 	stake_amount,
+                // 	WithdrawReasons::except(WithdrawReasons::TIP),
+                // 	ExistenceRequirement::KeepAlive,
+                // );
 
-            	// -- increase account subnet staking balance
-            	AccountSubnetStake::<T>::insert(
-            		account_id,
-            		subnet_id,
-            		AccountSubnetStake::<T>::get(account_id, subnet_id).saturating_add(stake_amount),
-            	);
+                // -- increase account subnet staking balance
+                AccountSubnetStake::<T>::insert(
+                    account_id,
+                    subnet_id,
+                    AccountSubnetStake::<T>::get(account_id, subnet_id)
+                        .saturating_add(stake_amount),
+                );
 
-            	// -- increase total subnet stake
-            	TotalSubnetStake::<T>::mutate(subnet_id, |mut n| *n += stake_amount);
+                // -- increase total subnet stake
+                TotalSubnetStake::<T>::mutate(subnet_id, |mut n| *n += stake_amount);
 
-            	// -- increase total stake overall
-            	TotalStake::<T>::mutate(|mut n| *n += stake_amount);
+                // -- increase total stake overall
+                TotalStake::<T>::mutate(|mut n| *n += stake_amount);
 
-            	// To ensure the AccountId that owns the PeerId, they must sign the PeerId for others to verify
-            	// This ensures others cannot claim to own a PeerId they are not the owner of
-            	// Self::validate_signature(&Encode::encode(&peer_id), &signature, &signer)?;
+                // To ensure the AccountId that owns the PeerId, they must sign the PeerId for others to verify
+                // This ensures others cannot claim to own a PeerId they are not the owner of
+                // Self::validate_signature(&Encode::encode(&peer_id), &signature, &signer)?;
 
-            	// ========================
-            	// Insert peer into storage
-            	// ========================
-            	let classification = SubnetNodeClassification {
-            		node_class: SubnetNodeClass::Validator,
-            		start_epoch: 0,
-            	};
+                // ========================
+                // Insert peer into storage
+                // ========================
+                let classification = SubnetNodeClassification {
+                    node_class: SubnetNodeClass::Validator,
+                    start_epoch: 0,
+                };
 
-            	let bounded_peer_id: BoundedVec<u8, DefaultMaxVectorLength> = BoundedVec::try_from(peer_id.clone().0)
-            		.expect("Vec is within bounds");
+                let bounded_peer_id: BoundedVec<u8, DefaultMaxVectorLength> =
+                    BoundedVec::try_from(peer_id.clone().0).expect("Vec is within bounds");
 
-            	TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-            	let current_uid = TotalSubnetNodeUids::<T>::get(subnet_id);
+                TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+                let current_uid = TotalSubnetNodeUids::<T>::get(subnet_id);
 
-            	HotkeySubnetNodeId::<T>::insert(subnet_id, account_id.clone(), current_uid);
+                HotkeySubnetNodeId::<T>::insert(subnet_id, account_id.clone(), current_uid);
 
-            	// Insert Subnet Node ID -> hotkey
-            	SubnetNodeIdHotkey::<T>::insert(subnet_id, current_uid, account_id.clone());
+                // Insert Subnet Node ID -> hotkey
+                SubnetNodeIdHotkey::<T>::insert(subnet_id, current_uid, account_id.clone());
 
-            	// Insert hotkey -> coldkey
-            	HotkeyOwner::<T>::insert(account_id.clone(), account_id.clone());
+                // Insert hotkey -> coldkey
+                HotkeyOwner::<T>::insert(account_id.clone(), account_id.clone());
 
-            	let subnet_node: SubnetNode<T::AccountId> = SubnetNode {
-            		id: current_uid,
-            		hotkey: account_id.clone(),
-            		peer_id: peer_id.clone(),
-            		bootnode_peer_id: peer_id.clone(),
-            		client_peer_id: peer_id.clone(),
-            		bootnode: Some(BoundedVec::new()),
-            		classification: classification,
-            		delegate_reward_rate: 0,
-            		last_delegate_reward_rate_update: 0,
-            		unique: Some(bounded_peer_id),
-            		non_unique: Some(BoundedVec::new()),
-            	};
+                let subnet_node: SubnetNode<T::AccountId> = SubnetNode {
+                    id: current_uid,
+                    hotkey: account_id.clone(),
+                    peer_id: peer_id.clone(),
+                    bootnode_peer_id: peer_id.clone(),
+                    client_peer_id: peer_id.clone(),
+                    bootnode: Some(BoundedVec::new()),
+                    classification: classification,
+                    delegate_reward_rate: 0,
+                    last_delegate_reward_rate_update: 0,
+                    unique: Some(bounded_peer_id),
+                    non_unique: Some(BoundedVec::new()),
+                };
 
-                ColdkeyHotkeys::<T>::insert(&account_id.clone(), BTreeSet::from([account_id.clone()]));
+                ColdkeyHotkeys::<T>::insert(
+                    &account_id.clone(),
+                    BTreeSet::from([account_id.clone()]),
+                );
 
                 ColdkeySubnetNodes::<T>::mutate(&account_id.clone(), |node_map| {
                     node_map
@@ -7691,14 +7769,14 @@ pub mod pallet {
 
                 HotkeySubnetId::<T>::insert(&account_id.clone(), subnet_id);
 
-            	// Insert SubnetNodesData
-            	SubnetNodesData::<T>::insert(subnet_id, current_uid, subnet_node);
+                // Insert SubnetNodesData
+                SubnetNodesData::<T>::insert(subnet_id, current_uid, subnet_node);
 
-            	// Insert subnet peer account to keep peer_ids unique within subnets
-            	PeerIdSubnetNodeId::<T>::insert(subnet_id, peer_id.clone(), current_uid);
+                // Insert subnet peer account to keep peer_ids unique within subnets
+                PeerIdSubnetNodeId::<T>::insert(subnet_id, peer_id.clone(), current_uid);
 
-            	// Increase total subnet nodes
-            	TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
+                // Increase total subnet nodes
+                TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
 
                 // ===================================
                 // Give delegate stake balance to each user
@@ -7706,9 +7784,11 @@ pub mod pallet {
                 let delegate_stake_amount = 1000;
 
                 // -- increase account subnet staking shares balance
-                AccountSubnetDelegateStakeShares::<T>::mutate(account_id.clone(), subnet_id, |mut n| {
-                    n.saturating_accrue(delegate_stake_amount)
-                });
+                AccountSubnetDelegateStakeShares::<T>::mutate(
+                    account_id.clone(),
+                    subnet_id,
+                    |mut n| n.saturating_accrue(delegate_stake_amount),
+                );
 
                 // -- increase total subnet delegate stake balance
                 TotalSubnetDelegateStakeBalance::<T>::mutate(subnet_id, |mut n| {
@@ -7716,7 +7796,9 @@ pub mod pallet {
                 });
 
                 // -- increase total subnet delegate stake shares
-                TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(delegate_stake_amount));
+                TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| {
+                    n.saturating_accrue(delegate_stake_amount)
+                });
 
                 TotalDelegateStake::<T>::mutate(|mut n| n.saturating_accrue(delegate_stake_amount));
 
@@ -7741,14 +7823,16 @@ pub mod pallet {
                     n.saturating_accrue(node_delegate_stake_amount)
                 });
 
-                TotalNodeDelegateStake::<T>::mutate(|mut n| n.saturating_accrue(node_delegate_stake_amount));
+                TotalNodeDelegateStake::<T>::mutate(|mut n| {
+                    n.saturating_accrue(node_delegate_stake_amount)
+                });
 
                 ColdkeyReputation::<T>::mutate(&account_id.clone(), |rep| {
                     rep.lifetime_node_count = rep.lifetime_node_count.saturating_add(1);
                     rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
                 });
 
-            	count += 1;
+                count += 1;
             }
         }
     }

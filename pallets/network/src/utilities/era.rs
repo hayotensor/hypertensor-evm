@@ -132,7 +132,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns true if < last subnet epoch block
-    pub fn can_propose_attestation(subnet_id: u32) -> bool {
+    pub fn can_propose_or_attest_attestation(subnet_id: u32) -> bool {
         let epoch_length = T::EpochLength::get();
         let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
             Ok(slot) => slot,
@@ -157,6 +157,85 @@ impl<T: Config> Pallet<T> {
 
         // Check if we are at the last block
         current_block < last_epoch_block
+    }
+
+    pub fn attestor_subnet_epoch_data(
+        subnet_id: u32,
+        block_proposed: u32,
+    ) -> Option<SubnetEpochData> {
+        let epoch_length = T::EpochLength::get();
+        let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
+            Ok(slot) => slot,
+            Err(_) => 0,
+        };
+        if subnet_slot == 0 {
+            return None;
+        }
+
+        let current_block = Self::get_current_block_as_u32();
+
+        if current_block < block_proposed {
+            return None; // can't attest before proposal
+        }
+
+        // The validator's epoch offset at submission
+        let proposed_offset = block_proposed.saturating_sub(subnet_slot);
+        let subnet_epoch = proposed_offset.saturating_div(epoch_length);
+
+        // Blocks from submission to current block
+        let blocks_since_submission = current_block.saturating_sub(block_proposed);
+
+        // Remaining blocks in this epoch
+        let blocks_into_epoch = proposed_offset % epoch_length;
+        let remaining_blocks_in_epoch = epoch_length.saturating_sub(blocks_into_epoch);
+
+        // How far from submission to epoch end (percentage)
+        // If current block > epoch end, clamp to 100%
+        let progress_from_submission = if blocks_since_submission >= remaining_blocks_in_epoch {
+            Self::percentage_factor_as_u128()
+        } else {
+            Self::percent_div(
+                blocks_since_submission as u128,
+                remaining_blocks_in_epoch as u128,
+            )
+        };
+
+        Some(SubnetEpochData {
+            subnet_epoch,
+            subnet_epoch_progression: progress_from_submission,
+        })
+    }
+
+    pub fn get_current_subnet_epoch_data(subnet_id: u32) -> Option<SubnetEpochData> {
+        let epoch_length = T::EpochLength::get();
+        let subnet_slot = match SubnetSlot::<T>::try_get(subnet_id) {
+            Ok(slot) => slot,
+            Err(_) => 0,
+        };
+        if subnet_slot == 0 {
+            return None;
+        }
+
+        let current_block = Self::get_current_block_as_u32();
+
+        if current_block < subnet_slot {
+            return None;
+        }
+
+        // Example: 150 = 200-50
+        let offset_block = current_block.saturating_sub(subnet_slot);
+
+        // Example: 1 = 150 / 100
+        let subnet_epoch = offset_block.saturating_div(epoch_length);
+
+        let blocks_into_epoch = offset_block % epoch_length;
+        let subnet_epoch_progression =
+            Self::percent_div(blocks_into_epoch as u128, epoch_length as u128);
+
+        Some(SubnetEpochData {
+            subnet_epoch,
+            subnet_epoch_progression,
+        })
     }
 
     /// Performs preliminary subnet checks and maintenance at the start of each epoch.

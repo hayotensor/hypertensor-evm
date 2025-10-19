@@ -2089,7 +2089,7 @@ fn test_owner_update_min_max_stake() {
             Network::owner_update_min_max_stake(
                 RuntimeOrigin::signed(original_owner.clone()),
                 subnet_id,
-                min_stake-1,
+                min_stake - 1,
                 max_stake
             ),
             Error::<Test>::InvalidSubnetMinStake
@@ -2100,7 +2100,7 @@ fn test_owner_update_min_max_stake() {
                 RuntimeOrigin::signed(original_owner.clone()),
                 subnet_id,
                 min_stake,
-                max_stake+1
+                max_stake + 1
             ),
             Error::<Test>::InvalidSubnetMaxStake
         );
