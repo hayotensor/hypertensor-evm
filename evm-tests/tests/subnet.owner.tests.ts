@@ -22,10 +22,7 @@ import {
     ownerUpdateIdleClassificationEpochs,
     ownerUpdateIncludedClassificationEpochs,
     ownerUpdateKeyTypes,
-    ownerUpdateMaxNodePenalties,
     ownerUpdateMaxRegisteredNodes,
-    ownerUpdateMaxStake,
-    ownerUpdateMinStake,
     ownerUpdateMisc,
     ownerUpdateName,
     ownerUpdateRegistrationQueueEpochs,
@@ -39,7 +36,8 @@ import {
     updateBootnodes,
     registerSubnet,
     registerSubnetNode,
-    transferBalanceFromSudo
+    transferBalanceFromSudo,
+    ownerUpdateMinMaxStake
 } from "../src/network"
 import { ETH_LOCAL_URL, SUB_LOCAL_URL } from "../src/config";
 import { PublicClient } from "viem";
@@ -143,15 +141,9 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         const repo = generateRandomString(30)
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
-        const churnLimit = await api.query.network.maxChurnLimit();
         const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
-        const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
-        const idleClassificationEpochs = await api.query.network.minIdleClassificationEpochs();
-        const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
-        const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
-        const maxRegisteredNodes = await api.query.network.maxMaxRegisteredNodes();
 
         await registerSubnet(
             subnetContract, 
@@ -160,19 +152,13 @@ describe("Test subnet owner-0xuhnrfvok", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         const palletSubnetId = await api.query.network.subnetName(subnetName);
@@ -311,9 +297,6 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         await ownerUpdateIncludedClassificationEpochs(subnetContract, subnetId, newIncludedClassificationEpochs)
         expect((await api.query.network.includedClassificationEpochs(subnetId)).toString()).to.be.equal(newIncludedClassificationEpochs)
 
-        await ownerUpdateMaxNodePenalties(subnetContract, subnetId, newMaxNodePenalties)
-        expect((await api.query.network.maxSubnetNodePenalties(subnetId)).toString()).to.be.equal(newMaxNodePenalties)
-
         const addColdkeys = [
             {
                 coldkey: wallet9.address,
@@ -372,13 +355,9 @@ describe("Test subnet owner-0xuhnrfvok", () => {
         expect(currentKeyTypes.toHuman() == newKeyTypes)
 
 
-        await ownerUpdateMinStake(subnetContract, subnetId, newMinStake)
+        await ownerUpdateMinMaxStake(subnetContract, subnetId, newMinStake, newMaxStake)
         expect((await api.query.network.subnetMinStakeBalance(subnetId)).toString()).to.be.equal(newMinStake)
-
-
-        await ownerUpdateMaxStake(subnetContract, subnetId, newMaxStake)
         expect((await api.query.network.subnetMaxStakeBalance(subnetId)).toString()).to.be.equal(newMaxStake)
-
 
         const lastSubnetDelegateStakeRewardsUpdate = Number((await api.query.network.lastSubnetDelegateStakeRewardsUpdate(subnetId)).toString());
 

@@ -1,11 +1,12 @@
 use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
-    DelegateStakeSubnetRemovalInterval, Event, MaxSubnetPauseEpochs, MaxSubnetPenaltyCount,
-    MaxSubnetRemovalInterval, MaxSubnets, MinSubnetNodes, NewRegistrationCostMultiplier,
-    SubnetEnactmentEpochs, SubnetName, SubnetPenaltyCount, SubnetRegistrationEpoch,
-    SubnetRegistrationEpochs, SubnetRemovalReason, SubnetState, SubnetsData,
-    TotalActiveSubnetNodes, TotalSubnetDelegateStakeBalance,
+    DelegateStakeSubnetRemovalInterval, Event, MaxMinDelegateStakeMultiplier,
+    MaxPauseEpochsSubnetReputationFactor, MaxSubnetPauseEpochs,
+    MaxSubnetRemovalInterval, MaxSubnets, MinSubnetNodes, MinSubnetReputation,
+    NewRegistrationCostMultiplier, SubnetEnactmentEpochs, SubnetName,
+    SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason, SubnetReputation,
+    SubnetState, SubnetsData, TotalActiveSubnetNodes, TotalSubnetDelegateStakeBalance
 };
 use frame_support::assert_ok;
 use frame_support::traits::Currency;
@@ -15,7 +16,13 @@ use frame_support::weights::WeightMeter;
 fn test_do_epoch_preliminaries_remove_expired_pause() {
     new_test_ext().execute_with(|| {
         NewRegistrationCostMultiplier::<Test>::put(1000000000000000000);
-        MaxSubnetPenaltyCount::<Test>::set(3);
+
+        let target = Network::get_percent_as_f64(MinSubnetReputation::<Test>::get());
+        let factor =
+            Network::get_percent_as_f64(MaxPauseEpochsSubnetReputationFactor::<Test>::get());
+        // iters required to get to MinSubnetReputation
+        let steps = ((target / 1.0).ln() / (1.0 - factor).ln()) as u32;
+        log::error!("steps {:?}", steps);
 
         let deposit_amount: u128 = 1000000000000000000000;
         let amount: u128 = 100000000000000000000;
@@ -37,19 +44,20 @@ fn test_do_epoch_preliminaries_remove_expired_pause() {
             }
         }
 
+        // Pause subnet id
         SubnetsData::<Test>::mutate(remove_subnet_id, |maybe_params| {
             let params = maybe_params.as_mut().unwrap();
             // Update state
             params.state = SubnetState::Paused;
 
-            // Set to zero so its removed based on the `MaxSubnetPauseEpochs`
+            // Set to zero
             params.start_epoch = 0;
         });
 
         increase_epochs(MaxSubnetPauseEpochs::<Test>::get() + 1);
 
-        // iterate to accrue penalties while subnet is in a pause state
-        for _ in 0..MaxSubnetPenaltyCount::<Test>::get().saturating_add(1) {
+        // iterate to decrease reputation while subnet is in a pause state
+        for i in 0..steps.saturating_add(1) {
             let current_epoch = Network::get_current_epoch_as_u32();
 
             // always ensure subnet is at the minimum required delegate stake
@@ -61,10 +69,16 @@ fn test_do_epoch_preliminaries_remove_expired_pause() {
                     TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
                 let min_subnet_delegate_stake =
                     Network::get_min_subnet_delegate_stake_balance(subnet_id);
-                if Balances::free_balance(&account(0)) <= min_subnet_delegate_stake + 500 {
-                    let _ =
-                        Balances::deposit_creating(&account(0), min_subnet_delegate_stake + 500);
+
+                if Balances::free_balance(&account(0))
+                    <= total_delegate_stake_balance - min_subnet_delegate_stake + 500
+                {
+                    let _ = Balances::deposit_creating(
+                        &account(0),
+                        total_delegate_stake_balance - min_subnet_delegate_stake + 500,
+                    );
                 }
+
                 assert_ok!(Network::add_to_delegate_stake(
                     RuntimeOrigin::signed(account(0)),
                     subnet_id,
@@ -221,7 +235,7 @@ fn test_do_epoch_preliminaries_remove_under_min_delegate_stake_fail() {
 }
 
 #[test]
-fn test_do_epoch_preliminaries_remove_greater_than_max_penalties() {
+fn test_do_epoch_preliminaries_remove_under_min_reputation() {
     new_test_ext().execute_with(|| {
         NewRegistrationCostMultiplier::<Test>::put(1000000000000000000);
 
@@ -263,11 +277,9 @@ fn test_do_epoch_preliminaries_remove_greater_than_max_penalties() {
             ));
         }
 
-        // ensure removal subnet has n+1 max penalties
-        SubnetPenaltyCount::<Test>::insert(
-            remove_subnet_id,
-            MaxSubnetPenaltyCount::<Test>::get() + 1,
-        );
+        // ensure removal subnet has n-1 min reputation
+        let min_rep = MinSubnetReputation::<Test>::get();
+        SubnetReputation::<Test>::insert(remove_subnet_id, min_rep - 1);
 
         let current_epoch = Network::get_current_epoch_as_u32();
         Network::do_epoch_preliminaries(
@@ -281,7 +293,7 @@ fn test_do_epoch_preliminaries_remove_greater_than_max_penalties() {
             *network_events().last().unwrap(),
             Event::SubnetDeactivated {
                 subnet_id: remove_subnet_id,
-                reason: SubnetRemovalReason::MaxPenalties
+                reason: SubnetRemovalReason::MinReputation
             }
         );
     });

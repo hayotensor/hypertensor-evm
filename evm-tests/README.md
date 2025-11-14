@@ -16,6 +16,15 @@ fn build(&self) {
 	OverwatchMinRepScore::<T>::set(0);
 	OverwatchMinAvgAttestationRatio::<T>::set(0);
 	OverwatchMinAge::<T>::set(0);
+	DelegateStakeCooldownEpochs::<T>::set(0);
+	NodeDelegateStakeCooldownEpochs::<T>::put(0);
+	StakeCooldownEpochs::<T>::put(0);
+	MinActiveNodeStakeEpochs::<T>::put(0);
+	SubnetDelegateStakeRewardsUpdatePeriod::<T>::put(0);
+	NodeRewardRateUpdatePeriod::<T>::put(0);
+	MinSubnetDelegateStakeFactor::<T>::put(0);
+	MaxMinDelegateStakeMultiplier::<T>::put(1000000000000000000);
+	SubnetPauseCooldownEpochs::<T>::put(0);
 }
 ```
 

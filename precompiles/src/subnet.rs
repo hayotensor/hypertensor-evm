@@ -48,7 +48,7 @@ where
     <<R as frame_system::Config>::Lookup as StaticLookup>::Source: From<R::AccountId>,
 {
     #[precompile::public(
-        "registerSubnet(uint256,string,string,string,string,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,(address,uint256)[],uint256[],string[])"
+        "registerSubnet(uint256,string,string,string,string,uint256,uint256,uint256,(address,uint256)[],uint256[],string[])"
     )]
     #[precompile::payable]
     fn register_subnet(
@@ -58,15 +58,9 @@ where
         repo: BoundedString<ConstU32<1024>>,
         description: BoundedString<ConstU32<1024>>,
         misc: BoundedString<ConstU32<1024>>,
-        churn_limit: U256,
         min_stake: U256,
         max_stake: U256,
         delegate_stake_percentage: U256,
-        subnet_node_queue_epochs: U256,
-        idle_classification_epochs: U256,
-        included_classification_epochs: U256,
-        max_node_penalties: U256,
-        max_registered_nodes: U256,
         initial_coldkeys: Vec<(Address, U256)>,
         key_types: Vec<U256>,
         bootnodes: Vec<BoundedString<ConstU32<1024>>>,
@@ -74,15 +68,9 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
 
         let max_cost: u128 = max_cost.unique_saturated_into();
-        let churn_limit = try_u256_to_u32(churn_limit)?;
         let min_stake: u128 = min_stake.unique_saturated_into();
         let max_stake: u128 = max_stake.unique_saturated_into();
         let delegate_stake_percentage: u128 = delegate_stake_percentage.unique_saturated_into();
-        let subnet_node_queue_epochs = try_u256_to_u32(subnet_node_queue_epochs)?;
-        let idle_classification_epochs = try_u256_to_u32(idle_classification_epochs)?;
-        let included_classification_epochs = try_u256_to_u32(included_classification_epochs)?;
-        let max_node_penalties = try_u256_to_u32(max_node_penalties)?;
-        let max_registered_nodes = try_u256_to_u32(max_registered_nodes)?;
         let initial_coldkeys: BTreeMap<R::AccountId, u32> = initial_coldkeys
             .into_iter()
             .map(|(addr, count)| {
@@ -110,15 +98,9 @@ where
             repo: repo.into(),
             description: description.into(),
             misc: misc.into(),
-            churn_limit,
             min_stake,
             max_stake,
             delegate_stake_percentage,
-            subnet_node_queue_epochs,
-            idle_classification_epochs,
-            included_classification_epochs,
-            max_node_penalties,
-            max_registered_nodes,
             initial_coldkeys,
             key_types,
             bootnodes,
@@ -868,28 +850,6 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerUpdateMaxNodePenalties(uint256,uint256)")]
-    fn owner_update_max_node_penalties(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-        value: U256,
-    ) -> EvmResult<()> {
-        let subnet_id = try_u256_to_u32(subnet_id)?;
-        let value = try_u256_to_u32(value)?;
-
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-        let call = pallet_network::Call::<R>::owner_update_max_node_penalties { subnet_id, value };
-
-        RuntimeHelper::<R>::try_dispatch(
-            handle,
-            RawOrigin::Signed(origin.clone()).into(),
-            call,
-            0,
-        )?;
-
-        Ok(())
-    }
-
     #[precompile::public("ownerAddOrUpdateInitialColdkeys(uint256,(address,uint256)[])")]
     fn owner_add_or_update_initial_coldkeys(
         handle: &mut impl PrecompileHandle,
@@ -978,50 +938,6 @@ where
 
         Ok(())
     }
-
-    // #[precompile::public("ownerUpdateMinStake(uint256,uint256)")]
-    // fn owner_update_min_stake(
-    //     handle: &mut impl PrecompileHandle,
-    //     subnet_id: U256,
-    //     value: U256,
-    // ) -> EvmResult<()> {
-    //     let subnet_id = try_u256_to_u32(subnet_id)?;
-    //     let value: u128 = value.unique_saturated_into();
-
-    //     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    //     let call = pallet_network::Call::<R>::owner_update_min_stake { subnet_id, value };
-
-    //     RuntimeHelper::<R>::try_dispatch(
-    //         handle,
-    //         RawOrigin::Signed(origin.clone()).into(),
-    //         call,
-    //         0,
-    //     )?;
-
-    //     Ok(())
-    // }
-
-    // #[precompile::public("ownerUpdateMaxStake(uint256,uint256)")]
-    // fn owner_update_max_stake(
-    //     handle: &mut impl PrecompileHandle,
-    //     subnet_id: U256,
-    //     value: U256,
-    // ) -> EvmResult<()> {
-    //     let subnet_id = try_u256_to_u32(subnet_id)?;
-    //     let value: u128 = value.unique_saturated_into();
-
-    //     let origin = R::AddressMapping::into_account_id(handle.context().caller);
-    //     let call = pallet_network::Call::<R>::owner_update_max_stake { subnet_id, value };
-
-    //     RuntimeHelper::<R>::try_dispatch(
-    //         handle,
-    //         RawOrigin::Signed(origin.clone()).into(),
-    //         call,
-    //         0,
-    //     )?;
-
-    //     Ok(())
-    // }
 
     #[precompile::public("ownerUpdateMinMaxStake(uint256,uint256,uint256)")]
     fn owner_update_min_max_stake(
@@ -1142,32 +1058,6 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerAddBootnodeAccess(uint256,address)")]
-    fn owner_add_bootnode_access(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-        new_account: Address,
-    ) -> EvmResult<()> {
-        let origin = R::AddressMapping::into_account_id(handle.context().caller);
-
-        let subnet_id = try_u256_to_u32(subnet_id)?;
-        let new_account = R::AddressMapping::into_account_id(new_account.into());
-
-        let call = pallet_network::Call::<R>::owner_add_bootnode_access {
-            subnet_id,
-            new_account,
-        };
-
-        RuntimeHelper::<R>::try_dispatch(
-            handle,
-            RawOrigin::Signed(origin.clone()).into(),
-            call,
-            0,
-        )?;
-
-        Ok(())
-    }
-
     #[precompile::public("ownerUpdateTargetNodeRegistrationsPerEpoch(uint256,uint256)")]
     fn owner_update_target_node_registrations_per_epoch(
         handle: &mut impl PrecompileHandle,
@@ -1239,6 +1129,179 @@ where
         Ok(())
     }
 
+    #[precompile::public("ownerUpdateMinSubnetNodeReputation(uint256,uint256)")]
+    fn owner_update_min_subnet_node_reputation(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_min_subnet_node_reputation { subnet_id, value };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdateSubnetNodeMinWeightDecreaseReputationThreshold(uint256,uint256)")]
+    fn owner_update_subnet_node_min_weight_decrease_reputation_threshold(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_update_subnet_node_min_weight_decrease_reputation_threshold {
+            subnet_id,
+            value,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdateAbsentDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_absent_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_update_absent_decrease_reputation_factor {
+            subnet_id,
+            value,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdateIncludedIncreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_included_increase_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_update_included_increase_reputation_factor {
+            subnet_id,
+            value,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdatBelowMinWeightDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_below_min_weight_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_below_min_weight_decrease_reputation_factor {
+                subnet_id,
+                value,
+            };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdatNonAttestorDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_non_attestor_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_non_attestor_decrease_reputation_factor {
+                subnet_id,
+                value,
+            };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdatNonConsensusAttestorDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_non_consensus_attestor_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_non_consensus_attestor_decrease_reputation_factor { subnet_id, value };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
     #[precompile::public("updateBootnodes(uint256,string[],string[])")]
     fn update_bootnodes(
         handle: &mut impl PrecompileHandle,
@@ -1271,6 +1334,57 @@ where
             subnet_id,
             add,
             remove,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerAddBootnodeAccess(uint256,address)")]
+    fn owner_add_bootnode_access(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        new_account: Address,
+    ) -> EvmResult<()> {
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let new_account = R::AddressMapping::into_account_id(new_account.into());
+
+        let call = pallet_network::Call::<R>::owner_add_bootnode_access {
+            subnet_id,
+            new_account,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerRemoveBootnodeAccess(uint256,address)")]
+    fn owner_remove_bootnode_access(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        remove_account: Address,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let remove_account = R::AddressMapping::into_account_id(remove_account.into());
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_remove_bootnode_access {
+            subnet_id,
+            remove_account,
         };
 
         RuntimeHelper::<R>::try_dispatch(
@@ -1392,20 +1506,6 @@ where
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let result = pallet_network::IncludedClassificationEpochs::<R>::get(subnet_id);
-
-        Ok(result)
-    }
-
-    #[precompile::public("getMaxNodePenalties(uint256)")]
-    #[precompile::view]
-    fn get_max_node_penalties(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u32> {
-        let subnet_id = try_u256_to_u32(subnet_id)?;
-        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-
-        let result = pallet_network::MaxSubnetNodePenalties::<R>::get(subnet_id);
 
         Ok(result)
     }

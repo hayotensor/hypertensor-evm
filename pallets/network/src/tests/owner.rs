@@ -2,21 +2,22 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    ChurnLimit, DefaultMaxVectorLength, Error, HotkeySubnetNodeId, IdleClassificationEpochs,
-    IncludedClassificationEpochs, KeyType, LastSubnetDelegateStakeRewardsUpdate, MaxChurnLimit,
-    MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
-    MaxMaxRegisteredNodes, MaxMaxSubnetNodePenalties, MaxQueueEpochs, MaxRegisteredNodes,
-    MaxSubnetBootnodeAccess, MaxSubnetMinStake, MaxSubnetNodePenalties,
-    MaxSubnetNodeScorePenaltyThreshold, MaxSubnetNodes, MaxSubnets, MinChurnLimit,
-    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
-    MinMaxRegisteredNodes, MinMaxSubnetNodePenalties, MinQueueEpochs, MinSubnetMinStake,
-    NetworkMaxStakeBalance, NodeBurnRateAlpha, PendingSubnetOwner, QueueImmunityEpochs,
-    RegisteredSubnetNodesData, SubnetBootnodeAccess, SubnetData,
-    SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes,
-    SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
-    SubnetNodeClassification, SubnetNodeQueueEpochs, SubnetNodeScorePenaltyThreshold, SubnetOwner,
-    SubnetPauseCooldownEpochs, SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo,
-    SubnetState, SubnetsData, TargetNodeRegistrationsPerEpoch,
+    ChurnLimit, DefaultMaxVectorLength, EmergencySubnetNodeElectionData, Error, HotkeySubnetNodeId,
+    IdleClassificationEpochs, IncludedClassificationEpochs, KeyType,
+    LastSubnetDelegateStakeRewardsUpdate, MaxChurnLimit, MaxDelegateStakePercentage,
+    MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
+    MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess,
+    MaxSubnetMinStake, MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes,
+    MaxSubnets, MinChurnLimit, MinDelegateStakePercentage, MinIdleClassificationEpochs,
+    MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
+    MinQueueEpochs, MinSubnetMinStake, NetworkMaxStakeBalance, NodeBurnRateAlpha,
+    PendingSubnetOwner, QueueImmunityEpochs, RegisteredSubnetNodesData, SubnetBootnodeAccess,
+    SubnetData, SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod,
+    SubnetKeyTypes, SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode,
+    SubnetNodeClass, SubnetNodeClassification, SubnetNodeQueueEpochs,
+    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
+    SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
+    TargetNodeRegistrationsPerEpoch,
 };
 use codec::Decode;
 use frame_support::{assert_err, assert_ok};
@@ -51,12 +52,10 @@ use sp_std::collections::btree_set::BTreeSet;
 // do_owner_update_registration_queue_epochs
 // do_owner_update_idle_classification_epochs
 // do_owner_update_included_classification_epochs
-// do_owner_update_max_node_penalties
 // do_owner_add_or_update_initial_coldkeys -
 // do_owner_remove_initial_coldkeys
 // do_owner_update_key_types
-// do_owner_update_min_stake
-// do_owner_update_max_stake
+// do_owner_update_min_max_stake
 // do_owner_update_delegate_stake_percentage
 // do_owner_update_max_registered_nodes
 // do_transfer_subnet_ownership
@@ -66,7 +65,7 @@ use sp_std::collections::btree_set::BTreeSet;
 // do_owner_update_target_node_registrations_per_epoch -
 // do_owner_update_node_burn_rate_alpha -
 // do_owner_update_queue_immunity_epochs -
-// do_owner_update_subnet_node_score_penalty_threshold -
+// do_owner_update_subnet_node_min_weight_decrease_reputation_threshold -
 
 #[test]
 fn test_do_owner_update_name() {
@@ -314,44 +313,6 @@ fn test_do_owner_update_included_classification_epochs() {
 }
 
 #[test]
-fn test_do_owner_update_max_node_penalties() {
-    new_test_ext().execute_with(|| {
-        let subnet_id = 1;
-        insert_subnet(subnet_id, SubnetState::Active, 0);
-        let original_owner = account(1);
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-
-        let new_value = MaxSubnetNodePenalties::<Test>::get(subnet_id) + 1;
-
-        assert_ok!(Network::do_owner_update_max_node_penalties(
-            RuntimeOrigin::signed(original_owner),
-            subnet_id,
-            new_value
-        ));
-
-        assert_eq!(MaxSubnetNodePenalties::<Test>::get(subnet_id), new_value);
-
-        assert_err!(
-            Network::do_owner_update_max_node_penalties(
-                RuntimeOrigin::signed(original_owner),
-                subnet_id,
-                MinMaxSubnetNodePenalties::<Test>::get() - 1
-            ),
-            Error::<Test>::InvalidMaxSubnetNodePenalties
-        );
-
-        assert_err!(
-            Network::do_owner_update_max_node_penalties(
-                RuntimeOrigin::signed(original_owner),
-                subnet_id,
-                MaxMaxSubnetNodePenalties::<Test>::get() + 1
-            ),
-            Error::<Test>::InvalidMaxSubnetNodePenalties
-        );
-    })
-}
-
-#[test]
 fn test_do_owner_update_target_node_registrations_per_epoch() {
     new_test_ext().execute_with(|| {
         let subnet_id = 1;
@@ -444,7 +405,7 @@ fn test_do_owner_update_queue_immunity_epochs() {
 }
 
 #[test]
-fn do_owner_update_subnet_node_score_penalty_threshold() {
+fn do_owner_update_subnet_node_min_weight_decrease_reputation_threshold() {
     new_test_ext().execute_with(|| {
         let subnet_id = 1;
         insert_subnet(subnet_id, SubnetState::Active, 0);
@@ -454,7 +415,7 @@ fn do_owner_update_subnet_node_score_penalty_threshold() {
         let new_value = 1;
 
         assert_ok!(
-            Network::do_owner_update_subnet_node_score_penalty_threshold(
+            Network::do_owner_update_subnet_node_min_weight_decrease_reputation_threshold(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 new_value
@@ -462,15 +423,15 @@ fn do_owner_update_subnet_node_score_penalty_threshold() {
         );
 
         assert_eq!(
-            SubnetNodeScorePenaltyThreshold::<Test>::get(subnet_id),
+            SubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get(subnet_id),
             new_value
         );
 
         assert_err!(
-            Network::do_owner_update_subnet_node_score_penalty_threshold(
+            Network::do_owner_update_subnet_node_min_weight_decrease_reputation_threshold(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
-                MaxSubnetNodeScorePenaltyThreshold::<Test>::get() + 1
+                MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get() + 1
             ),
             Error::<Test>::InvalidPercent
         );
@@ -507,6 +468,7 @@ fn test_owner_pause_subnet() {
             *network_events().last().unwrap(),
             Event::SubnetPaused {
                 subnet_id: subnet_id,
+                owner: original_owner.clone(),
             }
         );
 
@@ -620,6 +582,7 @@ fn test_owner_unpause_subnet() {
             *network_events().last().unwrap(),
             Event::SubnetUnpaused {
                 subnet_id: subnet_id,
+                owner: original_owner.clone()
             }
         );
 
@@ -704,6 +667,7 @@ fn test_owner_unpause_subnet_repause_cooldown_error() {
             *network_events().last().unwrap(),
             Event::SubnetUnpaused {
                 subnet_id: subnet_id,
+                owner: original_owner.clone()
             }
         );
 
@@ -861,6 +825,293 @@ fn test_owner_unpause_subnet_verify_queue_updated() {
                 assert!(false);
             }
         }
+    });
+}
+
+#[test]
+fn test_owner_set_emergency_validator_subnet() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let max = 12;
+
+        build_activated_subnet_new(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
+
+        // Set initial owner
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+        let epoch = Network::get_current_epoch_as_u32();
+
+        // Transfer to new owner
+        assert_ok!(Network::owner_pause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::SubnetPaused {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+            }
+        );
+
+        let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
+        assert_eq!(subnet_data.state, SubnetState::Paused);
+        assert_eq!(subnet_data.start_epoch, epoch);
+
+        let mut original_subnet_node_ids: Vec<u32> = Vec::new();
+        for (id, _) in SubnetNodesData::<Test>::iter_prefix(subnet_id) {
+            original_subnet_node_ids.push(id);
+        }
+
+        let mut subnet_node_ids: Vec<u32> = Vec::new();
+        for (id, _) in SubnetNodesData::<Test>::iter_prefix(subnet_id).take((max - 1) as usize) {
+            subnet_node_ids.push(id);
+        }
+
+        let pre_emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert!(pre_emergency_validator_data.is_none());
+
+        assert_ok!(Network::owner_set_emergency_validator_set(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+            subnet_node_ids.clone()
+        ));
+
+        let emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert!(emergency_validator_data.is_some());
+        assert_eq!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            original_subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .target_emergency_validators_epochs,
+            0
+        );
+        assert_eq!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .max_emergency_validators_epoch,
+            0
+        );
+        assert_eq!(emergency_validator_data.clone().unwrap().total_epochs, 0);
+
+        assert_ok!(Network::owner_unpause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        let emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert_eq!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            original_subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .target_emergency_validators_epochs,
+            0
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .max_emergency_validators_epoch,
+            0
+        );
+        assert_eq!(emergency_validator_data.clone().unwrap().total_epochs, 0);
+
+        // EmergencySubnetNodeElectionData removes after being greater than total epochs
+        // so use += 2 here
+        for _ in 0..emergency_validator_data
+            .clone()
+            .unwrap()
+            .target_emergency_validators_epochs
+            .saturating_add(2)
+        {
+            increase_epochs(1);
+            let epoch = Network::get_current_epoch_as_u32();
+            set_block_to_subnet_slot_epoch(epoch, subnet_id);
+            let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+
+            Network::elect_validator(subnet_id, subnet_epoch, System::block_number());
+
+            // simulate calling distribute_rewards
+            let forked_subnet_node_ids: Option<BTreeSet<u32>> =
+                EmergencySubnetNodeElectionData::<Test>::mutate_exists(subnet_id, |maybe_data| {
+                    if let Some(data) = maybe_data {
+                        // Increment `total_epochs`
+                        data.total_epochs = data.total_epochs.saturating_add(1);
+
+                        Some(data.subnet_node_ids.iter().cloned().collect())
+                    } else {
+                        None
+                    }
+                });
+        }
+
+        assert_eq!(
+            EmergencySubnetNodeElectionData::<Test>::try_get(subnet_id),
+            Err(())
+        );
+    });
+}
+
+#[test]
+fn test_owner_fork_subnet_max_fork_epoch() {
+    new_test_ext().execute_with(|| {
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let max = 12;
+
+        build_activated_subnet_new(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+
+        let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
+        increase_epochs(pause_cooldown_epochs + 1);
+
+        // Set initial owner
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+        let epoch = Network::get_current_epoch_as_u32();
+
+        // Transfer to new owner
+        assert_ok!(Network::owner_pause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::SubnetPaused {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+            }
+        );
+
+        let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
+        assert_eq!(subnet_data.state, SubnetState::Paused);
+        assert_eq!(subnet_data.start_epoch, epoch);
+
+        let mut original_subnet_node_ids: Vec<u32> = Vec::new();
+        for (id, _) in SubnetNodesData::<Test>::iter_prefix(subnet_id) {
+            original_subnet_node_ids.push(id);
+        }
+
+        let mut subnet_node_ids: Vec<u32> = Vec::new();
+        for (id, _) in SubnetNodesData::<Test>::iter_prefix(subnet_id).take((max - 1) as usize) {
+            subnet_node_ids.push(id);
+        }
+
+        let pre_emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert!(pre_emergency_validator_data.is_none());
+
+        assert_ok!(Network::owner_set_emergency_validator_set(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+            subnet_node_ids.clone()
+        ));
+
+        let emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert!(emergency_validator_data.is_some());
+        assert_eq!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            original_subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .target_emergency_validators_epochs,
+            0
+        );
+        assert_eq!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .max_emergency_validators_epoch,
+            0
+        );
+        assert_eq!(emergency_validator_data.clone().unwrap().total_epochs, 0);
+
+        assert_ok!(Network::owner_unpause_subnet(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+        ));
+
+        let emergency_validator_data = EmergencySubnetNodeElectionData::<Test>::get(subnet_id);
+        assert_eq!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data.clone().unwrap().subnet_node_ids,
+            original_subnet_node_ids
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .target_emergency_validators_epochs,
+            0
+        );
+        assert_ne!(
+            emergency_validator_data
+                .clone()
+                .unwrap()
+                .max_emergency_validators_epoch,
+            0
+        );
+        assert_eq!(emergency_validator_data.clone().unwrap().total_epochs, 0);
+
+        let max_epochs = emergency_validator_data
+            .clone()
+            .unwrap()
+            .max_emergency_validators_epoch
+            .saturating_sub(Network::get_current_subnet_epoch_as_u32(subnet_id));
+        log::error!("max_epochs {:?}", max_epochs);
+
+        // EmergencySubnetNodeElectionData removes after being greater than `max_epochs`
+        for _ in 0..max_epochs.saturating_add(1) {
+            increase_epochs(1);
+            let epoch = Network::get_current_epoch_as_u32();
+            set_block_to_subnet_slot_epoch(epoch, subnet_id);
+            let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
+            Network::elect_validator(subnet_id, subnet_epoch, System::block_number());
+        }
+
+        assert_eq!(
+            EmergencySubnetNodeElectionData::<Test>::try_get(subnet_id),
+            Err(())
+        );
     });
 }
 
@@ -1487,86 +1738,6 @@ fn test_owner_update_included_classification_epochs_invalid_included_classificat
 }
 
 #[test]
-fn test_owner_update_max_node_penalties() {
-    new_test_ext().execute_with(|| {
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
-
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
-        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-
-        let original_owner = account(1);
-
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-        let epoch = Network::get_current_epoch_as_u32();
-
-        let max_penalties = MaxSubnetNodePenalties::<Test>::get(subnet_id);
-
-        let new_max_penalties = max_penalties + 1;
-        assert_ok!(Network::owner_update_max_node_penalties(
-            RuntimeOrigin::signed(original_owner.clone()),
-            subnet_id,
-            new_max_penalties
-        ));
-
-        let max_penalties = MaxSubnetNodePenalties::<Test>::get(subnet_id);
-        assert_eq!(max_penalties, new_max_penalties);
-
-        assert_eq!(
-            *network_events().last().unwrap(),
-            Event::MaxSubnetNodePenaltiesUpdate {
-                subnet_id: subnet_id,
-                owner: original_owner.clone(),
-                value: max_penalties
-            }
-        );
-    });
-}
-
-#[test]
-fn test_owner_update_max_node_penalties_invalid_max_node_penalties() {
-    new_test_ext().execute_with(|| {
-        let subnet_name: Vec<u8> = "subnet-name".into();
-        let deposit_amount: u128 = 10000000000000000000000;
-        let amount: u128 = 1000000000000000000000;
-        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
-
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
-        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-
-        let original_owner = account(1);
-
-        // Set initial owner
-        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
-
-        let value = MinMaxSubnetNodePenalties::<Test>::get() - 1;
-
-        assert_err!(
-            Network::owner_update_max_node_penalties(
-                RuntimeOrigin::signed(original_owner.clone()),
-                subnet_id,
-                value
-            ),
-            Error::<Test>::InvalidMaxSubnetNodePenalties
-        );
-
-        let value = MaxMaxSubnetNodePenalties::<Test>::get() + 1;
-
-        assert_err!(
-            Network::owner_update_max_node_penalties(
-                RuntimeOrigin::signed(original_owner.clone()),
-                subnet_id,
-                value
-            ),
-            Error::<Test>::InvalidMaxSubnetNodePenalties
-        );
-    });
-}
-
-#[test]
 fn test_owner_add_or_update_initial_coldkeys() {
     new_test_ext().execute_with(|| {
         increase_epochs(1);
@@ -1578,6 +1749,7 @@ fn test_owner_add_or_update_initial_coldkeys() {
         let subnet_id = 1;
         let subnet_data = SubnetData {
             id: subnet_id,
+            friendly_id: subnet_id,
             name: subnet_name.clone(),
             repo: subnet_name.clone(),
             description: subnet_name.clone(),
@@ -1666,6 +1838,7 @@ fn test_owner_remove_initial_coldkeys() {
         let subnet_id = 1;
         let subnet_data = SubnetData {
             id: subnet_id,
+            friendly_id: subnet_id,
             name: subnet_name.clone(),
             repo: subnet_name.clone(),
             description: subnet_name.clone(),
@@ -1757,6 +1930,7 @@ fn test_owner_update_key_types() {
         let subnet_id = 1;
         let subnet_data = SubnetData {
             id: subnet_id,
+            friendly_id: subnet_id,
             name: subnet_name.clone(),
             repo: subnet_name.clone(),
             description: subnet_name.clone(),
@@ -2532,6 +2706,7 @@ fn test_owner_add_bootnode_access() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let subnet_data = SubnetData {
             id: subnet_id,
+            friendly_id: subnet_id,
             name: subnet_name.clone(),
             repo: subnet_name.clone(),
             description: subnet_name.clone(),
@@ -2641,6 +2816,7 @@ fn test_owner_remove_bootnode_access() {
         let subnet_name: Vec<u8> = "subnet-name".into();
         let subnet_data = SubnetData {
             id: subnet_id,
+            friendly_id: subnet_id,
             name: subnet_name.clone(),
             repo: subnet_name.clone(),
             description: subnet_name.clone(),
@@ -2783,15 +2959,6 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
             Error::<Test>::NotSubnetOwner
         );
 
-        assert_err!(
-            Network::do_owner_update_max_node_penalties(
-                RuntimeOrigin::signed(fake_owner),
-                subnet_id,
-                1
-            ),
-            Error::<Test>::NotSubnetOwner
-        );
-
         let new_coldkeys = BTreeMap::from([(account(0), 1)]);
         assert_err!(
             Network::owner_add_or_update_initial_coldkeys(
@@ -2823,11 +2990,12 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_update_min_stake(RuntimeOrigin::signed(fake_owner), subnet_id, 1),
-            Error::<Test>::NotSubnetOwner
-        );
-        assert_err!(
-            Network::do_owner_update_max_stake(RuntimeOrigin::signed(fake_owner), subnet_id, 1),
+            Network::do_owner_update_min_max_stake(
+                RuntimeOrigin::signed(fake_owner),
+                subnet_id,
+                1,
+                2
+            ),
             Error::<Test>::NotSubnetOwner
         );
         assert_err!(

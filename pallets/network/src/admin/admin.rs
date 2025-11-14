@@ -72,15 +72,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_max_subnet_penalty_count(value: u32) -> DispatchResult {
-        ensure!(value > 0, Error::<T>::InvalidMaxSubnetPenaltyCount);
-
-        MaxSubnetPenaltyCount::<T>::set(value);
-
-        Self::deposit_event(Event::SetMaxSubnetPenaltyCount(value));
-
-        Ok(())
-    }
     pub fn do_set_max_pause_epochs(value: u32) -> DispatchResult {
         ensure!(value > 0, Error::<T>::InvalidMaxSubnetPauseEpochs);
 
@@ -189,17 +180,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_max_subnet_node_penalties(min: u32, max: u32) -> DispatchResult {
-        ensure!(min < max, Error::<T>::InvalidValues);
-
-        MinMaxSubnetNodePenalties::<T>::set(min);
-        MaxMaxSubnetNodePenalties::<T>::set(max);
-
-        Self::deposit_event(Event::SetMinMaxSubnetNodePenalties(min));
-        Self::deposit_event(Event::SetMaxMaxSubnetNodePenalties(max));
-
-        Ok(())
-    }
     pub fn do_set_subnet_min_stakes(min: u128, max: u128) -> DispatchResult {
         ensure!(min < max, Error::<T>::InvalidValues);
 
@@ -213,6 +193,11 @@ impl<T: Config> Pallet<T> {
     }
     pub fn do_set_delegate_stake_percentages(min: u128, max: u128) -> DispatchResult {
         ensure!(min < max, Error::<T>::InvalidValues);
+
+        ensure!(
+            max <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
 
         MinDelegateStakePercentage::<T>::set(min);
         MaxDelegateStakePercentage::<T>::set(max);
@@ -308,9 +293,9 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidPercent
         );
 
-        ReputationIncreaseFactor::<T>::set(value);
+        ColdkeyReputationIncreaseFactor::<T>::set(value);
 
-        Self::deposit_event(Event::SetReputationIncreaseFactor(value));
+        Self::deposit_event(Event::SetColdkeyReputationIncreaseFactor(value));
 
         Ok(())
     }
@@ -320,9 +305,9 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidPercent
         );
 
-        ReputationDecreaseFactor::<T>::set(value);
+        ColdkeyReputationDecreaseFactor::<T>::set(value);
 
-        Self::deposit_event(Event::SetReputationDecreaseFactor(value));
+        Self::deposit_event(Event::SetColdkeyReputationDecreaseFactor(value));
 
         Ok(())
     }
@@ -408,13 +393,6 @@ impl<T: Config> Pallet<T> {
         OverwatchCommitCutoffPercent::<T>::set(value);
 
         Self::deposit_event(Event::SetOverwatchCommitCutoffPercent(value));
-
-        Ok(())
-    }
-    pub fn do_set_max_overwatch_node_penalties(value: u32) -> DispatchResult {
-        MaxOverwatchNodePenalties::<T>::set(value);
-
-        Self::deposit_event(Event::SetMaxOverwatchNodePenalties(value));
 
         Ok(())
     }
@@ -614,6 +592,11 @@ impl<T: Config> Pallet<T> {
     pub fn do_set_node_burn_rates(min: u128, max: u128) -> DispatchResult {
         ensure!(min < max && min > 0, Error::<T>::InvalidValues);
 
+        ensure!(
+            max <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
         MinNodeBurnRate::<T>::put(min);
         MaxNodeBurnRate::<T>::put(max);
 
@@ -659,15 +642,15 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_max_subnet_node_score_penalty_threshold(value: u128) -> DispatchResult {
+    pub fn do_set_max_subnet_node_min_weight_decrease_reputation_threshold(value: u128) -> DispatchResult {
         ensure!(
             value <= Self::percentage_factor_as_u128(),
             Error::<T>::InvalidPercent
         );
 
-        MaxSubnetNodeScorePenaltyThreshold::<T>::put(value);
+        MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::put(value);
 
-        Self::deposit_event(Event::SetMaxSubnetNodeScorePenaltyThreshold(value));
+        Self::deposit_event(Event::SetMaxSubnetNodeMinWeightDecreaseReputationThreshold(value));
 
         Ok(())
     }
@@ -712,6 +695,161 @@ impl<T: Config> Pallet<T> {
         AttestorMinRewardFactor::<T>::put(value);
 
         Self::deposit_event(Event::SetAttestorMinRewardFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_min_max_node_reputation(min: u128, max: u128) -> DispatchResult {
+        ensure!(min < max, Error::<T>::InvalidValues);
+
+        ensure!(
+            max <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MinMinSubnetNodeReputation::<T>::put(min);
+        MaxMinSubnetNodeReputation::<T>::put(max);
+
+        Self::deposit_event(Event::SetMinNodeReputation(min));
+        Self::deposit_event(Event::SetMaxNodeReputation(max));
+
+        Ok(())
+    }
+
+    pub fn do_set_min_max_node_reputation_factor(min: u128, max: u128) -> DispatchResult {
+        ensure!(min < max, Error::<T>::InvalidValues);
+
+        ensure!(
+            max <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MinNodeReputationFactor::<T>::put(min);
+        MaxNodeReputationFactor::<T>::put(max);
+
+        Self::deposit_event(Event::SetMinNodeReputationFactor(min));
+        Self::deposit_event(Event::SetMaxNodeReputationFactor(max));
+
+        Ok(())
+    }
+
+    pub fn do_set_min_subnet_reputation(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MinSubnetReputation::<T>::put(value);
+
+        Self::deposit_event(Event::SetMinSubnetReputation(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_not_in_consensus_subnet_reputation_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        NotInConsensusSubnetReputationFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetNotInConsensusSubnetReputationFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_max_pause_epochs_subnet_reputation_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MaxPauseEpochsSubnetReputationFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxPauseEpochsSubnetReputationFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_less_than_min_nodes_subnet_reputation_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        LessThanMinNodesSubnetReputationFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetLessThanMinNodesSubnetReputationFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_validator_proposal_absent_subnet_reputation_factor(
+        value: u128,
+    ) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ValidatorAbsentSubnetReputationFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetValidatorAbsentSubnetReputationFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_in_consensus_subnet_reputation_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        InConsensusSubnetReputationFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetInConsensusSubnetReputationFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_overwatch_weight_factor(value: u128) -> DispatchResult {
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        OverwatchWeightFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetOverwatchWeightFactor(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_max_emergency_validator_epochs_multiplier(value: u128) -> DispatchResult {
+        // Must be greater than or equal to 1.0
+        ensure!(
+            value >= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        MaxEmergencyValidatorEpochsMultiplier::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxEmergencyValidatorEpochsMultiplier(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_overwatch_stake_weight_factor(value: u128) -> DispatchResult {
+        // Must be greater than or equal to 1.0
+        ensure!(
+            value > 0 && value >= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        OverwatchStakeWeightFactor::<T>::put(value);
+
+        Self::deposit_event(Event::SetOverwatchStakeWeightFactor(value));
 
         Ok(())
     }

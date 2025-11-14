@@ -151,19 +151,13 @@ describe("test node staking-0x65683fx2", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         subnetId = await subnetContract.getSubnetId(subnetName);
@@ -229,7 +223,7 @@ describe("test node staking-0x65683fx2", () => {
           peer5,
           peer6,
           peer7,
-          bootnode,
+          generateRandomString(16),
           delegateRewardRate,
           BigInt(minStake.toString()),
           unique2,
@@ -316,7 +310,7 @@ describe("test node staking-0x65683fx2", () => {
         let accountSubnetStakeAfterRemoval = await api.query.network.accountSubnetStake(wallet5.address, subnetId);
         expect(Number(accountSubnetStakePre.toString())).to.be.equal(Number(accountSubnetStakeAfterRemoval.toString()));
 
-        const unbondings = (await api.query.network.stakeUnbondingLedgerV2(wallet2.address)).toHuman();
+        const unbondings = (await api.query.network.stakeUnbondingLedger(wallet2.address)).toHuman();
         console.log("unbondings", unbondings)
         const unbondingBalance = Object.values(unbondings!)[0];
         const unbondingBalanceWithoutCommas = unbondingBalance.replace(/,/g, "");

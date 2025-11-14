@@ -144,19 +144,13 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         const palletSubnetId = await api.query.network.subnetName(subnetName);
@@ -222,19 +216,13 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         const palletSubnetId = await api.query.network.subnetName(subnetName);
@@ -292,27 +280,33 @@ describe("Test subnet register activate-0xuhnrfvok", () => {
           subnetId.toString()
         );
 
-        const delegateStakerBalanceBefore = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
+        if (minDelegateStake > 0) {
+            console.log("minDelegateStake", minDelegateStake)
 
-        await transferBalanceFromSudo(
-            api,
-            papiApi,
-            SUB_LOCAL_URL,
-            wallet1.address,
-            BigInt(minDelegateStake + BigInt(100000)),
-        )
+            const delegateStakerBalanceBefore = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
+            console.log("delegateStakerBalanceBefore", delegateStakerBalanceBefore)
 
-        const delegateStakerBalance = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
-        expect(Number(delegateStakerBalance)).to.be.greaterThanOrEqual(Number(minDelegateStake));
+            await transferBalanceFromSudo(
+                api,
+                papiApi,
+                SUB_LOCAL_URL,
+                wallet1.address,
+                BigInt(minDelegateStake + BigInt(100000)),
+            )
 
-        // Delegate stake
-        const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
-        await addToDelegateStake(
-            stakingContract, 
-            subnetId,
-            minDelegateStake,
-            BigInt(0)
-        );
+            const delegateStakerBalance = (await papiApi.query.System.Account.getValue(wallet1.address)).data.free
+            expect(Number(delegateStakerBalance)).to.be.greaterThanOrEqual(Number(minDelegateStake));
+            console.log("delegateStakerBalance", delegateStakerBalance)
+
+            // Delegate stake
+            const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_CONTRACT_ABI, wallet1);
+            await addToDelegateStake(
+                stakingContract, 
+                subnetId,
+                minDelegateStake,
+                BigInt(0)
+            );
+        }
 
         await activateSubnet(
             subnetContract, 

@@ -83,6 +83,12 @@ pub trait NetworkCustomApi<BlockHash> {
         subnet_epoch: u32,
         at: Option<BlockHash>,
     ) -> RpcResult<Vec<u8>>;
+    #[method(name = "network_getValidatorsAndAttestors")]
+    fn get_validators_and_attestors(
+        &self,
+        subnet_id: u32,
+        at: Option<BlockHash>,
+    ) -> RpcResult<Vec<u8>>;
 }
 
 /// A struct that implements the `NetworkCustomApi`.
@@ -202,6 +208,7 @@ where
                 .into()
             })
     }
+
     fn get_bootnodes(
         &self,
         subnet_id: u32,
@@ -304,6 +311,23 @@ where
         api.get_elected_validator_info(at, subnet_id, subnet_epoch)
             .map_err(|e| {
                 Error::RuntimeError(format!("Unable to get elected validator info: {:?}", e)).into()
+            })
+    }
+
+    fn get_validators_and_attestors(
+        &self,
+        subnet_id: u32,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> RpcResult<Vec<u8>> {
+        let api = self.client.runtime_api();
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_validators_and_attestors(at, subnet_id)
+            .map_err(|e| {
+                Error::RuntimeError(format!(
+                    "Unable to get validators and attestor node info: {:?}",
+                    e
+                ))
+                .into()
             })
     }
 }

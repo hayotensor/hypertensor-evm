@@ -597,20 +597,14 @@ pub fn default_registration_subnet_data<T: Config>(
     end: u32,
 ) -> RegistrationSubnetData<T::AccountId> {
     let seed_bytes: &[u8] = &name;
-    let add_subnet_data = RegistrationSubnetData {
+    let add_subnet_data = RegistrationSubnetData {       
         name: name.clone(),
         repo: blake2_128(seed_bytes).to_vec(), // must be unique
         description: Vec::new(),
         misc: Vec::new(),
-        churn_limit: 4,
         min_stake: MinSubnetMinStake::<T>::get(),
         max_stake: NetworkMaxStakeBalance::<T>::get(),
         delegate_stake_percentage: 100000000000000000, // 10%
-        subnet_node_queue_epochs: 4,
-        idle_classification_epochs: 4,
-        included_classification_epochs: 4,
-        max_node_penalties: 3,
-        max_registered_nodes: MaxMaxRegisteredNodes::<T>::get(),
         initial_coldkeys: get_initial_coldkeys::<T>(subnets, max_subnet_nodes, start, end),
         key_types: BTreeSet::from([KeyType::Rsa]),
         bootnodes: BTreeSet::from([BoundedVec::new()]),
@@ -668,6 +662,7 @@ pub fn insert_subnet<T: Config>(id: u32, state: SubnetState, start_epoch: u32) {
 pub fn new_subnet_data<T: Config>(id: u32, state: SubnetState, start_epoch: u32) -> SubnetData {
     SubnetData {
         id,
+        friendly_id: id,
         name: vec![],
         repo: vec![],
         description: vec![],
@@ -955,7 +950,7 @@ pub fn get_simulated_consensus_data<T: Config>(
             node_id,
             AttestEntry {
                 block: block_number,
-                subnet_epoch_progression: 0,
+                attestor_progress: 0,
                 reward_factor: Network::<T>::percentage_factor_as_u128(),
                 data: None,
             },
@@ -1745,40 +1740,6 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn owner_update_max_node_penalties() {
-        let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-        build_activated_subnet::<T>(
-            DEFAULT_SUBNET_NAME.into(),
-            0,
-            max_subnet_nodes,
-            DEFAULT_DEPOSIT_AMOUNT,
-            DEFAULT_SUBNET_NODE_STAKE,
-        );
-        let subnet_id = SubnetName::<T>::get::<Vec<u8>>(DEFAULT_SUBNET_NAME.into()).unwrap();
-
-        let min_nodes = MinSubnetNodes::<T>::get();
-        let max_subnets = MaxSubnets::<T>::get();
-        let max_subnet_nodes = MaxSubnetNodes::<T>::get();
-
-        let owner_coldkey =
-            funded_initializer::<T>("subnet_owner", subnet_id * max_subnets * max_subnet_nodes);
-
-        let current_value = MaxSubnetNodePenalties::<T>::get(subnet_id);
-
-        let new_value = current_value + 1;
-
-        #[extrinsic_call]
-        owner_update_max_node_penalties(
-            RawOrigin::Signed(owner_coldkey.clone()),
-            subnet_id,
-            new_value,
-        );
-
-        let value = MaxSubnetNodePenalties::<T>::get(subnet_id);
-        assert_eq!(value, new_value);
-    }
-
-    #[benchmark]
     fn owner_add_or_update_initial_coldkeys() {
         let block_number = get_current_block_as_u32::<T>();
         let cost = Network::<T>::get_current_registration_cost(block_number) + 1000;
@@ -2031,8 +1992,11 @@ mod benchmarks {
             new_max,
         );
 
+        let value = SubnetMinStakeBalance::<T>::get(subnet_id);
+        assert_eq!(value, new_min);
+
         let value = SubnetMaxStakeBalance::<T>::get(subnet_id);
-        assert_eq!(value, new_value);
+        assert_eq!(value, new_max);
     }
 
     #[benchmark]
@@ -2363,7 +2327,7 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn owner_update_subnet_node_score_penalty_threshold() {
+    fn owner_update_subnet_node_min_weight_decrease_reputation_threshold() {
         let max_subnet_nodes = MaxSubnetNodes::<T>::get();
         build_activated_subnet::<T>(
             DEFAULT_SUBNET_NAME.into(),
@@ -2384,14 +2348,14 @@ mod benchmarks {
         let new_value = 1;
 
         #[extrinsic_call]
-        owner_update_subnet_node_score_penalty_threshold(
+        owner_update_subnet_node_min_weight_decrease_reputation_threshold(
             RawOrigin::Signed(owner_coldkey.clone()),
             subnet_id,
             new_value,
         );
 
         assert_eq!(
-            SubnetNodeScorePenaltyThreshold::<T>::get(subnet_id),
+            SubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(subnet_id),
             new_value
         );
     }
@@ -4845,19 +4809,6 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_max_subnet_penalty_count() {
-        let value = MaxSubnetPenaltyCount::<T>::get();
-        let new_value = value - 1;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_subnet_penalty_count(new_value);
-        }
-
-        assert_eq!(MaxSubnetPenaltyCount::<T>::get(), new_value);
-    }
-
-    #[benchmark]
     fn set_max_pause_epochs() {
         let value = MaxSubnetPauseEpochs::<T>::get();
         let new_value = value - 1;
@@ -5070,20 +5021,6 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_min_max_subnet_node_penalties() {
-        let min = 5;
-        let max = 6;
-
-        #[block]
-        {
-            Network::<T>::do_set_max_subnet_node_penalties(min, max);
-        }
-
-        assert_eq!(MinMaxSubnetNodePenalties::<T>::get(), min);
-        assert_eq!(MaxMaxSubnetNodePenalties::<T>::get(), max);
-    }
-
-    #[benchmark]
     fn set_subnet_min_stakes() {
         let min = 5;
         let max = 6;
@@ -5238,7 +5175,7 @@ mod benchmarks {
 
     #[benchmark]
     fn set_reputation_increase_factor() {
-        let value = ReputationIncreaseFactor::<T>::get();
+        let value = ColdkeyReputationIncreaseFactor::<T>::get();
         let new_value = value - 1;
 
         let account = get_account::<T>("account", 0);
@@ -5248,12 +5185,12 @@ mod benchmarks {
             Network::<T>::do_set_reputation_increase_factor(new_value);
         }
 
-        assert_eq!(ReputationIncreaseFactor::<T>::get(), new_value);
+        assert_eq!(ColdkeyReputationIncreaseFactor::<T>::get(), new_value);
     }
 
     #[benchmark]
     fn set_reputation_decrease_factor() {
-        let value = ReputationDecreaseFactor::<T>::get();
+        let value = ColdkeyReputationDecreaseFactor::<T>::get();
         let new_value = value - 1;
 
         let account = get_account::<T>("account", 0);
@@ -5263,7 +5200,7 @@ mod benchmarks {
             Network::<T>::do_set_reputation_decrease_factor(new_value);
         }
 
-        assert_eq!(ReputationDecreaseFactor::<T>::get(), new_value);
+        assert_eq!(ColdkeyReputationDecreaseFactor::<T>::get(), new_value);
     }
 
     #[benchmark]
@@ -5414,21 +5351,6 @@ mod benchmarks {
         }
 
         assert_eq!(OverwatchCommitCutoffPercent::<T>::get(), new_value);
-    }
-
-    #[benchmark]
-    fn set_max_overwatch_node_penalties() {
-        let value = MaxOverwatchNodePenalties::<T>::get();
-        let new_value = value - 1;
-
-        let account = get_account::<T>("account", 0);
-
-        #[block]
-        {
-            Network::<T>::do_set_max_overwatch_node_penalties(new_value);
-        }
-
-        assert_eq!(MaxOverwatchNodePenalties::<T>::get(), new_value);
     }
 
     #[benchmark]
@@ -5712,15 +5634,15 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn set_max_subnet_node_score_penalty_threshold() {
+    fn set_max_subnet_node_min_weight_decrease_reputation_threshold() {
         let new_value = 1;
 
         #[block]
         {
-            Network::<T>::do_set_max_subnet_node_score_penalty_threshold(new_value);
+            Network::<T>::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(new_value);
         }
 
-        assert_eq!(MaxSubnetNodeScorePenaltyThreshold::<T>::get(), new_value);
+        assert_eq!(MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(), new_value);
     }
 
     #[benchmark]
@@ -5981,7 +5903,7 @@ mod benchmarks {
 
         #[block]
         {
-            let _ = Network::<T>::do_remove_subnet(subnet_id, SubnetRemovalReason::MaxPenalties);
+            let _ = Network::<T>::do_remove_subnet(subnet_id, SubnetRemovalReason::MinReputation);
         }
 
         assert_eq!(SubnetsData::<T>::try_get(subnet_id), Err(()));
@@ -6074,7 +5996,8 @@ mod benchmarks {
                 subnet_node_id,
                 1, // attestation percentage
                 MinAttestationPercentage::<T>::get(),
-                ReputationDecreaseFactor::<T>::get(),
+                ColdkeyReputationDecreaseFactor::<T>::get(),
+                0,
                 Network::<T>::get_current_epoch_as_u32(),
             );
         }
@@ -6211,7 +6134,7 @@ mod benchmarks {
                 coldkey.clone(),
                 100000000000000000000,
                 660000000000000000,
-                ReputationIncreaseFactor::<T>::get(),
+                ColdkeyReputationIncreaseFactor::<T>::get(),
                 Network::<T>::get_current_epoch_as_u32(),
             );
         }
@@ -6457,8 +6380,8 @@ mod benchmarks {
     //         assert!(result.is_some(), "Precheck consensus failed");
     //     }
 
-    //     let pen = SubnetPenaltyCount::<T>::get(subnet_id);
-    //     assert_eq!(pen, 0);
+    //     let rep = SubnetReputation::<T>::get(subnet_id);
+    //     assert_eq!(rep, Network::<T>::percentage_factor_as_u128());
     // }
 
     // // Informational purposes only

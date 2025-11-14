@@ -160,24 +160,178 @@ fn test_checked_mul_div() {
     });
 }
 
+// #[test]
+// fn test_sigmoid_decreasing() {
+//     new_test_ext().execute_with(|| {
+//         let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 1.0);
+//         assert_eq!(y, 0.5);
+
+//         let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 2.0);
+//         assert_eq!(y, 1.0);
+
+//         let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 1.0, 2.0);
+//         assert_eq!(y, 1.5);
+//     });
+// }
+
 #[test]
-fn test_sigmoid_decreasing() {
+fn test_sigmoid_decreasing_bounds() {
     new_test_ext().execute_with(|| {
-        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 1.0);
-        assert_eq!(y, 0.5);
+        let min = 0.5;
+        let max = 2.0;
+        let mid = 0.5;
+        let k = 5.0;
 
-        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 0.0, 2.0);
-        assert_eq!(y, 1.0);
-
-        let y = Network::sigmoid_decreasing(0.5, 0.5, 10.0, 1.0, 2.0);
-        assert_eq!(y, 1.5);
+        let xs = [0.0, 0.25, 0.5, 0.75, 1.0];
+        for &x in &xs {
+            let y = Network::sigmoid_decreasing(x, mid, k, min, max);
+            assert!(
+                y >= min && y <= max,
+                "y={} is out of bounds [{},{}]",
+                y,
+                min,
+                max
+            );
+        }
     });
 }
 
 #[test]
-fn test_concave_down_decreasing() {
+fn test_sigmoid_decreasing_symmetry() {
     new_test_ext().execute_with(|| {
-        let y = Network::concave_down_decreasing(0.0, 10.0, 0.0, 1.0);
-        assert_eq!(y, 1.0);
+        let min = 0.0;
+        let max = 1.0;
+        let mid = 0.5;
+        let k = 5.0;
+
+        let y_left = Network::sigmoid_decreasing(0.25, mid, k, min, max);
+        let y_right = Network::sigmoid_decreasing(0.75, mid, k, min, max);
+
+        let complement_diff = (y_left + y_right - 1.0).abs();
+        log::error!("complement_diff={:?}", complement_diff);
+        assert!(
+            complement_diff < 1e-6,
+            "Expected y_left + y_right ≈ 1.0, got {} + {}",
+            y_left,
+            y_right
+        );
+    });
+}
+
+#[test]
+fn test_sigmoid_decreasing_monotonicity() {
+    new_test_ext().execute_with(|| {
+        let min = 0.0;
+        let max = 1.0;
+        let mid = 0.5;
+        let k = 5.0;
+
+        let y0 = Network::sigmoid_decreasing(0.0, mid, k, min, max);
+        let y1 = Network::sigmoid_decreasing(0.25, mid, k, min, max);
+        let y2 = Network::sigmoid_decreasing(0.5, mid, k, min, max);
+        let y3 = Network::sigmoid_decreasing(0.75, mid, k, min, max);
+        let y4 = Network::sigmoid_decreasing(1.0, mid, k, min, max);
+
+        assert!(
+            y0 > y1 && y1 > y2 && y2 > y3 && y3 > y4,
+            "Function is not decreasing properly"
+        );
+    });
+}
+
+#[test]
+fn test_sigmoid_decreasing_extreme_k() {
+    new_test_ext().execute_with(|| {
+        let min = 0.0;
+        let max = 1.0;
+        let mid = 0.5;
+
+        // Very small k → almost linear
+        let y_low_k0 = Network::sigmoid_decreasing(0.0, mid, 0.01, min, max);
+        let y_high_k0 = Network::sigmoid_decreasing(1.0, mid, 0.01, min, max);
+        assert!(y_low_k0 > y_high_k0);
+
+        // Very large k → almost step function
+        let y_low_k1 = Network::sigmoid_decreasing(0.0, mid, 50.0, min, max);
+        let y_high_k1 = Network::sigmoid_decreasing(1.0, mid, 50.0, min, max);
+        // assert!((y_low_k1 - max).abs() < 1e-12);
+        // assert!((y_high_k1 - min).abs() < 1e-12);
+        assert!(
+            (y_low_k1 - max).abs() < 1e-6,
+            "y_low_k1={} not close to max={}",
+            y_low_k1,
+            max
+        );
+        assert!(
+            (y_high_k1 - min).abs() < 1e-6,
+            "y_high_k1={} not close to min={}",
+            y_high_k1,
+            min
+        );
+    });
+}
+
+#[test]
+fn test_concave_down_decreasing_basic() {
+    new_test_ext().execute_with(|| {
+        let min = 0.5;
+        let max = 2.0;
+        let power = 2.0;
+
+        // x = 0.0 -> should return max
+        let y = Network::concave_down_decreasing(0.0, min, max, power);
+        assert!((y - max).abs() < 1e-12, "Expected {}, got {}", max, y);
+
+        // x = 1.0 -> should return min
+        let y = Network::concave_down_decreasing(1.0, min, max, power);
+        assert!((y - min).abs() < 1e-12, "Expected {}, got {}", min, y);
+
+        // x = 0.5 -> should be between min and max
+        let y = Network::concave_down_decreasing(0.5, min, max, power);
+        assert!(
+            y > min && y < max,
+            "Expected between {} and {}, got {}",
+            min,
+            max,
+            y
+        );
+    });
+}
+
+#[test]
+fn test_concave_down_decreasing_power_edge() {
+    new_test_ext().execute_with(|| {
+        let min = 0.0;
+        let max = 1.0;
+
+        // negative power -> should default to 1.0
+        let y = Network::concave_down_decreasing(0.5, min, max, -2.0);
+        // with power = 1: y = 1 - x = 1 - 0.5 = 0.5
+        assert!((y - 0.5).abs() < 1e-12, "Expected 0.5, got {}", y);
+
+        // zero power -> should default to 1.0
+        let y = Network::concave_down_decreasing(0.5, min, max, 0.0);
+        assert!((y - 0.5).abs() < 1e-12, "Expected 0.5, got {}", y);
+    });
+}
+
+#[test]
+fn test_concave_down_decreasing_monotonicity() {
+    new_test_ext().execute_with(|| {
+        let min = 0.0;
+        let max = 1.0;
+        let power = 2.0;
+
+        // Check that the function decreases as x increases
+        let y0 = Network::concave_down_decreasing(0.0, min, max, power);
+        let y1 = Network::concave_down_decreasing(0.25, min, max, power);
+        let y2 = Network::concave_down_decreasing(0.5, min, max, power);
+        let y3 = Network::concave_down_decreasing(0.75, min, max, power);
+        let y4 = Network::concave_down_decreasing(1.0, min, max, power);
+
+        assert!(
+            y0 > y1 && y1 > y2 && y2 > y3 && y3 > y4,
+            "Function is not strictly decreasing"
+        );
     });
 }

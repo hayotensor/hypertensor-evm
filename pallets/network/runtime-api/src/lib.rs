@@ -37,5 +37,6 @@ sp_api::decl_runtime_apis! {
     fn get_overwatch_commits_for_epoch_and_node(epoch: u32,overwatch_node_id: u32) -> Vec<u8>;
     fn get_overwatch_reveals_for_epoch_and_node(epoch: u32,overwatch_node_id: u32) -> Vec<u8>;
     fn get_elected_validator_info(subnet_id: u32,subnet_epoch: u32) -> Vec<u8>;
+    fn get_validators_and_attestors(subnet_id: u32) -> Vec<u8>;
   }
 }

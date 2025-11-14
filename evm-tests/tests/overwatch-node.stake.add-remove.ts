@@ -152,15 +152,9 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
@@ -278,7 +272,7 @@ describe("test overwatch nodes-0xDDDDDJUUK9996", () => {
         );
 
         let stakeBalance = await api.query.network.accountOverwatchStake(wallet5.address);
-        expect(BigInt(stakeBalance.toString())).to.equal(stakeAmount)
+        expect(BigInt(stakeBalance.toString())).to.equal(BigInt(minStake.toString()) + stakeAmount)
 
         let precompileStakeBalance = await overwatchNodeContract1.accountOverwatchStake(wallet5.address);
         expect(BigInt(stakeBalance.toString())).to.be.equal(BigInt(precompileStakeBalance.toString()))

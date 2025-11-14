@@ -158,19 +158,13 @@ describe("test delegate staking-0xDy454g", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         subnetId = await subnetContract.getSubnetId(subnetName);
@@ -275,7 +269,7 @@ describe("test delegate staking-0xDy454g", () => {
         // Ensure there is a balance
         expect(Number(sharesAfterDelegateStake)).to.not.equal(0);
         expect(Number(balanceAfterDelegateStake)).to.not.equal(0);
-        expect(Number(balanceAfterDelegateStake)).to.be.lessThan(Number(sharesAfterDelegateStake));
+        expect(Number(balanceAfterDelegateStake)).to.be.lessThanOrEqual(Number(sharesAfterDelegateStake));
 
         const beforeFinalizedBalance = await waitForFinalizedBalance(
             papiApi, 

@@ -37,6 +37,7 @@ fn test_do_commit_and_reveal_weights_success() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -107,6 +108,7 @@ fn test_do_commit_and_reveal_weights_not_key_owner_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -161,6 +163,7 @@ fn test_do_commit_and_reveal_weights_blacklisted_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -217,6 +220,7 @@ fn test_do_commit_and_reveal_weights_commits_empty_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -268,6 +272,7 @@ fn test_do_commit_and_reveal_weights_already_committed_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -373,6 +378,7 @@ fn test_commit_and_reveal_extrinsics() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -457,6 +463,7 @@ fn test_reveal_overwatch_subnet_weights_not_key_owner_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -552,6 +559,7 @@ fn test_reveal_overwatch_subnet_weights_blacklisted_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -636,6 +644,7 @@ fn test_reveal_overwatch_subnet_weights_no_commit_found_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -703,6 +712,7 @@ fn test_reveal_overwatch_subnet_weights_reveal_mismatch_error() {
         // Setup: assign ownership and create subnet
         let subnet_data = SubnetData {
             id: 1,
+            friendly_id: 1,
             name: "subnet_name".into(),
             repo: "github".into(),
             description: "description".into(),
@@ -773,6 +783,7 @@ fn test_commit_reveal_multiple_times_in_same_epoch() {
         let subnet_id_1 = 1;
         let subnet_data = SubnetData {
             id: subnet_id_1,
+            friendly_id: subnet_id_1,
             name: "subnet_name_1".into(),
             repo: "github-1".into(),
             description: "description-1".into(),
@@ -785,6 +796,7 @@ fn test_commit_reveal_multiple_times_in_same_epoch() {
         let subnet_id_2 = 2;
         let subnet_data = SubnetData {
             id: subnet_id_2,
+            friendly_id: subnet_id_2,
             name: "subnet_name_2".into(),
             repo: "github-2".into(),
             description: "description-2".into(),

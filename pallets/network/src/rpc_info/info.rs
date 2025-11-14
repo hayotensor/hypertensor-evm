@@ -21,6 +21,7 @@ impl<T: Config> Pallet<T> {
 
         Some(SubnetInfo {
             id: subnet_data.id,
+            friendly_id: SubnetIdFriendlyUid::<T>::get(subnet_id),
             name: subnet_data.name,
             repo: subnet_data.repo,
             description: subnet_data.description,
@@ -39,7 +40,6 @@ impl<T: Config> Pallet<T> {
             included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
             delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
             node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
-            max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
             initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
             max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
             owner: SubnetOwner::<T>::get(subnet_id),
@@ -47,7 +47,15 @@ impl<T: Config> Pallet<T> {
             registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
             key_types: SubnetKeyTypes::<T>::get(subnet_id),
             slot_index: SubnetSlot::<T>::get(subnet_id),
-            penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
+            reputation: SubnetReputation::<T>::get(subnet_id),
+            min_subnet_node_reputation: MinSubnetNodeReputation::<T>::get(subnet_id),
+            absent_decrease_reputation_factor: AbsentDecreaseReputationFactor::<T>::get(subnet_id),
+            included_increase_reputation_factor: IncludedIncreaseReputationFactor::<T>::get(subnet_id),
+            below_min_weight_decrease_reputation_factor: BelowMinWeightDecreaseReputationFactor::<T>::get(subnet_id),
+            non_attestor_decrease_reputation_factor: NonAttestorDecreaseReputationFactor::<T>::get(subnet_id),
+            non_consensus_attestor_decrease_reputation_factor: NonConsensusAttestorDecreaseReputationFactor::<T>::get(subnet_id),
+            validator_absent_subnet_node_reputation_factor: ValidatorAbsentSubnetNodeReputationFactor::<T>::get(subnet_id),
+            validator_non_consensus_subnet_node_reputation_factor: ValidatorNonConsensusSubnetNodeReputationFactor::<T>::get(subnet_id),
             bootnode_access: SubnetBootnodeAccess::<T>::get(subnet_id),
             bootnodes: SubnetBootnodes::<T>::get(subnet_id),
             total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
@@ -63,6 +71,7 @@ impl<T: Config> Pallet<T> {
         for (subnet_id, subnet_data) in SubnetsData::<T>::iter() {
             infos.push(SubnetInfo {
                 id: subnet_data.id,
+                friendly_id: SubnetIdFriendlyUid::<T>::get(subnet_id),
                 name: subnet_data.name,
                 repo: subnet_data.repo,
                 description: subnet_data.description,
@@ -83,7 +92,6 @@ impl<T: Config> Pallet<T> {
                     subnet_id,
                 ),
                 node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
-                max_node_penalties: MaxSubnetNodePenalties::<T>::get(subnet_id),
                 initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
                 max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
                 owner: SubnetOwner::<T>::get(subnet_id),
@@ -91,7 +99,15 @@ impl<T: Config> Pallet<T> {
                 registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
                 key_types: SubnetKeyTypes::<T>::get(subnet_id),
                 slot_index: SubnetSlot::<T>::get(subnet_id),
-                penalty_count: SubnetPenaltyCount::<T>::get(subnet_id),
+                reputation: SubnetReputation::<T>::get(subnet_id),
+                min_subnet_node_reputation: MinSubnetNodeReputation::<T>::get(subnet_id),
+                absent_decrease_reputation_factor: AbsentDecreaseReputationFactor::<T>::get(subnet_id),
+                included_increase_reputation_factor: IncludedIncreaseReputationFactor::<T>::get(subnet_id),
+                below_min_weight_decrease_reputation_factor: BelowMinWeightDecreaseReputationFactor::<T>::get(subnet_id),
+                non_attestor_decrease_reputation_factor: NonAttestorDecreaseReputationFactor::<T>::get(subnet_id),
+                non_consensus_attestor_decrease_reputation_factor: NonConsensusAttestorDecreaseReputationFactor::<T>::get(subnet_id),
+                validator_absent_subnet_node_reputation_factor: ValidatorAbsentSubnetNodeReputationFactor::<T>::get(subnet_id),
+                validator_non_consensus_subnet_node_reputation_factor: ValidatorNonConsensusSubnetNodeReputationFactor::<T>::get(subnet_id),
                 bootnode_access: SubnetBootnodeAccess::<T>::get(subnet_id),
                 bootnodes: SubnetBootnodes::<T>::get(subnet_id),
                 total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
@@ -137,8 +153,8 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
             ),
-            penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),
-            reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
+            coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
+            subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id)
         };
 
         return Some(info);
@@ -183,6 +199,30 @@ impl<T: Config> Pallet<T> {
             Ok(subnet_node_id) => Self::get_subnet_node_info(subnet_id, subnet_node_id),
             Err(()) => None,
         }
+    }
+
+    pub fn get_validators_and_attestors(subnet_id: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
+        let mut infos: Vec<SubnetNodeInfo<T::AccountId>> = Vec::new();
+        if let Some(emergency_validator_data) = EmergencySubnetNodeElectionData::<T>::get(subnet_id)
+        {
+            for subnet_node_id in emergency_validator_data.subnet_node_ids {
+                if let Some(subnet_node_info) =
+                    Self::get_subnet_node_info(subnet_id, subnet_node_id)
+                {
+                    infos.push(subnet_node_info);
+                }
+            }
+        } else {
+            for subnet_node_id in SubnetNodeElectionSlots::<T>::get(subnet_id) {
+                if let Some(subnet_node_info) =
+                    Self::get_subnet_node_info(subnet_id, subnet_node_id)
+                {
+                    infos.push(subnet_node_info);
+                }
+            }
+        };
+
+        infos
     }
 
     /// Proof-of-stake

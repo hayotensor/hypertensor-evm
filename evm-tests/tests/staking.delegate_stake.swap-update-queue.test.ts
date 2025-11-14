@@ -129,15 +129,9 @@ describe("test swap and transfer delegate staking-0xrh2", () => {
         const repo = generateRandomString(30)
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
-        const churnLimit = await api.query.network.maxChurnLimit();
         const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
-        const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
-        const idleClassificationEpochs = await api.query.network.minIdleClassificationEpochs();
-        const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
-        const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
-        const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
 
         await registerSubnet(
             subnetContract, 
@@ -146,19 +140,13 @@ describe("test swap and transfer delegate staking-0xrh2", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         fromSubnetId = await subnetContract.getSubnetId(subnetName);
@@ -176,19 +164,13 @@ describe("test swap and transfer delegate staking-0xrh2", () => {
             repo2,
             description2,
             misc2,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         toSubnetId = await subnetContract.getSubnetId(subnetName2);
@@ -270,7 +252,7 @@ describe("test swap and transfer delegate staking-0xrh2", () => {
         // ==================
         // Swap delegate stake
         // ==================
-        const nextSwapId = await api.query.network.nextSwapId();
+        const nextSwapId = await api.query.network.nextSwapQueueId();
 
         console.log("swap delegate stake")
 

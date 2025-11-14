@@ -345,13 +345,10 @@ where
         handle: &mut impl PrecompileHandle,
         coldkey: Address,
     ) -> EvmResult<bool> {
-        log::error!("overwatch_node_blacklist");
         let coldkey = R::AddressMapping::into_account_id(coldkey.into());
-        log::error!("overwatch_node_blacklist coldkey {:?}", coldkey);
 
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
         let blacklisted = pallet_network::OverwatchNodeBlacklist::<R>::get(coldkey);
-        log::error!("overwatch_node_blacklist blacklisted {:?}", blacklisted);
 
         Ok(blacklisted)
     }
@@ -525,34 +522,6 @@ where
         Ok(reveal_as_U256)
     }
 
-    #[precompile::public("overwatchNodePenalties(uint256)")]
-    #[precompile::view]
-    fn overwatch_node_penalties(
-        handle: &mut impl PrecompileHandle,
-        overwatch_node_id: U256,
-    ) -> EvmResult<U256> {
-        let overwatch_node_id = try_u256_to_u32(overwatch_node_id)?;
-
-        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-        let penalties = pallet_network::OverwatchNodePenalties::<R>::get(overwatch_node_id)
-            .ok_or(revert("Overwatch node penalties not found"))?;
-
-        let penalties = try_u32_to_u256(penalties)?;
-
-        Ok(penalties)
-    }
-
-    #[precompile::public("maxOverwatchNodePenalties()")]
-    #[precompile::view]
-    fn max_overwatch_node_penalties(handle: &mut impl PrecompileHandle) -> EvmResult<U256> {
-        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
-        let max_penalties = pallet_network::MaxOverwatchNodePenalties::<R>::get();
-
-        let max_penalties = try_u32_to_u256(max_penalties)?;
-
-        Ok(max_penalties)
-    }
-
     #[precompile::public("overwatchSubnetWeights(uint256,uint256)")]
     #[precompile::view]
     fn overwatch_subnet_weights(
@@ -629,13 +598,10 @@ where
     #[precompile::public("overwatchMinAge()")]
     #[precompile::view]
     fn overwatch_min_age(handle: &mut impl PrecompileHandle) -> EvmResult<U256> {
-        log::error!("overwatch_min_age");
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
         let value = pallet_network::OverwatchMinAge::<R>::get();
-        log::error!("overwatch_min_age {:?}", value);
 
         let value = try_u32_to_u256(value)?;
-        log::error!("overwatch_min_age {:?}", value);
 
         Ok(value)
     }

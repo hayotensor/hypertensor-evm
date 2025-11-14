@@ -5,7 +5,7 @@ use crate::{
     MaxOverwatchNodes, MaxSubnetNodes, MaxSubnets, MinSubnetNodes, NewRegistrationCostMultiplier,
     OverwatchCommit, OverwatchCommits, OverwatchEpochLengthMultiplier, OverwatchReveal,
     OverwatchReveals, SlotAssignment, SubnetConsensusSubmission, SubnetElectedValidator,
-    SubnetName, SubnetPenaltyCount, TotalSubnetDelegateStakeBalance,
+    SubnetName, SubnetReputation, TotalSubnetDelegateStakeBalance,
 };
 use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
@@ -402,11 +402,10 @@ fn test_on_initialize() {
                 }
             }
 
-            // becuase of the way this test is set up, the subnets will accrue 1 penalty each
             for s in 0..max_subnets {
                 let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
                 let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-                assert!(SubnetPenaltyCount::<Test>::get(subnet_id) <= 1);
+                assert!(SubnetReputation::<Test>::get(subnet_id) >= 990000000000000000);
             }
 
             System::set_block_number(block + 1);

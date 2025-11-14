@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use fp_account::AccountId20;
 use fp_evm::Log;
 use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
 use frame_system::RawOrigin;

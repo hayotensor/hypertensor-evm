@@ -242,17 +242,17 @@ impl<T: Config> Pallet<T> {
     ///
     /// This function iterates over all registered subnets and enforces several rules:
     ///
-    /// - Subnets in the **registration period** are allowed to exist without penalty.
+    /// - Subnets in the **registration period** are allowed to exist without reputation decrease.
     /// - Subnets in the **enactment period** must meet minimum active node counts or get removed.
     /// - Subnets **out of enactment period** but not activated are removed.
     /// - Subnets in the **paused state** are penalized if they exceed allowed pause duration, potentially leading to removal.
     /// - Activated subnets are checked to ensure they meet minimum delegate stake requirements; otherwise they are removed.
-    /// - Activated subnets with insufficient active nodes accumulate penalties.  
-    /// - Subnets exceeding the maximum penalty count are removed.
+    /// - Activated subnets with insufficient active nodes decrease reputation.  
+    /// - Subnets exceeding the minimum reputation are removed.
     /// - If the total number of subnets exceeds the configured maximum, the subnet with the lowest delegate stake is removed.
     ///
-    /// Penalties are global and can be increased by other runtime logic as well, so this function enforces removal
-    /// conditions based on the current penalty count regardless of its origin.
+    /// Reputations are global and can be increased or decreased by other runtime logic as well, so this function enforces removal
+    /// conditions based on the current reputation regardless of its origin.
     ///
     /// # Arguments
     ///
@@ -271,7 +271,7 @@ impl<T: Config> Pallet<T> {
     pub fn do_epoch_preliminaries(weight_meter: &mut WeightMeter, block: u32, epoch: u32) {
         let db_weight = T::DbWeight::get();
 
-        let max_subnet_penalty_count = MaxSubnetPenaltyCount::<T>::get();
+        let min_reputation = MinSubnetReputation::<T>::get();
         let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
         let subnet_enactment_epochs = SubnetEnactmentEpochs::<T>::get();
         let min_subnet_nodes = MinSubnetNodes::<T>::get();
@@ -286,11 +286,8 @@ impl<T: Config> Pallet<T> {
 
         let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
         let total_subnets: u32 = subnets.len() as u32;
-        // MaxSubnetPenaltyCount | SubnetRegistrationEpochs |
-        // SubnetEnactmentEpochs | MinSubnetNodes |
-        // MaxSubnets | MaxSubnetPauseEpochs | MaxSubnetRemovalInterval |
-        // SubnetsData | PrevSubnetActivationEpoch | MinSubnetRemovalInterval
-        weight_meter.consume(db_weight.reads((9 + total_subnets).into()));
+
+        weight_meter.consume(db_weight.reads((10 + total_subnets).into()));
 
         let excess_subnets: bool = total_subnets > max_subnets;
         let mut subnet_delegate_stake: Vec<(u32, u128)> = Vec::new();
@@ -356,13 +353,15 @@ impl<T: Config> Pallet<T> {
             // --- Pause logic
             if data.state == SubnetState::Paused {
                 if data.start_epoch + max_pause_epochs < epoch {
-                    SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-                    weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
+                    let subnet_reputation = SubnetReputation::<T>::get(subnet_id);
+                    let new_subnet_reputation = Self::get_decrease_reputation(
+                        subnet_reputation,
+                        MaxPauseEpochsSubnetReputationFactor::<T>::get(),
+                    );
+                    SubnetReputation::<T>::insert(subnet_id, new_subnet_reputation);
+                    weight_meter.consume(db_weight.reads_writes(2, 1));
 
-                    let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
-                    weight_meter.consume(db_weight.reads(1));
-
-                    if penalties > max_subnet_penalty_count {
+                    if new_subnet_reputation < min_reputation {
                         // --- Remove
                         Self::try_do_remove_subnet(
                             weight_meter,
@@ -402,27 +401,31 @@ impl<T: Config> Pallet<T> {
             }
 
             // Check min nodes (we don't kick active subnet for this to give them time to recoup)
-            // We increase penalties only
+            // We decrease reputation only
             // A subnet can have n-1 min electable nodes, we'll allow them to get more nodes until
             // they read the min nodes count
             let electable_nodes = TotalSubnetElectableNodes::<T>::get(subnet_id);
-            // let active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
 
             if electable_nodes < min_subnet_nodes {
-                SubnetPenaltyCount::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-                weight_meter.consume(db_weight.reads(1) + db_weight.writes(1));
+                let subnet_reputation = SubnetReputation::<T>::get(subnet_id);
+                let new_subnet_reputation = Self::get_decrease_reputation(
+                    subnet_reputation,
+                    LessThanMinNodesSubnetReputationFactor::<T>::get(),
+                );
+                SubnetReputation::<T>::insert(subnet_id, new_subnet_reputation);
+                weight_meter.consume(db_weight.reads_writes(2, 1));
             }
 
-            let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
-
-            // TotalActiveSubnetNodes | SubnetPenaltyCount
+            let subnet_reputation = SubnetReputation::<T>::get(subnet_id);
+            // TotalSubnetElectableNodes | SubnetReputation
             weight_meter.consume(db_weight.reads(2));
 
-            if penalties > max_subnet_penalty_count {
+            if subnet_reputation < min_reputation {
+                // --- Remove
                 Self::try_do_remove_subnet(
                     weight_meter,
                     *subnet_id,
-                    SubnetRemovalReason::MaxPenalties,
+                    SubnetRemovalReason::MinReputation,
                 );
                 continue;
             }
@@ -455,13 +458,27 @@ impl<T: Config> Pallet<T> {
     pub fn elect_validator(subnet_id: u32, subnet_epoch: u32, block: u32) {
         // Redundant
         // If validator already chosen, then return
-        if let Some(_validator_id) = SubnetElectedValidator::<T>::get(subnet_id, subnet_epoch) {
+        if SubnetElectedValidator::<T>::contains_key(subnet_id, subnet_epoch) {
             return;
         }
 
-        // We don't concern about min nodes here
-        // Min nodes must be checked before calling this function
-        let slot_list = SubnetNodeElectionSlots::<T>::get(subnet_id);
+        // Check for emergency validators
+        let slot_list = if let Some(emergency_validator_data) =
+            EmergencySubnetNodeElectionData::<T>::get(subnet_id)
+        {
+            if emergency_validator_data.total_epochs
+                > emergency_validator_data.target_emergency_validators_epochs
+                || subnet_epoch > emergency_validator_data.max_emergency_validators_epoch
+            {
+                // Temporary emergency validators is complete, remove and return default election slots
+                EmergencySubnetNodeElectionData::<T>::remove(subnet_id);
+                SubnetNodeElectionSlots::<T>::get(subnet_id)
+            } else {
+                emergency_validator_data.subnet_node_ids
+            }
+        } else {
+            SubnetNodeElectionSlots::<T>::get(subnet_id)
+        };
 
         if slot_list.is_empty() {
             return;

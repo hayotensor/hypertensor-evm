@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use super::*;
+use libm::{ceil, log};
 
 impl<T: Config> Pallet<T> {
     /// Owner pause subnet for up to max period
@@ -55,6 +56,7 @@ impl<T: Config> Pallet<T> {
 
         Self::deposit_event(Event::SubnetPaused {
             subnet_id: subnet_id,
+            owner: coldkey,
         });
 
         Ok(())
@@ -105,11 +107,130 @@ impl<T: Config> Pallet<T> {
 
         PreviousSubnetPauseEpoch::<T>::insert(subnet_id, epoch);
 
+        // Modify max subnet epoch if owner called for emergency validators
+        EmergencySubnetNodeElectionData::<T>::mutate_exists(subnet_id, |maybe_data| {
+            if let Some(data) = maybe_data {
+                data.max_emergency_validators_epoch = Self::get_current_subnet_epoch_as_u32(
+                    subnet_id,
+                )
+                .saturating_add(Self::percent_mul(
+                    data.target_emergency_validators_epochs as u128,
+                    MaxEmergencyValidatorEpochsMultiplier::<T>::get(),
+                ) as u32);
+            }
+        });
+
         Self::deposit_event(Event::SubnetUnpaused {
             subnet_id: subnet_id,
+            owner: coldkey,
         });
 
         Ok(())
+    }
+
+    pub fn do_owner_set_emergency_validator_set(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        mut subnet_node_ids: Vec<u32>,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            Self::is_subnet_paused(subnet_id).unwrap_or(false),
+            Error::<T>::SubnetMustBePaused
+        );
+
+        subnet_node_ids.dedup_by(|a, b| a == b);
+
+        let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+
+        subnet_node_ids.retain(|id| match SubnetNodesData::<T>::try_get(subnet_id, id) {
+            Ok(subnet_node) => {
+                subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch)
+            }
+            Err(()) => false,
+        });
+
+        ensure!(
+            subnet_node_ids.len() as u32 >= MinSubnetNodes::<T>::get(),
+            Error::<T>::SubnetMustBePaused
+        );
+
+        let target_emergency_epochs = Self::get_max_steps_for_node_removal(subnet_id);
+
+        EmergencySubnetNodeElectionData::<T>::insert(
+            subnet_id,
+            EmergencySubnetValidatorData {
+                subnet_node_ids: subnet_node_ids.clone(),
+                target_emergency_validators_epochs: target_emergency_epochs,
+                total_epochs: 0,
+                max_emergency_validators_epoch: 0,
+            },
+        );
+
+        Self::deposit_event(Event::SubnetForked {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            subnet_node_ids,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_revert_emergency_validator_set(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        EmergencySubnetNodeElectionData::<T>::remove(subnet_id);
+
+        Self::deposit_event(Event::SubnetForkRevert {
+            subnet_id: subnet_id,
+            owner: coldkey,
+        });
+
+        Ok(())
+    }
+
+    /// Get the required epochs to have a node removed based on not being in consensus data
+    /// based on the `AbsentDecreaseReputationFactor`
+    pub fn get_max_steps_for_node_removal(subnet_id: u32) -> u32 {
+        let one: f64 = Self::get_percent_as_f64(Self::percentage_factor_as_u128());
+
+        // Based on network min max parameters
+        let min_min_reputation: f64 =
+            Self::get_percent_as_f64(MinMinSubnetNodeReputation::<T>::get());
+        let min_absent_factor: f64 = Self::get_percent_as_f64(MinNodeReputationFactor::<T>::get());
+
+        let r = one - min_absent_factor;
+        let n = ceil(log(min_min_reputation / one) / log(r)) as u32 + 1;
+
+        // Subnet parameters
+        let min_reputation: f64 =
+            Self::get_percent_as_f64(MinSubnetNodeReputation::<T>::get(subnet_id));
+        let absent_factor: f64 =
+            Self::get_percent_as_f64(AbsentDecreaseReputationFactor::<T>::get(subnet_id));
+
+        let r2 = one - absent_factor;
+        let n2 = ceil(log(min_reputation / one) / log(r2)) as u32 + 1;
+
+        // Redundantly check steps
+        if n < n2 {
+            return n;
+        }
+
+        n2
     }
 
     pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32) -> DispatchResult {
@@ -393,35 +514,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_owner_update_max_node_penalties(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-        value: u32,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
-
-        ensure!(
-            value >= MinMaxSubnetNodePenalties::<T>::get()
-                && value <= MaxMaxSubnetNodePenalties::<T>::get(),
-            Error::<T>::InvalidMaxSubnetNodePenalties
-        );
-
-        MaxSubnetNodePenalties::<T>::insert(subnet_id, value);
-
-        Self::deposit_event(Event::MaxSubnetNodePenaltiesUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value: value,
-        });
-
-        Ok(())
-    }
-
     pub fn do_owner_add_or_update_initial_coldkeys(
         origin: T::RuntimeOrigin,
         subnet_id: u32,
@@ -513,100 +605,6 @@ impl<T: Config> Pallet<T> {
         SubnetKeyTypes::<T>::insert(subnet_id, &value);
 
         Self::deposit_event(Event::SubnetKeyTypesUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value: value,
-        });
-
-        Ok(())
-    }
-
-    /// Update minimum stake balance per subnet node
-    ///
-    /// This function can only be called by the current owner of the subnet.  
-    ///
-    /// # Parameters
-    /// - `origin`: The caller, must be the current subnet owner.
-    /// - `subnet_id`: The ID of the subnet.
-    /// - `value`: *.
-    ///
-    /// # Errors
-    /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
-    /// - [`InvalidSubnetMinStake`]: Value is not in allowable range.
-    /// - [`InvalidSubnetStakeParameters`]: Min stake `value` is greater than max stake value, min must be less than max.
-    pub fn do_owner_update_min_stake(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-        value: u128,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
-
-        ensure!(
-            value >= MinSubnetMinStake::<T>::get() && value <= MaxSubnetMinStake::<T>::get(),
-            Error::<T>::InvalidSubnetMinStake
-        );
-
-        // --- Can not be greater than max xstake
-        ensure!(
-            SubnetMaxStakeBalance::<T>::get(subnet_id) >= value,
-            Error::<T>::InvalidSubnetStakeParameters
-        );
-
-        SubnetMinStakeBalance::<T>::insert(subnet_id, value);
-
-        Self::deposit_event(Event::SubnetMinStakeBalanceUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value: value,
-        });
-
-        Ok(())
-    }
-
-    /// Update maximum stake balance per subnet node
-    ///
-    /// This function can only be called by the current owner of the subnet.  
-    ///
-    /// # Parameters
-    /// - `origin`: The caller, must be the current subnet owner.
-    /// - `subnet_id`: The ID of the subnet.
-    /// - `value`: *.
-    ///
-    /// # Errors
-    /// - [`NotSubnetOwner`]: Caller is not the owner of the subnet.
-    /// - [`InvalidSubnetMinStake`]: Value is not in allowable range.
-    /// - [`InvalidSubnetStakeParameters`]: Max stake `value` is less than min stake value, max must be greater than min.
-    pub fn do_owner_update_max_stake(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-        value: u128,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
-
-        ensure!(
-            value <= NetworkMaxStakeBalance::<T>::get(),
-            Error::<T>::InvalidSubnetMaxStake
-        );
-
-        // Cannot be less than min stake
-        ensure!(
-            SubnetMinStakeBalance::<T>::get(subnet_id) <= value,
-            Error::<T>::InvalidSubnetStakeParameters
-        );
-
-        SubnetMaxStakeBalance::<T>::insert(subnet_id, value);
-
-        Self::deposit_event(Event::SubnetMaxStakeBalanceUpdate {
             subnet_id: subnet_id,
             owner: coldkey,
             value: value,
@@ -980,7 +978,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_owner_update_subnet_node_score_penalty_threshold(
+    pub fn do_owner_update_min_subnet_node_reputation(
         origin: T::RuntimeOrigin,
         subnet_id: u32,
         value: u128,
@@ -993,17 +991,321 @@ impl<T: Config> Pallet<T> {
         );
 
         ensure!(
-            value <= MaxSubnetNodeScorePenaltyThreshold::<T>::get(),
+            value <= Self::percentage_factor_as_u128(),
             Error::<T>::InvalidPercent
         );
 
-        SubnetNodeScorePenaltyThreshold::<T>::insert(subnet_id, value);
+        ensure!(
+            value >= MinMinSubnetNodeReputation::<T>::get()
+                && value <= MaxMinSubnetNodeReputation::<T>::get(),
+            Error::<T>::MinSubnetNodeReputation
+        );
 
-        Self::deposit_event(Event::SubnetNodeScorePenaltyThresholdUpdate {
+        MinSubnetNodeReputation::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::MinSubnetNodeReputationUpdate {
             subnet_id: subnet_id,
             owner: coldkey,
             value,
         });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_subnet_node_min_weight_decrease_reputation_threshold(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(),
+            Error::<T>::InvalidPercent
+        );
+
+        SubnetNodeMinWeightDecreaseReputationThreshold::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::SubnetNodeMinWeightDecreaseReputationThresholdUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_absent_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidAbsentDecreaseReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        AbsentDecreaseReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::AbsentDecreaseReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_included_increase_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidIncludedIncreaseReputationFactor
+        );
+
+        IncludedIncreaseReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::IncludedIncreaseReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_below_min_weight_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidBelowMinWeightDecreaseReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        BelowMinWeightDecreaseReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::BelowMinWeightDecreaseReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_non_attestor_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidNonAttestorDecreaseReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        NonAttestorDecreaseReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::NonAttestorDecreaseReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_non_consensus_attestor_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidNonConsensusAttestorDecreaseReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        NonConsensusAttestorDecreaseReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::NonConsensusAttestorDecreaseReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_validator_absent_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidNonValidatorAbsentSubnetNodeReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        ValidatorAbsentSubnetNodeReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::ValidatorAbsentSubnetNodeReputationFactorUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_owner_update_validator_non_consensus_decrease_reputation_factor(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u128,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
+
+        ensure!(
+            value >= MinNodeReputationFactor::<T>::get()
+                && value <= MaxNodeReputationFactor::<T>::get(),
+            Error::<T>::InvalidValidatorNonConsensusSubnetNodeReputationFactor
+        );
+
+        ensure!(
+            !EmergencySubnetNodeElectionData::<T>::contains_key(subnet_id),
+            Error::<T>::EmergencyValidatorsSet
+        );
+
+        ValidatorNonConsensusSubnetNodeReputationFactor::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(
+            Event::ValidatorNonConsensusSubnetNodeReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: coldkey,
+                value,
+            },
+        );
 
         Ok(())
     }

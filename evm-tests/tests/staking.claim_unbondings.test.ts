@@ -138,19 +138,13 @@ describe("test claim unbondings-0x310crc12", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         subnetId = await subnetContract.getSubnetId(subnetName);
@@ -208,7 +202,7 @@ describe("test claim unbondings-0x310crc12", () => {
         expect(sharesAfterDelegateStake).to.be.greaterThan(sharesAfterRemove);
         expect(balanceAfterDelegateStake).to.be.greaterThan(balanceAfterRemove);
 
-        const unbondings = (await api.query.network.stakeUnbondingLedgerV2(wallet1.address)).toHuman();
+        const unbondings = (await api.query.network.stakeUnbondingLedger(wallet1.address)).toHuman();
 
         const beforeFinalizedBalance = await waitForFinalizedBalance(
             papiApi, 

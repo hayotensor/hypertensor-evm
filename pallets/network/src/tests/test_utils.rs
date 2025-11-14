@@ -10,14 +10,15 @@ use crate::{
     OverwatchMinStakeBalance, OverwatchNode, OverwatchNodeIdHotkey, OverwatchNodes,
     OverwatchReveals, PeerIdSubnetNodeId, RegisteredSubnetNodesData, RegistrationSubnetData,
     Reputation, StakeCooldownEpochs, StakeUnbondingLedger, SubnetConsensusSubmission, SubnetData,
-    SubnetElectedValidator, SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode,
-    SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData, SubnetNodeElectionSlots,
-    SubnetNodeIdHotkey, SubnetNodePenalties, SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner,
-    SubnetPenaltyCount, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
-    SubnetRegistrationInitialColdkeys, SubnetSlot, SubnetState, SubnetsData, TotalActiveNodes,
-    TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
-    TotalOverwatchStake, TotalStake, TotalSubnetDelegateStakeBalance, TotalSubnetNodeUids,
-    TotalSubnetNodes, TotalSubnetStake, TotalSubnetUids,
+    SubnetElectedValidator, SubnetIdFriendlyUid, SubnetMaxStakeBalance, SubnetMinStakeBalance,
+    SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData,
+    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeUniqueParam,
+    SubnetNodesData, SubnetOwner, SubnetRegistrationEpoch,
+    SubnetRegistrationEpochs, SubnetRegistrationInitialColdkeys, SubnetReputation, SubnetSlot,
+    SubnetState, SubnetsData, TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets,
+    TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake, TotalStake,
+    TotalSubnetDelegateStakeBalance, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
+    TotalSubnetUids, SubnetNodeReputation
 };
 use fp_account::AccountId20;
 use frame_support::assert_ok;
@@ -244,6 +245,9 @@ pub fn build_activated_subnet_new(
     assert_eq!(subnet.state, SubnetState::Registered);
     let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
     assert_eq!(owner, owner_coldkey.clone());
+
+    let friendly_subnet_id = SubnetIdFriendlyUid::<Test>::get(subnet_id).unwrap();
+    assert_ne!(friendly_subnet_id, 0);
 
     // let min_stake = SubnetMinStakeBalance::<Test>::get(subnet_id);
     // let max_stake = SubnetMaxStakeBalance::<Test>::get(subnet_id);
@@ -2097,15 +2101,9 @@ pub fn default_registration_subnet_data(
         repo: blake2_128(seed_bytes).to_vec(), // must be unique
         description: Vec::new(),
         misc: Vec::new(),
-        churn_limit: 4,
         min_stake: MinSubnetMinStake::<Test>::get(),
         max_stake: NetworkMaxStakeBalance::<Test>::get(),
         delegate_stake_percentage: 100000000000000000, // 10%
-        subnet_node_queue_epochs: 4,
-        idle_classification_epochs: 4,
-        included_classification_epochs: 4,
-        max_node_penalties: 3,
-        max_registered_nodes: MaxMaxRegisteredNodes::<Test>::get(),
         initial_coldkeys: get_initial_coldkeys(subnets, max_subnet_nodes, start, end),
         key_types: BTreeSet::from([KeyType::Rsa]),
         bootnodes: BTreeSet::from([BoundedVec::new()]),
@@ -2129,15 +2127,9 @@ pub fn default_registration_subnet_data_with_onodes(
         repo: blake2_128(seed_bytes).to_vec(), // must be unique
         description: Vec::new(),
         misc: Vec::new(),
-        churn_limit: 4,
         min_stake: MinSubnetMinStake::<Test>::get(),
         max_stake: NetworkMaxStakeBalance::<Test>::get(),
         delegate_stake_percentage: 100000000000000000, // 10%
-        subnet_node_queue_epochs: 4,
-        idle_classification_epochs: 4,
-        included_classification_epochs: 4,
-        max_node_penalties: 3,
-        max_registered_nodes: MaxMaxRegisteredNodes::<Test>::get(),
         initial_coldkeys: get_initial_coldkeys_with_onodes(
             subnets,
             max_subnets,
@@ -2190,7 +2182,6 @@ pub fn post_subnet_removal_ensures(
         SubnetNodeIdHotkey::<Test>::iter_prefix(subnet_id).count(),
         0
     );
-    assert_eq!(SubnetPenaltyCount::<Test>::contains_key(subnet_id), false);
     assert_eq!(
         SubnetElectedValidator::<Test>::iter_prefix(subnet_id).count(),
         0
@@ -2201,7 +2192,7 @@ pub fn post_subnet_removal_ensures(
     );
 
     assert_eq!(
-        SubnetNodePenalties::<Test>::iter_prefix(subnet_id).count(),
+        SubnetNodeReputation::<Test>::iter_prefix(subnet_id).count(),
         0
     );
     let max_subnets = MaxSubnets::<Test>::get();
@@ -2578,6 +2569,7 @@ pub fn submit_weight(epoch: u32, subnet_id: u32, node_id: u32, weight: u128) {
 pub fn new_subnet_data(id: u32, state: SubnetState, start_epoch: u32) -> SubnetData {
     SubnetData {
         id,
+        friendly_id: id,
         name: vec![],
         repo: vec![],
         description: vec![],
@@ -2665,9 +2657,9 @@ pub fn set_delegate_stake(id: u32, stake: u128) {
     TotalSubnetDelegateStakeBalance::<Test>::insert(id, stake);
 }
 
-// Helper to set penalties count
-pub fn set_penalties(id: u32, count: u32) {
-    SubnetPenaltyCount::<Test>::insert(id, count);
+// Helper to set reputation
+pub fn set_reputation(id: u32, rep: u128) {
+    SubnetReputation::<Test>::insert(id, rep);
 }
 
 pub fn run_subnet_consensus_step(

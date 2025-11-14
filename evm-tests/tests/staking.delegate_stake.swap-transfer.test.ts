@@ -145,19 +145,13 @@ describe("test swap and transfer delegate staking-0x454v5v3fc23rh2", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         fromSubnetId = await subnetContract.getSubnetId(subnetName);
@@ -175,20 +169,15 @@ describe("test swap and transfer delegate staking-0x454v5v3fc23rh2", () => {
             repo2,
             description2,
             misc2,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
+
 
         toSubnetId = await subnetContract.getSubnetId(subnetName2);
 
@@ -225,7 +214,7 @@ describe("test swap and transfer delegate staking-0x454v5v3fc23rh2", () => {
         // ==================
         // Swap delegate stake
         // ==================
-        const nextSwapId = await api.query.network.nextSwapId();
+        const nextSwapId = await api.query.network.nextSwapQueueId();
 
         await swapDelegateStake(
           stakingContract, 

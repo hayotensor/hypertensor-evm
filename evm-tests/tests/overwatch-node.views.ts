@@ -134,15 +134,9 @@ describe("test overwatch view functions-0xfff90000", () => {
         const repo = generateRandomString(30)
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
-        const churnLimit = await api.query.network.maxChurnLimit();
         const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
-        const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
-        const idleClassificationEpochs = await api.query.network.minIdleClassificationEpochs();
-        const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
-        const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
-        const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
 
         await registerSubnet(
             subnetContract, 
@@ -151,15 +145,9 @@ describe("test overwatch view functions-0xfff90000", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
@@ -236,8 +224,6 @@ describe("test overwatch view functions-0xfff90000", () => {
             true
         )
         await createAndFinalizeBlock(ethersProvider)
-
-        overwatchMinStake = await api.query.network.overwatchCommits();
     })
 
     // Status: passing
@@ -300,7 +286,7 @@ describe("test overwatch view functions-0xfff90000", () => {
 
         let precompileGetCurrentOverwatchEpoch = await overwatchNodeContract1.getCurrentOverwatchEpoch();
         expect(Number(precompileGetCurrentOverwatchEpoch.toString())).to.be.greaterThan(Number(0))
-        
+
         console.log("✅ Registering overwatch node testing complete")
     })
 });

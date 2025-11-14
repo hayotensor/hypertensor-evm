@@ -95,9 +95,65 @@ impl<T: Config> Pallet<T> {
         x.checked_mul(y)?.checked_div(z)
     }
 
+    /// Computes a symmetric, decreasing sigmoid curve scaled to a specified output range.
+    ///
+    /// # Parameters
+    /// - `x`: The input value to evaluate the sigmoid at. Should be in the range `[0.0, 1.0]`.
+    /// - `mid`: The midpoint of the sigmoid. The curve is symmetric around this value.
+    /// - `k`: Controls the steepness of the sigmoid. Larger values make the transition sharper.
+    /// - `min`: Minimum value of the output range. The sigmoid will not go below this value.
+    /// - `max`: Maximum value of the output range. The sigmoid will not exceed this value.
+    ///
+    /// # Returns
+    /// - A `f64` representing the value of the scaled sigmoid at `x`. Guaranteed to be within `[min, max]`.
     pub fn sigmoid_decreasing(x: f64, mid: f64, k: f64, min: f64, max: f64) -> f64 {
         let c = (x - mid).abs();
         let d = k * c;
+        let exp = exp(d);
+
+        // symmetric sigmoid around mid
+        let sigmoid = if x > mid {
+            1.0 / (1.0 + exp)
+        } else {
+            exp / (1.0 + exp)
+        };
+
+        // // scale sigmoid from [0, 1] → [min, max]
+        // let scaled = min + (max - min) * sigmoid;
+
+        // scaled
+
+        sigmoid.clamp(min, max)
+    }
+
+    pub fn sigmoid_decreasing_v2(x: f64, mid: f64, k: f64) -> f64 {
+        let c = (x - mid).abs();
+        let d = k * c;
+        let exp = exp(d);
+
+        // symmetric sigmoid around mid
+        let sigmoid = if x > mid {
+            1.0 / (1.0 + exp)
+        } else {
+            exp / (1.0 + exp)
+        };
+
+        log::error!("sigmoid {:?}", sigmoid);
+
+        sigmoid.clamp(0.0, 1.0)
+    }
+
+    pub fn sigmoid_decreasing_asymmetric(
+        x: f64,
+        mid: f64,
+        k_front: f64,
+        k_back: f64,
+        min: f64,
+        max: f64,
+    ) -> f64 {
+        let c = (x - mid).abs();
+        let d = if x > mid { k_back * c } else { k_front * c };
+
         let exp = exp(d);
 
         // symmetric sigmoid around mid
@@ -113,14 +169,25 @@ impl<T: Config> Pallet<T> {
         scaled.clamp(min, max)
     }
 
-    pub fn concave_down_decreasing(x: f64, power: f64, min: f64, max: f64) -> f64 {
-        // normalize x to [0, 1]
-        let t = ((x - min) / (max - min)).clamp(0.0, 1.0);
+    /// Computes a concave-down decreasing curve scaled to a specified output range.
+    ///
+    /// # Parameters
+    /// - `x`: Input value in the range `[0.0, 1.0]`. Represents the normalized progress along the curve.
+    /// - `min`: Minimum value of the output range. Returned when `x = 1.0`.
+    /// - `max`: Maximum value of the output range. Returned when `x = 0.0`.
+    /// - `power`: Controls the steepness of the curve. Values > 1.0 make the curve flatter at the start
+    ///            and steeper at the end. Must be positive.
+    ///
+    /// # Returns
+    /// - `y` in the range `[min, max]` corresponding to the concave-down decreasing curve.
+    pub fn concave_down_decreasing(x: f64, min: f64, max: f64, power: f64) -> f64 {
+        // Ensure power is positive to avoid undefined behavior
+        let p = if power <= 0.0 { 1.0 } else { power };
 
-        // concave-down decreasing curve
-        let curve = 1.0 - pow(t, power);
+        // Compute concave-down decreasing curve
+        let curve = 1.0 - pow(x, p);
 
-        // scale back to [min, max]
-        min + (max - min) * curve
+        // Scale to [min, max]
+        (min + (max - min) * curve).clamp(min, max)
     }
 }

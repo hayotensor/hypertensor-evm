@@ -24,13 +24,13 @@ impl<T: Config> Pallet<T> {
     /// * `coldkey` - Nodes coldkey
     /// * `attestation_percentage` - The attestation ratio of the validator nodes consensus
     /// * `min_attestation_percentage` - Blockchains minimum attestation percentage (66%)
-    /// * `decrease_weight_factor` - `ReputationIncreaseFactor`.
+    /// * `decrease_weight_factor` - `ColdkeyReputationIncreaseFactor`.
     /// * `epoch`: The blockchains general epoch
     pub fn increase_coldkey_reputation(
         coldkey: T::AccountId,
         attestation_percentage: u128,
         min_attestation_percentage: u128,
-        increase_weight_factor: u128, // this is the steepness multiplier
+        increase_weight_factor: u128,
         epoch: u32,
     ) {
         if !ColdkeyReputation::<T>::contains_key(&coldkey) {
@@ -112,7 +112,7 @@ impl<T: Config> Pallet<T> {
     /// * `coldkey` - Nodes coldkey
     /// * `attestation_percentage` - The attestation ratio of the validator nodes consensus
     /// * `min_attestation_percentage` - Blockchains minimum attestation percentage (66%)
-    /// * `decrease_weight_factor` - `ReputationDecreaseFactor`.
+    /// * `decrease_weight_factor` - `ColdkeyReputationDecreaseFactor`.
     /// * `epoch`: The blockchains general epoch
     pub fn decrease_coldkey_reputation(
         coldkey: T::AccountId,
@@ -184,5 +184,31 @@ impl<T: Config> Pallet<T> {
         };
 
         ColdkeyReputation::<T>::insert(&coldkey, coldkey_reputation);
+    }
+
+    pub fn increase_node_reputation(subnet_id: u32, subnet_node_id: u32, factor: u128) {
+        let mut reputation = SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id);
+        reputation = Self::get_increase_reputation(reputation, factor);
+        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
+    }
+
+    pub fn get_increase_reputation(prev_reputation: u128, factor: u128) -> u128 {
+        let one = Self::percentage_factor_as_u128();
+        let factor = factor.min(one);
+        let delta = Self::percent_mul(one.saturating_sub(prev_reputation), factor);
+        prev_reputation.saturating_add(delta).min(one)
+    }
+
+    pub fn decrease_node_reputation(subnet_id: u32, subnet_node_id: u32, factor: u128) {
+        let mut reputation = SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id);
+        reputation = Self::get_decrease_reputation(reputation, factor);
+        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
+    }
+
+    pub fn get_decrease_reputation(prev_reputation: u128, factor: u128) -> u128 {
+        let one = Self::percentage_factor_as_u128();
+        let factor = factor.min(one);
+        let delta = Self::percent_mul(prev_reputation, factor);
+        prev_reputation.saturating_sub(delta)
     }
 }

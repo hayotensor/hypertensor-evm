@@ -615,6 +615,7 @@ impl<T: Config> Pallet<T> {
         BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
         HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
         SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
+        SubnetNodeReputation::<T>::remove(subnet_id, subnet_node_id);
         // We don't remove `HotkeySubnetId`. This is only removed when a node fully removes stake
 
         let coldkey = HotkeyOwner::<T>::get(&hotkey);
@@ -647,6 +648,12 @@ impl<T: Config> Pallet<T> {
             // Subtract from coldkey reputation
             ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
                 rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+            });
+            // If emergency validators set, remove node ID
+            EmergencySubnetNodeElectionData::<T>::mutate_exists(subnet_id, |maybe_data| {
+                if let Some(data) = maybe_data {
+                    data.subnet_node_ids.retain(|&id| id != subnet_node_id);
+                }
             });
         } else if is_registered {
             // Remove from queue
@@ -698,6 +705,22 @@ impl<T: Config> Pallet<T> {
     ) -> Option<SubnetNode<T::AccountId>> {
         if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
             Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_validator_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        subnet_epoch: u32,
+    ) -> Option<SubnetNode<T::AccountId>> {
+        if let Ok(subnet_node) = SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+            if subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch) {
+                Some(subnet_node)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -794,8 +817,8 @@ impl<T: Config> Pallet<T> {
                         subnet_id,
                         subnet_node_id,
                     ),
-                    penalties: SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id),
-                    reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
+                    coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
+                    subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id)
                 }
             })
             .collect()
@@ -1005,7 +1028,7 @@ impl<T: Config> Pallet<T> {
         let db_weight = T::DbWeight::get();
 
         // It's unlikely this will ever be true, but we check anyway to future-proof
-        if !weight_meter.can_consume(db_weight.reads(9) + db_weight.writes(2)) {
+        if !weight_meter.can_consume(db_weight.reads_writes(9, 2)) {
             return;
         }
 

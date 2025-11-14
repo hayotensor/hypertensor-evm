@@ -193,10 +193,6 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let reward_factor = Self::get_validator_reward_multiplier(
-            subnet_epoch_progression,
-        );
-
         let consensus_data: ConsensusData<T::AccountId> = ConsensusData {
             validator_id: validator_id,
             block,
@@ -225,6 +221,85 @@ impl<T: Config> Pallet<T> {
 
     /// Attest validator subnet rewards data
     // Nodes must attest data to receive rewards
+    // pub fn do_attest(
+    //     subnet_id: u32,
+    //     hotkey: T::AccountId,
+    //     data: Option<BoundedVec<u8, DefaultValidatorArgsLimit>>,
+    // ) -> DispatchResultWithPostInfo {
+    //     let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+
+    //     // --- Ensure subnet node exists under hotkey
+    //     let subnet_node_id = match HotkeySubnetNodeId::<T>::try_get(subnet_id, &hotkey) {
+    //         Ok(subnet_node_id) => subnet_node_id,
+    //         Err(()) => return Err(Error::<T>::InvalidHotkeySubnetNodeId.into()),
+    //     };
+
+    //     // --- Ensure node classified to attest
+    //     match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+    //         Ok(subnet_node) => {
+    //             subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch)
+    //         }
+    //         Err(()) => return Err(Error::<T>::InvalidSubnetNodeId.into()),
+    //     };
+
+    //     // - Note: we don't check stake balance here
+
+    //     let block: u32 = Self::get_current_block_as_u32();
+
+    //     SubnetConsensusSubmission::<T>::try_mutate_exists(
+    //         subnet_id,
+    //         subnet_epoch,
+    //         |maybe_params| -> DispatchResult {
+    //             let params = maybe_params
+    //                 .as_mut()
+    //                 .ok_or(Error::<T>::InvalidSubnetConsensusSubmission)?;
+
+    //             // Reduntantly check they are in the list
+    //             // See `do_propose_attestation`
+    //             // We check they are SubnetNodeClass::Validator above so we only
+    //             // check they are in the list here
+    //             let subnet_nodes = &mut params.subnet_nodes;
+    //             ensure!(
+    //                 subnet_nodes.iter().any(|node| node.id == subnet_node_id),
+    //                 Error::<T>::InvalidSubnetNodeId
+    //             );
+
+    //             let block = params.block;
+    //             let subnet_epoch_data = Self::attestor_subnet_epoch_data(subnet_id, block)
+    //                 .ok_or(Error::<T>::SubnetEpochDataIsNone)?;
+    //             let subnet_epoch_progression = subnet_epoch_data.subnet_epoch_progression;
+
+    //             let reward_factor = Self::get_attestor_reward_multiplier(subnet_epoch_progression);
+
+    //             let mut attests = &mut params.attests;
+
+    //             ensure!(
+    //                 attests.insert(
+    //                     subnet_node_id,
+    //                     AttestEntry {
+    //                         block,
+    //                         attestor_progress: subnet_epoch_progression,
+    //                         reward_factor,
+    //                         data
+    //                     }
+    //                 ) == None,
+    //                 Error::<T>::AlreadyAttested
+    //             );
+
+    //             params.attests = attests.clone();
+    //             Ok(())
+    //         },
+    //     )?;
+
+    //     Self::deposit_event(Event::Attestation {
+    //         subnet_id: subnet_id,
+    //         subnet_node_id: subnet_node_id,
+    //         epoch: subnet_epoch,
+    //     });
+
+    //     Ok(Pays::No.into())
+    // }
+
     pub fn do_attest(
         subnet_id: u32,
         hotkey: T::AccountId,
@@ -245,6 +320,19 @@ impl<T: Config> Pallet<T> {
             }
             Err(()) => return Err(Error::<T>::InvalidSubnetNodeId.into()),
         };
+
+        // If subnet is forked, make sure attestors are the new temporary validator set
+        if let Some(emergency_validator_data) = EmergencySubnetNodeElectionData::<T>::get(subnet_id)
+        {
+            let emergency_node_ids: BTreeSet<u32> = emergency_validator_data
+                .subnet_node_ids
+                .into_iter()
+                .collect();
+            ensure!(
+                emergency_node_ids.contains(&subnet_node_id),
+                Error::<T>::InvalidEmergencySubnetNodeId
+            );
+        }
 
         // - Note: we don't check stake balance here
 
@@ -305,26 +393,24 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn get_attestor_reward_multiplier(progress: u128) -> u128 {
-        Self::get_f64_as_percentage(
-            Self::concave_down_decreasing(
-                Self::get_percent_as_f64(progress),
-                AttestorRewardExponent::<T>::get() as f64,
-                Self::get_percent_as_f64(AttestorMinRewardFactor::<T>::get()),
-                1.0,
-            ) 
-        ).clamp(0, Self::percentage_factor_as_u128())
+        Self::get_f64_as_percentage(Self::concave_down_decreasing(
+            Self::get_percent_as_f64(progress),
+            Self::get_percent_as_f64(AttestorMinRewardFactor::<T>::get()),
+            1.0,
+            AttestorRewardExponent::<T>::get() as f64,
+        ))
+        .clamp(0, Self::percentage_factor_as_u128())
     }
 
     pub fn get_validator_reward_multiplier(progress: u128) -> u128 {
-        Self::get_f64_as_percentage(
-            Self::sigmoid_decreasing(
-                Self::get_percent_as_f64(progress),
-                Self::get_percent_as_f64(ValidatorRewardMidpoint::<T>::get()),
-                ValidatorRewardK::<T>::get() as f64,
-                0.0,
-                1.0,
-            ) 
-        ).clamp(0, Self::percentage_factor_as_u128())
+        Self::get_f64_as_percentage(Self::sigmoid_decreasing(
+            Self::get_percent_as_f64(progress),
+            Self::get_percent_as_f64(ValidatorRewardMidpoint::<T>::get()),
+            ValidatorRewardK::<T>::get() as f64,
+            0.0,
+            1.0,
+        ))
+        .clamp(0, Self::percentage_factor_as_u128())
     }
 
     /// Return the validators reward that submitted data on the previous epoch
@@ -344,14 +430,15 @@ impl<T: Config> Pallet<T> {
     /// * `subnet_node_id` - Subnet node ID
     /// * `attestation_percentage` - The attestation ratio of the validator nodes consensus
     /// * `min_attestation_percentage` - Blockchains minimum attestation percentage (66%)
-    /// * `reputation_decrease_factor`: `ReputationDecreaseFactor`
+    /// * `coldkey_reputation_decrease_factor`: `ColdkeyReputationDecreaseFactor`
     /// * `epoch`: The blockchains general epoch
     pub fn slash_validator(
         subnet_id: u32,
         subnet_node_id: u32,
         attestation_percentage: u128,
         min_attestation_percentage: u128,
-        reputation_decrease_factor: u128,
+        coldkey_reputation_decrease_factor: u128,
+        min_validator_reputation: u128,
         epoch: u32,
     ) -> Weight {
         let mut weight = Weight::zero();
@@ -380,7 +467,7 @@ impl<T: Config> Pallet<T> {
                     coldkey,
                     attestation_percentage,
                     min_attestation_percentage,
-                    reputation_decrease_factor,
+                    coldkey_reputation_decrease_factor,
                     epoch,
                 );
             }
@@ -424,17 +511,19 @@ impl<T: Config> Pallet<T> {
             weight = weight.saturating_add(db_weight.reads(3));
         }
 
-        // --- Increase validator penalty count
-        let penalties = SubnetNodePenalties::<T>::get(subnet_id, subnet_node_id);
-        weight = weight.saturating_add(db_weight.reads(1));
-        SubnetNodePenalties::<T>::insert(subnet_id, subnet_node_id, penalties + 1);
+        // --- Decrease validator reputation
+        let reputation_decrease_factor =
+            ValidatorNonConsensusSubnetNodeReputationFactor::<T>::get(subnet_id);
+        let decrease_factor = Self::percent_mul(reputation_decrease_factor, attestation_delta);
+        let mut reputation = SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id);
+        weight = weight.saturating_add(db_weight.reads(2));
+        reputation = Self::get_decrease_reputation(reputation, decrease_factor);
+        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
         weight = weight.saturating_add(db_weight.writes(1));
 
-        // --- Ensure maximum sequential removal consensus threshold is reached
-        if penalties + 1 > MaxSubnetNodePenalties::<T>::get(subnet_id) {
-            // --- Increase account penalty count
+        if reputation < min_validator_reputation {
             Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            // weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node());
+            weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node(0u32));
         }
 
         Self::deposit_event(Event::Slashing {

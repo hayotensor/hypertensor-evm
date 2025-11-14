@@ -262,16 +262,12 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn can_subnet_be_active(subnet_id: u32) -> (bool, Option<SubnetRemovalReason>) {
-        let penalties = SubnetPenaltyCount::<T>::get(subnet_id);
-
-        if penalties > MaxSubnetPenaltyCount::<T>::get() {
-            return (false, Some(SubnetRemovalReason::MaxPenalties));
+        if SubnetReputation::<T>::get(subnet_id) < MinSubnetReputation::<T>::get() {
+            return (false, Some(SubnetRemovalReason::MinReputation));
         }
 
         // In registration, this equals total electable nodes
-        let total_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);
-
-        if total_nodes < MinSubnetNodes::<T>::get() {
+        if TotalActiveSubnetNodes::<T>::get(subnet_id) < MinSubnetNodes::<T>::get() {
             return (false, Some(SubnetRemovalReason::MinSubnetNodes));
         }
 

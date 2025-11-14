@@ -230,15 +230,9 @@ export async function registerSubnet(
   repo: string,
   description: string,
   misc: string,
-  churnLimit: string,
   minStake: string,
   maxStake: string,
   delegateStakePercentage: string,
-  subnetNodeQueueEpochs: string,
-  idleClassificationEpochs: string,
-  includedClassificationEpochs: string,
-  maxNodePenalties: string,
-  maxRegisteredNodes: string,
   initialColdkeys: any,
   keyTypes: number[],
   bootnodes: string[],
@@ -252,15 +246,9 @@ export async function registerSubnet(
     repo,
     description,
     misc,
-    churnLimit,
     minStake,
     maxStake,
     delegateStakePercentage,
-    subnetNodeQueueEpochs,
-    idleClassificationEpochs,
-    includedClassificationEpochs,
-    maxNodePenalties,
-    maxRegisteredNodes,
     initialColdkeys,
     keyTypes,
     bootnodes,
@@ -866,19 +854,6 @@ export async function ownerUpdateIncludedClassificationEpochs(
   await tx.wait();
 }
 
-export async function ownerUpdateMaxNodePenalties(
-  contract: Contract, 
-  subnetId: string,
-  value: string
-) {
-  const tx = await contract.ownerUpdateMaxNodePenalties(
-    subnetId,
-    value
-  );
-
-  await tx.wait();
-}
-
 export async function ownerAddOrUpdateInitialColdkeys(
   contract: Contract, 
   subnetId: string,
@@ -918,27 +893,16 @@ export async function ownerUpdateKeyTypes(
   await tx.wait();
 }
 
-export async function ownerUpdateMinStake(
+export async function ownerUpdateMinMaxStake(
   contract: Contract, 
   subnetId: string,
-  value: string
+  min: string,
+  max: string
 ) {
-  const tx = await contract.ownerUpdateMinStake(
+  const tx = await contract.ownerUpdateMinMaxStake(
     subnetId,
-    value
-  );
-
-  await tx.wait();
-}
-
-export async function ownerUpdateMaxStake(
-  contract: Contract, 
-  subnetId: string,
-  value: string
-) {
-  const tx = await contract.ownerUpdateMaxStake(
-    subnetId,
-    value
+    min,
+    max
   );
 
   await tx.wait();

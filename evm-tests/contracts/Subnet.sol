@@ -14,15 +14,9 @@ interface Subnet  {
     string memory repo,
     string memory description,
     string memory misc,
-    uint256 churnLimit,
     uint256 minStake,
     uint256 maxStake,
     uint256 delegateStakePercentage,
-    uint256 subnetNodeQueueEpochs,
-    uint256 idleClassificationEpochs,
-    uint256 includedClassificationEpochs,
-    uint256 maxNodePenalties,
-    uint256 maxRegisteredNodes,
     InitialColdkeys[] calldata initialColdkeys,
     uint256[] memory keyTypes,
     string[] memory bootnodes
@@ -146,17 +140,11 @@ interface Subnet  {
 
   function ownerUpdateIncludedClassificationEpochs(uint256 subnetId, uint256 value) external;
 
-  function ownerUpdateMaxNodePenalties(uint256 subnetId, uint256 value) external;
-
   function ownerAddOrUpdateInitialColdkeys(uint256 subnetId, InitialColdkeys[] calldata initialColdkeys) external;
 
   function ownerRemoveInitialColdkeys(uint256 subnetId, address[] memory coldkeys) external;
 
   function ownerUpdateKeyTypes(uint256 subnetId, uint256[] memory keyTypes) external;
-
-  function ownerUpdateMinStake(uint256 subnetId, uint256 value) external;
-
-  function ownerUpdateMaxStake(uint256 subnetId, uint256 value) external;
 
   function ownerUpdateDelegateStakePercentage(uint256 subnetId, uint256 value) external;
 
@@ -176,5 +164,53 @@ interface Subnet  {
 
   function ownerUpdateTargetRegistrationsPerEpoch(uint256 subnetId, uint256 value) external;
 
+  function ownerUpdateMinMaxStake(uint256 subnetId,uint256,uint256) external;
+
+  function ownerUpdateMinSubnetNodeReputation(uint256 subnetId,uint256) external;
+
+  function ownerUpdateSubnetNodeMinWeightDecreaseReputationThreshold(uint256 subnetId,uint256) external;
+
+  function ownerUpdateAbsentDecreaseReputationFactor(uint256 subnetId,uint256) external;
+
+  function ownerUpdateIncludedIncreaseReputationFactor(uint256 subnetId,uint256) external;
+
+  function ownerUpdatBelowMinWeightDecreaseReputationFactor(uint256 subnetId,uint256) external;
+
+  function ownerUpdatNonAttestorDecreaseReputationFactor(uint256 subnetId,uint256) external;
+
+  function ownerUpdatNonConsensusAttestorDecreaseReputationFactor(uint256 subnetId,uint256) external;
+
+  function ownerRemoveBootnodeAccess(uint256 subnetId,address) external;
+
   function updateBootnodes(uint256 subnetId, string[] memory add, string[] memory remove) external;
+
+  function getSubnetName(uint256 subnetId) external view returns (string memory);
+
+  function getSubnetRepo(uint256 subnetId) external view returns (string memory);
+
+  function getSubnetDescription(uint256 subnetId) external view returns (string memory);
+
+  function getSubnetMisc(uint256 subnetId) external view returns (string memory);
+
+  function getChurnLimit(uint256 subnetId) external view returns (uint256);
+
+  function getRegistrationQueueEpochs(uint256 subnetId) external view returns (uint256);
+
+  function getIdleClassificationEpochs(uint256 subnetId) external view returns (uint256);
+
+  function getIncludedClassificationEpochs(uint256 subnetId) external view returns (uint256);
+
+  function getMaxNodePenalties(uint256 subnetId) external view returns (uint256);
+
+  function getInitialColdkeys(uint256 subnetId) external view returns (InitialColdkeys[] memory);
+
+  function getKeyTypes(uint256 subnetId) external view returns (uint256[] memory);
+
+  function getMinStake(uint256 subnetId) external view returns (uint256);
+
+  function getMaxStake(uint256 subnetId) external view returns (uint256);
+
+  function getDelegateStakePercentage(uint256 subnetId) external view returns (uint256);
+
+  function getMaxRegisteredNodes(uint256 subnetId) external view returns (uint256);
 }

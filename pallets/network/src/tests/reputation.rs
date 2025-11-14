@@ -230,6 +230,71 @@ fn test_average_attestation_over_multiple_decreases() {
         // Confirm all other reputation fields are tracking
         assert_eq!(rep3.total_decreases, 3);
         assert_eq!(rep3.last_validator_epoch, 3);
-        assert!(rep3.score < start_score); // score has gone down over 3 penalties
+        assert!(rep3.score < start_score); // score has gone down over 3 decreases
+    });
+}
+
+#[test]
+fn test_increase_node_reputation_basic() {
+    new_test_ext().execute_with(|| {
+        let new = Network::get_increase_reputation(500000000000000000, 100000000000000000);
+        assert_eq!(new, 550000000000000000);
+
+        let new = Network::get_increase_reputation(900000000000000000, 500000000000000000);
+        assert_eq!(new, 950000000000000000);
+
+        let new = Network::get_increase_reputation(
+            Network::percentage_factor_as_u128(),
+            500000000000000000,
+        );
+        assert_eq!(new, Network::percentage_factor_as_u128());
+
+        let new = Network::get_increase_reputation(0, Network::percentage_factor_as_u128());
+        assert_eq!(new, Network::percentage_factor_as_u128());
+    });
+}
+
+#[test]
+fn test_decrease_node_reputation_basic() {
+    new_test_ext().execute_with(|| {
+        let new = Network::get_decrease_reputation(500000000000000000, 100000000000000000);
+        assert_eq!(new, 450000000000000000);
+
+        let new = Network::get_decrease_reputation(900000000000000000, 500000000000000000);
+        assert_eq!(new, 450000000000000000);
+
+        let new = Network::get_decrease_reputation(
+            Network::percentage_factor_as_u128(),
+            Network::percentage_factor_as_u128(),
+        );
+        assert_eq!(new, 0);
+
+        let new = Network::get_decrease_reputation(0, 800000000000000000);
+        assert_eq!(new, 0);
+    });
+}
+
+#[test]
+fn test_reputation_bounds() {
+    new_test_ext().execute_with(|| {
+        let new = Network::get_increase_reputation(
+            Network::percentage_factor_as_u128() - 1,
+            Network::percentage_factor_as_u128(),
+        );
+        assert_eq!(new, Network::percentage_factor_as_u128());
+
+        let new = Network::get_decrease_reputation(1, Network::percentage_factor_as_u128());
+        assert_eq!(new, 0);
+    });
+}
+
+#[test]
+fn test_factor_clamping() {
+    new_test_ext().execute_with(|| {
+        let over_factor = Network::percentage_factor_as_u128() * 10;
+        let new_inc = Network::get_increase_reputation(500000000000000000, over_factor);
+        let new_dec = Network::get_decrease_reputation(500000000000000000, over_factor);
+        assert_eq!(new_inc, Network::percentage_factor_as_u128());
+        assert_eq!(new_dec, 0);
     });
 }

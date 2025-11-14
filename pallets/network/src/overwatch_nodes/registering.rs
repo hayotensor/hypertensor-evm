@@ -162,11 +162,14 @@ impl<T: Config> Pallet<T> {
         let mut active_unique_node_count = 0;
         ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
             for (subnet_id, nodes) in colkey_map.iter_mut() {
+                let subnet_epoch = Self::get_current_subnet_epoch_as_u32(*subnet_id);
+
                 let node_ids: Vec<u32> = nodes.iter().copied().collect();
 
                 // Process each node_id one by one
                 for node_id in node_ids {
-                    if !Self::get_active_subnet_node(*subnet_id, node_id).is_none() {
+                    if !Self::get_validator_subnet_node(*subnet_id, node_id, subnet_epoch).is_none()
+                    {
                         active_unique_node_count += 1;
                         // `break` to next subnet
                         // We are only checking for subnet uniqueness. We only need to verify

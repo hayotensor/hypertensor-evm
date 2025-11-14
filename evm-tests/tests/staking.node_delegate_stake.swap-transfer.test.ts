@@ -130,15 +130,9 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
         const repo = generateRandomString(30)
         const description = generateRandomString(30)
         const misc = generateRandomString(30)
-        const churnLimit = await api.query.network.maxChurnLimit();
         const minStake = await api.query.network.minSubnetMinStake();
         const maxStake = await api.query.network.networkMaxStakeBalance();
         const delegateStakePercentage = await api.query.network.minDelegateStakePercentage();
-        const subnetNodeQueueEpochs = await api.query.network.minQueueEpochs();
-        const idleClassificationEpochs = await api.query.network.minIdleClassificationEpochs();
-        const includedClassificationEpochs = await api.query.network.minIncludedClassificationEpochs();
-        const maxNodePenalties = await api.query.network.minMaxSubnetNodePenalties();
-        const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
 
         await registerSubnet(
             subnetContract, 
@@ -147,19 +141,13 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
             repo,
             description,
             misc,
-            churnLimit.toString(),
             minStake.toString(),
             maxStake.toString(),
             delegateStakePercentage.toString(),
-            subnetNodeQueueEpochs.toString(),
-            idleClassificationEpochs.toString(),
-            includedClassificationEpochs.toString(),
-            maxNodePenalties.toString(),
-            maxRegisteredNodes.toString(),
             initialColdkeys,
             KEY_TYPES,
             BOOTNODES,
-            cost
+            cost,
         )
 
         fromSubnetId = await subnetContract.getSubnetId(subnetName);
@@ -226,7 +214,7 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
           peer4,
           peer5,
           peer6,
-          bootnode,
+          generateRandomString(16),
           delegateRewardRate,
           BigInt(minStake.toString()),
           toUnique,
@@ -264,7 +252,9 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
             fromSubnetId,
             fromSubnetNodeId
         );
+        console.log("sharesBefore", sharesBefore)
         const balanceBefore = await stakingContract.accountNodeDelegateStakeBalance(wallet1.address, fromSubnetId, fromSubnetNodeId);
+        console.log("balanceBefore", balanceBefore)
 
         await addToNodeDelegateStake(
           stakingContract, 
@@ -275,6 +265,8 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
 
         const sharesAfter = await stakingContract.accountNodeDelegateStakeShares(wallet1.address, fromSubnetId, fromSubnetNodeId);
         const balanceAfter = await stakingContract.accountNodeDelegateStakeBalance(wallet1.address, fromSubnetId, fromSubnetNodeId);
+        console.log("sharesAfter", sharesAfter)
+        console.log("balanceAfter", balanceAfter)
 
         expect(sharesBefore).to.be.lessThan(sharesAfter);
         expect(balanceBefore).to.be.lessThan(balanceAfter);
@@ -288,12 +280,12 @@ describe("test swap and transfer delegate staking-0x0101d", () => {
           fromSubnetNodeId, // from
           fromSubnetId, // to
           toSubnetNodeId, // to
-          sharesBefore
+          sharesAfter
         )
 
         const toBalanceAfter = await stakingContract.accountNodeDelegateStakeBalance(wallet1.address, fromSubnetId, toSubnetNodeId);
 
-        expect(toBalanceAfter).to.be.within(balanceBefore * 0.99, balanceBefore); // Not recommended
+        expect(Number(toBalanceAfter)).to.be.within(Number(Number(balanceBefore) * 0.99), Number(balanceBefore)); // Not recommended
 
         console.log("✅ Swap node delegate stake testing complete")
     })

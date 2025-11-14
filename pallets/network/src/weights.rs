@@ -472,8 +472,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn remove_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190961`
@@ -617,8 +617,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn owner_deactivate_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190235`
@@ -2509,8 +2509,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn collective_remove_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190161`
@@ -3366,8 +3366,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationIncreaseFactor` (r:0 w:1)
-	/// Proof: `Network::ReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationIncreaseFactor` (r:0 w:1)
+	/// Proof: `Network::ColdkeyReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_reputation_increase_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -3385,8 +3385,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationDecreaseFactor` (r:0 w:1)
-	/// Proof: `Network::ReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationDecreaseFactor` (r:0 w:1)
+	/// Proof: `Network::ColdkeyReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_reputation_decrease_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -4113,8 +4113,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `x` is `[3, 512]`.
 	fn do_remove_subnet(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -4206,8 +4206,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Network::MinAttestationPercentage` (r:1 w:0)
 	/// Proof: `Network::MinAttestationPercentage` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationDecreaseFactor` (r:1 w:0)
-	/// Proof: `Network::ReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationDecreaseFactor` (r:1 w:0)
+	/// Proof: `Network::ColdkeyReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::SubnetNodeIdHotkey` (r:1 w:0)
@@ -4296,8 +4296,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
-	/// Storage: `Network::ReputationIncreaseFactor` (r:1 w:0)
-	/// Proof: `Network::ReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationIncreaseFactor` (r:1 w:0)
+	/// Proof: `Network::ColdkeyReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::ColdkeyReputation` (r:1 w:1)
@@ -4623,8 +4623,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn remove_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190961`
@@ -4768,8 +4768,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn owner_deactivate_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190235`
@@ -6660,8 +6660,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn collective_remove_subnet() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `190161`
@@ -7517,8 +7517,8 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationIncreaseFactor` (r:0 w:1)
-	/// Proof: `Network::ReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationIncreaseFactor` (r:0 w:1)
+	/// Proof: `Network::ColdkeyReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_reputation_increase_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -7536,8 +7536,8 @@ impl WeightInfo for () {
 	/// Proof: `System::EventCount` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `System::Events` (r:1 w:1)
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationDecreaseFactor` (r:0 w:1)
-	/// Proof: `Network::ReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationDecreaseFactor` (r:0 w:1)
+	/// Proof: `Network::ColdkeyReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_reputation_decrease_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
@@ -8264,8 +8264,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TotalSubnetElectableNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::ChurnLimit` (r:0 w:1)
 	/// Proof: `Network::ChurnLimit` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::SubnetNodeScorePenaltyThreshold` (r:0 w:1)
-	/// Proof: `Network::SubnetNodeScorePenaltyThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (r:0 w:1)
+	/// Proof: `Network::SubnetNodeMinWeightDecreaseReputationThreshold` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `x` is `[3, 512]`.
 	fn do_remove_subnet(x: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -8357,8 +8357,8 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Network::MinAttestationPercentage` (r:1 w:0)
 	/// Proof: `Network::MinAttestationPercentage` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::ReputationDecreaseFactor` (r:1 w:0)
-	/// Proof: `Network::ReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationDecreaseFactor` (r:1 w:0)
+	/// Proof: `Network::ColdkeyReputationDecreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::SubnetNodeIdHotkey` (r:1 w:0)
@@ -8447,8 +8447,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
-	/// Storage: `Network::ReputationIncreaseFactor` (r:1 w:0)
-	/// Proof: `Network::ReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::ColdkeyReputationIncreaseFactor` (r:1 w:0)
+	/// Proof: `Network::ColdkeyReputationIncreaseFactor` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::ColdkeyReputation` (r:1 w:1)

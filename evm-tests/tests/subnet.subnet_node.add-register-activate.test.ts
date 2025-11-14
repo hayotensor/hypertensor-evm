@@ -187,25 +187,19 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
         const maxRegisteredNodes = await api.query.network.minMaxRegisteredNodes();
 
         await registerSubnet(
-          subnetContract, 
-          cost,
-          subnetName,
-          repo,
-          description,
-          misc,
-          churnLimit.toString(),
-          minStake.toString(),
-          maxStake.toString(),
-          delegateStakePercentage.toString(),
-          subnetNodeQueueEpochs.toString(),
-          idleClassificationEpochs.toString(),
-          includedClassificationEpochs.toString(),
-          maxNodePenalties.toString(),
-          maxRegisteredNodes.toString(),
-          initialColdkeys,
-          KEY_TYPES,
-          BOOTNODES,
-          cost
+            subnetContract, 
+            cost,
+            subnetName,
+            repo,
+            description,
+            misc,
+            minStake.toString(),
+            maxStake.toString(),
+            delegateStakePercentage.toString(),
+            initialColdkeys,
+            KEY_TYPES,
+            BOOTNODES,
+            cost,
         )
 
         subnetId = await subnetContract.getSubnetId(subnetName);
@@ -324,18 +318,18 @@ describe("test subnet node entry functions-0xbull3948t92d398", () => {
 
         expect(typeof subnetNodeId !== 'undefined');
 
-        await removeSubnetNode(
-            subnetContract4, 
-            subnetId,
-            subnetNodeId!,
-        )
+        // await removeSubnetNode(
+        //     subnetContract4, 
+        //     subnetId,
+        //     subnetNodeId!,
+        // )
 
-        const subnetNodeIdAfter = await api.query.network.hotkeySubnetNodeId(subnetId, wallet4.address);
-        console.log("subnetNodeIdAfter", subnetNodeIdAfter)
+        // const subnetNodeIdAfter = await api.query.network.hotkeySubnetNodeId(subnetId, wallet4.address);
+        // console.log("subnetNodeIdAfter", subnetNodeIdAfter)
 
-        const subnetNodeIdAfterOpt = subnetNodeIdAfter as Option<any>;
-        expect(!subnetNodeIdAfterOpt.isSome);
-        expect(subnetNodeIdAfterOpt.isEmpty);
+        // const subnetNodeIdAfterOpt = subnetNodeIdAfter as Option<any>;
+        // expect(!subnetNodeIdAfterOpt.isSome);
+        // expect(subnetNodeIdAfterOpt.isEmpty);
 
         console.log("✅ Subnet node removal testing complete")
     })

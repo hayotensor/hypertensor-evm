@@ -1,5 +1,6 @@
 use super::mock::*;
 use crate::inflation::Inflation;
+use crate::inflation_v2::InflationV2;
 use crate::tests::test_utils::*;
 use crate::{InflationSigmoidMidpoint, InflationSigmoidSteepness};
 
@@ -114,5 +115,31 @@ fn test_get_interest_rate_total() {
             last_v_r = validator_rate;
             last_f_r = foundation_rate;
         }
+    });
+}
+
+#[test]
+fn test_get_inflation_v2() {
+    new_test_ext().execute_with(|| {
+        let inflation = InflationV2::default();
+        let mut last_emissions = f64::MAX;
+
+        for u in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
+            let emissions = Network::get_inflation_v2(*u);
+            assert!(emissions < last_emissions);
+            last_emissions = emissions;
+        }
+    });
+}
+
+#[test]
+fn test_get_epoch_emissions_v2() {
+    new_test_ext().execute_with(|| {
+        let inflation = InflationV2::default();
+        let (validator_emissions, foundation_emissions) = Network::get_epoch_emissions_v2();
+        log::error!("validator_emissions {:?}: ", validator_emissions);
+        log::error!("foundation_emissions {:?}: ", foundation_emissions);
+
+        // assert!(false);
     });
 }

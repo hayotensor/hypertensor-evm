@@ -1487,6 +1487,10 @@ impl_runtime_apis! {
             let result = Network::get_elected_validator_info(subnet_id, subnet_epoch);
             result.encode()
         }
+        fn get_validators_and_attestors(subnet_id: u32) -> Vec<u8> {
+            let result = Network::get_validators_and_attestors(subnet_id);
+            result.encode()
+        }
     }
 
     #[cfg(feature = "runtime-benchmarks")]
