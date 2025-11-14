@@ -25,10 +25,11 @@ sp-blockchain.workspace = true
 sp-rpc.workspace = true
 sp-runtime.workspace = true
 frame-support.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
 # Local
-network-custom-rpc-runtime-api = { path = "../runtime-api", default-features = false }
-pallet-network = { version = "4.0.0-dev", path = "../../network", default-features = false }
+network-custom-rpc-runtime-api.workspace = true
+pallet-network.workspace = true
 
 [features]
 default = ["std"]

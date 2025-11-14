@@ -85,8 +85,8 @@ solochain-template-runtime = { workspace = true, features = ["std"] }
 cumulus-primitives-proof-size-hostfunction = { workspace = true }
 cumulus-primitives-storage-weight-reclaim = { workspace = true }
 
-# network-custom-rpc = { path = "../pallets/network/rpc" }
-# network-custom-rpc-runtime-api = { path = "../pallets/network/runtime-api" }
+network-custom-rpc.workspace = true
+network-custom-rpc-runtime-api.workspace = true
 
 [build-dependencies]
 substrate-build-script-utils = { workspace = true }

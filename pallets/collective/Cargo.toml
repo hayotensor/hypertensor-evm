@@ -28,6 +28,7 @@ sp-runtime = { workspace = true }
 pallet-balances = { workspace = true, default-features = false }
 pallet-network = { version = "4.0.0-dev", default-features = false, path = "../network" }
 pallet-insecure-randomness-collective-flip.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
 [features]
 default = ["std"]

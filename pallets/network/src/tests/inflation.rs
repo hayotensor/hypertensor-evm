@@ -1,11 +1,9 @@
 use super::mock::*;
-use crate::tests::test_utils::*;
-use crate::Event;
-use log::info;
 use crate::inflation::Inflation;
-use crate::{
-  UtilizationLowerBound,
-};
+use crate::inflation_v2::InflationV2;
+use crate::tests::test_utils::*;
+use crate::{InflationSigmoidMidpoint, InflationSigmoidSteepness};
+
 //
 //
 //
@@ -22,61 +20,126 @@ use crate::{
 //
 //
 
+#[test]
+fn inflation_should_decrease_as_utilization_increases() {
+    new_test_ext().execute_with(|| {
+        let inflation = Inflation::default();
+        let max_rate = inflation.initial_max;
+        let min_rate = inflation.initial_min;
+
+        let low_util = Network::get_inflation(0.0, 1.0);
+        let mid_util = Network::get_inflation(0.5, 1.0);
+        let high_util = Network::get_inflation(1.0, 1.0);
+
+        // Ensure inflation starts high and decreases
+        assert!(
+            low_util > mid_util,
+            "Inflation at 0.0 should be higher than at 0.5"
+        );
+        assert!(
+            mid_util > high_util,
+            "Inflation at 0.5 should be higher than at 1.0"
+        );
+
+        // log::error!("(low_util - max_rate).abs()  {:?}", (low_util - max_rate).abs());
+        // log::error!("(high_util - min_rate).abs() {:?}", (high_util - min_rate).abs());
+
+        // // Check that boundaries are roughly as expected
+        // assert!(
+        //     (low_util - max_rate).abs() < 0.01,
+        //     "Low inflation not near max"
+        // );
+        // assert!(
+        //     (high_util - min_rate).abs() < 0.01,
+        //     "High inflation not near min"
+        // );
+    });
+}
+
 // Interest rate decreases as utilization increases
 #[test]
 fn test_get_interest_rate() {
-  new_test_ext().execute_with(|| {
-    let _ = env_logger::builder().is_test(true).try_init();
+    new_test_ext().execute_with(|| {
+        let _ = env_logger::builder().is_test(true).try_init();
 
-    let min: f64 = Network::get_percent_as_f64(UtilizationLowerBound::<Test>::get());
+        let mut last = f64::MAX;
 
-    let mut last1 = f64::MAX;
-
-    for subnet_utilization in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
-      log::error!(" ");
-
-      log::error!("test_get_interest_rate subnet_utilization {:?}", subnet_utilization);
-
-      let inflation = Network::get_inflation_rate(
-        0, // epoch
-        *subnet_utilization,
-        0.0, // node utilization
-      );
-
-      if *subnet_utilization <= min {
-        assert!(inflation <= last1);
-      } else {
-        assert!(inflation < last1);
-      }
-      last1 = inflation;
-    }
-
-    let mut last2 = f64::MAX;
-
-    for subnet_node_utilization in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
-      log::error!(" ");
-
-      log::error!("test_get_interest_rate subnet_node_utilization {:?}", subnet_node_utilization);
-
-      let inflation = Network::get_inflation_rate(
-        0, // epoch
-        0.0,
-        *subnet_node_utilization, // node utilization
-      );
-      
-      if *subnet_node_utilization <= min {
-        assert!(inflation <= last2);
-      } else {
-        assert!(inflation < last2);
-      }
-      last2 = inflation;
-    }
-  });
+        for util in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
+            let inflation = Network::get_inflation(*util, 1.0);
+            assert!(inflation < last);
+            last = inflation;
+        }
+    });
 }
 
 #[test]
-fn test_inflation_math() {
-  new_test_ext().execute_with(|| {
+fn test_get_interest_rate_year() {
+    new_test_ext().execute_with(|| {
+        let _ = env_logger::builder().is_test(true).try_init();
 
-  });
+        let mut last = f64::MAX;
+
+        for year in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
+            let inflation = Network::get_inflation(0.0, *year);
+            assert!(inflation < last);
+            last = inflation;
+        }
+    });
+}
+
+#[test]
+fn test_get_interest_rate_total() {
+    new_test_ext().execute_with(|| {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        let mut last_v_r = f64::MAX;
+        let mut last_f_r = f64::MAX;
+
+        let inflation = Inflation::default();
+
+        let mid = Network::get_percent_as_f64(InflationSigmoidMidpoint::<Test>::get());
+        let k = InflationSigmoidSteepness::<Test>::get() as f64;
+
+        for u in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
+            let (validator_rate, foundation_rate) = {
+                let inflation = Inflation::default();
+                (
+                    (inflation).validator(*u, mid, k, 1.0),
+                    (inflation).foundation(*u, mid, k, 1.0),
+                )
+            };
+
+            assert!(validator_rate < last_v_r);
+            assert!(foundation_rate < last_f_r);
+
+            last_v_r = validator_rate;
+            last_f_r = foundation_rate;
+        }
+    });
+}
+
+#[test]
+fn test_get_inflation_v2() {
+    new_test_ext().execute_with(|| {
+        let inflation = InflationV2::default();
+        let mut last_emissions = f64::MAX;
+
+        for u in &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] {
+            let emissions = Network::get_inflation_v2(*u);
+            assert!(emissions < last_emissions);
+            last_emissions = emissions;
+        }
+    });
+}
+
+#[test]
+fn test_get_epoch_emissions_v2() {
+    new_test_ext().execute_with(|| {
+        let inflation = InflationV2::default();
+        let (validator_emissions, foundation_emissions) = Network::get_epoch_emissions_v2();
+        log::error!("validator_emissions {:?}: ", validator_emissions);
+        log::error!("foundation_emissions {:?}: ", foundation_emissions);
+
+        // assert!(false);
+    });
 }

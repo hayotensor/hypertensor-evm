@@ -58,7 +58,10 @@ solochain-template-runtime = { path = "./runtime", default-features = false }
 pallet-template = { path = "./pallets/template", default-features = false }
 pallet-atomic-swap = { path = "./pallets/atomic-swap", default-features = false }
 pallet-collective = { path = "./pallets/collective", default-features = false }
+pallet-author-subsidy = { path = "./pallets/author-subsidy", default-features = false }
 pallet-network = { path = "./pallets/network", default-features = false }
+network-custom-rpc = { path = "./pallets/network/rpc", default-features = false }
+network-custom-rpc-runtime-api = { path = "./pallets/network/runtime-api", default-features = false }
 hypertensor-precompiles = { path = "./precompiles", default-features = false }
 
 # Substrate Client
@@ -107,6 +110,7 @@ sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk", bra
 sp-session = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
+sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-storage = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }

@@ -2,7 +2,7 @@ import * as assert from "assert";
 import { dev } from '@polkadot-api/descriptors';
 import { createClient, TypedApi, Transaction, PolkadotSigner, Binary } from 'polkadot-api';
 import { getWsProvider } from 'polkadot-api/ws-provider/web';
-import { sr25519CreateDerive } from "@polkadot-labs/hdkd"
+import { ecdsaCreateDerive } from "@polkadot-labs/hdkd"
 import { convertPublicKeyToSs58 } from "../src/address-utils"
 import { DEV_PHRASE, entropyToMiniSecret, mnemonicToEntropy, KeyPair } from "@polkadot-labs/hdkd-helpers"
 import { getPolkadotSigner } from "polkadot-api/signer"
@@ -33,8 +33,8 @@ export async function getDevnetApi() {
 export function getAlice() {
     const entropy = mnemonicToEntropy(DEV_PHRASE)
     const miniSecret = entropyToMiniSecret(entropy)
-    const derive = sr25519CreateDerive(miniSecret)
-    const hdkdKeyPair = derive("//Alice")
+    const ecdsaDerive = ecdsaCreateDerive(miniSecret)
+    const hdkdKeyPair = ecdsaDerive("//Alice")
 
     return hdkdKeyPair
 }
@@ -43,35 +43,35 @@ export function getAliceSigner() {
     const alice = getAlice()
     const polkadotSigner = getPolkadotSigner(
         alice.publicKey,
-        "Sr25519",
+        "Ed25519",
         alice.sign,
     )
 
     return polkadotSigner
 }
 
-export function getRandomSubstrateSigner() {
-    const keypair = getRandomSubstrateKeypair();
-    return getSignerFromKeypair(keypair)
-}
+// export function getRandomSubstrateSigner() {
+//     const keypair = getRandomSubstrateKeypair();
+//     return getSignerFromKeypair(keypair)
+// }
 
 export function getSignerFromKeypair(keypair: KeyPair) {
     const polkadotSigner = getPolkadotSigner(
         keypair.publicKey,
-        "Sr25519",
+        "Ecdsa",
         keypair.sign,
     )
     return polkadotSigner
 }
 
-export function getRandomSubstrateKeypair() {
-    const seed = randomBytes(32);
-    const miniSecret = entropyToMiniSecret(seed)
-    const derive = sr25519CreateDerive(miniSecret)
-    const hdkdKeyPair = derive("")
+// export function getRandomSubstrateKeypair() {
+//     const seed = randomBytes(32);
+//     const miniSecret = entropyToMiniSecret(seed)
+//     const ecdsaDerive = ecdsaCreateDerive(miniSecret)
+//     const hdkdKeyPair = ecdsaDerive("")
 
-    return hdkdKeyPair
-}
+//     return hdkdKeyPair
+// }
 
 export async function getBalance(api: TypedApi<typeof dev>) {
     const value = await api.query.Balances.Account.getValue("")
@@ -130,7 +130,7 @@ export function convertPublicKeyToMultiAddress(publicKey: Uint8Array, ss58Format
   return encodeAddress(publicKey, ss58Format);
 }
 
-export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx: Transaction<{}, string, string, void>, signer: PolkadotSigner,) {
+export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx: Transaction<{}, string, string, void>, signer: PolkadotSigner) {
     const transactionPromise = await getTransactionWatchPromise(tx, signer)
     return transactionPromise
 
@@ -146,7 +146,7 @@ export async function waitForTransactionCompletion(api: TypedApi<typeof dev>, tx
     // })
 }
 
-export async function getTransactionWatchPromise(tx: Transaction<{}, string, string, void>, signer: PolkadotSigner,) {
+export async function getTransactionWatchPromise(tx: Transaction<{}, string, string, void>, signer: PolkadotSigner) {
     return new Promise<void>((resolve, reject) => {
         // store the txHash, then use it in timeout. easier to know which tx is not finalized in time
         let txHash = ""
@@ -223,7 +223,7 @@ export async function waitForFinalizedBlock(api: TypedApi<typeof dev>) {
 }
 
 // second solution to wait for transaction finalization. pass the raw data to avoid the complex transaction type definition
-export async function waitForTransactionCompletion2(api: TypedApi<typeof dev>, raw: Binary, signer: PolkadotSigner,) {
+export async function waitForTransactionCompletion2(api: TypedApi<typeof dev>, raw: Binary, signer: PolkadotSigner) {
     const tx = await api.txFromCallData(raw);
     return new Promise<void>((resolve, reject) => {
         const subscription = tx.signSubmitAndWatch(signer).subscribe({

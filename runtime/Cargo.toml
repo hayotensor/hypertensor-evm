@@ -40,7 +40,9 @@ pallet-treasury.workspace = true
 pallet-multisig.workspace = true
 pallet-tx-pause.workspace = true
 pallet-collective.workspace = true
+pallet-author-subsidy.workspace = true
 pallet-network.workspace = true
+network-custom-rpc-runtime-api.workspace = true
 
 scale-info = { features = ["derive", "serde"], workspace = true }
 serde_json = { workspace = true, default-features = false, features = ["alloc"] }
@@ -78,8 +80,6 @@ pallet-evm-precompile-sha3fips = { workspace = true }
 pallet-evm-precompile-simple = { workspace = true }
 
 hex-literal = { workspace = true }
-
-# sc-chain-spec = { workspace = true }
 
 # Cumulus primitives
 cumulus-primitives-storage-weight-reclaim = { workspace = true }
@@ -119,7 +119,9 @@ std = [
 	"pallet-multisig/std",
 	"pallet-tx-pause/std",
 	"pallet-collective/std",
+	"pallet-author-subsidy/std",
 	"pallet-network/std",
+	"network-custom-rpc-runtime-api/std",
 	"hypertensor-precompiles/std",
 	"scale-info/std",
 	"serde_json/std",
@@ -170,6 +172,7 @@ runtime-benchmarks = [
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-transaction-payment/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
+	"pallet-author-subsidy/runtime-benchmarks",
 	"pallet-network/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]

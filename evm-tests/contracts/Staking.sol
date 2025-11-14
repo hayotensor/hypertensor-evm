@@ -92,6 +92,26 @@ interface Staking  {
     uint256 nodeDelegateStakeSharesToSwap
   ) external;
 
+  function updateSwapQueue(
+    uint256 id,
+    uint256 callType,
+    uint256 toSubnetId,
+    uint256 toSubnetNodeId
+  ) external;
+
+  struct QueuedSwapData {
+    uint32 id;
+    address accountId;
+    uint8 callType;
+    uint32 toSubnetId;
+    uint32 toSubnetNodeId;
+    uint128 balance;
+    uint32 queuedAtBlock;
+    uint32 executeAfterBlocks;
+  }
+
+  function getQueuedSwapCall(uint256 id) external view returns (QueuedSwapData memory);
+
   function totalSubnetStake(uint256 subnetId) external view returns (uint256);
 
   function accountSubnetStake(address hotkey, uint256 subnetId) external view returns (uint256);

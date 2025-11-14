@@ -14,326 +14,1075 @@
 // limitations under the License.
 
 use super::*;
-use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
-  pub fn perform_remove_subnet_node(block: u32, subnet_id: u32, subnet_node_id: u32) {
-    let mut is_active = false;
-    let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      is_active = true;
-      SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-    } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-    } else if DeactivatedSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-      DeactivatedSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-    } else {
-      return
-    };
+    pub fn do_update_node_delegate_reward_rate(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_delegate_reward_rate: u128,
+    ) -> DispatchResult {
+        let block: u32 = Self::get_current_block_as_u32();
+        let max_reward_rate_decrease = MaxRewardRateDecrease::<T>::get();
+        let reward_rate_update_period = NodeRewardRateUpdatePeriod::<T>::get();
 
-    let hotkey = subnet_node.hotkey;
-    let peer_id = subnet_node.peer_id;
+        // --- Ensure rate doesn't surpass 100% and MaxDelegateStakePercentage
+        ensure!(
+            new_delegate_reward_rate <= Self::percentage_factor_as_u128()
+                && new_delegate_reward_rate <= MaxDelegateStakePercentage::<T>::get(),
+            Error::<T>::InvalidDelegateRewardRate
+        );
 
-    // Remove from attestations
-    let epoch: u32 = Self::get_current_epoch_as_u32();
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_node_delegate_reward_rate(
+                        maybe_params,
+                        subnet_id,
+                        block,
+                        new_delegate_reward_rate,
+                        reward_rate_update_period,
+                        max_reward_rate_decrease,
+                    )
+                },
+            )?;
 
-    if let Err(e) = SubnetConsensusSubmission::<T>::try_mutate_exists(
-      subnet_id,
-      epoch,
-      |maybe_params| -> DispatchResult {
-        if let Some(params) = maybe_params {
-          // Remove from consensus list
-          params.data.retain(|x| x.peer_id != peer_id);
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_node_delegate_reward_rate(
+                        maybe_params,
+                        subnet_id,
+                        block,
+                        new_delegate_reward_rate,
+                        reward_rate_update_period,
+                        max_reward_rate_decrease,
+                    )
+                },
+            )?;
 
-          // Remove from attestations map
-          params.attests.remove(&subnet_node_id);
+            return Ok(());
         }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_node_delegate_reward_rate(
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        subnet_id: u32,
+        block: u32,
+        new_delegate_reward_rate: u128,
+        reward_rate_update_period: u32,
+        max_reward_rate_decrease: u128,
+    ) -> DispatchResult {
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+        let curr_delegate_reward_rate = params.delegate_reward_rate;
+
+        // --- Ensure rate change surpasses minimum update period
+        ensure!(
+            block - params.last_delegate_reward_rate_update >= reward_rate_update_period,
+            Error::<T>::MaxRewardRateUpdates
+        );
+
+        // --- Ensure rate is being updated redundantly
+        ensure!(
+            new_delegate_reward_rate != curr_delegate_reward_rate,
+            Error::<T>::NoDelegateRewardRateChange
+        );
+
+        let mut delegate_reward_rate = params.delegate_reward_rate;
+
+        if new_delegate_reward_rate > curr_delegate_reward_rate {
+            // Freely increase reward rate
+            delegate_reward_rate = new_delegate_reward_rate;
+        } else {
+            // Ensure reward rate decrease doesn't surpass max rate of change
+            let delta = curr_delegate_reward_rate - new_delegate_reward_rate;
+            ensure!(
+                delta <= max_reward_rate_decrease,
+                Error::<T>::SurpassesMaxRewardRateDecrease
+            );
+            delegate_reward_rate = new_delegate_reward_rate
+        }
+
+        params.last_delegate_reward_rate_update = block;
+        params.delegate_reward_rate = delegate_reward_rate;
+
+        Self::deposit_event(Event::SubnetNodeUpdateDelegateRewardRate {
+            subnet_id,
+            subnet_node_id: params.id,
+            delegate_reward_rate: new_delegate_reward_rate,
+        });
+
         Ok(())
-      },
-    ) {
-      log::debug!("Failed to mutate SubnetConsensusSubmission: {:?}", e);
     }
 
-    if subnet_node.a.is_some() {
-      SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.a.unwrap())
-    }
+    pub fn do_update_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_peer_id: PeerId,
+    ) -> DispatchResult {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_peer_id,
+                    )
+                },
+            )?;
 
-    // Remove all subnet node elements
-    PeerIdSubnetNode::<T>::remove(subnet_id, &peer_id);
-    BootstrapPeerIdSubnetNode::<T>::remove(subnet_id, subnet_node.bootstrap_peer_id);
-    HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
-    SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_peer_id,
+                    )
+                },
+            )?;
 
-    // We don't remove the HotkeyOwner so the user can remove stake with coldkey
-
-    // We DO remove the hotkey from the coldkeys hotkey set
-    // let mut hotkeys = ColdkeyHotkeys::<T>::get(&coldkey);
-    // hotkeys.remove(&hotkey);
-    // ColdkeyHotkeys::<T>::insert(&coldkey, hotkeys);
-
-    // Update total subnet peers by subtracting  1
-    TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-    TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-
-    if is_active {
-      TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-      TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-      match HotkeyOwner::<T>::try_get(&hotkey) {
-        Ok(coldkey) => {
-          ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-          });
-        },
-        Err(()) => ()
-      }
-    }
-
-    // Reset sequential absent subnet node count
-    SubnetNodePenalties::<T>::remove(subnet_id, subnet_node_id);
-
-    Self::deposit_event(Event::SubnetNodeRemoved { subnet_id: subnet_id, subnet_node_id: subnet_node_id });
-  }
-
-  pub fn get_classified_subnet_node_ids<C>(
-    subnet_id: u32,
-    classification: &SubnetNodeClass,
-    epoch: u32,
-  ) -> C
-    where
-      C: FromIterator<u32>,
-  {
-    SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, epoch))
-      .map(|(subnet_node_id, _)| subnet_node_id)
-      .collect()
-  }
-  
-  /// Get subnet nodes by classification
-  pub fn get_classified_subnet_nodes(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNode<T::AccountId>> {
-    SubnetNodesData::<T>::iter_prefix_values(subnet_id)
-      .filter(|subnet_node| subnet_node.has_classification(classification, epoch))
-      .collect()
-  }
-
-  pub fn get_classified_subnet_nodes_info(subnet_id: u32, classification: &SubnetNodeClass, epoch: u32) -> Vec<SubnetNodeInfo<T::AccountId>> {
-    SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(subnet_node_id, subnet_node)| subnet_node.has_classification(classification, epoch))
-      .map(|(subnet_node_id, subnet_node)| {
-        let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
-        SubnetNodeInfo {
-          subnet_node_id: subnet_node_id,
-          coldkey: coldkey.clone(),
-          hotkey: subnet_node.hotkey.clone(),
-          peer_id: subnet_node.peer_id,
-          bootstrap_peer_id: subnet_node.bootstrap_peer_id,
-          client_peer_id: subnet_node.client_peer_id,
-          identity: ColdkeyIdentity::<T>::get(&coldkey),
-          classification: subnet_node.classification,
-          delegate_reward_rate: subnet_node.delegate_reward_rate,
-          last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
-          a: subnet_node.a,
-          b: subnet_node.b,
-          c: subnet_node.c,
-          stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id)
+            return Ok(());
         }
-      })
-      .collect()
-  }
 
-  pub fn get_lowest_stake_balance_node(subnet_id: u32) -> Option<u32> {
-    let mut candidates: Vec<(u32, u128, u32)> = Vec::new(); // (uid, stake, start_epoch)
-
-    for (uid, node) in SubnetNodesData::<T>::iter_prefix(subnet_id) {
-        let hotkey = node.hotkey.clone();
-        let stake = AccountSubnetStake::<T>::get(&hotkey, subnet_id);
-        let start_epoch = node.classification.start_epoch;
-
-        candidates.push((uid, stake, start_epoch));
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
     }
 
-    candidates.sort_by(|a, b| {
-        // Sort by stake ascending, then start_epoch descending
-        a.1.cmp(&b.1).then(b.2.cmp(&a.2))
-    });
+    fn perform_update_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        new_peer_id: PeerId,
+    ) -> DispatchResult {
+        ensure!(
+            Self::validate_peer_id(&new_peer_id),
+            Error::<T>::InvalidPeerId
+        );
 
-    candidates.first().map(|(uid, _, _)| *uid)
-  }
+        ensure!(
+            Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_peer_id),
+            Error::<T>::PeerIdExist
+        );
 
-  // Get subnet node ``hotkeys`` by classification
-  pub fn get_classified_hotkeys<C>(
-    subnet_id: u32,
-    classification: &SubnetNodeClass,
-    epoch: u32,
-  ) -> C
-    where
-      C: FromIterator<T::AccountId>,
-  {
-    SubnetNodesData::<T>::iter_prefix(subnet_id)
-      .filter(|(_, subnet_node)| subnet_node.has_classification(classification, epoch))
-      .map(|(_, subnet_node)| subnet_node.hotkey)
-      .collect()
-  }
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
 
-  // pub fn is_subnet_node_owner(subnet_id: u32, subnet_node_id: u32, hotkey: T::AccountId) -> bool {
-  //   match SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
-  //     Ok(data) => {
-  //       data.hotkey == hotkey
-  //     },
-  //     Err(()) => false,
-  //   }
-  // }
+        PeerIdSubnetNodeId::<T>::remove(subnet_id, &params.peer_id);
+        PeerIdSubnetNodeId::<T>::insert(subnet_id, &new_peer_id, subnet_node_id);
 
-  /// Is hotkey or coldkey owner for functions that allow both
-  pub fn get_hotkey_coldkey(
-    subnet_id: u32, 
-    subnet_node_id: u32, 
-  ) -> Option<(T::AccountId, T::AccountId)> {
-    let hotkey = SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id).ok()?;
-    let coldkey = HotkeyOwner::<T>::try_get(&hotkey).ok()?;
+        params.peer_id = new_peer_id.clone();
 
-    Some((hotkey, coldkey))
-  }
+        Self::deposit_event(Event::SubnetNodeUpdatePeerId {
+            subnet_id,
+            subnet_node_id,
+            peer_id: new_peer_id,
+        });
 
-  pub fn is_keys_owner(
-    subnet_id: u32, 
-    subnet_node_id: u32, 
-    key: T::AccountId, 
-  ) -> bool {
-    let (hotkey, coldkey) = match Self::get_hotkey_coldkey(subnet_id, subnet_node_id) {
-      Some((hotkey, coldkey)) => {
-        (hotkey, coldkey)
-      }
-      None => {
-        return false
-      }
-    };
-
-    key == hotkey || key == coldkey
-  }
-
-  pub fn is_subnet_node_coldkey(
-    subnet_id: u32, 
-    subnet_node_id: u32, 
-    coldkey: T::AccountId, 
-  ) -> bool {
-    let hotkey = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
-      Ok(hotkey) => hotkey,
-      Err(()) => return false
-    };
-    match HotkeyOwner::<T>::try_get(hotkey) {
-      Ok(subnet_node_coldkey) => return subnet_node_coldkey == coldkey,
-      Err(()) => return false
+        Ok(())
     }
-  }
 
-  pub fn increase_class(
-    subnet_id: u32, 
-    subnet_node_id: u32, 
-    start_epoch: u32,
-  ) {
-    // TODO: Add querying epoch here
-    SubnetNodesData::<T>::mutate(
-      subnet_id,
-      subnet_node_id,
-      |params: &mut SubnetNode<T::AccountId>| {
-        params.classification = SubnetNodeClassification {
-          node_class: params.classification.node_class.next(),
-          start_epoch: start_epoch,
+    pub fn do_update_bootnode(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        if let Some(bootnode) = &new_bootnode {
+            ensure!(
+                Self::is_owner_of_bootnode_or_ownerless(subnet_id, 0, bootnode.clone()),
+                Error::<T>::BootnodeExist
+            );
+        }
+
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
+                },
+            )?;
+
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_bootnode(subnet_id, maybe_params, new_bootnode)
+                },
+            )?;
+
+            return Ok(());
+        }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_bootnode(
+        subnet_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        new_bootnode: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+
+        if let Some(bootnode) = &params.bootnode {
+            BootnodeSubnetNodeId::<T>::remove(subnet_id, bootnode);
+        }
+
+        if let Some(bootnode) = new_bootnode.clone() {
+            BootnodeSubnetNodeId::<T>::insert(subnet_id, bootnode, params.id);
+        }
+
+        // Nodes can update bootnode to None
+        params.bootnode = new_bootnode.clone();
+
+        Self::deposit_event(Event::SubnetNodeUpdateBootnode {
+            subnet_id,
+            subnet_node_id: params.id,
+            bootnode: new_bootnode,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_bootnode_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_bootnode_peer_id: PeerId,
+    ) -> DispatchResult {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_bootnode_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_bootnode_peer_id,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_bootnode_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_bootnode_peer_id,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_bootnode_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        new_bootnode_peer_id: PeerId,
+    ) -> DispatchResult {
+        ensure!(
+            Self::validate_peer_id(&new_bootnode_peer_id),
+            Error::<T>::InvalidBootnodePeerId
+        );
+
+        ensure!(
+            Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_bootnode_peer_id),
+            Error::<T>::BootnodePeerIdExist
+        );
+
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+
+        BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, &params.bootnode_peer_id);
+        BootnodePeerIdSubnetNodeId::<T>::insert(subnet_id, &new_bootnode_peer_id, subnet_node_id);
+
+        params.bootnode_peer_id = new_bootnode_peer_id.clone();
+
+        Self::deposit_event(Event::SubnetNodeUpdateBootnodePeerId {
+            subnet_id,
+            subnet_node_id,
+            bootnode_peer_id: new_bootnode_peer_id,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_client_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_client_peer_id: PeerId,
+    ) -> DispatchResult {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_client_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_client_peer_id,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_client_peer_id(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        new_client_peer_id,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_client_peer_id(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        new_client_peer_id: PeerId,
+    ) -> DispatchResult {
+        ensure!(
+            Self::validate_peer_id(&new_client_peer_id),
+            Error::<T>::InvalidClientPeerId
+        );
+
+        ensure!(
+            Self::is_owner_of_peer_or_ownerless(subnet_id, 0, 0, &new_client_peer_id),
+            Error::<T>::ClientPeerIdExist
+        );
+
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+
+        ClientPeerIdSubnetNodeId::<T>::remove(subnet_id, &params.client_peer_id);
+        ClientPeerIdSubnetNodeId::<T>::insert(subnet_id, &new_client_peer_id, subnet_node_id);
+
+        params.client_peer_id = new_client_peer_id.clone();
+
+        Self::deposit_event(Event::SubnetNodeUpdateClientPeerId {
+            subnet_id,
+            subnet_node_id,
+            client_peer_id: new_client_peer_id,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_unique(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
+                },
+            )?;
+
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_unique(subnet_id, subnet_node_id, maybe_params, unique)
+                },
+            )?;
+
+            return Ok(());
+        }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_unique(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+
+        // Remove nodes previous unique if Some
+        if let Some(unique_param) = &params.unique {
+            SubnetNodeUniqueParam::<T>::remove(subnet_id, unique_param);
+        }
+
+        if let Some(unique) = unique.clone() {
+            match SubnetNodeUniqueParam::<T>::try_get(subnet_id, &unique) {
+                Ok(owner_subnet_node_id) => {
+                    ensure!(
+                        owner_subnet_node_id == subnet_node_id,
+                        Error::<T>::UniqueParameterTaken
+                    );
+                }
+                Err(()) => (),
+            };
+
+            SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique, subnet_node_id);
+        }
+
+        params.unique = unique.clone();
+
+        Self::deposit_event(Event::SubnetNodeUpdateUnique {
+            subnet_id,
+            subnet_node_id,
+            unique: unique,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_non_unique(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_non_unique(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        non_unique,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    Self::perform_update_non_unique(
+                        subnet_id,
+                        subnet_node_id,
+                        maybe_params,
+                        non_unique,
+                    )
+                },
+            )?;
+
+            return Ok(());
+        }
+
+        // Redundant
+        Err(Error::<T>::InvalidSubnetNodeId.into())
+    }
+
+    fn perform_update_non_unique(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        maybe_params: &mut Option<SubnetNode<T::AccountId>>,
+        non_unique: Option<BoundedVec<u8, DefaultMaxVectorLength>>,
+    ) -> DispatchResult {
+        let params = maybe_params
+            .as_mut()
+            .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+
+        params.non_unique = non_unique.clone();
+
+        Self::deposit_event(Event::SubnetNodeUpdateNonUnique {
+            subnet_id,
+            subnet_node_id,
+            non_unique: non_unique,
+        });
+
+        Ok(())
+    }
+
+    /// Inserts a node into the election slots, the list of nodes available to be chosen as validator
+    /// Note: ONLY CALL THIS FUNCTION IF MAX NODES IS CHECKED
+    pub fn insert_node_into_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
+        SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
+            if !slot_list.contains(&subnet_node_id) {
+                let idx = slot_list.len() as u32;
+                slot_list.push(subnet_node_id);
+                NodeSlotIndex::<T>::insert(subnet_id, subnet_node_id, idx);
+                TotalSubnetElectableNodes::<T>::mutate(subnet_id, |mut n| n.saturating_inc());
+                TotalElectableNodes::<T>::mutate(|mut n| n.saturating_inc());
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
+        .unwrap_or(false)
+    }
+
+    pub fn remove_node_from_election_slot(subnet_id: u32, subnet_node_id: u32) -> bool {
+        SubnetNodeElectionSlots::<T>::try_mutate(subnet_id, |slot_list| -> Result<bool, ()> {
+            if let Some(pos) = slot_list.iter().position(|id| *id == subnet_node_id) {
+                let last_idx = slot_list.len() - 1;
+                slot_list.swap_remove(pos);
+
+                if pos != last_idx {
+                    let moved_node_id = slot_list[pos];
+                    NodeSlotIndex::<T>::insert(subnet_id, moved_node_id, pos as u32);
+                }
+
+                NodeSlotIndex::<T>::remove(subnet_id, subnet_node_id);
+                TotalSubnetElectableNodes::<T>::mutate(subnet_id, |mut n| n.saturating_dec());
+                TotalElectableNodes::<T>::mutate(|mut n| n.saturating_dec());
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
+        .unwrap_or(false)
+    }
+
+    /// Removes a subnet node, can be registering, active, or deactive
+    pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
+        let mut is_active = false;
+        let mut is_registered = false;
+        let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            is_active = true;
+            SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            is_registered = true;
+            RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
+        } else {
+            return;
         };
-      },
-    );
-  }
 
-  /// Check if subnet node is owner of a peer ID
-  /// Main, bootstrap, and client peer IDs must be unique so we check all of them to ensure
-  /// that no one else owns them
-  /// Returns True is no owner or the peer ID is ownerless and available
-  pub fn is_owner_of_peer_or_ownerless(subnet_id: u32, subnet_node_id: u32, peer_id: &PeerId) -> bool {
-    let mut is_peer_owner_or_ownerless = match PeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
-      Ok(peer_subnet_node_id) => {
-        if peer_subnet_node_id == subnet_node_id {
-          return true
-        }
-        false
-      },
-      Err(()) => true,
-    };
+        let hotkey = subnet_node.hotkey;
+        let peer_id = subnet_node.peer_id;
 
-    is_peer_owner_or_ownerless = is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
-      Ok(bootstrap_subnet_node_id) => {
-        if bootstrap_subnet_node_id == subnet_node_id {
-          return true
+        if subnet_node.unique.is_some() {
+            SubnetNodeUniqueParam::<T>::remove(subnet_id, subnet_node.unique.unwrap())
         }
-        false
-      },
-      Err(()) => true,
-    };
 
-    is_peer_owner_or_ownerless && match ClientPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
-      Ok(client_subnet_node_id) => {
-        if client_subnet_node_id == subnet_node_id {
-          return true
+        // Remove all subnet node elements
+        PeerIdSubnetNodeId::<T>::remove(subnet_id, &peer_id);
+        BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
+        HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
+        SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
+        SubnetNodeReputation::<T>::remove(subnet_id, subnet_node_id);
+        // We don't remove `HotkeySubnetId`. This is only removed when a node fully removes stake
+
+        let coldkey = HotkeyOwner::<T>::get(&hotkey);
+
+        // Remove subnet ID from set
+        ColdkeySubnetNodes::<T>::mutate(&coldkey, |node_map| {
+            if let Some(nodes) = node_map.get_mut(&subnet_id) {
+                nodes.remove(&subnet_node_id);
+                if nodes.is_empty() {
+                    node_map.remove(&subnet_id);
+                }
+            }
+        });
+
+        // Note: We don't remove the HotkeyOwner so the user can remove stake with coldkey
+
+        // Update total subnet peers by subtracting  1
+        TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+        TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+
+        if subnet_node.classification.node_class == SubnetNodeClass::Validator {
+            // --- Try removing node from election slots (only happens if Validator classification)
+            Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
         }
-        false
-      },
-      Err(()) => true,
+
+        if is_active {
+            // Subtract from active node counts
+            TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+            TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+            // Subtract from coldkey reputation
+            ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+                rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+            });
+            // If emergency validators set, remove node ID
+            EmergencySubnetNodeElectionData::<T>::mutate_exists(subnet_id, |maybe_data| {
+                if let Some(data) = maybe_data {
+                    data.subnet_node_ids.retain(|&id| id != subnet_node_id);
+                }
+            });
+        } else if is_registered {
+            // Remove from queue
+            // This is only ever called by a user called extrinsic, not by blockchain validator logic
+            // Therefor this expensive part is paid for
+            SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
+                nodes.retain(|node| node.id != subnet_node_id);
+            });
+        }
+
+        Self::deposit_event(Event::SubnetNodeRemoved {
+            subnet_id: subnet_id,
+            subnet_node_id: subnet_node_id,
+        });
     }
-  }
 
-  // pub fn is_owner_of_peer_or_ownerless2(subnet_id: u32, peer_id: &PeerId, hotkey: T::AccountId) -> bool {
-  //   let is_peer_owner_or_ownerless = match PeerIdHotkey::<T>::try_get(subnet_id, peer_id) {
-  //     Ok(peer_hotkey) => {
-  //       if peer_hotkey == hotkey {
-  //         return true
-  //       }
-  //       false
-  //     },
-  //     Err(()) => true,
-  //   };
+    pub fn get_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+    ) -> Option<SubnetNode<T::AccountId>> {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            Some(RegisteredSubnetNodesData::<T>::get(
+                subnet_id,
+                subnet_node_id,
+            ))
+        } else {
+            None
+        }
+    }
 
-  //   // is_peer_owner_or_ownerless && match BootstrapPeerIdSubnetNode::<T>::try_get(subnet_id, peer_id) {
-  //   //   Ok(bootstrap_subnet_node_id) => {
-  //   //     if bootstrap_subnet_node_id == subnet_node_id {
-  //   //       return true
-  //   //     }
-  //   //     false
-  //   //   },
-  //   //   Err(()) => true,
-  //   // }
-  // }
+    /// Get any subnet node that has been activated (not including registered nodes)
+    pub fn get_activated_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+    ) -> Option<SubnetNode<T::AccountId>> {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+        } else {
+            None
+        }
+    }
 
-  pub fn calculate_max_activation_epoch(subnet_id: u32) -> u32 {
-    let prev_registration_epoch = 10;
-    0
-  }
+    /// Get any subnet node that has been activated (not including registered nodes)
+    pub fn get_active_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+    ) -> Option<SubnetNode<T::AccountId>> {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            Some(SubnetNodesData::<T>::get(subnet_id, subnet_node_id))
+        } else {
+            None
+        }
+    }
 
-  pub fn is_identity_owner(coldkey: T::AccountId, identity: Vec<u8>) -> bool {
-    true    
-  }
+    pub fn get_validator_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        subnet_epoch: u32,
+    ) -> Option<SubnetNode<T::AccountId>> {
+        if let Ok(subnet_node) = SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id) {
+            if subnet_node.has_classification(&SubnetNodeClass::Validator, subnet_epoch) {
+                Some(subnet_node)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 
-  pub fn is_identity_taken(identity: Vec<u8>) -> bool {
-    true    
-  }
+    /// Get any subnet node that has been activated (not including registered nodes)
+    pub fn update_subnet_node_hotkey(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        new_hotkey: T::AccountId,
+    ) {
+        if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            SubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    let params = maybe_params
+                        .as_mut()
+                        .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+                    params.hotkey = new_hotkey.clone();
+                    Ok(())
+                },
+            );
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            RegisteredSubnetNodesData::<T>::try_mutate_exists(
+                subnet_id,
+                subnet_node_id,
+                |maybe_params| -> DispatchResult {
+                    let params = maybe_params
+                        .as_mut()
+                        .ok_or(Error::<T>::InvalidSubnetNodeId)?;
+                    params.hotkey = new_hotkey.clone();
+                    Ok(())
+                },
+            );
+        }
+    }
 
-  // fn node_multiplier(ema_nodes: u32) -> FixedU128 {
-  //   let divisor = FixedU128::saturating_from_integer(20);
-  //   let ema = FixedU128::saturating_from_integer(ema_nodes);
-  //   FixedU128::one() + ema.saturating_div_int(divisor) // e.g. 1.0 + (ema / 20)
-  // }
+    /// Get subnet nodes by classification
+    pub fn get_active_classified_subnet_nodes(
+        subnet_id: u32,
+        classification: &SubnetNodeClass,
+        subnet_epoch: u32,
+    ) -> Vec<SubnetNode<T::AccountId>> {
+        SubnetNodesData::<T>::iter_prefix_values(subnet_id)
+            .filter(|subnet_node| subnet_node.has_classification(classification, subnet_epoch))
+            .collect()
+    }
 
-  // pub fn node_multiplier(ema_nodes: u64) -> U256 {
-  //   let one = U256::from(ONE_E18);
-  //   let ema = U256::from(ema_nodes);
-  //   let divisor = U256::from(20u64); // scale: 1 multiplier per 20 nodes
+    pub fn get_classified_subnet_nodes_map(
+        subnet_id: u32,
+        classification: &SubnetNodeClass,
+        subnet_epoch: u32,
+    ) -> BTreeMap<u32, SubnetNode<T::AccountId>> {
+        SubnetNodesData::<T>::iter_prefix(subnet_id)
+            .filter_map(|(subnet_node_id, subnet_node)| {
+                if subnet_node.has_classification(classification, subnet_epoch) {
+                    Some((subnet_node_id, subnet_node))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 
-  //   let scaled_add = one * ema / divisor; // (1e18 * ema) / 20
-  //   one + scaled_add // final multiplier in 1e18 scale
-  // }
+    pub fn get_classified_subnet_nodes_info(
+        subnet_id: u32,
+        classification: &SubnetNodeClass,
+        subnet_epoch: u32,
+    ) -> Vec<SubnetNodeInfo<T::AccountId>> {
+        SubnetNodesData::<T>::iter_prefix(subnet_id)
+            .filter(|(_subnet_node_id, subnet_node)| {
+                subnet_node.has_classification(classification, subnet_epoch)
+            })
+            .map(|(subnet_node_id, subnet_node)| {
+                let coldkey = HotkeyOwner::<T>::get(&subnet_node.hotkey);
+                SubnetNodeInfo {
+                    subnet_id: subnet_id,
+                    subnet_node_id: subnet_node_id,
+                    coldkey: coldkey.clone(),
+                    hotkey: subnet_node.hotkey.clone(),
+                    peer_id: subnet_node.peer_id,
+                    bootnode_peer_id: subnet_node.bootnode_peer_id,
+                    client_peer_id: subnet_node.client_peer_id,
+                    bootnode: subnet_node.bootnode,
+                    identity: ColdkeyIdentity::<T>::get(&coldkey),
+                    classification: subnet_node.classification,
+                    delegate_reward_rate: subnet_node.delegate_reward_rate,
+                    last_delegate_reward_rate_update: subnet_node.last_delegate_reward_rate_update,
+                    unique: subnet_node.unique,
+                    non_unique: subnet_node.non_unique,
+                    stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
+                    node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
+                        subnet_id,
+                        subnet_node_id,
+                    ),
+                    coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
+                    subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id)
+                }
+            })
+            .collect()
+    }
 
-  pub fn node_multiplier_ema(ema_nodes: u64) -> U256 {
-    let ema = U256::from(ema_nodes);
-    let divisor = U256::from(20u64); // 20 nodes → +1.0x
+    // Get subnet node ``hotkeys`` by classification
+    pub fn get_classified_hotkeys<C>(
+        subnet_id: u32,
+        classification: &SubnetNodeClass,
+        subnet_epoch: u32,
+    ) -> C
+    where
+        C: FromIterator<T::AccountId>,
+    {
+        SubnetNodesData::<T>::iter_prefix(subnet_id)
+            .filter(|(_, subnet_node)| subnet_node.has_classification(classification, subnet_epoch))
+            .map(|(_, subnet_node)| subnet_node.hotkey)
+            .collect()
+    }
 
-    // 1e18 + (1e18 * ema / 20)
-    Self::PERCENTAGE_FACTOR + (Self::PERCENTAGE_FACTOR * ema / divisor) 
-  }
+    /// Is hotkey or coldkey owner for functions that allow both
+    pub fn get_subnet_node_hotkey_coldkey(
+        subnet_id: u32,
+        subnet_node_id: u32,
+    ) -> Option<(T::AccountId, T::AccountId)> {
+        let hotkey = SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id).ok()?;
+        let coldkey = HotkeyOwner::<T>::try_get(&hotkey).ok()?;
+
+        Some((hotkey, coldkey))
+    }
+
+    pub fn is_subnet_node_keys_owner(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        key: T::AccountId,
+    ) -> bool {
+        let (hotkey, coldkey) =
+            match Self::get_subnet_node_hotkey_coldkey(subnet_id, subnet_node_id) {
+                Some((hotkey, coldkey)) => (hotkey, coldkey),
+                None => return false,
+            };
+
+        key == hotkey || key == coldkey
+    }
+
+    pub fn is_subnet_node_coldkey(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        coldkey: T::AccountId,
+    ) -> bool {
+        let hotkey = match SubnetNodeIdHotkey::<T>::try_get(subnet_id, subnet_node_id) {
+            Ok(hotkey) => hotkey,
+            Err(()) => return false,
+        };
+        match HotkeyOwner::<T>::try_get(hotkey) {
+            Ok(subnet_node_coldkey) => return subnet_node_coldkey == coldkey,
+            Err(()) => return false,
+        }
+    }
+
+    pub fn is_chosen_validator(subnet_id: u32, subnet_node_id: u32, subnet_epoch: u32) -> bool {
+        match SubnetElectedValidator::<T>::try_get(subnet_id, subnet_epoch) {
+            Ok(validator_subnet_node_id) => {
+                let mut is_chosen_validator = false;
+                if subnet_node_id == validator_subnet_node_id {
+                    is_chosen_validator = true
+                }
+                is_chosen_validator
+            }
+            Err(()) => false,
+        }
+    }
+
+    pub fn graduate_class(subnet_id: u32, subnet_node_id: u32, start_epoch: u32) -> bool {
+        SubnetNodesData::<T>::try_mutate_exists(
+            subnet_id,
+            subnet_node_id,
+            |maybe_node_data| -> Result<bool, ()> {
+                if let Some(node_data) = maybe_node_data {
+                    node_data.classification = SubnetNodeClassification {
+                        node_class: node_data.classification.node_class.next(),
+                        start_epoch,
+                    };
+                    Self::deposit_event(Event::NodeClassGraduation {
+                        subnet_id,
+                        subnet_node_id,
+                        classification: node_data.classification.clone(),
+                    });
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            },
+        )
+        .unwrap_or(false)
+    }
+
+    /// Check if subnet node is owner of a peer ID
+    /// Main, bootnode, and client peer IDs must be unique so we check all of them to ensure
+    /// that no one else owns them
+    /// Returns True is no owner or the peer ID is ownerless and available
+    pub fn is_owner_of_peer_or_ownerless(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        overwatch_node_id: u32,
+        peer_id: &PeerId,
+    ) -> bool {
+        let mut is_peer_owner_or_ownerless =
+            match PeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
+                Ok(peer_subnet_node_id) => {
+                    if peer_subnet_node_id == subnet_node_id {
+                        return true;
+                    }
+                    false
+                }
+                Err(()) => true,
+            };
+
+        is_peer_owner_or_ownerless = is_peer_owner_or_ownerless
+            && match BootnodePeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
+                Ok(bootnode_subnet_node_id) => {
+                    if bootnode_subnet_node_id == subnet_node_id {
+                        return true;
+                    }
+                    false
+                }
+                Err(()) => true,
+            };
+
+        is_peer_owner_or_ownerless = is_peer_owner_or_ownerless
+            && match ClientPeerIdSubnetNodeId::<T>::try_get(subnet_id, peer_id) {
+                Ok(client_subnet_node_id) => {
+                    if client_subnet_node_id == subnet_node_id {
+                        return true;
+                    }
+                    false
+                }
+                Err(()) => true,
+            };
+
+        is_peer_owner_or_ownerless
+            && match PeerIdOverwatchNodeId::<T>::try_get(subnet_id, peer_id) {
+                Ok(peer_overwatch_node_id) => {
+                    if peer_overwatch_node_id == overwatch_node_id {
+                        return true;
+                    }
+                    false
+                }
+                Err(()) => true,
+            }
+    }
+
+    pub fn is_owner_of_bootnode_or_ownerless(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        bootnode: BoundedVec<u8, DefaultMaxVectorLength>,
+    ) -> bool {
+        match BootnodeSubnetNodeId::<T>::try_get(subnet_id, bootnode) {
+            Ok(bootnode_subnet_node_id) => {
+                if bootnode_subnet_node_id == subnet_node_id {
+                    return true;
+                }
+                false
+            }
+            Err(()) => true,
+        }
+    }
+
+    pub fn clean_coldkey_subnet_nodes(coldkey: T::AccountId) {
+        ColdkeySubnetNodes::<T>::mutate(coldkey, |colkey_map| {
+            // Collect subnet_ids to remove (invalid subnets)
+            let mut subnets_to_remove: Vec<u32> = colkey_map
+                .keys()
+                .filter(|&subnet_id| !Self::subnet_exists(*subnet_id))
+                .copied()
+                .collect();
+
+            // Remove invalid subnets
+            for subnet_id in &subnets_to_remove {
+                colkey_map.remove(subnet_id);
+            }
+            // Note: We don't check for node IDs because this is handled in `perform_remove_subnet_node`
+            // If a subnet itself is removed/deactivated, then this function will handle non-existing subnet IDs as keys
+        });
+    }
+
+    /// Calculate current burn amount based on burn rate
+    pub fn calculate_burn_amount(subnet_id: u32) -> u128 {
+        let base_burn = Self::base_burn_amount();
+        let burn_rate = CurrentNodeBurnRate::<T>::get(subnet_id);
+
+        // Simple multiplication: burn_amount = base_burn * burn_rate
+        // burn_rate is already a percentage in 1e18 format
+        Self::percent_mul(base_burn, burn_rate)
+    }
+
+    /// Record a registration (increment counter)
+    /// Called by `register_subnet_node`
+    pub fn record_registration(subnet_id: u32) -> DispatchResult {
+        let current_count = NodeRegistrationsThisEpoch::<T>::get(subnet_id);
+        NodeRegistrationsThisEpoch::<T>::insert(subnet_id, current_count.saturating_add(1));
+        Ok(())
+    }
+
+    /// Update burn rate based on registrations in previous epoch
+    pub fn update_burn_rate_for_epoch(weight_meter: &mut WeightMeter, subnet_id: u32) {
+        let db_weight = T::DbWeight::get();
+
+        // It's unlikely this will ever be true, but we check anyway to future-proof
+        if !weight_meter.can_consume(db_weight.reads_writes(9, 2)) {
+            return;
+        }
+
+        let registrations = NodeRegistrationsThisEpoch::<T>::get(subnet_id);
+        let target = TargetNodeRegistrationsPerEpoch::<T>::get(subnet_id);
+        let previous_burn_rate = CurrentNodeBurnRate::<T>::get(subnet_id);
+        let alpha = NodeBurnRateAlpha::<T>::get(subnet_id);
+        weight_meter.consume(db_weight.reads(5));
+
+        // Calculate target burn rate based on registration activity
+        let target_burn_rate = Self::calculate_target_burn_rate(registrations, target);
+        // Maximum of two reads for `calculate_target_burn_rate`
+        weight_meter.consume(db_weight.reads(2));
+
+        // Rest of the function remains the same...
+        let precision = Self::percentage_factor_as_u128();
+        let one_minus_alpha = precision.saturating_sub(alpha);
+        let alpha_component = Self::percent_mul(target_burn_rate, alpha);
+        let previous_component = Self::percent_mul(previous_burn_rate, one_minus_alpha);
+        let new_burn_rate = alpha_component.saturating_add(previous_component);
+
+        // Apply min/max bounds to the rate
+        let min_rate = MinNodeBurnRate::<T>::get();
+        let max_rate = MaxNodeBurnRate::<T>::get();
+        weight_meter.consume(db_weight.reads(2));
+
+        let clamped_rate = new_burn_rate.max(min_rate).min(max_rate);
+        weight_meter.consume(db_weight.writes(2));
+
+        // Update current burn rate for next epoch
+        CurrentNodeBurnRate::<T>::insert(subnet_id, clamped_rate);
+        // Reset
+        NodeRegistrationsThisEpoch::<T>::insert(subnet_id, 0);
+    }
+
+    fn calculate_target_burn_rate(registrations: u32, target: u32) -> u128 {
+        if registrations == 0 {
+            // No registrations -> use minimum rate
+            MinNodeBurnRate::<T>::get()
+        } else if registrations >= target {
+            // At or above target -> use maximum rate
+            MaxNodeBurnRate::<T>::get()
+        } else {
+            // Below target -> calculate proportional rate between min and max
+            let min_rate = MinNodeBurnRate::<T>::get();
+            let max_rate = MaxNodeBurnRate::<T>::get();
+            let ratio = Self::percent_div(registrations as u128, target as u128);
+
+            // Linear interpolation between min and max based on how close we are to target
+            // rate = min + (max - min) * (registrations / target)
+            let rate_range = max_rate.saturating_sub(min_rate);
+            let rate_component = Self::percent_mul(rate_range, ratio);
+
+            min_rate.saturating_add(rate_component)
+        }
+    }
 }

@@ -16,8 +16,9 @@ serde = { features = [
 	"derive",
 ], workspace = true }
 sp-std.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
-pallet-network = { version = "4.0.0-dev", path = "../../network", default-features = false }
+pallet-network.workspace = true
 
 [features]
 default = ["std"]
