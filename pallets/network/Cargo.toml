@@ -33,12 +33,12 @@ sp-runtime = { workspace = true }
 libm.workspace = true
 pallet-collective = { version = "37.0.0", default-features = false, path = "../collective" }
 pallet-treasury.workspace = true
+fp-account = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 sp-io = { default-features = true, workspace = true }
 env_logger = "0.10"
 pallet-tx-pause.workspace = true
-fp-account = { workspace = true, features = ["serde"] }
 
 [features]
 default = ["std"]

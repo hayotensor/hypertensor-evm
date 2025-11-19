@@ -12,13 +12,12 @@ use crate::{
     Reputation, StakeCooldownEpochs, StakeUnbondingLedger, SubnetConsensusSubmission, SubnetData,
     SubnetElectedValidator, SubnetIdFriendlyUid, SubnetMaxStakeBalance, SubnetMinStakeBalance,
     SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData,
-    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeUniqueParam,
-    SubnetNodesData, SubnetOwner, SubnetRegistrationEpoch,
-    SubnetRegistrationEpochs, SubnetRegistrationInitialColdkeys, SubnetReputation, SubnetSlot,
-    SubnetState, SubnetsData, TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets,
-    TotalOverwatchNodeUids, TotalOverwatchNodes, TotalOverwatchStake, TotalStake,
-    TotalSubnetDelegateStakeBalance, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
-    TotalSubnetUids, SubnetNodeReputation
+    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeReputation, SubnetNodeUniqueParam,
+    SubnetNodesData, SubnetOwner, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
+    SubnetRegistrationInitialColdkeys, SubnetReputation, SubnetSlot, SubnetState, SubnetsData,
+    TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids,
+    TotalOverwatchNodes, TotalOverwatchStake, TotalStake, TotalSubnetDelegateStakeBalance,
+    TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake, TotalSubnetUids,
 };
 use fp_account::AccountId20;
 use frame_support::assert_ok;
@@ -40,47 +39,6 @@ pub const DEFAULT_REGISTRATION_BLOCKS: u32 = 130_000;
 pub const DEFAULT_DELEGATE_REWARD_RATE: u128 = 100000000000000000; // 10%
 pub const ALICE_EXPECTED_BALANCE: u128 = 1000000000000000000000000; // 1,000,000
 
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-// 	[id as u8; 32].into()
-// }
-
-// Substrate bytes32 H256
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-//     let mut bytes = [0u8; 32];
-//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
-//     bytes.into()
-// }
-
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-//     let mut bytes = [0u8; 20];
-//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
-//     bytes.into()
-// }
-
-// Substrate bytes20 H160
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-//     let mut bytes = [0u8; 20];
-//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
-//     bytes.into()
-// }
-// pub fn account(id: u32) -> H160 {
-//     let mut bytes = [0u8; 20];
-//     // Write the id into the last 4 bytes
-//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
-//     H160::from(bytes)
-// }
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-//     let mut bytes = [0u8; 20];
-//     bytes[16..20].copy_from_slice(&id.to_le_bytes());
-//     AccountIdOf::<Test>::from(H160::from(bytes))
-// }
-// pub fn account(id: u32) -> AccountIdOf<Test> {
-//     let mut bytes = [0u8; 20];
-//     // Fill the first 4 bytes instead of just the last
-//     bytes[0..4].copy_from_slice(&id.to_le_bytes());
-//     // AccountIdOf::<Test>::from(bytes)
-//     AccountId20::from(H160::from(bytes))
-// }
 pub fn account(id: u32) -> AccountIdOf<Test> {
     let hash = keccak_256(&id.to_le_bytes());
     AccountId20::from(H160::from_slice(&hash[0..20]))
@@ -167,9 +125,6 @@ pub fn peer(id: u32) -> PeerId {
     let peer_id = format!("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N{id}");
     PeerId(peer_id.into())
 }
-// bafzbeie5745rpv2m6tjyuugywy4d5ewrqgqqhfnf445he3omzpjbx5xqxe
-// QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N
-// 12D3KooWD3eckifWpRn9wQpMG9R9hX3sD158z7EqHWmweQAJU5SA
 
 pub fn get_min_stake_balance() -> u128 {
     MinSubnetMinStake::<Test>::get()
@@ -231,6 +186,12 @@ pub fn build_activated_subnet_new(
         start,
         end,
     );
+
+    // Give each coldkey balance
+    for n in start..end {
+        let _n = n + 1;
+        let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+    }
 
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(

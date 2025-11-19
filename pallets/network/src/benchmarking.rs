@@ -597,7 +597,7 @@ pub fn default_registration_subnet_data<T: Config>(
     end: u32,
 ) -> RegistrationSubnetData<T::AccountId> {
     let seed_bytes: &[u8] = &name;
-    let add_subnet_data = RegistrationSubnetData {       
+    let add_subnet_data = RegistrationSubnetData {
         name: name.clone(),
         repo: blake2_128(seed_bytes).to_vec(), // must be unique
         description: Vec::new(),
@@ -5639,10 +5639,15 @@ mod benchmarks {
 
         #[block]
         {
-            Network::<T>::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(new_value);
+            Network::<T>::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(
+                new_value,
+            );
         }
 
-        assert_eq!(MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(), new_value);
+        assert_eq!(
+            MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(),
+            new_value
+        );
     }
 
     #[benchmark]

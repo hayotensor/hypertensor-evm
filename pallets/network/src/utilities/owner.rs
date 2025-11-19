@@ -541,7 +541,7 @@ impl<T: Config> Pallet<T> {
             accounts_set.extend(coldkeys.iter().map(|(k, v)| (k.clone(), *v)));
         });
 
-        Self::deposit_event(Event::AddSubnetRegistrationInitialColdkeysV2 {
+        Self::deposit_event(Event::AddSubnetRegistrationInitialColdkeys {
             subnet_id: subnet_id,
             owner: coldkey,
             coldkeys: coldkeys,
@@ -1031,11 +1031,13 @@ impl<T: Config> Pallet<T> {
 
         SubnetNodeMinWeightDecreaseReputationThreshold::<T>::insert(subnet_id, value);
 
-        Self::deposit_event(Event::SubnetNodeMinWeightDecreaseReputationThresholdUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey,
-            value,
-        });
+        Self::deposit_event(
+            Event::SubnetNodeMinWeightDecreaseReputationThresholdUpdate {
+                subnet_id: subnet_id,
+                owner: coldkey,
+                value,
+            },
+        );
 
         Ok(())
     }

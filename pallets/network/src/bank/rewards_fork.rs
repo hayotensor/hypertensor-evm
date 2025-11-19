@@ -280,9 +280,9 @@ impl<T: Config> Pallet<T> {
             if subnet_node.classification.node_class == SubnetNodeClass::Idle
                 && forked_subnet_node_ids.is_none()
             {
-                SubnetNodeIdleEpochs::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+                SubnetNodeIdleConsecutiveEpochs::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
 
-                let node_idle_epochs = SubnetNodeIdleEpochs::<T>::get(subnet_id, subnet_node.id);
+                let node_idle_epochs = SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node.id);
                 weight_meter.consume(db_weight.reads_writes(1, 1));
 
                 // Idle classified nodes can't be included in consensus data and can't have a used reputation
@@ -365,8 +365,7 @@ impl<T: Config> Pallet<T> {
                 weight_meter.consume(db_weight.reads(1));
 
                 // --- Upgrade to Validator if at percentage_factor reputation and included in weights
-                if reputation >= percentage_factor
-                    && consecutive_included_epochs >= included_epochs
+                if reputation >= percentage_factor && consecutive_included_epochs >= included_epochs
                 {
                     if Self::graduate_class(subnet_id, subnet_node.id, current_subnet_epoch) {
                         // --- Insert into election slot

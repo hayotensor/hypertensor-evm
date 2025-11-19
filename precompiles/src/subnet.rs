@@ -1152,7 +1152,9 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerUpdateSubnetNodeMinWeightDecreaseReputationThreshold(uint256,uint256)")]
+    #[precompile::public(
+        "ownerUpdateSubnetNodeMinWeightDecreaseReputationThreshold(uint256,uint256)"
+    )]
     fn owner_update_subnet_node_min_weight_decrease_reputation_threshold(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,

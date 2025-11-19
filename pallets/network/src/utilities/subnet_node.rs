@@ -813,12 +813,13 @@ impl<T: Config> Pallet<T> {
                     unique: subnet_node.unique,
                     non_unique: subnet_node.non_unique,
                     stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
-                    node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
-                        subnet_id,
-                        subnet_node_id,
-                    ),
+                    total_node_delegate_stake_shares: TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id),
+                    node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
                     coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
-                    subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id)
+                    subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id),
+                    node_slot_index: NodeSlotIndex::<T>::get(subnet_id, subnet_node_id),
+                    consecutive_idle_epochs: SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node_id),
+                    consecutive_included_epochs: SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node_id),
                 }
             })
             .collect()

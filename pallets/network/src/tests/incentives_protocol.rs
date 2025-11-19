@@ -5,16 +5,16 @@ use crate::{
     AccountSubnetDelegateStakeShares, AccountSubnetStake, BaseValidatorReward,
     ColdkeyReputationDecreaseFactor, ColdkeyReputationIncreaseFactor,
     EmergencySubnetNodeElectionData, Error, FinalSubnetEmissionWeights, HotkeySubnetNodeId,
-    IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodes,
-    MaxSubnets, MinAttestationPercentage, MinSubnetMinStake,
-    MinSubnetNodeReputation, MinSubnetReputation, NodeDelegateStakeBalance, QueueImmunityEpochs,
-    RegisteredSubnetNodesData, SubnetConsensusSubmission, SubnetElectedValidator, SubnetName,
-    SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs, SubnetNodeIdHotkey, SubnetNodeIdleEpochs,
-    SubnetNodeQueue, SubnetNodeQueueEpochs, SubnetNodeReputation,
-    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
-    SubnetRemovalReason, SubnetReputation, SubnetState, SubnetsData,
-    SuperMajorityAttestationRatio, TotalActiveSubnets, TotalNodeDelegateStakeShares,
-    TotalSubnetDelegateStakeBalance, TotalSubnetNodes, ValidatorAbsentSubnetNodeReputationFactor,
+    IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodes, MaxSubnets,
+    MinAttestationPercentage, MinSubnetMinStake, MinSubnetNodeReputation, MinSubnetReputation,
+    NodeDelegateStakeBalance, QueueImmunityEpochs, RegisteredSubnetNodesData,
+    SubnetConsensusSubmission, SubnetElectedValidator, SubnetName, SubnetNodeClass,
+    SubnetNodeConsecutiveIncludedEpochs, SubnetNodeIdHotkey, SubnetNodeIdleConsecutiveEpochs,
+    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodeQueue, SubnetNodeQueueEpochs,
+    SubnetNodeReputation, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
+    SubnetRemovalReason, SubnetReputation, SubnetState, SubnetsData, SuperMajorityAttestationRatio,
+    TotalActiveSubnets, TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance,
+    TotalSubnetNodes, ValidatorAbsentSubnetNodeReputationFactor,
     ValidatorAbsentSubnetReputationFactor,
 };
 use frame_support::traits::Currency;
@@ -1034,10 +1034,7 @@ fn test_distribute_rewards() {
         let post_dstake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
         assert!(post_dstake_balance > dstake_balance);
 
-        assert!(
-            SubnetReputation::<Test>::get(subnet_id) >
-            set_rep
-        );
+        assert!(SubnetReputation::<Test>::get(subnet_id) > set_rep);
     });
 }
 
@@ -3390,10 +3387,7 @@ fn test_distribute_rewards_late_validator_and_attestors() {
         let post_dstake_balance = TotalSubnetDelegateStakeBalance::<Test>::get(subnet_id);
         assert!(post_dstake_balance > dstake_balance);
 
-        assert!(
-            SubnetReputation::<Test>::get(subnet_id) >
-            set_rep
-        );
+        assert!(SubnetReputation::<Test>::get(subnet_id) > set_rep);
     });
 }
 
@@ -3899,7 +3893,7 @@ fn test_distribute_rewards_fork_graduate_idle_to_included() {
         assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Idle);
         assert_eq!(subnet_node.classification.start_epoch, subnet_epoch + 1);
 
-        SubnetNodeIdleEpochs::<Test>::insert(subnet_id, subnet_node.id, idle_epochs);
+        SubnetNodeIdleConsecutiveEpochs::<Test>::insert(subnet_id, subnet_node.id, idle_epochs);
 
         // increase epochs up to when node should be able to graduate
         increase_epochs(idle_epochs + 1);
