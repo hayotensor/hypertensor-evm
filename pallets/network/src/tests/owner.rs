@@ -6,18 +6,17 @@ use crate::{
     IdleClassificationEpochs, IncludedClassificationEpochs, KeyType,
     LastSubnetDelegateStakeRewardsUpdate, MaxChurnLimit, MaxDelegateStakePercentage,
     MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
-    MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess,
-    MaxSubnetMinStake, MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes,
-    MaxSubnets, MinChurnLimit, MinDelegateStakePercentage, MinIdleClassificationEpochs,
-    MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
-    MinQueueEpochs, MinSubnetMinStake, NetworkMaxStakeBalance, NodeBurnRateAlpha,
-    PendingSubnetOwner, QueueImmunityEpochs, RegisteredSubnetNodesData, SubnetBootnodeAccess,
-    SubnetData, SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod,
-    SubnetKeyTypes, SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode,
-    SubnetNodeClass, SubnetNodeClassification, SubnetNodeQueueEpochs,
-    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
-    SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
-    TargetNodeRegistrationsPerEpoch,
+    MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess, MaxSubnetMinStake,
+    MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes, MaxSubnets, MinChurnLimit,
+    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
+    MinMaxRegisteredNodes, MinQueueEpochs, MinSubnetMinStake, NetworkMaxStakeBalance,
+    NodeBurnRateAlpha, PendingSubnetOwner, QueueImmunityEpochs, RegisteredSubnetNodesData,
+    SubnetBootnodeAccess, SubnetData, SubnetDelegateStakeRewardsPercentage,
+    SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes, SubnetMaxStakeBalance,
+    SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
+    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodeQueueEpochs, SubnetNodesData,
+    SubnetOwner, SubnetPauseCooldownEpochs, SubnetRegistrationInitialColdkeys, SubnetRemovalReason,
+    SubnetRepo, SubnetState, SubnetsData, TargetNodeRegistrationsPerEpoch,
 };
 use codec::Decode;
 use frame_support::{assert_err, assert_ok};
@@ -1778,7 +1777,7 @@ fn test_owner_add_or_update_initial_coldkeys() {
 
         assert_eq!(
             *network_events().last().unwrap(),
-            Event::AddSubnetRegistrationInitialColdkeysV2 {
+            Event::AddSubnetRegistrationInitialColdkeys {
                 subnet_id: subnet_id,
                 owner: original_owner.clone(),
                 coldkeys: coldkeys.clone()

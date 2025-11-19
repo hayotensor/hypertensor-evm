@@ -35,33 +35,51 @@ impl<T: Config> Pallet<T> {
             target_node_registrations_per_epoch: TargetNodeRegistrationsPerEpoch::<T>::get(
                 subnet_id,
             ),
+            node_registrations_this_epoch: NodeRegistrationsThisEpoch::<T>::get(subnet_id),
             subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
             idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
             included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
             delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
+            last_delegate_stake_rewards_update: LastSubnetDelegateStakeRewardsUpdate::<T>::get(subnet_id),
             node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
+            current_node_burn_rate: CurrentNodeBurnRate::<T>::get(subnet_id),
             initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
+            initial_coldkey_data: InitialColdkeyData::<T>::get(subnet_id),
             max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
             owner: SubnetOwner::<T>::get(subnet_id),
             pending_owner: PendingSubnetOwner::<T>::get(subnet_id),
             registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
+            prev_pause_epoch: PreviousSubnetPauseEpoch::<T>::get(subnet_id),
             key_types: SubnetKeyTypes::<T>::get(subnet_id),
             slot_index: SubnetSlot::<T>::get(subnet_id),
+            slot_assignment: SlotAssignment::<T>::get(subnet_id),
+            subnet_node_min_weight_decrease_reputation_threshold: SubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(subnet_id),
             reputation: SubnetReputation::<T>::get(subnet_id),
             min_subnet_node_reputation: MinSubnetNodeReputation::<T>::get(subnet_id),
             absent_decrease_reputation_factor: AbsentDecreaseReputationFactor::<T>::get(subnet_id),
-            included_increase_reputation_factor: IncludedIncreaseReputationFactor::<T>::get(subnet_id),
-            below_min_weight_decrease_reputation_factor: BelowMinWeightDecreaseReputationFactor::<T>::get(subnet_id),
-            non_attestor_decrease_reputation_factor: NonAttestorDecreaseReputationFactor::<T>::get(subnet_id),
-            non_consensus_attestor_decrease_reputation_factor: NonConsensusAttestorDecreaseReputationFactor::<T>::get(subnet_id),
-            validator_absent_subnet_node_reputation_factor: ValidatorAbsentSubnetNodeReputationFactor::<T>::get(subnet_id),
-            validator_non_consensus_subnet_node_reputation_factor: ValidatorNonConsensusSubnetNodeReputationFactor::<T>::get(subnet_id),
+            included_increase_reputation_factor: IncludedIncreaseReputationFactor::<T>::get(
+                subnet_id,
+            ),
+            below_min_weight_decrease_reputation_factor:
+                BelowMinWeightDecreaseReputationFactor::<T>::get(subnet_id),
+            non_attestor_decrease_reputation_factor: NonAttestorDecreaseReputationFactor::<T>::get(
+                subnet_id,
+            ),
+            non_consensus_attestor_decrease_reputation_factor:
+                NonConsensusAttestorDecreaseReputationFactor::<T>::get(subnet_id),
+            validator_absent_subnet_node_reputation_factor:
+                ValidatorAbsentSubnetNodeReputationFactor::<T>::get(subnet_id),
+            validator_non_consensus_subnet_node_reputation_factor:
+                ValidatorNonConsensusSubnetNodeReputationFactor::<T>::get(subnet_id),
             bootnode_access: SubnetBootnodeAccess::<T>::get(subnet_id),
             bootnodes: SubnetBootnodes::<T>::get(subnet_id),
             total_nodes: TotalSubnetNodes::<T>::get(subnet_id),
             total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
             total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
             current_min_delegate_stake: Self::get_min_subnet_delegate_stake_balance(subnet_id),
+            total_subnet_stake: TotalSubnetStake::<T>::get(subnet_id),
+            total_subnet_delegate_stake_shares: TotalSubnetDelegateStakeShares::<T>::get(subnet_id),
+            total_subnet_delegate_stake_balance: TotalSubnetDelegateStakeBalance::<T>::get(subnet_id),
         })
     }
 
@@ -85,20 +103,27 @@ impl<T: Config> Pallet<T> {
                 target_node_registrations_per_epoch: TargetNodeRegistrationsPerEpoch::<T>::get(
                     subnet_id,
                 ),
+                node_registrations_this_epoch: NodeRegistrationsThisEpoch::<T>::get(subnet_id),
                 subnet_node_queue_epochs: SubnetNodeQueueEpochs::<T>::get(subnet_id),
                 idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
                 included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
                 delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(
                     subnet_id,
                 ),
+                last_delegate_stake_rewards_update: LastSubnetDelegateStakeRewardsUpdate::<T>::get(subnet_id),
                 node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
+                current_node_burn_rate: CurrentNodeBurnRate::<T>::get(subnet_id),
                 initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
+                initial_coldkey_data: InitialColdkeyData::<T>::get(subnet_id),
                 max_registered_nodes: MaxRegisteredNodes::<T>::get(subnet_id),
                 owner: SubnetOwner::<T>::get(subnet_id),
                 pending_owner: PendingSubnetOwner::<T>::get(subnet_id),
                 registration_epoch: SubnetRegistrationEpoch::<T>::get(subnet_id),
+                prev_pause_epoch: PreviousSubnetPauseEpoch::<T>::get(subnet_id),
                 key_types: SubnetKeyTypes::<T>::get(subnet_id),
                 slot_index: SubnetSlot::<T>::get(subnet_id),
+                slot_assignment: SlotAssignment::<T>::get(subnet_id),
+                subnet_node_min_weight_decrease_reputation_threshold: SubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(subnet_id),
                 reputation: SubnetReputation::<T>::get(subnet_id),
                 min_subnet_node_reputation: MinSubnetNodeReputation::<T>::get(subnet_id),
                 absent_decrease_reputation_factor: AbsentDecreaseReputationFactor::<T>::get(subnet_id),
@@ -114,6 +139,9 @@ impl<T: Config> Pallet<T> {
                 total_active_nodes: TotalActiveSubnetNodes::<T>::get(subnet_id),
                 total_electable_nodes: TotalSubnetElectableNodes::<T>::get(subnet_id),
                 current_min_delegate_stake: Self::get_min_subnet_delegate_stake_balance(subnet_id),
+                total_subnet_stake: TotalSubnetStake::<T>::get(subnet_id),
+                total_subnet_delegate_stake_shares: TotalSubnetDelegateStakeShares::<T>::get(subnet_id),
+                total_subnet_delegate_stake_balance: TotalSubnetDelegateStakeBalance::<T>::get(subnet_id),
             })
         }
 
@@ -149,12 +177,13 @@ impl<T: Config> Pallet<T> {
             unique: subnet_node.unique,
             non_unique: subnet_node.non_unique,
             stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
-            node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
-                subnet_id,
-                subnet_node_id,
-            ),
+            total_node_delegate_stake_shares: TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id),
+            node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
             coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
-            subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id)
+            subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id),
+            node_slot_index: NodeSlotIndex::<T>::get(subnet_id, subnet_node_id),
+            consecutive_idle_epochs: SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node_id),
+            consecutive_included_epochs: SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node_id),
         };
 
         return Some(info);

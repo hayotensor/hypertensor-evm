@@ -16,7 +16,6 @@
 // Enables accounts to delegate stake to subnets for a portion of emissions
 
 use super::*;
-use libm::{exp, pow};
 use sp_runtime::traits::Saturating;
 
 pub struct InflationV2 {

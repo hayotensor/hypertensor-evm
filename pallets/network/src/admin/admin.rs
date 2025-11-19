@@ -642,7 +642,9 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_max_subnet_node_min_weight_decrease_reputation_threshold(value: u128) -> DispatchResult {
+    pub fn do_set_max_subnet_node_min_weight_decrease_reputation_threshold(
+        value: u128,
+    ) -> DispatchResult {
         ensure!(
             value <= Self::percentage_factor_as_u128(),
             Error::<T>::InvalidPercent
@@ -650,7 +652,9 @@ impl<T: Config> Pallet<T> {
 
         MaxSubnetNodeMinWeightDecreaseReputationThreshold::<T>::put(value);
 
-        Self::deposit_event(Event::SetMaxSubnetNodeMinWeightDecreaseReputationThreshold(value));
+        Self::deposit_event(Event::SetMaxSubnetNodeMinWeightDecreaseReputationThreshold(
+            value,
+        ));
 
         Ok(())
     }

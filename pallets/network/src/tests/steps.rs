@@ -2,11 +2,11 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::{
     DelegateStakeSubnetRemovalInterval, Event, MaxMinDelegateStakeMultiplier,
-    MaxPauseEpochsSubnetReputationFactor, MaxSubnetPauseEpochs,
-    MaxSubnetRemovalInterval, MaxSubnets, MinSubnetNodes, MinSubnetReputation,
-    NewRegistrationCostMultiplier, SubnetEnactmentEpochs, SubnetName,
-    SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason, SubnetReputation,
-    SubnetState, SubnetsData, TotalActiveSubnetNodes, TotalSubnetDelegateStakeBalance
+    MaxPauseEpochsSubnetReputationFactor, MaxSubnetPauseEpochs, MaxSubnetRemovalInterval,
+    MaxSubnets, MinSubnetNodes, MinSubnetReputation, NewRegistrationCostMultiplier,
+    SubnetEnactmentEpochs, SubnetName, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
+    SubnetRemovalReason, SubnetReputation, SubnetState, SubnetsData, TotalActiveSubnetNodes,
+    TotalSubnetDelegateStakeBalance,
 };
 use frame_support::assert_ok;
 use frame_support::traits::Currency;

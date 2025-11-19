@@ -7,27 +7,25 @@ use crate::{
     DelegateStakeSubnetRemovalInterval, DelegateStakeWeightFactor, Error, HotkeyOverwatchNodeId,
     HotkeySubnetNodeId, InflationSigmoidMidpoint, InflationSigmoidSteepness, MaxBootnodes,
     MaxChurnLimit, MaxDelegateStakePercentage, MaxIdleClassificationEpochs,
-    MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
-    MaxMinDelegateStakeMultiplier, MaxNodeBurnRate, MaxOverwatchNodes,
-    MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount, MaxSubnetBootnodeAccess,
-    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
+    MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes, MaxMinDelegateStakeMultiplier,
+    MaxNodeBurnRate, MaxOverwatchNodes, MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount,
+    MaxSubnetBootnodeAccess, MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
     MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes, MaxSubnetPauseEpochs,
-    MaxSubnetRemovalInterval, MaxSubnets, MaxSwapQueueCallsPerBlock,
-    MaxUnbondings, MaximumHooksWeightV2, MinActiveNodeStakeEpochs, MinAttestationPercentage,
-    MinChurnLimit, MinDelegateStakeDeposit, MinDelegateStakePercentage,
-    MinIdleClassificationEpochs, MinIncludedClassificationEpochs, MinMaxRegisteredNodes,
-    MinNodeBurnRate, MinQueueEpochs, MinRegistrationCost,
-    MinSubnetDelegateStakeFactor, MinSubnetMinStake, MinSubnetNodes, MinSubnetRegistrationEpochs,
-    MinSubnetRemovalInterval, NetworkMaxStakeBalance, NewRegistrationCostMultiplier,
-    NodeDelegateStakeCooldownEpochs, NodeRewardRateUpdatePeriod, OverwatchCommitCutoffPercent,
-    OverwatchEpochLengthMultiplier, OverwatchMinAge, OverwatchMinAvgAttestationRatio,
-    OverwatchMinDiversificationRatio, OverwatchMinRepScore, OverwatchMinStakeBalance,
-    OverwatchNodeBlacklist, OverwatchNodeIdHotkey, OverwatchNodes, RegistrationCostAlpha,
-    RegistrationCostDecayBlocks, StakeCooldownEpochs, SubnetDelegateStakeRewardsUpdatePeriod,
-    SubnetDistributionPower, SubnetEnactmentEpochs, SubnetName, SubnetOwnerPercentage,
-    SubnetPauseCooldownEpochs, SubnetRegistrationEpochs, SubnetRemovalReason,
-    SuperMajorityAttestationRatio, TotalActiveSubnets, TotalOverwatchNodeUids, TotalOverwatchNodes,
-    TxPause, TxRateLimit, ValidatorRewardK, ValidatorRewardMidpoint,
+    MaxSubnetRemovalInterval, MaxSubnets, MaxSwapQueueCallsPerBlock, MaxUnbondings,
+    MaximumHooksWeightV2, MinActiveNodeStakeEpochs, MinAttestationPercentage, MinChurnLimit,
+    MinDelegateStakeDeposit, MinDelegateStakePercentage, MinIdleClassificationEpochs,
+    MinIncludedClassificationEpochs, MinMaxRegisteredNodes, MinNodeBurnRate, MinQueueEpochs,
+    MinRegistrationCost, MinSubnetDelegateStakeFactor, MinSubnetMinStake, MinSubnetNodes,
+    MinSubnetRegistrationEpochs, MinSubnetRemovalInterval, NetworkMaxStakeBalance,
+    NewRegistrationCostMultiplier, NodeDelegateStakeCooldownEpochs, NodeRewardRateUpdatePeriod,
+    OverwatchCommitCutoffPercent, OverwatchEpochLengthMultiplier, OverwatchMinAge,
+    OverwatchMinAvgAttestationRatio, OverwatchMinDiversificationRatio, OverwatchMinRepScore,
+    OverwatchMinStakeBalance, OverwatchNodeBlacklist, OverwatchNodeIdHotkey, OverwatchNodes,
+    RegistrationCostAlpha, RegistrationCostDecayBlocks, StakeCooldownEpochs,
+    SubnetDelegateStakeRewardsUpdatePeriod, SubnetDistributionPower, SubnetEnactmentEpochs,
+    SubnetName, SubnetOwnerPercentage, SubnetPauseCooldownEpochs, SubnetRegistrationEpochs,
+    SubnetRemovalReason, SuperMajorityAttestationRatio, TotalActiveSubnets, TotalOverwatchNodeUids,
+    TotalOverwatchNodes, TxPause, TxRateLimit, ValidatorRewardK, ValidatorRewardMidpoint,
 };
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
@@ -998,10 +996,16 @@ fn test_do_set_subnet_registration_epochs() {
 fn test_do_set_max_subnet_node_min_weight_decrease_reputation_threshold() {
     new_test_ext().execute_with(|| {
         assert_ok!(Network::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(1));
-        assert_eq!(MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get(), 1);
+        assert_eq!(
+            MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get(),
+            1
+        );
 
         assert_ok!(Network::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(2));
-        assert_eq!(MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get(), 2);
+        assert_eq!(
+            MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get(),
+            2
+        );
 
         assert_err!(
             Network::do_set_max_subnet_node_min_weight_decrease_reputation_threshold(
