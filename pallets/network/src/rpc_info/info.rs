@@ -40,7 +40,9 @@ impl<T: Config> Pallet<T> {
             idle_classification_epochs: IdleClassificationEpochs::<T>::get(subnet_id),
             included_classification_epochs: IncludedClassificationEpochs::<T>::get(subnet_id),
             delegate_stake_percentage: SubnetDelegateStakeRewardsPercentage::<T>::get(subnet_id),
-            last_delegate_stake_rewards_update: LastSubnetDelegateStakeRewardsUpdate::<T>::get(subnet_id),
+            last_delegate_stake_rewards_update: LastSubnetDelegateStakeRewardsUpdate::<T>::get(
+                subnet_id,
+            ),
             node_burn_rate_alpha: NodeBurnRateAlpha::<T>::get(subnet_id),
             current_node_burn_rate: CurrentNodeBurnRate::<T>::get(subnet_id),
             initial_coldkeys: SubnetRegistrationInitialColdkeys::<T>::get(subnet_id),
@@ -53,7 +55,8 @@ impl<T: Config> Pallet<T> {
             key_types: SubnetKeyTypes::<T>::get(subnet_id),
             slot_index: SubnetSlot::<T>::get(subnet_id),
             slot_assignment: SlotAssignment::<T>::get(subnet_id),
-            subnet_node_min_weight_decrease_reputation_threshold: SubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(subnet_id),
+            subnet_node_min_weight_decrease_reputation_threshold:
+                SubnetNodeMinWeightDecreaseReputationThreshold::<T>::get(subnet_id),
             reputation: SubnetReputation::<T>::get(subnet_id),
             min_subnet_node_reputation: MinSubnetNodeReputation::<T>::get(subnet_id),
             absent_decrease_reputation_factor: AbsentDecreaseReputationFactor::<T>::get(subnet_id),
@@ -79,7 +82,9 @@ impl<T: Config> Pallet<T> {
             current_min_delegate_stake: Self::get_min_subnet_delegate_stake_balance(subnet_id),
             total_subnet_stake: TotalSubnetStake::<T>::get(subnet_id),
             total_subnet_delegate_stake_shares: TotalSubnetDelegateStakeShares::<T>::get(subnet_id),
-            total_subnet_delegate_stake_balance: TotalSubnetDelegateStakeBalance::<T>::get(subnet_id),
+            total_subnet_delegate_stake_balance: TotalSubnetDelegateStakeBalance::<T>::get(
+                subnet_id,
+            ),
         })
     }
 
@@ -177,13 +182,25 @@ impl<T: Config> Pallet<T> {
             unique: subnet_node.unique,
             non_unique: subnet_node.non_unique,
             stake_balance: AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id),
-            total_node_delegate_stake_shares: TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id),
-            node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
+            total_node_delegate_stake_shares: TotalNodeDelegateStakeShares::<T>::get(
+                subnet_id,
+                subnet_node_id,
+            ),
+            node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
+                subnet_id,
+                subnet_node_id,
+            ),
             coldkey_reputation: ColdkeyReputation::<T>::get(coldkey.clone()),
             subnet_node_reputation: SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id),
             node_slot_index: NodeSlotIndex::<T>::get(subnet_id, subnet_node_id),
-            consecutive_idle_epochs: SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node_id),
-            consecutive_included_epochs: SubnetNodeConsecutiveIncludedEpochs::<T>::get(subnet_id, subnet_node_id),
+            consecutive_idle_epochs: SubnetNodeIdleConsecutiveEpochs::<T>::get(
+                subnet_id,
+                subnet_node_id,
+            ),
+            consecutive_included_epochs: SubnetNodeConsecutiveIncludedEpochs::<T>::get(
+                subnet_id,
+                subnet_node_id,
+            ),
         };
 
         return Some(info);
@@ -256,7 +273,7 @@ impl<T: Config> Pallet<T> {
 
     /// Proof-of-stake
     ///
-    /// - Returns if the node has a proof of stake
+    /// - Returns if the node has a proof of stake by its `peer_id` (main, bootnode, or client)
     ///
     /// # Options
     ///
@@ -282,10 +299,11 @@ impl<T: Config> Pallet<T> {
             return false;
         }
 
-        let class = SubnetNodeClass::from_repr(min_class.into());
-        if class.is_none() {
+        let class = if let Some(subnet_node_class) = SubnetNodeClass::from_repr(min_class.into()) {
+            subnet_node_class
+        } else {
             return false;
-        }
+        };
         let min_stake = SubnetMinStakeBalance::<T>::get(subnet_id);
         let current_subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
         let peer_id = PeerId(peer_id);
@@ -298,7 +316,7 @@ impl<T: Config> Pallet<T> {
                     SubnetNodesData::<T>::try_get(subnet_id, subnet_node_id).ok()
                 })
                 .map(|subnet_node| {
-                    subnet_node.has_classification(&class.unwrap(), current_subnet_epoch)
+                    subnet_node.has_classification(&class, current_subnet_epoch)
                         && AccountSubnetStake::<T>::get(subnet_node.hotkey, subnet_id) >= min_stake
                 })
                 .unwrap_or(false)

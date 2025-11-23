@@ -393,6 +393,7 @@ pub mod pallet {
         SetOverwatchWeightFactor(u128),
         SetMaxEmergencyValidatorEpochsMultiplier(u128),
         SetOverwatchStakeWeightFactor(u128),
+        SetSubnetWeightFactors(SubnetWeightFactorsData),
         SetValidatorRewardMidpoint(u128),
         OverwatchNodeBlacklist(T::AccountId, bool),
         SetSigmoidSteepness(u128),
@@ -685,7 +686,7 @@ pub mod pallet {
         NotSubnetOwner,
         /// Not pending subnet owner
         NotPendingSubnetOwner,
-        /// No oending subnet owner exists
+        /// No pending subnet owner exists
         NoPendingSubnetOwner,
         /// Cannot pause again until pause cooldown epochs is reached
         SubnetPauseCooldownActive,
@@ -2700,6 +2701,10 @@ pub mod pallet {
     #[pallet::storage]
     pub type TotalSubnetUids<T> = StorageValue<_, u32, ValueQuery>;
 
+    #[pallet::storage]
+    pub type SubnetNetFlow<T: Config> =
+        StorageMap<_, Identity, u32, i128, ValueQuery>;
+
     /// For informational purposes only, not used in conditinal logic
     /// Subnet Id -> Friendly UID
     #[pallet::storage] // subnet_id => count
@@ -3110,6 +3115,36 @@ pub mod pallet {
     pub type DelegateStakeWeightFactor<T> =
         StorageValue<_, u128, ValueQuery, DefaultDelegateStakeWeightFactor>;
 
+    #[derive(
+        Default,
+        Encode,
+        Decode,
+        Clone,
+        PartialEq,
+        Eq,
+        RuntimeDebug,
+        PartialOrd,
+        Ord,
+        scale_info::TypeInfo,
+    )]
+    pub struct SubnetWeightFactorsData {
+        pub delegate_stake: u128,
+        pub node_count: u128,
+        pub net_flow: u128,
+    }
+
+    #[pallet::type_value]
+    pub fn DefaultSubnetWeightFactors() -> SubnetWeightFactorsData {
+        return SubnetWeightFactorsData {
+            delegate_stake: 400000000000000000,
+            node_count: 400000000000000000,
+            net_flow: 200000000000000000
+        }
+    }
+
+    #[pallet::storage]
+    pub type SubnetWeightFactors<T: Config> =
+        StorageValue<_, SubnetWeightFactorsData, ValueQuery, DefaultSubnetWeightFactors>;
     //
     // Inflation helpers elements
     //
@@ -5074,7 +5109,6 @@ pub mod pallet {
         /// * `amount` - Amount TENSOR to add to pool
         ///
         ///
-        /// TODO: Change name of function to avoid delegate staking confusions
         #[pallet::call_index(53)]
         #[pallet::weight({0})]
         pub fn donate_delegate_stake(
@@ -5097,25 +5131,23 @@ pub mod pallet {
                 Error::<T>::MinDelegateStake
             );
 
-            let amount_as_balance = Self::u128_to_balance(amount);
-
-            ensure!(
-                amount_as_balance.is_some(),
-                Error::<T>::CouldNotConvertToBalance
-            );
+            let amount_as_balance = match Self::u128_to_balance(amount) {
+                Some(b) => b,
+                None => return Err(Error::<T>::CouldNotConvertToBalance.into()),
+            };
 
             // --- Ensure the callers account_id has enough balance to perform the transaction.
             ensure!(
                 Self::can_remove_balance_from_coldkey_account(
                     &account_id,
-                    amount_as_balance.unwrap()
+                    amount_as_balance
                 ),
                 Error::<T>::NotEnoughBalance
             );
 
             // --- Ensure the remove operation from the account_id is a success.
             ensure!(
-                Self::remove_balance_from_coldkey_account(&account_id, amount_as_balance.unwrap())
+                Self::remove_balance_from_coldkey_account(&account_id, amount_as_balance)
                     == true,
                 Error::<T>::BalanceWithdrawalError
             );
@@ -5298,25 +5330,23 @@ pub mod pallet {
                 Error::<T>::MinDelegateStake
             );
 
-            let amount_as_balance = Self::u128_to_balance(amount);
-
-            ensure!(
-                amount_as_balance.is_some(),
-                Error::<T>::CouldNotConvertToBalance
-            );
+            let amount_as_balance = match Self::u128_to_balance(amount) {
+                Some(b) => b,
+                None => return Err(Error::<T>::CouldNotConvertToBalance.into()),
+            };
 
             // --- Ensure the callers account_id has enough balance to perform the transaction.
             ensure!(
                 Self::can_remove_balance_from_coldkey_account(
                     &account_id,
-                    amount_as_balance.unwrap()
+                    amount_as_balance
                 ),
                 Error::<T>::NotEnoughBalance
             );
 
             // --- Ensure the remove operation from the account_id is a success.
             ensure!(
-                Self::remove_balance_from_coldkey_account(&account_id, amount_as_balance.unwrap())
+                Self::remove_balance_from_coldkey_account(&account_id, amount_as_balance)
                     == true,
                 Error::<T>::BalanceWithdrawalError
             );
@@ -5744,12 +5774,11 @@ pub mod pallet {
             Self::is_paused()?;
 
             // Ensure overwatch node exists
-            ensure!(
-                OverwatchNodeIdHotkey::<T>::contains_key(overwatch_node_id),
-                Error::<T>::InvalidOverwatchNodeId
-            );
+            let overwatch_node_hotkey = match OverwatchNodeIdHotkey::<T>::get(overwatch_node_id) {
+                Some(hotkey) => hotkey,
+                None => return Err(Error::<T>::InvalidOverwatchNodeId.into()),
+            };
 
-            let overwatch_node_hotkey = OverwatchNodeIdHotkey::<T>::get(overwatch_node_id).unwrap();
             let overwatch_node_coldkey = HotkeyOwner::<T>::get(&overwatch_node_hotkey);
 
             // Ensure overwatch node is not qualified
@@ -6675,6 +6704,16 @@ pub mod pallet {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_overwatch_stake_weight_factor(value)
         }
+
+        #[pallet::call_index(159)]
+        #[pallet::weight({0})]
+        pub fn set_subnet_weight_factors(
+            origin: OriginFor<T>,
+            value: SubnetWeightFactorsData,
+        ) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_subnet_weight_factors(value)
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -6765,16 +6804,19 @@ pub mod pallet {
             Self::update_last_registration_cost(cost, block);
 
             if cost > 0 {
-                let cost_as_balance = Self::u128_to_balance(cost);
+                let cost_as_balance = match Self::u128_to_balance(cost){
+                    Some(balance) => balance,
+                    None => return Err(Error::<T>::CouldNotConvertToBalance.into()),
+                };
 
                 // Ensure user has the funds, give accurate information on errors
                 ensure!(
-                    Self::can_remove_balance_from_coldkey_account(&owner, cost_as_balance.unwrap()),
+                    Self::can_remove_balance_from_coldkey_account(&owner, cost_as_balance),
                     Error::<T>::NotEnoughBalanceToRegisterSubnet
                 );
 
                 // Send funds to Treasury and revert if failed
-                Self::send_to_treasury(&owner, cost_as_balance.unwrap())?;
+                Self::send_to_treasury(&owner, cost_as_balance)?;
             }
 
             // Get total subnets ever
@@ -7048,29 +7090,40 @@ pub mod pallet {
             PendingSubnetOwner::<T>::remove(subnet_id);
 
             SubnetRegistrationEpoch::<T>::remove(subnet_id);
+            PreviousSubnetPauseEpoch::<T>::remove(subnet_id);
 
             // Subnet parameters
             ChurnLimit::<T>::remove(subnet_id);
             SubnetNodeQueueEpochs::<T>::remove(subnet_id);
             IdleClassificationEpochs::<T>::remove(subnet_id);
+            IncludedClassificationEpochs::<T>::remove(subnet_id);
             SubnetMinStakeBalance::<T>::remove(subnet_id);
             SubnetMaxStakeBalance::<T>::remove(subnet_id);
             SubnetDelegateStakeRewardsPercentage::<T>::remove(subnet_id);
             LastSubnetDelegateStakeRewardsUpdate::<T>::remove(subnet_id);
-            IncludedClassificationEpochs::<T>::remove(subnet_id);
             SubnetRegistrationInitialColdkeys::<T>::remove(subnet_id);
+            InitialColdkeyData::<T>::remove(subnet_id);
             MaxRegisteredNodes::<T>::remove(subnet_id);
             SubnetKeyTypes::<T>::remove(subnet_id);
-            SubnetNodeMinWeightDecreaseReputationThreshold::<T>::remove(subnet_id);
             TargetNodeRegistrationsPerEpoch::<T>::remove(subnet_id);
             NodeBurnRateAlpha::<T>::remove(subnet_id);
-            PreviousSubnetPauseEpoch::<T>::remove(subnet_id);
+            CurrentNodeBurnRate::<T>::remove(subnet_id);
             QueueImmunityEpochs::<T>::remove(subnet_id);
             SubnetBootnodeAccess::<T>::remove(subnet_id);
-            InitialColdkeyData::<T>::remove(subnet_id);
+            SubnetBootnodes::<T>::remove(subnet_id);
             EmergencySubnetNodeElectionData::<T>::remove(subnet_id);
             SubnetReputation::<T>::remove(subnet_id);
-
+            MinSubnetNodeReputation::<T>::remove(subnet_id);
+            NodeRegistrationsThisEpoch::<T>::remove(subnet_id);
+            SubnetNodeMinWeightDecreaseReputationThreshold::<T>::remove(subnet_id);
+            AbsentDecreaseReputationFactor::<T>::remove(subnet_id);
+            IncludedIncreaseReputationFactor::<T>::remove(subnet_id);
+            BelowMinWeightDecreaseReputationFactor::<T>::remove(subnet_id);
+            NonAttestorDecreaseReputationFactor::<T>::remove(subnet_id);
+            NonConsensusAttestorDecreaseReputationFactor::<T>::remove(subnet_id);
+            ValidatorAbsentSubnetNodeReputationFactor::<T>::remove(subnet_id);
+            ValidatorNonConsensusSubnetNodeReputationFactor::<T>::remove(subnet_id);
+            
             if let Some(friendly_uid) = SubnetIdFriendlyUid::<T>::take(subnet_id) {
                 FriendlyUidSubnetId::<T>::remove(friendly_uid);
                 weight = weight.saturating_add(T::DbWeight::get().writes(1));
@@ -7402,24 +7455,22 @@ pub mod pallet {
             }
 
             // --- Start the UIDs at 1
-            // TODO: Make one UID element for all subnets
             TotalSubnetNodeUids::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
             let subnet_node_id = TotalSubnetNodeUids::<T>::get(subnet_id);
 
             // Unique ``unique``
             // [here]
-            if unique.is_some() {
+            if let Some(unique_param) = unique.clone() {
                 ensure!(
-                    !SubnetNodeUniqueParam::<T>::contains_key(subnet_id, unique.clone().unwrap()),
+                    !SubnetNodeUniqueParam::<T>::contains_key(subnet_id, &unique_param),
                     Error::<T>::SubnetNodeUniqueParamTaken
                 );
                 SubnetNodeUniqueParam::<T>::insert(
                     subnet_id,
-                    unique.clone().unwrap(),
+                    &unique_param,
                     subnet_node_id,
                 );
             }
-
             HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, subnet_node_id);
 
             // Insert Subnet Node ID -> hotkey

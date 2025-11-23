@@ -269,15 +269,12 @@ fn test_stake_and_node_dominance_is_dampened_3_nets() {
     let weight_b = weights[&2];
     let weight_c = weights[&3];
 
-    log::info!("Subnet 1 (dominant) weight: {}", weight_a);
-    log::info!("Subnet 2 (minor) weight: {}", weight_b);
-    log::info!("Subnet 3 (minor) weight: {}", weight_c);
     log::error!("Subnet 1 (dominant) weight: {}", weight_a);
     log::error!("Subnet 2 (minor) weight: {}", weight_b);
     log::error!("Subnet 3 (minor) weight: {}", weight_c);
 
     // Assert weights sum to 1e18
-    assert_eq!(weight_a + weight_b + weight_b, percentage_factor);
+    assert_eq!(weight_a + weight_b + weight_c, percentage_factor);
 
     // Subnet 1 has 90% stake/node ratio — but should get < 90% weight
     assert!(weight_a < 900_000_000_000_000_000u128);
@@ -286,8 +283,6 @@ fn test_stake_and_node_dominance_is_dampened_3_nets() {
     assert!(weight_b > 50_000_000_000_000_000u128);
 
     // Subnet 3 has 5% — but should get > 5% weight
-    assert!(weight_b > 50_000_000_000_000_000u128);
-
-    assert!(false);
+    assert!(weight_c > 50_000_000_000_000_000u128);
   });
 }

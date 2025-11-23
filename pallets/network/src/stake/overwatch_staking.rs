@@ -22,12 +22,10 @@ impl<T: Config> Pallet<T> {
         hotkey: T::AccountId,
         stake_to_be_added: u128,
     ) -> DispatchResult {
-        let stake_as_balance = Self::u128_to_balance(stake_to_be_added);
-
-        ensure!(
-            stake_as_balance.is_some(),
-            Error::<T>::CouldNotConvertToBalance
-        );
+        let balance = match Self::u128_to_balance(stake_to_be_added) {
+            Some(b) => b,
+            None => return Err(Error::<T>::CouldNotConvertToBalance.into()),
+        };
 
         let account_stake_balance: u128 = AccountOverwatchStake::<T>::get(&hotkey);
 
@@ -39,13 +37,13 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure the callers coldkey has enough stake to perform the transaction.
         ensure!(
-            Self::can_remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()),
+            Self::can_remove_balance_from_coldkey_account(&coldkey, balance),
             Error::<T>::NotEnoughBalanceToStake
         );
 
         // --- Ensure the remove operation from the coldkey is a success.
         ensure!(
-            Self::remove_balance_from_coldkey_account(&coldkey, stake_as_balance.unwrap()) == true,
+            Self::remove_balance_from_coldkey_account(&coldkey, balance) == true,
             Error::<T>::BalanceWithdrawalError
         );
 
@@ -85,11 +83,10 @@ impl<T: Config> Pallet<T> {
         }
 
         // --- Ensure that we can convert this u128 to a balance.
-        let stake_to_be_removed_as_currency = Self::u128_to_balance(stake_to_be_removed);
-        ensure!(
-            stake_to_be_removed_as_currency.is_some(),
-            Error::<T>::CouldNotConvertToBalance
-        );
+        match Self::u128_to_balance(stake_to_be_removed) {
+            Some(b) => b,
+            None => return Err(Error::<T>::CouldNotConvertToBalance.into()),
+        };
 
         let block: u32 = Self::get_current_block_as_u32();
 

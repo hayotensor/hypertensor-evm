@@ -394,12 +394,13 @@ impl<T: Config> Pallet<T> {
 
         // Store weights and handle foundation
         if !subnet_weights.is_empty() {
-            let (validator_emissions, foundation_emissions) = Self::get_epoch_emissions_v2();
-            let foundation_emissions_as_balance = Self::u128_to_balance(foundation_emissions);
-            if foundation_emissions_as_balance.is_some() {
-                Self::add_balance_to_treasury(foundation_emissions_as_balance.unwrap());
+            let (validator_emissions, foundation_emissions_as_u128) = Self::get_epoch_emissions_v2();
+
+            if let Some(foundation_emissions) = Self::u128_to_balance(foundation_emissions_as_u128) {
+                Self::add_balance_to_treasury(foundation_emissions);
                 weight = weight.saturating_add(T::WeightInfo::add_balance_to_treasury());
             }
+
             let data = DistributionData {
                 validator_emissions: validator_emissions,
                 weights: subnet_weights,
@@ -435,8 +436,11 @@ impl<T: Config> Pallet<T> {
         let total_electable_nodes: f64 = TotalElectableNodes::<T>::get() as f64;
         let mut total_subnet_reads = 0u64;
 
-        let dstake_factor = Self::get_percent_as_f64(DelegateStakeWeightFactor::<T>::get());
-        let node_factor = 1.0 - dstake_factor;
+        let weight_factors = SubnetWeightFactors::<T>::get();
+        weight = weight.saturating_add(db_weight.reads(1));
+        let delegate_stake_factor = Self::get_percent_as_f64(weight_factors.delegate_stake);
+        let node_count_factor = Self::get_percent_as_f64(weight_factors.node_count);
+        let net_flow_factor = Self::get_percent_as_f64(weight_factors.net_flow);
 
         // SubnetDistributionPower | TotalDelegateStake
         // TotalElectableNodes | DelegateStakeWeightFactor
@@ -446,7 +450,12 @@ impl<T: Config> Pallet<T> {
         // OverwatchEpochLengthMultiplier
         weight = weight.saturating_add(db_weight.reads(1));
 
-        for (subnet_id, data) in SubnetsData::<T>::iter() {
+        let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
+
+        let (inflow_weights, inflow_weight_calc_weight) = Self::get_net_flow_weights(subnets.clone(), epoch);
+        weight = weight.saturating_add(inflow_weight_calc_weight);
+
+        for (subnet_id, data) in subnets {
             total_subnet_reads += 1;
             // - Must be active to calculate rewards distribution
             if data.start_epoch > epoch && data.state != SubnetState::Active {
@@ -463,7 +472,6 @@ impl<T: Config> Pallet<T> {
             // - Get node count weight in f64
             let electable_nodes_count = TotalSubnetElectableNodes::<T>::get(subnet_id);
             weight = weight.saturating_add(db_weight.reads(1));
-
             let subnet_nodes_weight = electable_nodes_count as f64 / total_electable_nodes;
 
             // - Get Overwatch weight in f64
@@ -480,9 +488,11 @@ impl<T: Config> Pallet<T> {
             // OverwatchSubnetWeights
             weight = weight.saturating_add(db_weight.reads(1));
 
-            // - Get combined weight (stake + node count) * overwatchers weight
-            let subnet_weight = ((subnet_dstake_weight * dstake_factor
-                + subnet_nodes_weight * node_factor)
+            // - Get combined weight (stake + node count + inflow) * overwatchers weight
+
+            let subnet_inflow_weight = Self::get_percent_as_f64(inflow_weights.get(&subnet_id).cloned().unwrap_or(0));
+            let subnet_weight = ((subnet_dstake_weight * delegate_stake_factor
+                + subnet_nodes_weight * node_count_factor + subnet_inflow_weight * net_flow_factor)
                 * overwatch_subnet_weight)
                 .clamp(0.0, 1.0);
 
@@ -511,6 +521,51 @@ impl<T: Config> Pallet<T> {
         //
 
         (subnet_weights_normalized, weight)
+    }
+
+    pub fn get_net_flow_weights(subnets: Vec<(u32, SubnetData)>, epoch: u32) -> (BTreeMap<u32, u128>, Weight) {
+        let mut weight = Weight::zero();
+        let db_weight = T::DbWeight::get();
+
+        let mut inflows: BTreeMap<u32, i128> = BTreeMap::new();
+
+        let mut total_subnet_reads = 0u64;
+
+        for (subnet_id, data) in subnets {
+            total_subnet_reads += 1;
+
+            // Take/remove the netflow to restart calculation and return the net flow
+            let net_flow = SubnetNetFlow::<T>::take(subnet_id);
+            weight = weight.saturating_add(db_weight.reads(1));
+
+            // Inflow on registration doesn't count towards net flow weight
+            // Subnet must be active
+
+            // - Must be active to calculate rewards distribution
+            if data.start_epoch > epoch && data.state != SubnetState::Active {
+                continue;
+            }
+
+            inflows.insert(subnet_id, net_flow);
+        }
+
+        weight = weight.saturating_add(db_weight.reads(total_subnet_reads));
+
+        let min = inflows.values().cloned().min().unwrap_or(0);
+
+        let mut shifted: BTreeMap<u32, u128> = BTreeMap::new();
+        for (subnet_id, value) in inflows.iter() {
+            shifted.insert(*subnet_id, (*value - min) as u128);
+        }
+
+        let sum: u128 = shifted.values().sum();
+
+        let mut inflow_weights: BTreeMap<u32, u128> = BTreeMap::new();
+        for (subnet_id, value) in shifted.iter() {
+            inflow_weights.insert(*subnet_id, Self::percent_div(*value, sum));
+        }
+
+        (inflow_weights, weight)
     }
 
     pub fn precheck_subnet_consensus_submission(

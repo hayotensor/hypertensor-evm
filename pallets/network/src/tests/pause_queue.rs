@@ -64,11 +64,12 @@ fn test_register_subnet_node_v2() {
         let bootnode_peer_id =
             get_bootnode_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
         let client_peer_id = get_client_peer_id(subnets, max_subnet_nodes, max_subnets, end + 1);
-        let burn_amount = Network::calculate_burn_amount(subnet_id);
-        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
+
+        let burn_amount = Network::calculate_burn_amount(subnet_id);
+        let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount + burn_amount);
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
         let queue_epochs = SubnetNodeQueueEpochs::<Test>::get(subnet_id);

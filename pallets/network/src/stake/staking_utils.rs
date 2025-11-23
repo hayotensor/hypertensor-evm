@@ -69,15 +69,17 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
 
-            let stake_to_be_added_as_currency = Self::u128_to_balance(*amount);
-            if !stake_to_be_added_as_currency.is_some() {
-                // Redundant
-                unbondings_copy.remove(&unbonding_block);
-                continue;
-            }
+            let stake_to_be_added_as_currency = match Self::u128_to_balance(*amount) {
+                Some(b) => b,
+                None => {
+                    // Redundant, but attempt to remove the unbonding
+                    unbondings_copy.remove(&unbonding_block);
+                    continue
+                },
+            };
 
             unbondings_copy.remove(&unbonding_block);
-            Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency.unwrap());
+            Self::add_balance_to_coldkey_account(&coldkey, stake_to_be_added_as_currency);
             successful_unbondings += 1;
         }
 

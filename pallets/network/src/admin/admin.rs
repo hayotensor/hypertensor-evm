@@ -857,4 +857,19 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+
+    pub fn do_set_subnet_weight_factors(value: SubnetWeightFactorsData) -> DispatchResult {
+        let sum: u128 = value
+            .delegate_stake
+            .saturating_add(value.node_count)
+            .saturating_add(value.net_flow);
+
+        ensure!(sum <= Self::percentage_factor_as_u128(), Error::<T>::InvalidPercent);
+
+        SubnetWeightFactors::<T>::put(&value);
+
+        Self::deposit_event(Event::SetSubnetWeightFactors(value));
+
+        Ok(())
+    }
 }

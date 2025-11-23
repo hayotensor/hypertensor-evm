@@ -486,11 +486,11 @@ impl<T: Config> Pallet<T> {
 
         let idx = Self::get_random_number(block, slot_list.len() as u32) as usize;
 
-        let subnet_node_id = slot_list.get(idx).cloned();
+        let subnet_node_id = slot_list.get(idx).cloned();   
 
-        if subnet_node_id.is_some() {
+        if let Some(node_id) = subnet_node_id {
             // --- Insert validator for next epoch
-            SubnetElectedValidator::<T>::insert(subnet_id, subnet_epoch, subnet_node_id.unwrap());
+            SubnetElectedValidator::<T>::insert(subnet_id, subnet_epoch, node_id);
         }
     }
 

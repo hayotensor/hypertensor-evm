@@ -237,12 +237,14 @@ impl<T: Config> Pallet<T> {
             Ok(coldkey) => {
                 let subnet_owner_reward_as_currency =
                     Self::u128_to_balance(rewards_data.subnet_owner_reward);
-                if subnet_owner_reward_as_currency.is_some() {
+
+                if let Some(balance) = subnet_owner_reward_as_currency {
                     Self::add_balance_to_coldkey_account(
                         &coldkey,
-                        subnet_owner_reward_as_currency.unwrap(),
+                        balance,
                     );
                     weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
+ 
                 }
             }
             Err(()) => (),
@@ -277,12 +279,18 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
 
+            // If node is Idle class and subnet is not temporarily forked, upgrade to Included class
             if subnet_node.classification.node_class == SubnetNodeClass::Idle
                 && forked_subnet_node_ids.is_none()
             {
-                SubnetNodeIdleConsecutiveEpochs::<T>::mutate(subnet_id, subnet_node.id, |n: &mut u32| *n += 1);
+                SubnetNodeIdleConsecutiveEpochs::<T>::mutate(
+                    subnet_id,
+                    subnet_node.id,
+                    |n: &mut u32| *n += 1,
+                );
 
-                let node_idle_epochs = SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node.id);
+                let node_idle_epochs =
+                    SubnetNodeIdleConsecutiveEpochs::<T>::get(subnet_id, subnet_node.id);
                 weight_meter.consume(db_weight.reads_writes(1, 1));
 
                 // Idle classified nodes can't be included in consensus data and can't have a used reputation
@@ -304,8 +312,19 @@ impl<T: Config> Pallet<T> {
                 .iter()
                 .find(|data| data.subnet_node_id == subnet_node.id);
 
-            if subnet_node_data_find.is_none() {
-                // Not included in consensus, increase
+            // Handle case where node is found in consensus data
+            let subnet_node_data = if let Some(data) = subnet_node_data_find {
+                // --- Is in consensus data, increase reputation if not at max
+                if reputation != percentage_factor {
+                    // If the validator submits themselves in the data and passes consensus, this also
+                    // increases the validators reputation
+                    reputation = Self::get_increase_reputation(reputation, included_factor);
+                    SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
+                    weight_meter.consume(db_weight.writes(1));
+                }
+                data
+            } else {
+                // Not included in consensus, decrease reputation
                 reputation = Self::get_decrease_reputation(reputation, absent_factor);
                 SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
                 weight_meter.consume(db_weight.writes(1));
@@ -317,21 +336,13 @@ impl<T: Config> Pallet<T> {
                     weight_meter.consume(db_weight.writes(1));
                 }
                 continue;
-            } else if reputation != percentage_factor {
-                // --- Is in consensus data, increase reputation
-                // If the validator submits themselves in the data and passes consensus, this also
-                // increase the validators reputation
-                reputation = Self::get_increase_reputation(reputation, included_factor);
-                SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
-                weight_meter.consume(db_weight.writes(1));
-            }
+            };
 
             //
             // --- Consensus formed on node
             //
 
-            // Safely unwrap node_score, we already confirmed it's not None
-            let node_score = subnet_node_data_find.unwrap().score;
+            let node_score = subnet_node_data.score;
 
             // --- Calculate node weight percentage of peer versus the weighted sum
             let node_weight: u128 =
@@ -346,6 +357,7 @@ impl<T: Config> Pallet<T> {
                 weight_meter.consume(db_weight.writes(1));
             }
 
+            // If node is Included class and subnet is not temporarily forked, upgrade to Validator class
             if subnet_node.classification.node_class == SubnetNodeClass::Included
                 && forked_subnet_node_ids.is_none()
             {

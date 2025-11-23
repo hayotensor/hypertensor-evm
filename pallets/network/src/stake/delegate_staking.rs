@@ -66,11 +66,10 @@ impl<T: Config> Pallet<T> {
         delegate_stake_to_be_added: u128,
         swap: bool,
     ) -> (DispatchResult, u128, u128) {
-        let delegate_stake_as_balance = Self::u128_to_balance(delegate_stake_to_be_added);
-
-        if !delegate_stake_as_balance.is_some() {
-            return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
-        }
+        let balance = match Self::u128_to_balance(delegate_stake_to_be_added) {
+            Some(b) => b,
+            None => return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0),
+        };
 
         if delegate_stake_to_be_added < MinDelegateStakeDeposit::<T>::get() {
             return (
@@ -84,7 +83,7 @@ impl<T: Config> Pallet<T> {
         if !swap {
             if !Self::can_remove_balance_from_coldkey_account(
                 &account_id,
-                delegate_stake_as_balance.unwrap(),
+                balance,
             ) {
                 return (Err(Error::<T>::NotEnoughBalanceToStake.into()), 0, 0);
             }
@@ -101,7 +100,7 @@ impl<T: Config> Pallet<T> {
         if !swap {
             if Self::remove_balance_from_coldkey_account(
                 &account_id,
-                delegate_stake_as_balance.unwrap(),
+                balance,
             ) == false
             {
                 return (Err(Error::<T>::BalanceWithdrawalError.into()), 0, 0);
@@ -235,11 +234,10 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure that we can convert this u128 to a balance.
         // Redunant
-        let delegate_stake_to_be_added_as_currency =
-            Self::u128_to_balance(delegate_stake_to_be_removed);
-        if !delegate_stake_to_be_added_as_currency.is_some() {
-            return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0);
-        }
+        let delegate_stake_to_be_added_as_currency = match Self::u128_to_balance(delegate_stake_to_be_removed) {
+            Some(b) => b,
+            None => return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0),
+        };
 
         let block: u32 = Self::get_current_block_as_u32();
         if Self::exceeds_tx_rate_limit(Self::get_last_tx_block(&account_id), block) {
@@ -304,77 +302,6 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
-    // pub fn do_swap_delegate_stake(
-    //     origin: T::RuntimeOrigin,
-    //     from_subnet_id: u32,
-    //     to_subnet_id: u32,
-    //     delegate_stake_shares_to_swap: u128,
-    // ) -> DispatchResult {
-    //     let account_id: T::AccountId = ensure_signed(origin)?;
-
-    //     let (result, delegate_stake_to_be_removed, _) = Self::perform_do_remove_delegate_stake(
-    //         &account_id,
-    //         from_subnet_id,
-    //         delegate_stake_shares_to_swap,
-    //         false,
-    //     );
-
-    //     result?;
-
-    //     // --- Add
-    //     let (result, balance, shares) = Self::perform_do_add_delegate_stake(
-    //         &account_id,
-    //         to_subnet_id,
-    //         delegate_stake_to_be_removed,
-    //         true,
-    //     );
-
-    //     result?;
-
-    //     let block: u32 = Self::get_current_block_as_u32();
-
-    //     // Set last block for rate limiting
-    //     Self::set_last_tx_block(&account_id, block);
-
-    //     Self::deposit_event(Event::SubnetDelegateStakeSwapped(
-    //         from_subnet_id,
-    //         to_subnet_id,
-    //         account_id,
-    //         delegate_stake_to_be_removed,
-    //     ));
-
-    //     Ok(())
-    // }
-
-    // pub fn do_transfer_delegate_stake(
-    //   origin: T::RuntimeOrigin,
-    //   subnet_id: u32,
-    //   to_account_id: T::AccountId,
-    //   delegate_stake_shares_to_transfer: u128,
-    // ) -> DispatchResult {
-    //   let account_id: T::AccountId = ensure_signed(origin)?;
-
-    //   let (result, balance, shares) = Self::perform_do_remove_delegate_stake(
-    //     &account_id,
-    //     subnet_id,
-    //     delegate_stake_shares_to_transfer,
-    //     false
-    //   );
-
-    //   result?;
-
-    //   let (result, _, _) = Self::perform_do_add_delegate_stake(
-    //     &to_account_id,
-    //     subnet_id,
-    //     balance,
-    //     true
-    //   );
-
-    //   result?;
-
-    //   Ok(())
-    // }
 
     pub fn do_transfer_delegate_stake(
         origin: T::RuntimeOrigin,
@@ -446,6 +373,10 @@ impl<T: Config> Pallet<T> {
         TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_accrue(shares));
 
         TotalDelegateStake::<T>::mutate(|mut n| n.saturating_accrue(amount));
+
+        SubnetNetFlow::<T>::mutate(subnet_id, |flow| {
+            *flow = flow.saturating_add(amount as i128);
+        });
     }
 
     pub fn decrease_account_delegate_stake(
@@ -468,9 +399,14 @@ impl<T: Config> Pallet<T> {
         TotalSubnetDelegateStakeShares::<T>::mutate(subnet_id, |mut n| n.saturating_reduce(shares));
 
         TotalDelegateStake::<T>::mutate(|mut n| n.saturating_reduce(amount));
+
+        SubnetNetFlow::<T>::mutate(subnet_id, |flow| {
+            *flow = flow.saturating_sub(amount as i128);
+        });
     }
 
     /// Rewards are deposited here from the ``rewards.rs`` or by donations
+    /// Note: We don't count SubnetNetFlow here
     pub fn do_increase_delegate_stake(subnet_id: u32, amount: u128) {
         if TotalSubnetDelegateStakeBalance::<T>::get(subnet_id) == 0
             || TotalSubnetDelegateStakeShares::<T>::get(subnet_id) == 0
