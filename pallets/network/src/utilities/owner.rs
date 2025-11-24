@@ -428,6 +428,35 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    pub fn do_owner_update_churn_limit_multiplier(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        value: u32,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        ensure!(
+            value >= MinChurnLimitMultiplier::<T>::get()
+                && value <= MaxChurnLimitMultiplier::<T>::get(),
+            Error::<T>::InvalidChurnLimitMultiplier
+        );
+
+        ChurnLimitMultiplier::<T>::insert(subnet_id, value);
+
+        Self::deposit_event(Event::ChurnLimitMultiplierUpdate {
+            subnet_id: subnet_id,
+            owner: coldkey,
+            value: value,
+        });
+
+        Ok(())
+    }
+
     pub fn do_owner_update_registration_queue_epochs(
         origin: T::RuntimeOrigin,
         subnet_id: u32,

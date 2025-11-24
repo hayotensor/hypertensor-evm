@@ -714,7 +714,7 @@ where
             pallet_network::TotalNodeDelegateStakeShares::<R>::get(subnet_id, subnet_node_id);
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
         let total_node_delegated_stake_balance =
-            pallet_network::NodeDelegateStakeBalance::<R>::get(subnet_id, subnet_node_id);
+            pallet_network::TotalNodeDelegateStakeBalance::<R>::get(subnet_id, subnet_node_id);
 
         let balance: u128 = pallet_network::Pallet::<R>::convert_to_balance(
             account_node_delegate_stake_shares,

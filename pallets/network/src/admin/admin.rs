@@ -136,6 +136,17 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    pub fn do_set_churn_limit_multipliers(min: u32, max: u32) -> DispatchResult {
+        ensure!(min < max, Error::<T>::InvalidValues);
+
+        MinChurnLimitMultiplier::<T>::set(min);
+        MaxChurnLimitMultiplier::<T>::set(max);
+
+        Self::deposit_event(Event::SetChurnLimitMultipliers(min, max));
+
+        Ok(())
+    }
+
     pub fn do_set_queue_epochs(min: u32, max: u32) -> DispatchResult {
         ensure!(min < max, Error::<T>::InvalidValues);
 
@@ -202,7 +213,7 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_max_registered_nodes(min: u32, max: u32) -> DispatchResult {
+    pub fn do_set_min_max_registered_nodes(min: u32, max: u32) -> DispatchResult {
         ensure!(min < max, Error::<T>::InvalidValues);
 
         MinMaxRegisteredNodes::<T>::set(min);
@@ -354,7 +365,7 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_sigmoid_steepness(value: u128) -> DispatchResult {
+    pub fn do_set_inflation_sigmoid_steepness(value: u128) -> DispatchResult {
         InflationSigmoidSteepness::<T>::set(value);
 
         Self::deposit_event(Event::SetSigmoidSteepness(value));
@@ -560,7 +571,7 @@ impl<T: Config> Pallet<T> {
 
         InflationSigmoidMidpoint::<T>::put(value);
 
-        Self::deposit_event(Event::SetSigmoidMidpoint(value));
+        Self::deposit_event(Event::SetInflationSigmoidMidpoint(value));
 
         Ok(())
     }

@@ -331,6 +331,7 @@ pub mod pallet {
         SetNewRegistrationCostMultiplier(u128),
         SetMaxMinDelegateStakeMultiplier(u128),
         SetChurnLimits(u32, u32),
+        SetChurnLimitMultipliers(u32, u32),
         SetQueueEpochs(u32, u32),
         SetMinActivationGraceEpochs(u32),
         SetMaxActivationGraceEpochs(u32),
@@ -357,7 +358,7 @@ pub mod pallet {
         SetMaxRewardRateDecrease(u128),
         SetSubnetDistributionPower(u128),
         SetDelegateStakeWeightFactor(u128),
-        SetSigmoidMidpoint(u128),
+        SetInflationSigmoidMidpoint(u128),
         SetMaximumHooksWeight(u32),
         SetBaseNodeBurnAmount(u128),
         SetNodeBurnRates(u128, u128),
@@ -464,6 +465,11 @@ pub mod pallet {
             value: Vec<u8>,
         },
         ChurnLimitUpdate {
+            subnet_id: u32,
+            owner: T::AccountId,
+            value: u32,
+        },
+        ChurnLimitMultiplierUpdate {
             subnet_id: u32,
             owner: T::AccountId,
             value: u32,
@@ -651,6 +657,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         InvalidChurnLimit,
+        InvalidChurnLimitMultiplier,
         InvalidRegistrationQueueEpochs,
         InvalidIdleClassificationEpochs,
         InvalidIncludedClassificationEpochs,
@@ -1076,6 +1083,7 @@ pub mod pallet {
     /// * `start_epoch` - The epoch when the subnet became active and began operations.
     /// * `churn_limit` - Maximum number of nodes that can change classification (join/leave
     ///   active participation) per epoch, preventing network instability from rapid turnover.
+    /// * `churn_limit_multiplier` - The multiplier for the ChurnLimit
     /// * `min_stake` - Minimum stake required for a node to register and participate in this subnet.
     /// * `max_stake` - Maximum stake a single node can hold in this subnet, promoting
     ///   decentralization.
@@ -1129,6 +1137,7 @@ pub mod pallet {
         pub state: SubnetState,
         pub start_epoch: u32,
         pub churn_limit: u32,
+        pub churn_limit_multiplier: u32,
         pub min_stake: u128,
         pub max_stake: u128,
         pub queue_immunity_epochs: u32,
@@ -1881,7 +1890,7 @@ pub mod pallet {
     /// - AccountSubnetStake
     /// - AccountSubnetDelegateStakeShares
     /// - TotalNodeDelegateStakeShares
-    /// - NodeDelegateStakeBalance
+    /// - TotalNodeDelegateStakeBalance
     /// - AccountOverwatchStake
     #[pallet::type_value]
     pub fn DefaultZeroU128() -> u128 {
@@ -2169,6 +2178,10 @@ pub mod pallet {
     pub fn DefaultChurnLimit() -> u32 {
         4
     }
+    #[pallet::type_value]
+    pub fn DefaultChurnLimitMultiplier() -> u32 {
+        1
+    }
     /// This type value is referenced in:
     /// - MinChurnLimit
     #[pallet::type_value]
@@ -2182,6 +2195,15 @@ pub mod pallet {
     pub fn DefaultMaxChurnLimit() -> u32 {
         // Must only enable up to 64 node activations per epoch
         64
+    }
+    #[pallet::type_value]
+    pub fn DefaultMinChurnLimitMultiplier() -> u32 {
+        1
+    }
+    #[pallet::type_value]
+    pub fn DefaultMaxChurnLimitMultiplier<T: Config>() -> u32 {
+        // Multiplier must allow at least one node per week
+        T::EpochsPerYear::get() / 52
     }
     /// This type value is referenced in:
     /// - MaxSubnetPauseEpochs
@@ -2932,6 +2954,14 @@ pub mod pallet {
     #[pallet::storage]
     pub type MaxChurnLimit<T> = StorageValue<_, u32, ValueQuery, DefaultMaxChurnLimit>;
 
+    #[pallet::storage]
+    pub type MinChurnLimitMultiplier<T> =
+        StorageValue<_, u32, ValueQuery, DefaultMinChurnLimitMultiplier>;
+
+    #[pallet::storage]
+    pub type MaxChurnLimitMultiplier<T> =
+        StorageValue<_, u32, ValueQuery, DefaultMaxChurnLimitMultiplier<T>>;
+
     //
     // Registered classification
     //
@@ -3185,6 +3215,13 @@ pub mod pallet {
     /// Max amount of nodes that can activate per epoch
     #[pallet::storage] // subnet_uid --> u32
     pub type ChurnLimit<T> = StorageMap<_, Identity, u32, u32, ValueQuery, DefaultChurnLimit>;
+
+    /// The epoch multiplier for the ChurnLimit
+    /// If the churn limit is 4 and the multiplier is 2, 4 nodes can be activated every 4 epochs
+    /// If the churn limit is 4 and the multiplier is 1, 4 nodes can be activated every 1 epoch
+    #[pallet::storage]
+    pub type ChurnLimitMultiplier<T> =
+        StorageMap<_, Identity, u32, u32, ValueQuery, DefaultChurnLimitMultiplier>;
 
     /// Length of epochs a node must be in the registration queue before they can activate
     /// Note: Registration classification epochs
@@ -3816,7 +3853,7 @@ pub mod pallet {
     /// Total stake sum of balance in specified Subnet Node
     /// subnet_id -> subnet node ID -> balance
     #[pallet::storage]
-    pub type NodeDelegateStakeBalance<T> =
+    pub type TotalNodeDelegateStakeBalance<T> =
         StorageDoubleMap<_, Identity, u32, Identity, u32, u128, ValueQuery, DefaultZeroU128>;
 
     /// Shares a user has under a node it delegate staked to
@@ -6076,7 +6113,7 @@ pub mod pallet {
 
         #[pallet::call_index(89)]
         #[pallet::weight({0})]
-        pub fn set_subnet_removal_interval(
+        pub fn set_subnet_removal_intervals(
             origin: OriginFor<T>,
             min: u32,
             max: u32,
@@ -6230,7 +6267,7 @@ pub mod pallet {
             max: u32,
         ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_max_registered_nodes(min, max)
+            Self::do_set_min_max_registered_nodes(min, max)
         }
 
         #[pallet::call_index(106)]
@@ -6355,9 +6392,12 @@ pub mod pallet {
 
         #[pallet::call_index(121)]
         #[pallet::weight({0})]
-        pub fn set_sigmoid_steepness(origin: OriginFor<T>, value: u128) -> DispatchResult {
+        pub fn set_inflation_sigmoid_steepness(
+            origin: OriginFor<T>,
+            value: u128,
+        ) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_sigmoid_steepness(value)
+            Self::do_set_inflation_sigmoid_steepness(value)
         }
 
         #[pallet::call_index(122)]
@@ -6541,7 +6581,7 @@ pub mod pallet {
 
         #[pallet::call_index(143)]
         #[pallet::weight({0})]
-        pub fn set_node_burn_rate(origin: OriginFor<T>, min: u128, max: u128) -> DispatchResult {
+        pub fn set_node_burn_rates(origin: OriginFor<T>, min: u128, max: u128) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_node_burn_rates(min, max)
         }
@@ -6698,6 +6738,17 @@ pub mod pallet {
         ) -> DispatchResult {
             T::MajorityCollectiveOrigin::ensure_origin(origin)?;
             Self::do_set_subnet_weight_factors(value)
+        }
+
+        #[pallet::call_index(161)]
+        #[pallet::weight({0})]
+        pub fn set_churn_limit_multipliers(
+            origin: OriginFor<T>,
+            min: u32,
+            max: u32,
+        ) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_churn_limit_multipliers(min, max)
         }
     }
 
@@ -7079,6 +7130,7 @@ pub mod pallet {
 
             // Subnet parameters
             ChurnLimit::<T>::remove(subnet_id);
+            ChurnLimitMultiplier::<T>::remove(subnet_id);
             SubnetNodeQueueEpochs::<T>::remove(subnet_id);
             IdleClassificationEpochs::<T>::remove(subnet_id);
             IncludedClassificationEpochs::<T>::remove(subnet_id);
@@ -8255,7 +8307,7 @@ pub mod pallet {
             //     );
 
             //     // -- increase total subnet delegate stake balance
-            //     NodeDelegateStakeBalance::<T>::mutate(subnet_id, current_uid, |mut n| {
+            //     TotalNodeDelegateStakeBalance::<T>::mutate(subnet_id, current_uid, |mut n| {
             //         n.saturating_accrue(node_delegate_stake_amount)
             //     });
 

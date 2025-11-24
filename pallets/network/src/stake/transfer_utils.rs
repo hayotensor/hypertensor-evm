@@ -18,6 +18,15 @@
 use super::*;
 
 impl<T: Config> Pallet<T> {
+    /// Swap stake from a node to a subnet
+    ///
+    /// # Arguments
+    ///
+    /// * `from_subnet_id` - Subnet ID unstaking from.
+    /// * `from_subnet_node_id` - Subnet node ID unstaking from.
+    /// * `to_subnet_id` - Subnet ID staking to in relation to subnet node ID .
+    /// * `node_delegate_stake_shares_to_swap` - Shares to remove (from node) to (to subnet) then be added as converted balance.
+    ///
     pub fn do_swap_from_node_to_subnet(
         origin: T::RuntimeOrigin,
         from_subnet_id: u32,
@@ -65,46 +74,8 @@ impl<T: Config> Pallet<T> {
     /// * `from_subnet_id` - Subnet ID unstaking from.
     /// * `to_subnet_id` - Subnet ID staking to in relation to subnet node ID .
     /// * `to_subnet_node_id` - Subnet node ID adding stake to.
-    /// * `delegate_stake_shares_to_swap` - Shares to remove to then be added as converted balance.
+    /// * `delegate_stake_shares_to_swap` - Shares to remove (from subnet) to (to node) then be added as converted balance.
     ///
-    // pub fn do_swap_from_subnet_to_node(
-    //     origin: T::RuntimeOrigin,
-    //     from_subnet_id: u32,
-    //     to_subnet_id: u32,
-    //     to_subnet_node_id: u32,
-    //     delegate_stake_shares_to_swap: u128,
-    // ) -> DispatchResult {
-    //     let account_id: T::AccountId = ensure_signed(origin)?;
-
-    //     let (result, balance_removed, _) = Self::perform_do_remove_delegate_stake(
-    //         &account_id,
-    //         from_subnet_id,
-    //         delegate_stake_shares_to_swap,
-    //         false,
-    //     );
-
-    //     result?;
-
-    //     let (result, _, _) = Self::perform_do_add_node_delegate_stake(
-    //         &account_id,
-    //         to_subnet_id,
-    //         to_subnet_node_id,
-    //         balance_removed,
-    //         true,
-    //     );
-
-    //     result?;
-
-    //     Self::deposit_event(Event::SubnetDelegateToNodeDelegateStakeSwapped {
-    //         account_id: account_id,
-    //         from_subnet_id: from_subnet_id,
-    //         to_subnet_id: to_subnet_id,
-    //         to_subnet_node_id: to_subnet_node_id,
-    //         amount: balance_removed,
-    //     });
-
-    //     Ok(())
-    // }
     pub fn do_swap_from_subnet_to_node(
         origin: T::RuntimeOrigin,
         from_subnet_id: u32,

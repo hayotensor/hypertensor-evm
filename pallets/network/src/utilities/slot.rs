@@ -289,6 +289,15 @@ impl<T: Config> Pallet<T> {
             return;
         }
 
+        let churn_limit_multiplier = ChurnLimitMultiplier::<T>::get(subnet_id);
+        weight_meter.consume(db_weight.reads(1));
+
+        // Only process the queue based on the churn_limit_multiplier
+        // If multiplier is 4, only run every 4 epochs. If 1, run every epoch.
+        if current_subnet_epoch % churn_limit_multiplier != 0 {
+            return;
+        }
+
         let subnet_node_queue_epochs = SubnetNodeQueueEpochs::<T>::get(subnet_id);
         let max_nodes = MaxSubnetNodes::<T>::get();
         let total_active_nodes = TotalActiveSubnetNodes::<T>::get(subnet_id);

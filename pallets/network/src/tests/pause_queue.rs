@@ -7,7 +7,7 @@ use crate::{
     HotkeyOwner, HotkeySubnetId, HotkeySubnetNodeId,
     MaxDelegateStakePercentage, MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes,
     MaxSubnets, MinSubnetNodes, MinSubnetRegistrationEpochs,
-    NodeDelegateStakeBalance,
+    TotalNodeDelegateStakeBalance,
     NodeSlotIndex, PeerIdSubnetNodeId, SubnetNodeQueue,
     RegisteredSubnetNodesData, SubnetNodeQueueEpochs, Reputation, NodeRewardRateUpdatePeriod,
     SubnetElectedValidator, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,

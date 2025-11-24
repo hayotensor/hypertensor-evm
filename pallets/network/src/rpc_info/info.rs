@@ -29,6 +29,7 @@ impl<T: Config> Pallet<T> {
             state: subnet_data.state,
             start_epoch: subnet_data.start_epoch,
             churn_limit: ChurnLimit::<T>::get(subnet_id),
+            churn_limit_multiplier: ChurnLimitMultiplier::<T>::get(subnet_id),
             min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
             max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
             queue_immunity_epochs: QueueImmunityEpochs::<T>::get(subnet_id),
@@ -102,6 +103,7 @@ impl<T: Config> Pallet<T> {
                 state: subnet_data.state,
                 start_epoch: subnet_data.start_epoch,
                 churn_limit: ChurnLimit::<T>::get(subnet_id),
+                churn_limit_multiplier: ChurnLimitMultiplier::<T>::get(subnet_id),
                 min_stake: SubnetMinStakeBalance::<T>::get(subnet_id),
                 max_stake: SubnetMaxStakeBalance::<T>::get(subnet_id),
                 queue_immunity_epochs: QueueImmunityEpochs::<T>::get(subnet_id),
@@ -186,7 +188,7 @@ impl<T: Config> Pallet<T> {
                 subnet_id,
                 subnet_node_id,
             ),
-            node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
+            node_delegate_stake_balance: TotalNodeDelegateStakeBalance::<T>::get(
                 subnet_id,
                 subnet_node_id,
             ),
@@ -438,7 +440,7 @@ impl<T: Config> Pallet<T> {
             let balance = Self::convert_to_balance(
                 shares,
                 TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id),
-                NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
+                TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id),
             );
 
             node_delegate_stake.push(NodeDelegateStakeInfo {

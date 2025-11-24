@@ -1737,7 +1737,7 @@ fn proposal_network_pallet_vote_2_3() {
     ExtBuilder::default().build_and_execute(|| {
         let min = pallet_network::MinSubnetRemovalInterval::<Test>::get() + 2;
         let max = pallet_network::MaxSubnetRemovalInterval::<Test>::get() + 2;
-        let proposal = RuntimeCall::Network(pallet_network::Call::set_subnet_removal_interval {
+        let proposal = RuntimeCall::Network(pallet_network::Call::set_subnet_removal_intervals {
             min: min,
             max: max,
         });
@@ -1774,7 +1774,7 @@ fn proposal_network_pallet_vote_1_3() {
     ExtBuilder::default().build_and_execute(|| {
         let min = pallet_network::MinSubnetRemovalInterval::<Test>::get();
         let max = pallet_network::MaxSubnetRemovalInterval::<Test>::get();
-        let proposal = RuntimeCall::Network(pallet_network::Call::set_subnet_removal_interval {
+        let proposal = RuntimeCall::Network(pallet_network::Call::set_subnet_removal_intervals {
             min: min,
             max: max,
         });

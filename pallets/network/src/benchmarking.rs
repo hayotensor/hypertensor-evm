@@ -3122,7 +3122,7 @@ mod benchmarks {
     //         subnet_node_id,
     //     ));
     //     let total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
     //     let total_node_delegate_stake_shares =
     //         TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
 
@@ -3172,7 +3172,7 @@ mod benchmarks {
     //     ));
 
     //     let total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
     //     let total_node_delegate_stake_shares =
     //         TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, from_subnet_node_id);
 
@@ -3221,7 +3221,7 @@ mod benchmarks {
     //         to_subnet_node_id,
     //     ));
     //     let total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(from_subnet_id, to_subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, to_subnet_node_id);
     //     let total_node_delegate_stake_shares =
     //         TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, to_subnet_node_id);
 
@@ -3400,7 +3400,7 @@ mod benchmarks {
     //     let delegate_account: T::AccountId = funded_account::<T>("delegate_account", 0);
 
     //     let pre_total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
     //     #[extrinsic_call]
     //     donate_node_delegate_stake(
@@ -3411,7 +3411,7 @@ mod benchmarks {
     //     );
 
     //     let post_total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
     //     assert_eq!(
     //         pre_total_node_delegate_stake_balance + DEFAULT_SUBNET_NODE_STAKE,
@@ -3465,7 +3465,7 @@ mod benchmarks {
     //         from_subnet_node_id,
     //     ));
     //     let total_node_delegate_stake_balance =
-    //         NodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
+    //         TotalNodeDelegateStakeBalance::<T>::get(from_subnet_id, from_subnet_node_id);
     //     let total_node_delegate_stake_shares =
     //         TotalNodeDelegateStakeShares::<T>::get(from_subnet_id, from_subnet_node_id);
 
@@ -5028,7 +5028,7 @@ mod benchmarks {
 
     //     #[block]
     //     {
-    //         Network::<T>::do_set_max_registered_nodes(min, max);
+    //         Network::<T>::do_set_min_max_registered_nodes(min, max);
     //     }
 
     //     assert_eq!(MinMaxRegisteredNodes::<T>::get(), min);
@@ -5267,7 +5267,7 @@ mod benchmarks {
     // }
 
     // #[benchmark]
-    // fn set_sigmoid_steepness() {
+    // fn set_inflation_sigmoid_steepness() {
     //     let value = InflationSigmoidSteepness::<T>::get();
     //     let new_value = value - 1;
 
@@ -5275,7 +5275,7 @@ mod benchmarks {
 
     //     #[block]
     //     {
-    //         Network::<T>::do_set_sigmoid_steepness(new_value);
+    //         Network::<T>::do_set_inflation_sigmoid_steepness(new_value);
     //     }
 
     //     assert_eq!(InflationSigmoidSteepness::<T>::get(), new_value);

@@ -19,7 +19,9 @@ use libm::{exp, pow};
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
+    // 1e18 as 1.0
     pub const PERCENTAGE_FACTOR: U256 = U256([0xde0b6b3a7640000, 0x0, 0x0, 0x0]);
+    // 0.5e18 as 0.5
     pub const HALF_PERCENT: U256 = U256([0x06f05b59d3b20000, 0x0, 0x0, 0x0]);
 
     /// `x` is value

@@ -7,14 +7,14 @@ use crate::{
     EmergencySubnetNodeElectionData, Error, FinalSubnetEmissionWeights, HotkeySubnetNodeId,
     IdleClassificationEpochs, IncludedClassificationEpochs, MaxSubnetNodes, MaxSubnets,
     MinAttestationPercentage, MinSubnetMinStake, MinSubnetNodeReputation, MinSubnetReputation,
-    NodeDelegateStakeBalance, QueueImmunityEpochs, RegisteredSubnetNodesData,
-    SubnetConsensusSubmission, SubnetElectedValidator, SubnetName, SubnetNodeClass,
-    SubnetNodeConsecutiveIncludedEpochs, SubnetNodeIdHotkey, SubnetNodeIdleConsecutiveEpochs,
+    QueueImmunityEpochs, RegisteredSubnetNodesData, SubnetConsensusSubmission,
+    SubnetElectedValidator, SubnetName, SubnetNodeClass, SubnetNodeConsecutiveIncludedEpochs,
+    SubnetNodeIdHotkey, SubnetNodeIdleConsecutiveEpochs,
     SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodeQueue, SubnetNodeQueueEpochs,
     SubnetNodeReputation, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
     SubnetRemovalReason, SubnetReputation, SubnetState, SubnetsData, SuperMajorityAttestationRatio,
-    TotalActiveSubnets, TotalNodeDelegateStakeShares, TotalSubnetDelegateStakeBalance,
-    TotalSubnetNodes, ValidatorAbsentSubnetNodeReputationFactor,
+    TotalActiveSubnets, TotalNodeDelegateStakeBalance, TotalNodeDelegateStakeShares,
+    TotalSubnetDelegateStakeBalance, TotalSubnetNodes, ValidatorAbsentSubnetNodeReputationFactor,
     ValidatorAbsentSubnetReputationFactor,
 };
 use frame_support::traits::Currency;
@@ -4691,7 +4691,7 @@ fn test_distribute_rewards_node_delegate_stake() {
         }
 
         let delegate_stake_balance =
-            NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
 
         let min_attestation_percentage = MinAttestationPercentage::<Test>::get();
         let coldkey_reputation_increase_factor = ColdkeyReputationIncreaseFactor::<Test>::get();
@@ -4731,7 +4731,7 @@ fn test_distribute_rewards_node_delegate_stake() {
         }
 
         let post_delegate_stake_balance =
-            NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
         assert!(post_delegate_stake_balance > delegate_stake_balance);
     });
 }
@@ -4860,7 +4860,7 @@ fn test_distribute_rewards_fork_node_delegate_stake() {
         }
 
         let delegate_stake_balance =
-            NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
 
         let min_attestation_percentage = MinAttestationPercentage::<Test>::get();
         let coldkey_reputation_increase_factor = ColdkeyReputationIncreaseFactor::<Test>::get();
@@ -4900,7 +4900,7 @@ fn test_distribute_rewards_fork_node_delegate_stake() {
         }
 
         let post_delegate_stake_balance =
-            NodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<Test>::get(subnet_id, subnet_node_id);
         assert!(post_delegate_stake_balance > delegate_stake_balance);
     });
 }

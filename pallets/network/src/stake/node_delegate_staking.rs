@@ -138,7 +138,7 @@ impl<T: Config> Pallet<T> {
                 shares => shares,
             };
         let total_node_delegated_stake_balance =
-            NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
         // --- Get amount to be added as shares based on stake to balance added to account
         let delegate_stake_to_be_added_as_shares = Self::convert_to_shares(
@@ -240,7 +240,7 @@ impl<T: Config> Pallet<T> {
         let total_node_delegated_stake_shares =
             TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
         let total_node_delegated_stake_balance =
-            NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
         // --- Get accounts current balance
         let node_delegate_stake_to_be_removed = Self::convert_to_balance(
@@ -300,56 +300,6 @@ impl<T: Config> Pallet<T> {
     /// * `to_subnet_node_id` - Subnet node ID adding stake to.
     /// * `node_delegate_stake_shares_to_swap` - Shares to remove to then be added as converted balance
     ///
-    // pub fn do_swap_node_delegate_stake(
-    //     origin: T::RuntimeOrigin,
-    //     from_subnet_id: u32,
-    //     from_subnet_node_id: u32,
-    //     to_subnet_id: u32,
-    //     to_subnet_node_id: u32,
-    //     node_delegate_stake_shares_to_swap: u128,
-    // ) -> DispatchResult {
-    //     let account_id: T::AccountId = ensure_signed(origin)?;
-
-    //     // --- Remove
-    //     let (result, node_delegate_stake_to_be_transferred, _) =
-    //         Self::perform_do_remove_node_delegate_stake(
-    //             &account_id,
-    //             from_subnet_id,
-    //             from_subnet_node_id,
-    //             node_delegate_stake_shares_to_swap,
-    //             false,
-    //         );
-
-    //     result?;
-
-    //     // --- Add
-    //     let (result, balance, shares) = Self::perform_do_add_node_delegate_stake(
-    //         &account_id,
-    //         to_subnet_id,
-    //         to_subnet_node_id,
-    //         node_delegate_stake_to_be_transferred,
-    //         true,
-    //     );
-
-    //     result?;
-
-    //     let block: u32 = Self::get_current_block_as_u32();
-
-    //     // Set last block for rate limiting
-    //     Self::set_last_tx_block(&account_id, block);
-
-    //     Self::deposit_event(Event::DelegateNodeStakeSwapped {
-    //         account_id: account_id,
-    //         from_subnet_id: from_subnet_id,
-    //         from_subnet_node_id: from_subnet_node_id,
-    //         to_subnet_id: to_subnet_id,
-    //         to_subnet_node_id: to_subnet_node_id,
-    //         amount: node_delegate_stake_to_be_transferred,
-    //     });
-
-    //     Ok(())
-    // }
-
     pub fn do_swap_node_delegate_stake(
         origin: T::RuntimeOrigin,
         from_subnet_id: u32,
@@ -361,6 +311,8 @@ impl<T: Config> Pallet<T> {
         let account_id: T::AccountId = ensure_signed(origin)?;
 
         // --- Remove
+        // Don't add to ledger
+        // DO add to queue
         let (result, balance, _) = Self::perform_do_remove_node_delegate_stake(
             &account_id,
             from_subnet_id,
@@ -393,38 +345,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // pub fn do_transfer_node_delegate_stake(
-    //   origin: T::RuntimeOrigin,
-    //   subnet_id: u32,
-    //   subnet_node_id: u32,
-    //   to_account_id: T::AccountId,
-    //   node_delegate_stake_shares_to_transfer: u128
-    // ) -> DispatchResult {
-    //   let account_id: T::AccountId = ensure_signed(origin)?;
-
-    //   let (result, balance, shares) = Self::perform_do_remove_node_delegate_stake(
-    //     &account_id,
-    //     subnet_id,
-    //     subnet_node_id,
-    //     node_delegate_stake_shares_to_transfer,
-    //     false,
-    //   );
-
-    //   result?;
-
-    //   let (result, balance, shares) = Self::perform_do_add_node_delegate_stake(
-    //     &to_account_id,
-    //     subnet_id,
-    //     subnet_node_id,
-    //     shares,
-    //     true
-    //   );
-
-    //   result?;
-
-    //   Ok(())
-    // }
-
     pub fn do_transfer_node_delegate_stake(
         origin: T::RuntimeOrigin,
         subnet_id: u32,
@@ -442,7 +362,7 @@ impl<T: Config> Pallet<T> {
         let total_node_delegated_stake_shares =
             TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id);
         let total_node_delegated_stake_balance =
-            NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
+            TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id);
 
         // --- Get accounts current balance
         let delegate_stake_to_be_transferred = Self::convert_to_balance(
@@ -492,7 +412,7 @@ impl<T: Config> Pallet<T> {
         );
 
         // -- increase total subnet delegate stake balance
-        NodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
+        TotalNodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
             n.saturating_accrue(amount)
         });
 
@@ -518,7 +438,7 @@ impl<T: Config> Pallet<T> {
         );
 
         // -- decrease total subnet delegate stake balance
-        NodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
+        TotalNodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
             n.saturating_reduce(amount)
         });
 
@@ -532,7 +452,7 @@ impl<T: Config> Pallet<T> {
 
     /// Rewards are deposited here from the ``rewards.rs`` or by donations
     pub fn do_increase_node_delegate_stake(subnet_id: u32, subnet_node_id: u32, amount: u128) {
-        if NodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id) == 0
+        if TotalNodeDelegateStakeBalance::<T>::get(subnet_id, subnet_node_id) == 0
             || TotalNodeDelegateStakeShares::<T>::get(subnet_id, subnet_node_id) == 0
         {
             TotalNodeDelegateStakeShares::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
@@ -541,7 +461,7 @@ impl<T: Config> Pallet<T> {
         };
 
         // -- increase total subnet delegate stake
-        NodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
+        TotalNodeDelegateStakeBalance::<T>::mutate(subnet_id, subnet_node_id, |mut n| {
             n.saturating_accrue(amount)
         });
 

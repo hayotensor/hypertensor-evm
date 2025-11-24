@@ -17,6 +17,23 @@ use super::*;
 use sp_core::U256;
 
 impl<T: Config> Pallet<T> {
+    /// Queue a swap call
+    ///
+    /// # Description
+    ///
+    /// Queues a swap call to be executed after a certain number of blocks.
+    ///
+    /// Only callable by
+    /// - `do_swap_delegate_stake`
+    /// - `do_swap_node_delegate_stake`
+    /// - `do_swap_from_node_to_subnet`
+    /// - `do_swap_from_subnet_to_node`
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - Account ID of the caller.
+    /// * `call` - Swap call to queue.
+    ///
     pub fn queue_swap(
         account_id: T::AccountId,
         call: QueuedSwapCall<T::AccountId>,

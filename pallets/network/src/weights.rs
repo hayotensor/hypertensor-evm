@@ -151,7 +151,7 @@ pub trait WeightInfo {
 	fn set_max_reward_rate_decrease() -> Weight;
 	fn set_subnet_distribution_power() -> Weight;
 	fn set_delegate_stake_weight_factor() -> Weight;
-	fn set_sigmoid_steepness() -> Weight;
+	fn set_inflation_sigmoid_steepness() -> Weight;
 	fn set_max_overwatch_nodes() -> Weight;
 	fn set_overwatch_epoch_length_multiplier() -> Weight;
 	fn set_overwatch_commit_cutoff_percent() -> Weight;
@@ -1557,8 +1557,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Balances::TotalIssuance` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
@@ -1580,8 +1580,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:0)
@@ -1615,8 +1615,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MinDelegateStakeDeposit` (r:1 w:0)
 	/// Proof: `Network::MinDelegateStakeDeposit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:2 w:2)
@@ -1638,8 +1638,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:1)
@@ -1687,8 +1687,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Balances::TotalIssuance` (r:1 w:1)
 	/// Proof: `Balances::TotalIssuance` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
@@ -1710,8 +1710,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:0)
@@ -3558,7 +3558,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::InflationSigmoidSteepness` (r:0 w:1)
 	/// Proof: `Network::InflationSigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_sigmoid_steepness() -> Weight {
+	fn set_inflation_sigmoid_steepness() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
 		//  Estimated: `1510`
@@ -4014,8 +4014,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
@@ -5708,8 +5708,8 @@ impl WeightInfo for () {
 	/// Proof: `Balances::TotalIssuance` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
@@ -5731,8 +5731,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:0)
@@ -5766,8 +5766,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::TxPause` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::MinDelegateStakeDeposit` (r:1 w:0)
 	/// Proof: `Network::MinDelegateStakeDeposit` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:2 w:2)
@@ -5789,8 +5789,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:1)
@@ -5838,8 +5838,8 @@ impl WeightInfo for () {
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Balances::TotalIssuance` (r:1 w:1)
 	/// Proof: `Balances::TotalIssuance` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)
@@ -5861,8 +5861,8 @@ impl WeightInfo for () {
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `System::Number` (r:1 w:0)
 	/// Proof: `System::Number` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `MaxEncodedLen`)
 	/// Storage: `Network::LastTxBlock` (r:1 w:0)
@@ -7709,7 +7709,7 @@ impl WeightInfo for () {
 	/// Proof: `System::Events` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::InflationSigmoidSteepness` (r:0 w:1)
 	/// Proof: `Network::InflationSigmoidSteepness` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_sigmoid_steepness() -> Weight {
+	fn set_inflation_sigmoid_steepness() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `25`
 		//  Estimated: `1510`
@@ -8165,8 +8165,8 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Network::TotalNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::TotalNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Network::NodeDelegateStakeBalance` (r:1 w:1)
-	/// Proof: `Network::NodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Network::TotalNodeDelegateStakeBalance` (r:1 w:1)
+	/// Proof: `Network::TotalNodeDelegateStakeBalance` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::AccountNodeDelegateStakeShares` (r:1 w:1)
 	/// Proof: `Network::AccountNodeDelegateStakeShares` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Network::TotalNodeDelegateStake` (r:1 w:1)

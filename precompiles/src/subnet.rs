@@ -670,7 +670,10 @@ where
     }
 
     #[precompile::public("ownerRevertEmergencyValidatorSet(uint256)")]
-    fn owner_revert_emergency_validator_set(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<()> {
+    fn owner_revert_emergency_validator_set(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<()> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
@@ -1360,7 +1363,10 @@ where
 
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call =
-            pallet_network::Call::<R>::owner_update_validator_absent_decrease_reputation_factor { subnet_id, value };
+            pallet_network::Call::<R>::owner_update_validator_absent_decrease_reputation_factor {
+                subnet_id,
+                value,
+            };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,
@@ -1372,7 +1378,9 @@ where
         Ok(())
     }
 
-    #[precompile::public("ownerUpdateValidatorNonConsensusDecreaseReputationFactor(uint256,uint256)")]
+    #[precompile::public(
+        "ownerUpdateValidatorNonConsensusDecreaseReputationFactor(uint256,uint256)"
+    )]
     fn owner_update_validator_non_consensus_decrease_reputation_factor(
         handle: &mut impl PrecompileHandle,
         subnet_id: U256,

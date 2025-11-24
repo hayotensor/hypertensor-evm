@@ -817,7 +817,7 @@ impl<T: Config> Pallet<T> {
                         subnet_id,
                         subnet_node_id,
                     ),
-                    node_delegate_stake_balance: NodeDelegateStakeBalance::<T>::get(
+                    node_delegate_stake_balance: TotalNodeDelegateStakeBalance::<T>::get(
                         subnet_id,
                         subnet_node_id,
                     ),

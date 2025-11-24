@@ -483,10 +483,10 @@ impl<T: Config> Pallet<T> {
                         node_delegate_reward,
                     );
                     // reads:
-                    // NodeDelegateStakeBalance | TotalNodeDelegateStakeShares
+                    // TotalNodeDelegateStakeBalance | TotalNodeDelegateStakeShares
                     //
                     // writes:
-                    // TotalNodeDelegateStakeShares | NodeDelegateStakeBalance | TotalNodeDelegateStake
+                    // TotalNodeDelegateStakeShares | TotalNodeDelegateStakeBalance | TotalNodeDelegateStake
                     weight_meter.consume(db_weight.reads_writes(5, 3));
 
                     node_delegate_stake_rewards.push((subnet_node.id, node_delegate_reward));

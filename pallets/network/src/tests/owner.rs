@@ -2,21 +2,26 @@ use super::mock::*;
 use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
-    ChurnLimit, DefaultMaxVectorLength, EmergencySubnetNodeElectionData, Error, HotkeySubnetNodeId,
-    IdleClassificationEpochs, IncludedClassificationEpochs, KeyType,
-    LastSubnetDelegateStakeRewardsUpdate, MaxChurnLimit, MaxDelegateStakePercentage,
-    MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
-    MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess, MaxSubnetMinStake,
-    MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes, MaxSubnets, MinChurnLimit,
-    MinDelegateStakePercentage, MinIdleClassificationEpochs, MinIncludedClassificationEpochs,
-    MinMaxRegisteredNodes, MinQueueEpochs, MinSubnetMinStake, NetworkMaxStakeBalance,
-    NodeBurnRateAlpha, PendingSubnetOwner, QueueImmunityEpochs, RegisteredSubnetNodesData,
-    SubnetBootnodeAccess, SubnetData, SubnetDelegateStakeRewardsPercentage,
-    SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes, SubnetMaxStakeBalance,
-    SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification,
-    SubnetNodeMinWeightDecreaseReputationThreshold, SubnetNodeQueueEpochs, SubnetNodesData,
-    SubnetOwner, SubnetPauseCooldownEpochs, SubnetRegistrationInitialColdkeys, SubnetRemovalReason,
-    SubnetRepo, SubnetState, SubnetsData, TargetNodeRegistrationsPerEpoch,
+    AbsentDecreaseReputationFactor, BelowMinWeightDecreaseReputationFactor, ChurnLimit,
+    DefaultMaxVectorLength, EmergencySubnetNodeElectionData, EmergencySubnetValidatorData, Error,
+    HotkeySubnetNodeId, IdleClassificationEpochs, IncludedClassificationEpochs,
+    IncludedIncreaseReputationFactor, KeyType, LastSubnetDelegateStakeRewardsUpdate, MaxChurnLimit,
+    MaxDelegateStakePercentage, MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs,
+    MaxMaxRegisteredNodes, MaxQueueEpochs, MaxRegisteredNodes, MaxSubnetBootnodeAccess,
+    MaxSubnetMinStake, MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes,
+    MaxSubnets, MinChurnLimit, MinDelegateStakePercentage, MinIdleClassificationEpochs,
+    MinIncludedClassificationEpochs, MinMaxRegisteredNodes, MinNodeReputationFactor,
+    MinQueueEpochs, MinSubnetMinStake, MinSubnetNodeReputation, NetworkMaxStakeBalance,
+    NodeBurnRateAlpha, NonAttestorDecreaseReputationFactor,
+    NonConsensusAttestorDecreaseReputationFactor, PendingSubnetOwner, QueueImmunityEpochs,
+    RegisteredSubnetNodesData, SubnetBootnodeAccess, SubnetData,
+    SubnetDelegateStakeRewardsPercentage, SubnetDelegateStakeRewardsUpdatePeriod, SubnetKeyTypes,
+    SubnetMaxStakeBalance, SubnetMinStakeBalance, SubnetName, SubnetNode, SubnetNodeClass,
+    SubnetNodeClassification, SubnetNodeMinWeightDecreaseReputationThreshold,
+    SubnetNodeQueueEpochs, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
+    SubnetRegistrationInitialColdkeys, SubnetRemovalReason, SubnetRepo, SubnetState, SubnetsData,
+    TargetNodeRegistrationsPerEpoch, ValidatorAbsentSubnetNodeReputationFactor,
+    ValidatorNonConsensusSubnetNodeReputationFactor,
 };
 use codec::Decode;
 use frame_support::{assert_err, assert_ok};
@@ -3030,6 +3035,356 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
                 account(1)
             ),
             Error::<Test>::NotSubnetOwner
+        );
+    });
+}
+
+#[test]
+fn test_owner_revert_emergency_validator_set() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        // Set emergency validator set
+        let subnet_node_ids = vec![1, 2];
+        let validator_data = EmergencySubnetValidatorData {
+            subnet_node_ids,
+            target_emergency_validators_epochs: 0,
+            max_emergency_validators_epoch: 0,
+            total_epochs: 0,
+        };
+
+        EmergencySubnetNodeElectionData::<Test>::insert(subnet_id, validator_data);
+
+        // Verify it exists
+        assert!(EmergencySubnetNodeElectionData::<Test>::contains_key(
+            subnet_id
+        ));
+
+        // Revert emergency validator set
+        assert_ok!(Network::owner_revert_emergency_validator_set(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id
+        ));
+
+        // Verify it's removed
+        assert!(!EmergencySubnetNodeElectionData::<Test>::contains_key(
+            subnet_id
+        ));
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::SubnetForkRevert {
+                subnet_id: subnet_id,
+                owner: original_owner.clone()
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_min_subnet_node_reputation() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let old_value = MinSubnetNodeReputation::<Test>::get(subnet_id);
+        let new_value = 500000000000000000;
+
+        assert_ok!(Network::owner_update_min_subnet_node_reputation(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+            new_value
+        ));
+
+        let result_value = MinSubnetNodeReputation::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::MinSubnetNodeReputationUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_absent_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(Network::owner_update_absent_decrease_reputation_factor(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+            new_value
+        ));
+
+        let result_value = AbsentDecreaseReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::AbsentDecreaseReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_included_increase_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(Network::owner_update_included_increase_reputation_factor(
+            RuntimeOrigin::signed(original_owner.clone()),
+            subnet_id,
+            new_value
+        ));
+
+        let result_value = IncludedIncreaseReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::IncludedIncreaseReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_below_min_weight_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(
+            Network::owner_update_below_min_weight_decrease_reputation_factor(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                new_value
+            )
+        );
+
+        let result_value = BelowMinWeightDecreaseReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::BelowMinWeightDecreaseReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_non_attestor_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(
+            Network::owner_update_non_attestor_decrease_reputation_factor(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                new_value
+            )
+        );
+
+        let result_value = NonAttestorDecreaseReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::NonAttestorDecreaseReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_non_consensus_attestor_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(
+            Network::owner_update_non_consensus_attestor_decrease_reputation_factor(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                new_value
+            )
+        );
+
+        let result_value = NonConsensusAttestorDecreaseReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::NonConsensusAttestorDecreaseReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_validator_absent_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(
+            Network::owner_update_validator_absent_decrease_reputation_factor(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                new_value
+            )
+        );
+
+        let result_value = ValidatorAbsentSubnetNodeReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::ValidatorAbsentSubnetNodeReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
+        );
+    });
+}
+
+#[test]
+fn test_owner_update_validator_non_consensus_decrease_reputation_factor() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let deposit_amount: u128 = 10000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+
+        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
+
+        let original_owner = account(1);
+        SubnetOwner::<Test>::insert(subnet_id, &original_owner);
+
+        let new_value = MinNodeReputationFactor::<Test>::get();
+
+        assert_ok!(
+            Network::owner_update_validator_non_consensus_decrease_reputation_factor(
+                RuntimeOrigin::signed(original_owner.clone()),
+                subnet_id,
+                new_value
+            )
+        );
+
+        let result_value = ValidatorNonConsensusSubnetNodeReputationFactor::<Test>::get(subnet_id);
+        assert_eq!(result_value, new_value);
+
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::ValidatorNonConsensusSubnetNodeReputationFactorUpdate {
+                subnet_id: subnet_id,
+                owner: original_owner.clone(),
+                value: new_value
+            }
         );
     });
 }

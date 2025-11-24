@@ -4,7 +4,8 @@ use crate::Event;
 use crate::{
     AccountNodeDelegateStakeShares, AccountSubnetDelegateStakeShares, DelegateStakeCooldownEpochs,
     HotkeySubnetNodeId, MaxSubnetNodes, MaxSubnets, MinSubnetMinStake, NextSwapQueueId,
-    QueuedSwapCall, QueuedSwapItem, SubnetName, SwapCallQueue, SwapQueueOrder,
+    QueuedSwapCall, QueuedSwapItem, StakeUnbondingLedger, SubnetName, SwapCallQueue,
+    SwapQueueOrder, TotalNodeDelegateStakeBalance, TotalNodeDelegateStakeShares,
     TotalSubnetDelegateStakeBalance, TotalSubnetDelegateStakeShares,
 };
 use frame_support::assert_ok;
@@ -88,7 +89,7 @@ fn insert_to_node_swap_call_queue(
 }
 
 #[test]
-fn test_update_swap_queue() {
+fn test_update_swap_queue_delegate_stake() {
     new_test_ext().execute_with(|| {
         let deposit_amount: u128 = 10000000000000000000000;
         let amount: u128 = 1000000000000000000000;
@@ -116,11 +117,6 @@ fn test_update_swap_queue() {
             total_subnet_delegate_stake_shares,
             total_subnet_delegate_stake_balance,
         );
-
-        if total_subnet_delegate_stake_shares == 0 {
-            delegate_stake_to_be_added_as_shares =
-                delegate_stake_to_be_added_as_shares.saturating_sub(1000);
-        }
 
         System::set_block_number(
             System::block_number()
@@ -164,6 +160,10 @@ fn test_update_swap_queue() {
             to_subnet_id,
             delegate_shares,
         ));
+
+        // Check ledger doesn't have any unbondings and is empty
+        assert!(StakeUnbondingLedger::<Test>::get(account(n_account)).is_empty());
+
         let from_delegate_shares =
             AccountSubnetDelegateStakeShares::<Test>::get(account(n_account), from_subnet_id);
         assert_eq!(from_delegate_shares, 0);
@@ -192,6 +192,245 @@ fn test_update_swap_queue() {
                 assert_ne!(*balance, 0);
             }
             QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
+        };
+
+        let next_id = NextSwapQueueId::<Test>::get();
+        assert_eq!(prev_next_id + 1, next_id);
+        let queue = SwapQueueOrder::<Test>::get();
+        assert!(queue
+            .first()
+            .map_or(false, |&first_id| first_id == prev_next_id));
+
+        // UPDATE
+
+        // Update back to the `from_subnet_id` staying as a `SwapToSubnetDelegateStake`
+        let call = QueuedSwapCall::SwapToSubnetDelegateStake {
+            account_id: account(n_account),
+            to_subnet_id: from_subnet_id,
+            balance: u128::MAX,
+        };
+
+        assert_ok!(Network::update_swap_queue(
+            RuntimeOrigin::signed(account(n_account)),
+            prev_next_id,
+            call.clone(),
+        ));
+
+        let event_exists = network_events().iter().any(|event| {
+            matches!(event,
+                Event::SwapCallQueueUpdated {
+                    id: prev_next_id_val,
+                    account_id: account_id_val,
+                    call: QueuedSwapCall::SwapToSubnetDelegateStake {
+                        account_id: account_id_val2,
+                        to_subnet_id: from_subnet_id_val,
+                        balance: _, // Ignore balance
+                    }
+                } if *prev_next_id_val == prev_next_id
+                && *account_id_val == account(n_account)
+                && *account_id_val2 == account(n_account)
+                && *from_subnet_id_val == from_subnet_id
+            )
+        });
+        assert!(event_exists);
+
+        let call_queue = SwapCallQueue::<Test>::get(prev_next_id);
+        assert_eq!(call_queue.clone().unwrap().id, prev_next_id);
+        match &call_queue.clone().unwrap().call {
+            QueuedSwapCall::SwapToSubnetDelegateStake {
+                account_id,
+                to_subnet_id,
+                balance,
+            } => {
+                assert_eq!(*account_id, account(n_account));
+                assert_eq!(*to_subnet_id, from_subnet_id);
+                assert_ne!(*balance, 0);
+                assert_ne!(*balance, u128::MAX);
+            }
+            QueuedSwapCall::SwapToNodeDelegateStake { .. } => assert!(false),
+        };
+
+        //
+        // Update back to the `starting_to_subnet_id` with node ID as a `SwapToNodeDelegateStake`
+        //
+        let call = QueuedSwapCall::SwapToNodeDelegateStake {
+            account_id: account(n_account),
+            to_subnet_id: starting_to_subnet_id,
+            to_subnet_node_id: 1,
+            balance: u128::MAX,
+        };
+
+        assert_ok!(Network::update_swap_queue(
+            RuntimeOrigin::signed(account(n_account)),
+            prev_next_id,
+            call.clone(),
+        ));
+
+        let event_exists = network_events().iter().any(|event| {
+            matches!(event,
+                Event::SwapCallQueueUpdated {
+                    id: prev_next_id_val,
+                    account_id: account_id_val,
+                    call: QueuedSwapCall::SwapToSubnetDelegateStake {
+                        account_id: account_id_val2,
+                        to_subnet_id: from_subnet_id_val,
+                        balance: _, // Ignore balance
+                    }
+                } if *prev_next_id_val == prev_next_id
+                && *account_id_val == account(n_account)
+                && *account_id_val2 == account(n_account)
+                && *from_subnet_id_val == from_subnet_id
+            )
+        });
+        assert!(event_exists);
+
+        let call_queue = SwapCallQueue::<Test>::get(prev_next_id);
+        assert_eq!(call_queue.clone().unwrap().id, prev_next_id);
+        match &call_queue.clone().unwrap().call {
+            QueuedSwapCall::SwapToSubnetDelegateStake { .. } => assert!(false),
+            QueuedSwapCall::SwapToNodeDelegateStake {
+                account_id,
+                to_subnet_id,
+                to_subnet_node_id,
+                balance,
+            } => {
+                assert_eq!(*account_id, account(n_account));
+                assert_eq!(*to_subnet_id, starting_to_subnet_id);
+                assert_eq!(*to_subnet_node_id, 1);
+                assert_ne!(*balance, 0);
+                assert_ne!(*balance, u128::MAX);
+            }
+        };
+    });
+}
+
+#[test]
+fn test_update_swap_queue_node_delegate_stake() {
+    new_test_ext().execute_with(|| {
+        let deposit_amount: u128 = 10000000000000000000000;
+        let amount: u128 = 1000000000000000000000;
+        let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
+        let end = 4;
+
+        let from_subnet_name: Vec<u8> = "subnet-name".into();
+        build_activated_subnet_new(
+            from_subnet_name.clone(),
+            0,
+            end,
+            deposit_amount,
+            stake_amount,
+        );
+        let from_subnet_id = SubnetName::<Test>::get(from_subnet_name.clone()).unwrap();
+        let from_subnet_node_id = 1;
+
+        let to_subnet_name: Vec<u8> = "subnet-name-2".into();
+        build_activated_subnet_new(to_subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        let to_subnet_id = SubnetName::<Test>::get(to_subnet_name.clone()).unwrap();
+        let to_subnet_node_id = 1;
+
+        let n_account = 255;
+
+        let _ = Balances::deposit_creating(&account(n_account), amount + 500);
+
+        let total_subnet_node_delegate_stake_shares =
+            TotalNodeDelegateStakeShares::<Test>::get(from_subnet_id, from_subnet_node_id);
+        let total_subnet_node_delegate_stake_balance =
+            TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, from_subnet_node_id);
+
+        let mut node_delegate_stake_to_be_added_as_shares = Network::convert_to_shares(
+            amount,
+            total_subnet_node_delegate_stake_shares,
+            total_subnet_node_delegate_stake_balance,
+        );
+
+        System::set_block_number(
+            System::block_number()
+                + DelegateStakeCooldownEpochs::<Test>::get() * EpochLength::get(),
+        );
+
+        let starting_delegator_balance = Balances::free_balance(&account(n_account));
+
+        assert_ok!(Network::add_to_node_delegate_stake(
+            RuntimeOrigin::signed(account(n_account)),
+            from_subnet_id,
+            from_subnet_node_id,
+            amount,
+        ));
+
+        let node_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((
+            account(n_account),
+            from_subnet_id,
+            from_subnet_node_id,
+        ));
+        assert_eq!(
+            node_delegate_shares,
+            node_delegate_stake_to_be_added_as_shares
+        );
+        assert_ne!(node_delegate_shares, 0);
+
+        let total_subnet_node_delegate_stake_shares =
+            TotalNodeDelegateStakeShares::<Test>::get(from_subnet_id, from_subnet_node_id);
+        let total_subnet_node_delegate_stake_balance =
+            TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, from_subnet_node_id);
+
+        let mut from_node_delegate_balance = Network::convert_to_balance(
+            node_delegate_shares,
+            total_subnet_node_delegate_stake_shares,
+            total_subnet_node_delegate_stake_balance,
+        );
+        // The first depositor will lose a percentage of their deposit depending on the size
+        // https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack
+        // assert_eq!(from_delegate_balance, delegate_stake_to_be_added_as_shares);
+
+        let prev_total_subnet_node_delegate_stake_balance =
+            TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, from_subnet_node_id);
+        let prev_next_id = NextSwapQueueId::<Test>::get();
+
+        assert_ok!(Network::swap_node_delegate_stake(
+            RuntimeOrigin::signed(account(n_account)),
+            from_subnet_id,
+            from_subnet_node_id,
+            to_subnet_id,
+            to_subnet_node_id,
+            node_delegate_shares,
+        ));
+
+        // Check ledger doesn't have any unbondings and is empty
+        assert!(StakeUnbondingLedger::<Test>::get(account(n_account)).is_empty());
+
+        let from_node_delegate_shares = AccountNodeDelegateStakeShares::<Test>::get((
+            account(n_account),
+            from_subnet_id,
+            from_subnet_node_id,
+        ));
+        assert_eq!(from_node_delegate_shares, 0);
+
+        assert_ne!(
+            prev_total_subnet_node_delegate_stake_balance,
+            TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, from_subnet_node_id)
+        );
+        assert!(
+            prev_total_subnet_node_delegate_stake_balance
+                > TotalNodeDelegateStakeBalance::<Test>::get(from_subnet_id, from_subnet_node_id)
+        );
+
+        // Check the queue
+        let starting_to_subnet_id = to_subnet_id;
+        let call_queue = SwapCallQueue::<Test>::get(prev_next_id);
+        assert_eq!(call_queue.clone().unwrap().id, prev_next_id);
+        match &call_queue.clone().unwrap().call {
+            QueuedSwapCall::SwapToSubnetDelegateStake { .. } => assert!(false),
+            QueuedSwapCall::SwapToNodeDelegateStake {
+                account_id,
+                to_subnet_id,
+                to_subnet_node_id,
+                balance,
+            } => {
+                assert_eq!(*account_id, account(n_account));
+                assert_eq!(*to_subnet_id, starting_to_subnet_id);
+                assert_eq!(*to_subnet_node_id, 1);
+                assert_ne!(*balance, 0);
+            }
         };
 
         let next_id = NextSwapQueueId::<Test>::get();
