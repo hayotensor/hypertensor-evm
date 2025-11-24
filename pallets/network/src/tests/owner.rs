@@ -2241,10 +2241,11 @@ fn test_owner_update_min_max_stake() {
 
         assert_eq!(
             *network_events().last().unwrap(),
-            Event::SubnetMaxStakeBalanceUpdate {
+            Event::SubnetMinMaxStakeBalanceUpdate {
                 subnet_id: subnet_id,
                 owner: original_owner.clone(),
-                value: new_max_stake
+                min: new_min_stake,
+                max: new_max_stake
             }
         );
 

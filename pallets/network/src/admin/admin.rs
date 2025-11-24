@@ -131,8 +131,7 @@ impl<T: Config> Pallet<T> {
         MinChurnLimit::<T>::set(min);
         MaxChurnLimit::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinChurnLimit(min));
-        Self::deposit_event(Event::SetMaxChurnLimit(max));
+        Self::deposit_event(Event::SetChurnLimits(min, max));
 
         Ok(())
     }
@@ -143,8 +142,7 @@ impl<T: Config> Pallet<T> {
         MinQueueEpochs::<T>::set(min);
         MaxQueueEpochs::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinQueueEpochs(min));
-        Self::deposit_event(Event::SetMaxQueueEpochs(max));
+        Self::deposit_event(Event::SetQueueEpochs(min, max));
 
         Ok(())
     }
@@ -175,8 +173,7 @@ impl<T: Config> Pallet<T> {
         MinIncludedClassificationEpochs::<T>::set(min);
         MaxIncludedClassificationEpochs::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinIncludedClassificationEpochs(min));
-        Self::deposit_event(Event::SetMaxIncludedClassificationEpochs(max));
+        Self::deposit_event(Event::SetIncludedClassificationEpochs(min, max));
 
         Ok(())
     }
@@ -186,8 +183,7 @@ impl<T: Config> Pallet<T> {
         MinSubnetMinStake::<T>::set(min);
         MaxSubnetMinStake::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinSubnetMinStake(min));
-        Self::deposit_event(Event::SetMaxSubnetMinStake(max));
+        Self::deposit_event(Event::SetSubnetStakesLimits(min, max));
 
         Ok(())
     }
@@ -202,8 +198,7 @@ impl<T: Config> Pallet<T> {
         MinDelegateStakePercentage::<T>::set(min);
         MaxDelegateStakePercentage::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinDelegateStakePercentage(min));
-        Self::deposit_event(Event::SetMaxDelegateStakePercentage(max));
+        Self::deposit_event(Event::SetDelegateStakePercentages(min, max));
 
         Ok(())
     }
@@ -213,8 +208,7 @@ impl<T: Config> Pallet<T> {
         MinMaxRegisteredNodes::<T>::set(min);
         MaxMaxRegisteredNodes::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinMaxRegisteredNodes(min));
-        Self::deposit_event(Event::SetMaxMaxRegisteredNodes(max));
+        Self::deposit_event(Event::SetMinMaxRegisteredNodes(min, max));
 
         Ok(())
     }
@@ -256,7 +250,7 @@ impl<T: Config> Pallet<T> {
         );
 
         ensure!(
-            value <= MinAttestationPercentage::<T>::get(),
+            value >= MinAttestationPercentage::<T>::get(),
             Error::<T>::InvalidSuperMajorityAttestationRatio
         );
 
@@ -438,8 +432,7 @@ impl<T: Config> Pallet<T> {
         MinSubnetNodes::<T>::set(min);
         MaxSubnetNodes::<T>::set(max);
 
-        Self::deposit_event(Event::SetMinSubnetNodes(min));
-        Self::deposit_event(Event::SetMaxSubnetNodes(max));
+        Self::deposit_event(Event::SetMinMaxSubnetNodes(min, max));
 
         Ok(())
     }
@@ -600,8 +593,7 @@ impl<T: Config> Pallet<T> {
         MinNodeBurnRate::<T>::put(min);
         MaxNodeBurnRate::<T>::put(max);
 
-        Self::deposit_event(Event::SetMinNodeBurnRate(min));
-        Self::deposit_event(Event::SetMaxNodeBurnRate(max));
+        Self::deposit_event(Event::SetNodeBurnRates(min, max));
 
         Ok(())
     }
@@ -623,8 +615,7 @@ impl<T: Config> Pallet<T> {
         MinSubnetRemovalInterval::<T>::put(min);
         MaxSubnetRemovalInterval::<T>::put(max);
 
-        Self::deposit_event(Event::SetMinSubnetRemovalInterval(min));
-        Self::deposit_event(Event::SetMaxSubnetRemovalInterval(max));
+        Self::deposit_event(Event::SetSubnetRemovalIntervals(min, max));
 
         Ok(())
     }
@@ -714,8 +705,7 @@ impl<T: Config> Pallet<T> {
         MinMinSubnetNodeReputation::<T>::put(min);
         MaxMinSubnetNodeReputation::<T>::put(max);
 
-        Self::deposit_event(Event::SetMinNodeReputation(min));
-        Self::deposit_event(Event::SetMaxNodeReputation(max));
+        Self::deposit_event(Event::SetNodeReputationLimits(min, max));
 
         Ok(())
     }
@@ -731,8 +721,7 @@ impl<T: Config> Pallet<T> {
         MinNodeReputationFactor::<T>::put(min);
         MaxNodeReputationFactor::<T>::put(max);
 
-        Self::deposit_event(Event::SetMinNodeReputationFactor(min));
-        Self::deposit_event(Event::SetMaxNodeReputationFactor(max));
+        Self::deposit_event(Event::SetNodeReputationFactors(min, max));
 
         Ok(())
     }
@@ -864,7 +853,10 @@ impl<T: Config> Pallet<T> {
             .saturating_add(value.node_count)
             .saturating_add(value.net_flow);
 
-        ensure!(sum <= Self::percentage_factor_as_u128(), Error::<T>::InvalidPercent);
+        ensure!(
+            sum <= Self::percentage_factor_as_u128(),
+            Error::<T>::InvalidPercent
+        );
 
         SubnetWeightFactors::<T>::put(&value);
 

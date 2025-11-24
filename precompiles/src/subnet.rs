@@ -641,6 +641,51 @@ where
         Ok(())
     }
 
+    #[precompile::public("ownerSetEmergencyValidatorSet(uint256,uint256[])")]
+    fn owner_set_emergency_validator_set(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        subnet_node_ids: Vec<U256>,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let subnet_node_ids = subnet_node_ids
+            .into_iter()
+            .map(try_u256_to_u32)
+            .collect::<Result<Vec<u32>, _>>()?;
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_set_emergency_validator_set {
+            subnet_id,
+            subnet_node_ids,
+        };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerRevertEmergencyValidatorSet(uint256)")]
+    fn owner_revert_emergency_validator_set(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call = pallet_network::Call::<R>::owner_revert_emergency_validator_set { subnet_id };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
     #[precompile::public("ownerDeactivateSubnet(uint256)")]
     fn owner_deactivate_subnet(
         handle: &mut impl PrecompileHandle,
@@ -1293,6 +1338,52 @@ where
         let origin = R::AddressMapping::into_account_id(handle.context().caller);
         let call =
             pallet_network::Call::<R>::owner_update_non_consensus_attestor_decrease_reputation_factor { subnet_id, value };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdateValidatorAbsentDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_validator_absent_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_validator_absent_decrease_reputation_factor { subnet_id, value };
+
+        RuntimeHelper::<R>::try_dispatch(
+            handle,
+            RawOrigin::Signed(origin.clone()).into(),
+            call,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    #[precompile::public("ownerUpdateValidatorNonConsensusDecreaseReputationFactor(uint256,uint256)")]
+    fn owner_update_validator_non_consensus_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+        value: U256,
+    ) -> EvmResult<()> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        let value = value.unique_saturated_into();
+
+        let origin = R::AddressMapping::into_account_id(handle.context().caller);
+        let call =
+            pallet_network::Call::<R>::owner_update_validator_non_consensus_decrease_reputation_factor { subnet_id, value };
 
         RuntimeHelper::<R>::try_dispatch(
             handle,

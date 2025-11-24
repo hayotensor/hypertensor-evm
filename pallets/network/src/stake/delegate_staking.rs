@@ -81,10 +81,7 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure the callers account_id has enough delegate_stake to perform the transaction.
         if !swap {
-            if !Self::can_remove_balance_from_coldkey_account(
-                &account_id,
-                balance,
-            ) {
+            if !Self::can_remove_balance_from_coldkey_account(&account_id, balance) {
                 return (Err(Error::<T>::NotEnoughBalanceToStake.into()), 0, 0);
             }
         }
@@ -98,11 +95,7 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure the remove operation from the account_id is a success.
         if !swap {
-            if Self::remove_balance_from_coldkey_account(
-                &account_id,
-                balance,
-            ) == false
-            {
+            if Self::remove_balance_from_coldkey_account(&account_id, balance) == false {
                 return (Err(Error::<T>::BalanceWithdrawalError.into()), 0, 0);
             }
         }
@@ -234,10 +227,11 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure that we can convert this u128 to a balance.
         // Redunant
-        let delegate_stake_to_be_added_as_currency = match Self::u128_to_balance(delegate_stake_to_be_removed) {
-            Some(b) => b,
-            None => return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0),
-        };
+        let delegate_stake_to_be_added_as_currency =
+            match Self::u128_to_balance(delegate_stake_to_be_removed) {
+                Some(b) => b,
+                None => return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0),
+            };
 
         let block: u32 = Self::get_current_block_as_u32();
         if Self::exceeds_tx_rate_limit(Self::get_last_tx_block(&account_id), block) {

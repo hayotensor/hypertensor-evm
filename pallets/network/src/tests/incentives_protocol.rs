@@ -976,7 +976,7 @@ fn test_distribute_rewards() {
 
         let validator_stake = AccountSubnetStake::<Test>::get(validator.clone(), subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -1203,7 +1203,7 @@ fn test_distribute_rewards_fork() {
         SubnetReputation::<Test>::insert(subnet_id, 500000000000000000);
         let starting_rep = SubnetReputation::<Test>::get(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -1822,7 +1822,7 @@ fn test_distribute_rewards_non_consensus_reputation() {
 
         let starting_subnet_rep = SubnetReputation::<Test>::get(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -1990,7 +1990,7 @@ fn test_distribute_rewards_absent_consensus_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2124,7 +2124,7 @@ fn test_distribute_rewards_absent_consensus_then_in_consensus_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2236,7 +2236,7 @@ fn test_distribute_rewards_absent_consensus_then_in_consensus_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2388,7 +2388,7 @@ fn test_distribute_rewards_below_min_weight_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2556,7 +2556,7 @@ fn test_distribute_rewards_non_attest_vast_majoriy_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2715,7 +2715,7 @@ fn test_distribute_rewards_under_min_attest_slash_validator() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -2861,7 +2861,7 @@ fn test_distribute_rewards_fork_under_min_attest_slash_validator() {
 
         let starting_rep = SubnetNodeReputation::<Test>::get(subnet_id, validator_id.unwrap());
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -3019,7 +3019,7 @@ fn test_distribute_rewards_fork_remove_node_at_min_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -3162,7 +3162,7 @@ fn test_distribute_rewards_fork_no_score_submitted_decrease_reputation() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -3326,7 +3326,7 @@ fn test_distribute_rewards_late_validator_and_attestors() {
 
         let validator_stake = AccountSubnetStake::<Test>::get(validator.clone(), subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -3525,7 +3525,7 @@ fn test_distribute_rewards_fork_late_validator_and_attestors() {
 
         let validator_stake = AccountSubnetStake::<Test>::get(validator.clone(), subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -3772,7 +3772,7 @@ fn test_distribute_rewards_fork_late_validator_and_attestors() {
 
 //         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-//         Network::distribute_rewards_fork(
+//         Network::distribute_rewards(
 //             &mut WeightMeter::new(),
 //             subnet_id,
 //             block_number,
@@ -3990,7 +3990,7 @@ fn test_distribute_rewards_fork_graduate_idle_to_included() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -4536,7 +4536,7 @@ fn test_attest_increase_reputation_when_included() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -4704,7 +4704,7 @@ fn test_distribute_rewards_node_delegate_stake() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,
@@ -4873,7 +4873,7 @@ fn test_distribute_rewards_fork_node_delegate_stake() {
 
         let subnet_epoch = Network::get_current_subnet_epoch_as_u32(subnet_id);
 
-        Network::distribute_rewards_fork(
+        Network::distribute_rewards(
             &mut WeightMeter::new(),
             subnet_id,
             block_number,

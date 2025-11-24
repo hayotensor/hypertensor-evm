@@ -79,7 +79,7 @@ impl<T: Config> Pallet<T> {
             Some(b) => b,
             None => return (Err(Error::<T>::CouldNotConvertToBalance.into()), 0, 0),
         };
-       
+
         if node_delegate_stake_to_be_added < MinDelegateStakeDeposit::<T>::get() {
             return (
                 Err(Error::<T>::MinNodeDelegateStakeDepositNotReached.into()),
@@ -90,10 +90,7 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure the callers account_id has enough delegate_stake to perform the transaction.
         if !swap {
-            if !Self::can_remove_balance_from_coldkey_account(
-                &account_id,
-                balance,
-            ) {
+            if !Self::can_remove_balance_from_coldkey_account(&account_id, balance) {
                 return (Err(Error::<T>::NotEnoughBalanceToStake.into()), 0, 0);
             }
         }
@@ -107,11 +104,7 @@ impl<T: Config> Pallet<T> {
 
         // --- Ensure the remove operation from the account_id is a success.
         if !swap {
-            if Self::remove_balance_from_coldkey_account(
-                &account_id,
-                balance,
-            ) == false
-            {
+            if Self::remove_balance_from_coldkey_account(&account_id, balance) == false {
                 return (Err(Error::<T>::BalanceWithdrawalError.into()), 0, 0);
             }
         }

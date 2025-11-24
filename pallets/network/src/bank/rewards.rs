@@ -17,7 +17,7 @@ use super::*;
 use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
-    pub fn distribute_rewards_fork(
+    pub fn distribute_rewards(
         weight_meter: &mut WeightMeter,
         subnet_id: u32,
         block: u32,
@@ -239,12 +239,8 @@ impl<T: Config> Pallet<T> {
                     Self::u128_to_balance(rewards_data.subnet_owner_reward);
 
                 if let Some(balance) = subnet_owner_reward_as_currency {
-                    Self::add_balance_to_coldkey_account(
-                        &coldkey,
-                        balance,
-                    );
+                    Self::add_balance_to_coldkey_account(&coldkey, balance);
                     weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
- 
                 }
             }
             Err(()) => (),

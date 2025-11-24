@@ -232,7 +232,7 @@ impl<T: Config> Pallet<T> {
                     weight_meter.consume(db_weight.reads(4));
 
                     // Distribute rewards
-                    Self::distribute_rewards_fork(
+                    Self::distribute_rewards(
                         weight_meter,
                         subnet_id,
                         block,
@@ -394,9 +394,11 @@ impl<T: Config> Pallet<T> {
 
         // Store weights and handle foundation
         if !subnet_weights.is_empty() {
-            let (validator_emissions, foundation_emissions_as_u128) = Self::get_epoch_emissions_v2();
+            let (validator_emissions, foundation_emissions_as_u128) =
+                Self::get_epoch_emissions_v2();
 
-            if let Some(foundation_emissions) = Self::u128_to_balance(foundation_emissions_as_u128) {
+            if let Some(foundation_emissions) = Self::u128_to_balance(foundation_emissions_as_u128)
+            {
                 Self::add_balance_to_treasury(foundation_emissions);
                 weight = weight.saturating_add(T::WeightInfo::add_balance_to_treasury());
             }
@@ -452,7 +454,8 @@ impl<T: Config> Pallet<T> {
 
         let subnets: Vec<_> = SubnetsData::<T>::iter().collect();
 
-        let (inflow_weights, inflow_weight_calc_weight) = Self::get_net_flow_weights(subnets.clone(), epoch);
+        let (inflow_weights, inflow_weight_calc_weight) =
+            Self::get_net_flow_weights(subnets.clone(), epoch);
         weight = weight.saturating_add(inflow_weight_calc_weight);
 
         for (subnet_id, data) in subnets {
@@ -490,9 +493,11 @@ impl<T: Config> Pallet<T> {
 
             // - Get combined weight (stake + node count + inflow) * overwatchers weight
 
-            let subnet_inflow_weight = Self::get_percent_as_f64(inflow_weights.get(&subnet_id).cloned().unwrap_or(0));
+            let subnet_inflow_weight =
+                Self::get_percent_as_f64(inflow_weights.get(&subnet_id).cloned().unwrap_or(0));
             let subnet_weight = ((subnet_dstake_weight * delegate_stake_factor
-                + subnet_nodes_weight * node_count_factor + subnet_inflow_weight * net_flow_factor)
+                + subnet_nodes_weight * node_count_factor
+                + subnet_inflow_weight * net_flow_factor)
                 * overwatch_subnet_weight)
                 .clamp(0.0, 1.0);
 
@@ -523,7 +528,10 @@ impl<T: Config> Pallet<T> {
         (subnet_weights_normalized, weight)
     }
 
-    pub fn get_net_flow_weights(subnets: Vec<(u32, SubnetData)>, epoch: u32) -> (BTreeMap<u32, u128>, Weight) {
+    pub fn get_net_flow_weights(
+        subnets: Vec<(u32, SubnetData)>,
+        epoch: u32,
+    ) -> (BTreeMap<u32, u128>, Weight) {
         let mut weight = Weight::zero();
         let db_weight = T::DbWeight::get();
 

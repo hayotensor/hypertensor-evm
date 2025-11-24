@@ -74,8 +74,8 @@ impl<T: Config> Pallet<T> {
                 None => {
                     // Redundant, but attempt to remove the unbonding
                     unbondings_copy.remove(&unbonding_block);
-                    continue
-                },
+                    continue;
+                }
             };
 
             unbondings_copy.remove(&unbonding_block);

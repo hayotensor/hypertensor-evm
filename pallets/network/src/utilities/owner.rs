@@ -182,30 +182,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn do_owner_revert_emergency_validator_set(
-        origin: T::RuntimeOrigin,
-        subnet_id: u32,
-    ) -> DispatchResult {
-        let coldkey: T::AccountId = ensure_signed(origin)?;
-
-        ensure!(
-            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
-            Error::<T>::NotSubnetOwner
-        );
-
-        EmergencySubnetNodeElectionData::<T>::remove(subnet_id);
-
-        Self::deposit_event(Event::SubnetForkRevert {
-            subnet_id: subnet_id,
-            owner: coldkey,
-        });
-
-        Ok(())
-    }
-
     /// Get the required epochs to have a node removed based on not being in consensus data
     /// based on the `AbsentDecreaseReputationFactor`
-    pub fn get_max_steps_for_node_removal(subnet_id: u32) -> u32 {
+    fn get_max_steps_for_node_removal(subnet_id: u32) -> u32 {
         let one: f64 = Self::get_percent_as_f64(Self::percentage_factor_as_u128());
 
         // Based on network min max parameters
@@ -231,6 +210,27 @@ impl<T: Config> Pallet<T> {
         }
 
         n2
+    }
+
+    pub fn do_owner_revert_emergency_validator_set(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+    ) -> DispatchResult {
+        let coldkey: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            Self::is_subnet_owner(&coldkey, subnet_id).unwrap_or(false),
+            Error::<T>::NotSubnetOwner
+        );
+
+        EmergencySubnetNodeElectionData::<T>::remove(subnet_id);
+
+        Self::deposit_event(Event::SubnetForkRevert {
+            subnet_id: subnet_id,
+            owner: coldkey,
+        });
+
+        Ok(())
     }
 
     pub fn do_owner_deactivate_subnet(origin: T::RuntimeOrigin, subnet_id: u32) -> DispatchResult {
@@ -641,16 +641,11 @@ impl<T: Config> Pallet<T> {
         SubnetMinStakeBalance::<T>::insert(subnet_id, min);
         SubnetMaxStakeBalance::<T>::insert(subnet_id, max);
 
-        Self::deposit_event(Event::SubnetMinStakeBalanceUpdate {
+        Self::deposit_event(Event::SubnetMinMaxStakeBalanceUpdate {
             subnet_id: subnet_id,
             owner: coldkey.clone(),
-            value: min,
-        });
-
-        Self::deposit_event(Event::SubnetMaxStakeBalanceUpdate {
-            subnet_id: subnet_id,
-            owner: coldkey.clone(),
-            value: max,
+            min: min,
+            max: max,
         });
 
         Ok(())

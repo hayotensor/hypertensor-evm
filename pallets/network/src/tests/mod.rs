@@ -1,4 +1,4 @@
-mod council;
+mod admin;
 mod delegate_staking;
 mod era;
 mod identity;
