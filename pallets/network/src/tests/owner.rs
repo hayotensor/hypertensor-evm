@@ -81,7 +81,7 @@ fn test_do_owner_update_name() {
 
         let new_subnet_name: Vec<u8> = "new-subnet-name".into();
 
-        assert_ok!(Network::do_owner_update_name(
+        assert_ok!(Network::owner_update_name(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_subnet_name.clone()
@@ -105,7 +105,7 @@ fn test_do_owner_update_repo() {
 
         let new_value: Vec<u8> = "new-val".into();
 
-        assert_ok!(Network::do_owner_update_repo(
+        assert_ok!(Network::owner_update_repo(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value.clone()
@@ -129,7 +129,7 @@ fn test_do_owner_update_description() {
 
         let new_value: Vec<u8> = "new-val".into();
 
-        assert_ok!(Network::do_owner_update_description(
+        assert_ok!(Network::owner_update_description(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value.clone()
@@ -150,7 +150,7 @@ fn test_do_owner_update_misc() {
 
         let new_value: Vec<u8> = "new-val".into();
 
-        assert_ok!(Network::do_owner_update_misc(
+        assert_ok!(Network::owner_update_misc(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value.clone()
@@ -171,7 +171,7 @@ fn test_do_owner_update_churn_limit() {
 
         let new_value = ChurnLimit::<Test>::get(subnet_id) + 1;
 
-        assert_ok!(Network::do_owner_update_churn_limit(
+        assert_ok!(Network::owner_update_churn_limit(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -180,7 +180,7 @@ fn test_do_owner_update_churn_limit() {
         assert_eq!(ChurnLimit::<Test>::get(subnet_id), new_value);
 
         assert_err!(
-            Network::do_owner_update_churn_limit(
+            Network::owner_update_churn_limit(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MinChurnLimit::<Test>::get() - 1
@@ -189,7 +189,7 @@ fn test_do_owner_update_churn_limit() {
         );
 
         assert_err!(
-            Network::do_owner_update_churn_limit(
+            Network::owner_update_churn_limit(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxChurnLimit::<Test>::get() + 1
@@ -209,7 +209,7 @@ fn test_do_owner_update_registration_queue_epochs() {
 
         let new_value = SubnetNodeQueueEpochs::<Test>::get(subnet_id) + 1;
 
-        assert_ok!(Network::do_owner_update_registration_queue_epochs(
+        assert_ok!(Network::owner_update_registration_queue_epochs(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -218,7 +218,7 @@ fn test_do_owner_update_registration_queue_epochs() {
         assert_eq!(SubnetNodeQueueEpochs::<Test>::get(subnet_id), new_value);
 
         assert_err!(
-            Network::do_owner_update_registration_queue_epochs(
+            Network::owner_update_registration_queue_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MinQueueEpochs::<Test>::get() - 1
@@ -227,7 +227,7 @@ fn test_do_owner_update_registration_queue_epochs() {
         );
 
         assert_err!(
-            Network::do_owner_update_registration_queue_epochs(
+            Network::owner_update_registration_queue_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxQueueEpochs::<Test>::get() + 1
@@ -247,7 +247,7 @@ fn test_do_owner_update_idle_classification_epochs() {
 
         let new_value = IdleClassificationEpochs::<Test>::get(subnet_id) + 1;
 
-        assert_ok!(Network::do_owner_update_idle_classification_epochs(
+        assert_ok!(Network::owner_update_idle_classification_epochs(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -256,7 +256,7 @@ fn test_do_owner_update_idle_classification_epochs() {
         assert_eq!(IdleClassificationEpochs::<Test>::get(subnet_id), new_value);
 
         assert_err!(
-            Network::do_owner_update_idle_classification_epochs(
+            Network::owner_update_idle_classification_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MinIdleClassificationEpochs::<Test>::get() - 1
@@ -265,7 +265,7 @@ fn test_do_owner_update_idle_classification_epochs() {
         );
 
         assert_err!(
-            Network::do_owner_update_idle_classification_epochs(
+            Network::owner_update_idle_classification_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxIdleClassificationEpochs::<Test>::get() + 1
@@ -285,7 +285,7 @@ fn test_do_owner_update_included_classification_epochs() {
 
         let new_value = IncludedClassificationEpochs::<Test>::get(subnet_id) + 1;
 
-        assert_ok!(Network::do_owner_update_included_classification_epochs(
+        assert_ok!(Network::owner_update_included_classification_epochs(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -297,7 +297,7 @@ fn test_do_owner_update_included_classification_epochs() {
         );
 
         assert_err!(
-            Network::do_owner_update_included_classification_epochs(
+            Network::owner_update_included_classification_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MinIncludedClassificationEpochs::<Test>::get() - 1
@@ -306,7 +306,7 @@ fn test_do_owner_update_included_classification_epochs() {
         );
 
         assert_err!(
-            Network::do_owner_update_included_classification_epochs(
+            Network::owner_update_included_classification_epochs(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxIncludedClassificationEpochs::<Test>::get() + 1
@@ -326,13 +326,11 @@ fn test_do_owner_update_target_node_registrations_per_epoch() {
 
         let new_value = TargetNodeRegistrationsPerEpoch::<Test>::get(subnet_id) - 1;
 
-        assert_ok!(
-            Network::do_owner_update_target_node_registrations_per_epoch(
-                RuntimeOrigin::signed(original_owner),
-                subnet_id,
-                new_value
-            )
-        );
+        assert_ok!(Network::owner_update_target_node_registrations_per_epoch(
+            RuntimeOrigin::signed(original_owner),
+            subnet_id,
+            new_value
+        ));
 
         assert_eq!(
             TargetNodeRegistrationsPerEpoch::<Test>::get(subnet_id),
@@ -340,7 +338,7 @@ fn test_do_owner_update_target_node_registrations_per_epoch() {
         );
 
         assert_err!(
-            Network::do_owner_update_target_node_registrations_per_epoch(
+            Network::owner_update_target_node_registrations_per_epoch(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxRegisteredNodes::<Test>::get(subnet_id) + 1
@@ -349,7 +347,7 @@ fn test_do_owner_update_target_node_registrations_per_epoch() {
         );
 
         assert_err!(
-            Network::do_owner_update_target_node_registrations_per_epoch(
+            Network::owner_update_target_node_registrations_per_epoch(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 0
@@ -369,7 +367,7 @@ fn test_do_owner_update_node_burn_rate_alpha() {
 
         let new_value = NodeBurnRateAlpha::<Test>::get(subnet_id) - 1;
 
-        assert_ok!(Network::do_owner_update_node_burn_rate_alpha(
+        assert_ok!(Network::owner_update_node_burn_rate_alpha(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -378,7 +376,7 @@ fn test_do_owner_update_node_burn_rate_alpha() {
         assert_eq!(NodeBurnRateAlpha::<Test>::get(subnet_id), new_value);
 
         assert_err!(
-            Network::do_owner_update_node_burn_rate_alpha(
+            Network::owner_update_node_burn_rate_alpha(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 Network::percentage_factor_as_u128() + 1
@@ -398,7 +396,7 @@ fn test_do_owner_update_queue_immunity_epochs() {
 
         let new_value = QueueImmunityEpochs::<Test>::get(subnet_id) - 1;
 
-        assert_ok!(Network::do_owner_update_queue_immunity_epochs(
+        assert_ok!(Network::owner_update_queue_immunity_epochs(
             RuntimeOrigin::signed(original_owner),
             subnet_id,
             new_value
@@ -419,7 +417,7 @@ fn do_owner_update_subnet_node_min_weight_decrease_reputation_threshold() {
         let new_value = 1;
 
         assert_ok!(
-            Network::do_owner_update_subnet_node_min_weight_decrease_reputation_threshold(
+            Network::owner_update_subnet_node_min_weight_decrease_reputation_threshold(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 new_value
@@ -432,7 +430,7 @@ fn do_owner_update_subnet_node_min_weight_decrease_reputation_threshold() {
         );
 
         assert_err!(
-            Network::do_owner_update_subnet_node_min_weight_decrease_reputation_threshold(
+            Network::owner_update_subnet_node_min_weight_decrease_reputation_threshold(
                 RuntimeOrigin::signed(original_owner),
                 subnet_id,
                 MaxSubnetNodeMinWeightDecreaseReputationThreshold::<Test>::get() + 1
@@ -2568,7 +2566,7 @@ fn test_transfer_and_accept_ownership_works() {
     new_test_ext().execute_with(|| {
         increase_epochs(1);
 
-        let subnet_id = 0;
+        let subnet_id = 1;
         let original_owner = account(1);
         let new_owner = account(2);
 
@@ -2576,7 +2574,7 @@ fn test_transfer_and_accept_ownership_works() {
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
         // Transfer to new owner
-        assert_ok!(Network::do_transfer_subnet_ownership(
+        assert_ok!(Network::transfer_subnet_ownership(
             RuntimeOrigin::signed(original_owner.clone()),
             subnet_id,
             new_owner.clone()
@@ -2592,7 +2590,7 @@ fn test_transfer_and_accept_ownership_works() {
         );
 
         // Accept by new owner
-        assert_ok!(Network::do_accept_subnet_ownership(
+        assert_ok!(Network::accept_subnet_ownership(
             RuntimeOrigin::signed(new_owner.clone()),
             subnet_id
         ));
@@ -2621,14 +2619,14 @@ fn test_transfer_cannot_be_accepted_by_wrong_account() {
 
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
-        assert_ok!(Network::do_transfer_subnet_ownership(
+        assert_ok!(Network::transfer_subnet_ownership(
             RuntimeOrigin::signed(original_owner.clone()),
             subnet_id,
             new_owner
         ));
 
         assert_err!(
-            Network::do_accept_subnet_ownership(RuntimeOrigin::signed(wrong_account), subnet_id),
+            Network::accept_subnet_ownership(RuntimeOrigin::signed(wrong_account), subnet_id),
             Error::<Test>::NotPendingSubnetOwner
         );
     });
@@ -2646,23 +2644,20 @@ fn test_owner_can_cancel_transfer_by_resetting_owner() {
 
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
-        assert_ok!(Network::do_transfer_subnet_ownership(
+        assert_ok!(Network::transfer_subnet_ownership(
             RuntimeOrigin::signed(original_owner.clone()),
             subnet_id,
             new_owner.clone()
         ));
 
-        assert_ok!(Network::do_transfer_subnet_ownership(
+        assert_ok!(Network::transfer_subnet_ownership(
             RuntimeOrigin::signed(original_owner.clone()),
             subnet_id,
             zero_address
         ));
 
         assert_err!(
-            Network::do_accept_subnet_ownership(
-                RuntimeOrigin::signed(new_owner.clone()),
-                subnet_id
-            ),
+            Network::accept_subnet_ownership(RuntimeOrigin::signed(new_owner.clone()), subnet_id),
             Error::<Test>::NotPendingSubnetOwner
         );
     });
@@ -2675,7 +2670,7 @@ fn test_accept_without_pending_transfer_should_fail() {
         let user = account(8);
 
         assert_err!(
-            Network::do_accept_subnet_ownership(RuntimeOrigin::signed(user), subnet_id),
+            Network::accept_subnet_ownership(RuntimeOrigin::signed(user), subnet_id),
             Error::<Test>::NoPendingSubnetOwner
         );
     });
@@ -2692,7 +2687,7 @@ fn test_non_owner_cannot_transfer() {
         SubnetOwner::<Test>::insert(subnet_id, &actual_owner);
 
         assert_err!(
-            Network::do_transfer_subnet_ownership(
+            Network::transfer_subnet_ownership(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 target
@@ -2874,24 +2869,24 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         SubnetOwner::<Test>::insert(subnet_id, &actual_owner);
 
         assert_err!(
-            Network::do_owner_pause_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
+            Network::owner_pause_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
             Error::<Test>::NotSubnetOwner
         );
 
         assert_err!(
-            Network::do_owner_unpause_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
+            Network::owner_unpause_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
             Error::<Test>::NotSubnetOwner
         );
 
         assert_err!(
-            Network::do_owner_deactivate_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
+            Network::owner_deactivate_subnet(RuntimeOrigin::signed(fake_owner), subnet_id),
             Error::<Test>::NotSubnetOwner
         );
 
         let new_subnet_name: Vec<u8> = "new-subnet-name".into();
 
         assert_err!(
-            Network::do_owner_update_name(
+            Network::owner_update_name(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_subnet_name.clone()
@@ -2902,7 +2897,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         let new_subnet_repo: Vec<u8> = "new-subnet-repo".into();
 
         assert_err!(
-            Network::do_owner_update_repo(
+            Network::owner_update_repo(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_subnet_name.clone()
@@ -2913,7 +2908,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         let new_subnet_description: Vec<u8> = "new-subnet-description".into();
 
         assert_err!(
-            Network::do_owner_update_description(
+            Network::owner_update_description(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_subnet_description
@@ -2924,7 +2919,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         let new_subnet_misc: Vec<u8> = "new-subnet-misc".into();
 
         assert_err!(
-            Network::do_owner_update_misc(
+            Network::owner_update_misc(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_subnet_misc
@@ -2933,12 +2928,12 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_update_churn_limit(RuntimeOrigin::signed(fake_owner), subnet_id, 1),
+            Network::owner_update_churn_limit(RuntimeOrigin::signed(fake_owner), subnet_id, 1),
             Error::<Test>::NotSubnetOwner
         );
 
         assert_err!(
-            Network::do_owner_update_registration_queue_epochs(
+            Network::owner_update_registration_queue_epochs(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 1
@@ -2947,7 +2942,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_update_idle_classification_epochs(
+            Network::owner_update_idle_classification_epochs(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 1
@@ -2956,7 +2951,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_update_included_classification_epochs(
+            Network::owner_update_included_classification_epochs(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 1
@@ -2976,7 +2971,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
 
         let remove_coldkeys = BTreeSet::from([account(0)]);
         assert_err!(
-            Network::do_owner_remove_initial_coldkeys(
+            Network::owner_remove_initial_coldkeys(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 remove_coldkeys.clone()
@@ -2986,7 +2981,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
 
         let new_keytypes = BTreeSet::from([KeyType::Ed25519]);
         assert_err!(
-            Network::do_owner_update_key_types(
+            Network::owner_update_key_types(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 new_keytypes
@@ -2995,16 +2990,11 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_update_min_max_stake(
-                RuntimeOrigin::signed(fake_owner),
-                subnet_id,
-                1,
-                2
-            ),
+            Network::owner_update_min_max_stake(RuntimeOrigin::signed(fake_owner), subnet_id, 1, 2),
             Error::<Test>::NotSubnetOwner
         );
         assert_err!(
-            Network::do_owner_update_delegate_stake_percentage(
+            Network::owner_update_delegate_stake_percentage(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 1
@@ -3012,7 +3002,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
             Error::<Test>::NotSubnetOwner
         );
         assert_err!(
-            Network::do_owner_update_max_registered_nodes(
+            Network::owner_update_max_registered_nodes(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 1
@@ -3021,7 +3011,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
         );
 
         assert_err!(
-            Network::do_owner_add_bootnode_access(
+            Network::owner_add_bootnode_access(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 account(1)
@@ -3029,7 +3019,7 @@ fn test_not_subnet_owner_and_invalid_subnet_id() {
             Error::<Test>::NotSubnetOwner
         );
         assert_err!(
-            Network::do_owner_remove_bootnode_access(
+            Network::owner_remove_bootnode_access(
                 RuntimeOrigin::signed(fake_owner),
                 subnet_id,
                 account(1)

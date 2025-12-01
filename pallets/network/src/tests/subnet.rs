@@ -1243,6 +1243,10 @@ fn test_activate_subnet_min_subnet_registration_epochs_not_met_error() {
             Error::<Test>::MinSubnetRegistrationEpochsNotMet
         );
 
+        //
+        // Should still not work even with dstake requirement met
+        //
+
         let min_subnet_delegate_stake =
             Network::get_min_subnet_delegate_stake_balance(subnet_id) + 100e+18 as u128;
         let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake + 500);
@@ -1378,105 +1382,6 @@ fn test_activate_subnet_enactment_period_remove_subnet() {
         // post_subnet_removal_ensures(subnet_id, subnets, max_subnet_nodes, subnet_name, 0, total_subnet_nodes);
     })
 }
-
-// #[test]
-// fn test_activate_subnet_initializing_error() {
-//   new_test_ext().execute_with(|| {
-//     let subnet_name: Vec<u8> = "subnet-name".into();
-
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-
-//     // let cost = Network::registration_cost(epoch);
-//     let cost = Network::get_current_registration_cost(block_number);
-
-//     let _ = Balances::deposit_creating(&account(0), cost+1000);
-
-//     let min_nodes = MinSubnetNodes::<Test>::get();
-
-//     let start = 0;
-//     let end = min_nodes + 1;
-
-//     let max_subnets = MaxSubnets::<Test>::get();
-//     let subnets = TotalActiveSubnets::<Test>::get() + 1;
-//     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
-//     let add_subnet_data: RegistrationSubnetData<AccountId> = default_registration_subnet_data(
-//       subnets,
-//       max_subnet_nodes,
-//       subnet_name.clone().into(),
-//       start,
-//       end
-//     );
-
-//     let epoch_length = EpochLength::get();
-//     let block_number = System::block_number();
-//     let epoch = System::block_number().saturating_div(epoch_length);
-//     let next_registration_epoch = Network::get_next_registration_epoch(epoch);
-//     increase_epochs(next_registration_epoch - epoch);
-
-//     // --- Register subnet for activation
-//     assert_ok!(
-//       Network::register_subnet(
-//         RuntimeOrigin::signed(account(0)),
-//         100000000000000000000000,
-//         add_subnet_data,
-//       )
-//     );
-
-//     let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
-//     let subnet = SubnetsData::<Test>::get(subnet_id).unwrap();
-
-//     let id = subnet.id;
-// 		let name = subnet.name;
-// 		let min_nodes = MinSubnetNodes::<Test>::get();
-
-//     // --- Add subnet nodes
-//     let deposit_amount: u128 = 10000000000000000000000;
-//     let amount: u128 = 1000000000000000000000;
-//     for n in 0..min_nodes {
-//       let _n = n + 1;
-//       let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
-//       let hotkey = get_hotkey(subnets, max_subnet_nodes, max_subnets, _n);
-//       let peer_id = peer(subnets*max_subnet_nodes+_n);
-//       let bootnode_peer_id = peer(subnets*max_subnet_nodes+_n);
-//       let _ = Balances::deposit_creating(&coldkey.clone(), deposit_amount);
-//       assert_ok!(
-//         Network::add_subnet_node(
-//           RuntimeOrigin::signed(coldkey.clone()),
-//           subnet_id,
-//           hotkey.clone(),
-//           peer_id.clone(),
-//           bootnode_peer_id.clone(),
-//           None,
-//           0,
-//           amount,
-//           None,
-//           None,
-//         )
-//       );
-//     }
-
-//     let min_subnet_delegate_stake = Network::get_min_subnet_delegate_stake_balance(subnet_id) + 100e+18 as u128;
-//     let _ = Balances::deposit_creating(&account(1), min_subnet_delegate_stake+500);
-//     // --- Add the minimum required delegate stake balance to activate the subnet
-//     assert_ok!(
-//       Network::add_to_delegate_stake(
-//         RuntimeOrigin::signed(account(1)),
-//         subnet_id,
-//         min_subnet_delegate_stake,
-//       )
-//     );
-
-//     assert_err!(
-//       Network::activate_subnet(
-//         RuntimeOrigin::signed(account(0)),
-//         subnet_id,
-//       ),
-//       Error::<Test>::SubnetInitializing
-//     );
-//   })
-// }
 
 #[test]
 fn test_activate_subnet_min_subnet_nodes_remove_subnet() {

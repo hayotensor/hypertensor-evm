@@ -1513,6 +1513,36 @@ where
         Ok(subnet_data.name.into())
     }
 
+    #[precompile::public("getSubnetIdFromFriendlyId(uint256)")]
+    #[precompile::view]
+    fn get_subnet_id_from_friendly_id(
+        handle: &mut impl PrecompileHandle,
+        friendly_id: U256,
+    ) -> EvmResult<u32> {
+        let friendly_id = try_u256_to_u32(friendly_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let subnet_id = pallet_network::FriendlyUidSubnetId::<R>::try_get(friendly_id)
+            .map_err(|_| revert("FriendlyUidSubnetId not found for id"))?;
+
+        Ok(subnet_id)
+    }
+
+    #[precompile::public("getFriendlyIdFromSubnetId(uint256)")]
+    #[precompile::view]
+    fn get_friendly_id_from_subnet_id(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let subnet_id = pallet_network::SubnetIdFriendlyUid::<R>::try_get(subnet_id)
+            .map_err(|_| revert("SubnetIdFriendlyUid not found for id"))?;
+
+        Ok(subnet_id)
+    }
+
     #[precompile::public("getSubnetRepo(uint256)")]
     #[precompile::view]
     fn get_subnet_repo(
@@ -1565,6 +1595,17 @@ where
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let result = pallet_network::ChurnLimit::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getChurnLimitMultiplier(uint256)")]
+    #[precompile::view]
+    fn get_churn_limit_multiplier(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::ChurnLimitMultiplier::<R>::get(subnet_id);
 
         Ok(result)
     }
@@ -1635,6 +1676,32 @@ where
         Ok(coldkeys)
     }
 
+    #[precompile::public("getInitialColdkeyData(uint256)")]
+    #[precompile::view]
+    fn get_initial_coldkey_data(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<Vec<(Address, U256)>> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::InitialColdkeyData::<R>::try_get(subnet_id)
+            .map_err(|_| revert("InitialColdkeyData not found for subnet"))?;
+
+        let coldkeys: Vec<(Address, U256)> = result
+            .into_iter()
+            .map(|(acc, c)| {
+                let address = Address(sp_core::H160::from(acc.into()));
+                let count = U256::from(c);
+                (address, count)
+            })
+            .collect();
+
+        Ok(coldkeys)
+    }
+
+    
+
     #[precompile::public("getKeyTypes(uint256)")]
     #[precompile::view]
     fn get_key_types(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<Vec<U256>> {
@@ -1683,6 +1750,19 @@ where
         Ok(result)
     }
 
+    #[precompile::public("getLastDelegateStakeRewardsUpdate(uint256)")]
+    fn get_last_delegate_stake_rewards_update(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::LastSubnetDelegateStakeRewardsUpdate::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
     #[precompile::public("getMaxRegisteredNodes(uint256)")]
     #[precompile::view]
     fn get_max_registered_nodes(
@@ -1693,6 +1773,391 @@ where
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
         let result = pallet_network::MaxRegisteredNodes::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getQueueImmunityEpochs(uint256)")]
+    #[precompile::view]
+    fn get_queue_immunity_epochs(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::QueueImmunityEpochs::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getNodeRegistrationsThisEpoch(uint256)")]
+    #[precompile::view]
+    fn get_node_registrations_this_epoch(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::NodeRegistrationsThisEpoch::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getNodeBurnRateAlpha(uint256)")]
+    #[precompile::view]
+    fn get_node_burn_rate_alpha(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::NodeBurnRateAlpha::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getCurrentNodeBurnRate(uint256)")]
+    #[precompile::view]
+    fn get_current_node_burn_rate(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::CurrentNodeBurnRate::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getRegistrationEpoch(uint256)")]
+    #[precompile::view]
+    fn get_registration_epoch(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetRegistrationEpoch::<R>::try_get(subnet_id)
+            .map_err(|_| revert("SubnetRegistrationEpoch not found for subnet"))?;
+
+        Ok(result)
+    }
+
+    #[precompile::public("getPrevPauseEpoch(uint256)")]
+    #[precompile::view]
+    fn get_prev_pause_epoch(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::PreviousSubnetPauseEpoch::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getSlotIndex(uint256)")]
+    #[precompile::view]
+    fn get_slot_index(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetSlot::<R>::try_get(subnet_id)
+            .map_err(|_| revert("SubnetSlot not found for subnet"))?;
+
+        Ok(result)
+    }
+
+    #[precompile::public("getSlotAssignment(uint256)")]
+    #[precompile::view]
+    fn get_slot_assignment(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SlotAssignment::<R>::try_get(subnet_id)
+            .map_err(|_| revert("SlotAssignment not found for subnet"))?;
+
+        Ok(result)
+    }
+
+    #[precompile::public("getSubnetNodeMinWeightDecreaseReputationThreshold(uint256)")]
+    #[precompile::view]
+    fn get_subnet_node_min_weight_decrease_reputation_threshold(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetNodeMinWeightDecreaseReputationThreshold::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getReputation(uint256)")]
+    #[precompile::view]
+    fn get_reputation(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetReputation::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getMinSubnetNodeReputation(uint256)")]
+    #[precompile::view]
+    fn get_min_subnet_node_reputation(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::MinSubnetNodeReputation::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getAbsentDecreaseReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_absent_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::AbsentDecreaseReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getIncludedIncreaseReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_included_increase_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::IncludedIncreaseReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getBelowMinWeightDecreaseReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_below_min_weight_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::BelowMinWeightDecreaseReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+
+    #[precompile::public("getNonAttestorDecreaseReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_non_attestor_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::NonAttestorDecreaseReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getNonConsensusAttestorDecreaseReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_non_consensus_attestor_decrease_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::NonConsensusAttestorDecreaseReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getValidatorAbsentSubnetNodeReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_validator_absent_subnet_node_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::ValidatorAbsentSubnetNodeReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getValidatorNonConsensusSubnetNodeReputationFactor(uint256)")]
+    #[precompile::view]
+    fn get_validator_non_consensus_subnet_node_reputation_factor(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::ValidatorNonConsensusSubnetNodeReputationFactor::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getBootnodeAccess(uint256)")]
+    #[precompile::view]
+    fn get_bootnode_access(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,    
+    ) -> EvmResult<Vec<Address>> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetBootnodeAccess::<R>::get(subnet_id);
+
+        // Convert BTreeSet<AccountId> to Vec<String> of hex addresses
+        let addresses: Vec<Address> = result
+            .into_iter()
+            .map(|acc| {
+                Address(sp_core::H160::from(acc.into()))
+            })
+            .collect();
+
+        Ok(addresses)
+    }
+
+    #[precompile::public("getBootnodes(uint256)")]
+    #[precompile::view]
+    fn get_bootnodes(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<Vec<UnboundedBytes>> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::SubnetBootnodes::<R>::get(subnet_id);
+
+        // Convert BTreeSet<BoundedVec<u8>> to Vec<UnboundedBytes>
+        let bootnodes: Vec<UnboundedBytes> = result
+            .into_iter()
+            .map(|bounded_vec| {
+                // Convert BoundedVec<u8> to Vec<u8> wrapped in UnboundedBytes
+                UnboundedBytes::from(bounded_vec.to_vec())
+            })
+            .collect();
+
+        Ok(bootnodes)
+    }
+
+    #[precompile::public("getTotalNodes(uint256)")]
+    #[precompile::view]
+    fn get_total_nodes(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalSubnetNodes::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getTotalActiveNodes(uint256)")]
+    #[precompile::view]
+    fn get_total_active_nodes(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalActiveSubnetNodes::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getTotalElectableNodes(uint256)")]
+    #[precompile::view]
+    fn get_total_electable_nodes(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalSubnetElectableNodes::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getTotalSubnetStake(uint256)")]
+    #[precompile::view]
+    fn get_total_subnet_stake(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalSubnetStake::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getTotalSubnetDelegateStakeShares(uint256)")]
+    #[precompile::view]
+    fn get_total_subnet_delegate_stake_shares(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalSubnetDelegateStakeShares::<R>::get(subnet_id);
+
+        Ok(result)
+    }
+
+    #[precompile::public("getTotalSubnetDelegateStakeBalance(uint256)")]
+    #[precompile::view]
+    fn get_total_subnet_delegate_stake_balance(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u128> {
+        let subnet_id = try_u256_to_u32(subnet_id)?;
+        handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
+
+        let result = pallet_network::TotalSubnetDelegateStakeBalance::<R>::get(subnet_id);
 
         Ok(result)
     }

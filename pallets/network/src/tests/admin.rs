@@ -10,8 +10,8 @@ use crate::{
     MaxDelegateStakePercentage, MaxEmergencyValidatorEpochsMultiplier, MaxIdleClassificationEpochs,
     MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes, MaxMinDelegateStakeMultiplier,
     MaxMinSubnetNodeReputation, MaxNodeBurnRate, MaxNodeReputationFactor, MaxOverwatchNodes,
-    MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount, MaxSubnetBootnodeAccess,
-    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
+    MaxPauseEpochsSubnetReputationFactor, MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount,
+    MaxSubnetBootnodeAccess, MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
     MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes, MaxSubnetPauseEpochs,
     MaxSubnetRemovalInterval, MaxSubnets, MaxSwapQueueCallsPerBlock, MaxUnbondings,
     MaximumHooksWeightV2, MinActiveNodeStakeEpochs, MinAttestationPercentage, MinChurnLimit,
@@ -30,7 +30,6 @@ use crate::{
     SubnetName, SubnetOwnerPercentage, SubnetPauseCooldownEpochs, SubnetRegistrationEpochs,
     SubnetWeightFactors, SubnetWeightFactorsData, SuperMajorityAttestationRatio, TxRateLimit,
     ValidatorAbsentSubnetReputationFactor, ValidatorRewardK, ValidatorRewardMidpoint,
-    MaxPauseEpochsSubnetReputationFactor
 };
 use frame_support::{assert_err, assert_ok};
 

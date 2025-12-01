@@ -35,7 +35,8 @@ impl<T: Config> Pallet<T> {
         let percentage_factor = Self::percentage_factor_as_u128();
         let min_validator_reputation = MinSubnetNodeReputation::<T>::get(subnet_id);
         let subnet_reputation = SubnetReputation::<T>::get(subnet_id);
-        weight_meter.consume(db_weight.reads(1));
+        // MinSubnetNodeReputation | SubnetReputation
+        weight_meter.consume(db_weight.reads(2));
 
         // We run this here because any epoch where a validator submits data, whether in consensus
         // or not, we increment the forks `total_epochs`
@@ -76,7 +77,13 @@ impl<T: Config> Pallet<T> {
                 NotInConsensusSubnetReputationFactor::<T>::get(),
             );
             SubnetReputation::<T>::insert(subnet_id, new_subnet_reputation);
-            weight_meter.consume(db_weight.reads_writes(2, 1));
+            // NotInConsensusSubnetReputationFactor, SubnetReputation
+            weight_meter.consume(db_weight.reads_writes(1, 1));
+            Self::deposit_event(Event::SubnetReputationUpdate {
+                subnet_id,
+                prev_reputation: subnet_reputation,
+                new_reputation: new_subnet_reputation,
+            });
 
             let non_consensus_attestor_factor = Self::percent_mul(
                 NonConsensusAttestorDecreaseReputationFactor::<T>::get(subnet_id),
@@ -85,26 +92,26 @@ impl<T: Config> Pallet<T> {
                     min_attestation_percentage,
                 )),
             );
-
+            // NonConsensusAttestorDecreaseReputationFactor
             weight_meter.consume(db_weight.reads(1));
 
             // --- Decrease reputation of attestors
             for (subnet_node_id, attest_data) in consensus_submission_data.attests {
-                let reputation = SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id);
-                let new_reputation =
-                    Self::get_decrease_reputation(reputation, non_consensus_attestor_factor);
+                let new_reputation = Self::decrease_node_reputation(
+                    subnet_id,
+                    subnet_node_id,
+                    non_consensus_attestor_factor,
+                );
+                // `decrease_node_reputation`: SubnetNodeReputation (r/w)
+                weight_meter.consume(db_weight.reads_writes(1, 1));
                 if new_reputation < min_validator_reputation {
                     // Remove node if below minimum threshold
                     if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
                         Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
                         weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
                     }
-
                     continue;
                 }
-
-                SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, new_reputation);
-                weight_meter.consume(db_weight.reads(1));
             }
             return;
         } else if let Some(hotkey) = SubnetNodeIdHotkey::<T>::get(
@@ -164,7 +171,7 @@ impl<T: Config> Pallet<T> {
         let included_factor = IncludedIncreaseReputationFactor::<T>::get(subnet_id);
         let min_weight_factor = BelowMinWeightDecreaseReputationFactor::<T>::get(subnet_id);
         let non_attestor_factor = NonAttestorDecreaseReputationFactor::<T>::get(subnet_id);
-        weight_meter.consume(db_weight.reads(8));
+        weight_meter.consume(db_weight.reads(7));
 
         // Super majority, update queue to prioritize node ID that subnet form a consensus to cut the line
         // and or update queue to remove a node ID the subnet forms a consensus to be removed (if passed immunity period)
@@ -221,6 +228,10 @@ impl<T: Config> Pallet<T> {
 
         // Increase reputation because subnet consensus is successful
         // Only increase if subnet has >= min subnet nodes
+
+        // MinSubnetNodes
+        weight_meter.consume(db_weight.reads(1));
+
         if subnet_reputation != percentage_factor
             && consensus_submission_data.data_length >= MinSubnetNodes::<T>::get()
         {
@@ -235,10 +246,7 @@ impl<T: Config> Pallet<T> {
         // --- Reward owner
         match SubnetOwner::<T>::try_get(subnet_id) {
             Ok(coldkey) => {
-                let subnet_owner_reward_as_currency =
-                    Self::u128_to_balance(rewards_data.subnet_owner_reward);
-
-                if let Some(balance) = subnet_owner_reward_as_currency {
+                if let Some(balance) = Self::u128_to_balance(rewards_data.subnet_owner_reward) {
                     Self::add_balance_to_coldkey_account(&coldkey, balance);
                     weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
                 }
@@ -314,15 +322,26 @@ impl<T: Config> Pallet<T> {
                 if reputation != percentage_factor {
                     // If the validator submits themselves in the data and passes consensus, this also
                     // increases the validators reputation
-                    reputation = Self::get_increase_reputation(reputation, included_factor);
-                    SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
+                    reputation = Self::increase_and_return_node_reputation(
+                        subnet_id,
+                        subnet_node.id,
+                        reputation,
+                        included_factor,
+                    );
+
+                    // `increase_and_return_node_reputation`: SubnetNodeReputation (w)
                     weight_meter.consume(db_weight.writes(1));
                 }
                 data
             } else {
                 // Not included in consensus, decrease reputation
-                reputation = Self::get_decrease_reputation(reputation, absent_factor);
-                SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
+                reputation = Self::decrease_and_return_node_reputation(
+                    subnet_id,
+                    subnet_node.id,
+                    reputation,
+                    absent_factor,
+                );
+                // `decrease_and_return_node_reputation`: SubnetNodeReputation (w)
                 weight_meter.consume(db_weight.writes(1));
 
                 // Break count of consecutive epochs of being included in in-consensus data
@@ -348,8 +367,13 @@ impl<T: Config> Pallet<T> {
             // We don't automatically decrease reputation if a node is at ZERO
             // This is an optional feature for subnets
             if node_weight < weight_threshold {
-                reputation = Self::get_decrease_reputation(reputation, min_weight_factor);
-                SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
+                reputation = Self::decrease_and_return_node_reputation(
+                    subnet_id,
+                    subnet_node.id,
+                    reputation,
+                    min_weight_factor,
+                );
+                // `decrease_and_return_node_reputation`: SubnetNodeReputation (w)
                 weight_meter.consume(db_weight.writes(1));
             }
 
@@ -408,13 +432,13 @@ impl<T: Config> Pallet<T> {
                             if consensus_submission_data.attestation_ratio
                                 >= super_majority_threshold
                             {
-                                reputation =
-                                    Self::get_decrease_reputation(reputation, non_attestor_factor);
-                                SubnetNodeReputation::<T>::insert(
+                                reputation = Self::decrease_and_return_node_reputation(
                                     subnet_id,
                                     subnet_node.id,
                                     reputation,
+                                    non_attestor_factor,
                                 );
+                                // `decrease_and_return_node_reputation`: SubnetNodeReputation (w)
                                 weight_meter.consume(db_weight.writes(1));
                             }
                             percentage_factor
@@ -427,10 +451,15 @@ impl<T: Config> Pallet<T> {
                 // Subnet is not forked and node attested
                 data.reward_factor
             } else {
-                // Node not attested, decrease reputation
+                // Node not attested, decrease reputation, return 1.0 reward factor
                 if consensus_submission_data.attestation_ratio >= super_majority_threshold {
-                    reputation = Self::get_decrease_reputation(reputation, non_attestor_factor);
-                    SubnetNodeReputation::<T>::insert(subnet_id, subnet_node.id, reputation);
+                    reputation = Self::decrease_and_return_node_reputation(
+                        subnet_id,
+                        subnet_node.id,
+                        reputation,
+                        non_attestor_factor,
+                    );
+                    // `decrease_and_return_node_reputation`: SubnetNodeReputation (w)
                     weight_meter.consume(db_weight.writes(1));
                 }
 

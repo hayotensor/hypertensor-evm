@@ -82,11 +82,9 @@ impl<T: Config> Pallet<T> {
             return false;
         }
 
-        let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
-
         if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
             let max_registration_epoch =
-                registered_epoch.saturating_add(subnet_registration_epochs);
+                registered_epoch.saturating_add(SubnetRegistrationEpochs::<T>::get());
             epoch <= max_registration_epoch
         } else {
             false
@@ -100,14 +98,11 @@ impl<T: Config> Pallet<T> {
             return false;
         }
 
-        let subnet_registration_epochs = SubnetRegistrationEpochs::<T>::get();
-        let subnet_activation_enactment_epochs = SubnetEnactmentEpochs::<T>::get();
-
         if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
             let max_registration_epoch =
-                registered_epoch.saturating_add(subnet_registration_epochs);
+                registered_epoch.saturating_add(SubnetRegistrationEpochs::<T>::get());
             let max_enactment_epoch =
-                max_registration_epoch.saturating_add(subnet_activation_enactment_epochs);
+                max_registration_epoch.saturating_add(SubnetEnactmentEpochs::<T>::get());
 
             // Must be past registration but within enactment
             epoch > max_registration_epoch && epoch <= max_enactment_epoch

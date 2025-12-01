@@ -438,6 +438,17 @@ pub mod pallet {
         OverwatchRewards {
             node_rewards: Vec<(u32, u128)>,
         },
+        SubnetReputationUpdate {
+            subnet_id: u32,
+            prev_reputation: u128,
+            new_reputation: u128,
+        },
+        NodeReputationUpdate {
+            subnet_id: u32,
+            subnet_node_id: u32,
+            prev_reputation: u128,
+            new_reputation: u128,
+        },
 
         // Subnet owners
         SubnetNameUpdate {
@@ -2748,6 +2759,7 @@ pub mod pallet {
         StorageMap<_, Identity, u32, u32, ValueQuery, DefaultZeroU32>;
 
     /// Most recent epoch a subnet was activated on
+    /// Used to calculate subnet removal intervals
     #[pallet::storage]
     pub type PrevSubnetActivationEpoch<T> = StorageValue<_, u32, ValueQuery, DefaultZeroU32>;
 
@@ -6951,6 +6963,9 @@ pub mod pallet {
 
             let epoch: u32 = Self::get_current_epoch_as_u32();
 
+            // SubnetRegistrationEpoch
+            weight = weight.saturating_add(db_weight.reads(1));
+
             let past_min_registration_epochs =
                 if let Ok(registered_epoch) = SubnetRegistrationEpoch::<T>::try_get(subnet_id) {
                     let min_epochs = MinSubnetRegistrationEpochs::<T>::get();
@@ -6962,38 +6977,29 @@ pub mod pallet {
                     false
                 };
 
-            // SubnetRegistrationEpoch
-            weight = weight.saturating_add(db_weight.reads(1));
-
             // --- Minimum registration epochs not met yet
             // This is the period within the registration period where the subnet CANNOT attempt to activate yet
+            // Note: There can be a minimum registration epochs that must be met before the subnet can attempt to activate
+            //       This is always less than the registration phase period (see `is_subnet_registering`)
             ensure!(
                 past_min_registration_epochs,
                 Error::<T>::MinSubnetRegistrationEpochsNotMet
             );
 
-            // Get activation status and periods
-            let (can_subnet_be_active, reason) = Self::can_subnet_be_active(subnet_id);
+            // If in the registration period
             let in_registration_period =
                 Self::is_subnet_registering(subnet_id, subnet.state, epoch);
+
+            // Can subnet activate:
+            // - Min delegate stake
+            // - Min node count
+            let (can_subnet_be_active, reason) = Self::can_subnet_be_active(subnet_id);
+
+            // If in the enactment period
             let in_enactment_period = Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch);
 
-            // If can't activate and in registration period, return error
-            ensure!(
-                can_subnet_be_active || !in_registration_period,
-                Error::<T>::SubnetActivationConditionsNotMetYet
-            );
-
-            // If can't activate (and not in registration), always remove
-            if !can_subnet_be_active {
-                weight = weight.saturating_add(Self::do_remove_subnet(subnet_id, reason.unwrap()));
-                return Ok(Some(weight).into());
-            }
-
-            // If can activate but outside valid periods, remove for timeout
-            if !in_registration_period
-                && !Self::is_subnet_in_enactment(subnet_id, subnet.state, epoch)
-            {
+            // Case 1: Outside all valid periods (passed enactment period)
+            if !in_registration_period && !in_enactment_period {
                 weight = weight.saturating_add(Self::do_remove_subnet(
                     subnet_id,
                     SubnetRemovalReason::EnactmentPeriod,
@@ -7001,34 +7007,21 @@ pub mod pallet {
                 return Ok(Some(weight).into());
             }
 
-            match (
-                can_subnet_be_active,
-                in_registration_period,
-                in_enactment_period,
-            ) {
-                // Can activate AND in a valid period - proceed
-                (true, true, _) | (true, _, true) => {
-                    // Continue to activation
-                }
-                // Can't activate but in registration period - error (not removal)
-                (false, true, _) => {
-                    return Err(Error::<T>::SubnetActivationConditionsNotMetYet.into());
-                }
-                // Can't activate and in enactment period - remove for failing conditions
-                (false, false, true) => {
-                    weight =
-                        weight.saturating_add(Self::do_remove_subnet(subnet_id, reason.unwrap()));
-                    return Ok(Some(weight).into());
-                }
-                // Outside both periods - remove for missing the deadline
-                (_, false, false) => {
-                    weight = weight.saturating_add(Self::do_remove_subnet(
-                        subnet_id,
-                        SubnetRemovalReason::EnactmentPeriod,
-                    ));
-                    return Ok(Some(weight).into());
-                }
+            // Case 2: Can't activate while in registration period
+            // We allow them to attempt to activate without removing the subnet
+            if !can_subnet_be_active && in_registration_period {
+                return Err(Error::<T>::SubnetActivationConditionsNotMetYet.into());
             }
+
+            // Case 3: Remove subnet if in enactment period and can't activate
+            if let (true, Some(removal_reason)) =
+                (!can_subnet_be_active && in_enactment_period, reason.clone())
+            {
+                weight = weight.saturating_add(Self::do_remove_subnet(subnet_id, removal_reason));
+                return Ok(Some(weight).into());
+            }
+
+            // Case 4: Can activate (implicit: can_subnet_be_active = true, in valid period)
 
             // ===============
             // Gauntlet passed

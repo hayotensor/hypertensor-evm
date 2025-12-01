@@ -192,6 +192,24 @@ impl<T: Config> Pallet<T> {
         SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
     }
 
+    pub fn increase_and_return_node_reputation(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        current_reputation: u128,
+        factor: u128,
+    ) -> u128 {
+        let new_reputation = Self::get_increase_reputation(current_reputation, factor);
+        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, new_reputation);
+        Self::deposit_event(Event::NodeReputationUpdate {
+            subnet_id,
+            subnet_node_id,
+            prev_reputation: current_reputation,
+            new_reputation,
+        });
+
+        new_reputation
+    }
+
     pub fn get_increase_reputation(prev_reputation: u128, factor: u128) -> u128 {
         let one = Self::percentage_factor_as_u128();
         let factor = factor.min(one);
@@ -199,10 +217,33 @@ impl<T: Config> Pallet<T> {
         prev_reputation.saturating_add(delta).min(one)
     }
 
-    pub fn decrease_node_reputation(subnet_id: u32, subnet_node_id: u32, factor: u128) {
-        let mut reputation = SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id);
-        reputation = Self::get_decrease_reputation(reputation, factor);
-        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
+    pub fn decrease_node_reputation(subnet_id: u32, subnet_node_id: u32, factor: u128) -> u128 {
+        Self::decrease_and_return_node_reputation(
+            subnet_id,
+            subnet_node_id,
+            SubnetNodeReputation::<T>::get(subnet_id, subnet_node_id),
+            factor,
+        )
+    }
+
+    /// Decrease from submitted node reputation and return new reputation
+    /// This function is used to track reputations locally to lessen db reads
+    pub fn decrease_and_return_node_reputation(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        current_reputation: u128,
+        factor: u128,
+    ) -> u128 {
+        let new_reputation = Self::get_decrease_reputation(current_reputation, factor);
+        SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, new_reputation);
+        Self::deposit_event(Event::NodeReputationUpdate {
+            subnet_id,
+            subnet_node_id,
+            prev_reputation: current_reputation,
+            new_reputation,
+        });
+
+        new_reputation
     }
 
     pub fn get_decrease_reputation(prev_reputation: u128, factor: u128) -> u128 {
