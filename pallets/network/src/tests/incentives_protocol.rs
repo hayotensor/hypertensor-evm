@@ -4083,11 +4083,13 @@ fn test_distribute_rewards_graduate_included_to_validator() {
         //
         let mut subnet_node =
             RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
-        Network::do_activate_subnet_node(
+        Network::do_activate_subnet_node_v2(
             &mut WeightMeter::new(),
             subnet_id,
+            SubnetState::Active,
             subnet_node,
             Network::get_current_subnet_epoch_as_u32(subnet_id),
+            true,
         );
         Network::graduate_class(
             subnet_id,
@@ -4276,11 +4278,13 @@ fn test_distribute_rewards_graduate_included_to_validator_v2() {
         //
         let mut subnet_node =
             RegisteredSubnetNodesData::<Test>::get(subnet_id, hotkey_subnet_node_id);
-        Network::do_activate_subnet_node(
+        Network::do_activate_subnet_node_v2(
             &mut WeightMeter::new(),
             subnet_id,
+            SubnetState::Active,
             subnet_node,
             Network::get_current_subnet_epoch_as_u32(subnet_id),
+            true,
         );
         Network::graduate_class(
             subnet_id,

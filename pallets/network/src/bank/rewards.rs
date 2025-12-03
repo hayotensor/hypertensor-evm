@@ -136,19 +136,17 @@ impl<T: Config> Pallet<T> {
             // MinAttestationPercentage | BaseValidatorReward
             weight_meter.consume(db_weight.reads(2));
 
-            match HotkeyOwner::<T>::try_get(&hotkey) {
-                Ok(coldkey) => {
-                    Self::increase_coldkey_reputation(
-                        coldkey,
-                        consensus_submission_data.attestation_ratio,
-                        min_attestation_percentage,
-                        coldkey_reputation_increase_factor,
-                        current_epoch,
-                    );
-                    weight_meter.consume(T::WeightInfo::increase_coldkey_reputation());
-                }
-                Err(()) => (),
-            };
+            if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+                Self::increase_coldkey_reputation(
+                    coldkey,
+                    consensus_submission_data.attestation_ratio,
+                    min_attestation_percentage,
+                    coldkey_reputation_increase_factor,
+                    current_epoch,
+                );
+                weight_meter.consume(T::WeightInfo::increase_coldkey_reputation());
+            }
+
             // HotkeyOwner
             weight_meter.consume(db_weight.reads(1));
 
@@ -244,15 +242,13 @@ impl<T: Config> Pallet<T> {
         }
 
         // --- Reward owner
-        match SubnetOwner::<T>::try_get(subnet_id) {
-            Ok(coldkey) => {
-                if let Some(balance) = Self::u128_to_balance(rewards_data.subnet_owner_reward) {
-                    Self::add_balance_to_coldkey_account(&coldkey, balance);
-                    weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
-                }
+        if let Ok(owner) = SubnetOwner::<T>::try_get(subnet_id) {
+            if let Some(balance) = Self::u128_to_balance(rewards_data.subnet_owner_reward) {
+                Self::add_balance_to_coldkey_account(&owner, balance);
+                weight_meter.consume(T::WeightInfo::add_balance_to_coldkey_account());
             }
-            Err(()) => (),
-        };
+        }
+
         // SubnetOwner
         weight_meter.consume(db_weight.reads(1));
 

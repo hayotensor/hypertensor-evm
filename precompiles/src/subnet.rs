@@ -1601,7 +1601,10 @@ where
 
     #[precompile::public("getChurnLimitMultiplier(uint256)")]
     #[precompile::view]
-    fn get_churn_limit_multiplier(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
+    fn get_churn_limit_multiplier(
+        handle: &mut impl PrecompileHandle,
+        subnet_id: U256,
+    ) -> EvmResult<u32> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -1699,8 +1702,6 @@ where
 
         Ok(coldkeys)
     }
-
-    
 
     #[precompile::public("getKeyTypes(uint256)")]
     #[precompile::view]
@@ -1850,10 +1851,7 @@ where
 
     #[precompile::public("getPrevPauseEpoch(uint256)")]
     #[precompile::view]
-    fn get_prev_pause_epoch(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u32> {
+    fn get_prev_pause_epoch(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -1864,10 +1862,7 @@ where
 
     #[precompile::public("getSlotIndex(uint256)")]
     #[precompile::view]
-    fn get_slot_index(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u32> {
+    fn get_slot_index(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -1879,10 +1874,7 @@ where
 
     #[precompile::public("getSlotAssignment(uint256)")]
     #[precompile::view]
-    fn get_slot_assignment(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u32> {
+    fn get_slot_assignment(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -1901,17 +1893,15 @@ where
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
-        let result = pallet_network::SubnetNodeMinWeightDecreaseReputationThreshold::<R>::get(subnet_id);
+        let result =
+            pallet_network::SubnetNodeMinWeightDecreaseReputationThreshold::<R>::get(subnet_id);
 
         Ok(result)
     }
 
     #[precompile::public("getReputation(uint256)")]
     #[precompile::view]
-    fn get_reputation(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u128> {
+    fn get_reputation(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u128> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
@@ -1976,7 +1966,6 @@ where
         Ok(result)
     }
 
-
     #[precompile::public("getNonAttestorDecreaseReputationFactor(uint256)")]
     #[precompile::view]
     fn get_non_attestor_decrease_reputation_factor(
@@ -2000,7 +1989,8 @@ where
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
-        let result = pallet_network::NonConsensusAttestorDecreaseReputationFactor::<R>::get(subnet_id);
+        let result =
+            pallet_network::NonConsensusAttestorDecreaseReputationFactor::<R>::get(subnet_id);
 
         Ok(result)
     }
@@ -2028,7 +2018,8 @@ where
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 
-        let result = pallet_network::ValidatorNonConsensusSubnetNodeReputationFactor::<R>::get(subnet_id);
+        let result =
+            pallet_network::ValidatorNonConsensusSubnetNodeReputationFactor::<R>::get(subnet_id);
 
         Ok(result)
     }
@@ -2037,7 +2028,7 @@ where
     #[precompile::view]
     fn get_bootnode_access(
         handle: &mut impl PrecompileHandle,
-        subnet_id: U256,    
+        subnet_id: U256,
     ) -> EvmResult<Vec<Address>> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
@@ -2047,9 +2038,7 @@ where
         // Convert BTreeSet<AccountId> to Vec<String> of hex addresses
         let addresses: Vec<Address> = result
             .into_iter()
-            .map(|acc| {
-                Address(sp_core::H160::from(acc.into()))
-            })
+            .map(|acc| Address(sp_core::H160::from(acc.into())))
             .collect();
 
         Ok(addresses)
@@ -2066,13 +2055,9 @@ where
 
         let result = pallet_network::SubnetBootnodes::<R>::get(subnet_id);
 
-        // Convert BTreeSet<BoundedVec<u8>> to Vec<UnboundedBytes>
         let bootnodes: Vec<UnboundedBytes> = result
             .into_iter()
-            .map(|bounded_vec| {
-                // Convert BoundedVec<u8> to Vec<u8> wrapped in UnboundedBytes
-                UnboundedBytes::from(bounded_vec.to_vec())
-            })
+            .map(|bounded_vec| UnboundedBytes::from(bounded_vec.to_vec()))
             .collect();
 
         Ok(bootnodes)
@@ -2080,10 +2065,7 @@ where
 
     #[precompile::public("getTotalNodes(uint256)")]
     #[precompile::view]
-    fn get_total_nodes(
-        handle: &mut impl PrecompileHandle,
-        subnet_id: U256,
-    ) -> EvmResult<u32> {
+    fn get_total_nodes(handle: &mut impl PrecompileHandle, subnet_id: U256) -> EvmResult<u32> {
         let subnet_id = try_u256_to_u32(subnet_id)?;
         handle.record_cost(RuntimeHelper::<R>::db_read_gas_cost())?;
 

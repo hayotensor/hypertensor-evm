@@ -461,18 +461,16 @@ impl<T: Config> Pallet<T> {
 
         weight = weight.saturating_add(db_weight.reads(1));
 
-        match HotkeyOwner::<T>::try_get(&hotkey) {
-            Ok(coldkey) => {
-                Self::decrease_coldkey_reputation(
-                    coldkey,
-                    attestation_percentage,
-                    min_attestation_percentage,
-                    coldkey_reputation_decrease_factor,
-                    epoch,
-                );
-            }
-            Err(()) => (),
-        };
+        if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+            Self::decrease_coldkey_reputation(
+                coldkey,
+                attestation_percentage,
+                min_attestation_percentage,
+                coldkey_reputation_decrease_factor,
+                epoch,
+            );
+        }
+
 
         // --- Get stake balance. This is safe, uses Default value
         // This could be greater than the target stake balance

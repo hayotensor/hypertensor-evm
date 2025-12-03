@@ -38,12 +38,20 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotKeyOwner
         );
 
-        match ColdkeyIdentityNameOwner::<T>::try_get(name.clone()) {
-            Ok(owner) => {
-                ensure!(owner == coldkey.clone(), Error::<T>::IdentityTaken);
-            }
-            Err(()) => (),
-        };
+        ensure!(!name.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!url.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!image.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!discord.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!x.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!telegram.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!github.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!hugging_face.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!description.is_empty(), Error::<T>::IdentityFieldEmpty);
+        ensure!(!misc.is_empty(), Error::<T>::IdentityFieldEmpty);
+
+        if let Ok(owner) = ColdkeyIdentityNameOwner::<T>::try_get(name.clone()) {
+            ensure!(owner == coldkey.clone(), Error::<T>::IdentityTaken);
+        }
 
         // Remove previous name to ensure they can't own multiple names
         if let Ok(coldkey_identity) = ColdkeyIdentity::<T>::try_get(&coldkey) {

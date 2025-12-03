@@ -459,21 +459,18 @@ impl<T: Config> Pallet<T> {
 
         // Remove nodes previous unique if Some
         if let Some(unique_param) = &params.unique {
-            SubnetNodeUniqueParam::<T>::remove(subnet_id, unique_param);
+            UniqueParamSubnetNodeId::<T>::remove(subnet_id, unique_param);
         }
 
         if let Some(unique) = unique.clone() {
-            match SubnetNodeUniqueParam::<T>::try_get(subnet_id, &unique) {
-                Ok(owner_subnet_node_id) => {
-                    ensure!(
-                        owner_subnet_node_id == subnet_node_id,
-                        Error::<T>::UniqueParameterTaken
-                    );
-                }
-                Err(()) => (),
-            };
+            if let Ok(owner_subnet_node_id) = UniqueParamSubnetNodeId::<T>::try_get(subnet_id, &unique) {
+                ensure!(
+                    owner_subnet_node_id == subnet_node_id,
+                    Error::<T>::UniqueParameterTaken
+                );
+            }
 
-            SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique, subnet_node_id);
+            UniqueParamSubnetNodeId::<T>::insert(subnet_id, &unique, subnet_node_id);
         }
 
         params.unique = unique.clone();
@@ -607,7 +604,7 @@ impl<T: Config> Pallet<T> {
         let peer_id = subnet_node.peer_id;
 
         if let Some(unique) = subnet_node.unique {
-            SubnetNodeUniqueParam::<T>::remove(subnet_id, unique)
+            UniqueParamSubnetNodeId::<T>::remove(subnet_id, unique)
         }
 
         // Remove all subnet node elements

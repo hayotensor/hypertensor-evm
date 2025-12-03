@@ -12,7 +12,7 @@ use crate::{
     Reputation, StakeCooldownEpochs, StakeUnbondingLedger, SubnetConsensusSubmission, SubnetData,
     SubnetElectedValidator, SubnetIdFriendlyUid, SubnetMaxStakeBalance, SubnetMinStakeBalance,
     SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData,
-    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeReputation, SubnetNodeUniqueParam,
+    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeReputation, UniqueParamSubnetNodeId,
     SubnetNodesData, SubnetOwner, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
     SubnetRegistrationInitialColdkeys, SubnetReputation, SubnetSlot, SubnetState, SubnetsData,
     TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids,
@@ -2132,7 +2132,7 @@ pub fn post_subnet_removal_ensures(
         0
     );
     assert_eq!(
-        SubnetNodeUniqueParam::<Test>::iter_prefix(subnet_id).count(),
+        UniqueParamSubnetNodeId::<Test>::iter_prefix(subnet_id).count(),
         0
     );
     assert_eq!(

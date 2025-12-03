@@ -861,6 +861,8 @@ pub mod pallet {
         OldHotkeyNotRegistered,
         /// Identity is taken by another coldkey
         IdentityTaken,
+        /// Identity field cannot be empty
+        IdentityFieldEmpty,
         /// No change between current and new delegate reward rate, make sure to increase or decrease it
         NoDelegateRewardRateChange,
         /// Invalid delegate reward rate above 100%
@@ -1883,7 +1885,7 @@ pub mod pallet {
     /// - BootnodePeerIdSubnetNodeId
     /// - ClientPeerIdSubnetNodeId
     /// - BootnodeSubnetNodeId
-    /// - SubnetNodeUniqueParam
+    /// - UniqueParamSubnetNodeId
     /// - TotalOverwatchNodes
     /// - TotalOverwatchNodeUids
     /// - PeerIdOverwatchNodeId
@@ -2139,7 +2141,7 @@ pub mod pallet {
     /// This type value is referenced in:
     /// - SubnetBootnodes
     /// - BootnodeSubnetNodeId
-    /// - SubnetNodeUniqueParam
+    /// - UniqueParamSubnetNodeId
     #[pallet::type_value]
     pub fn DefaultMaxVectorLength() -> u32 {
         1024
@@ -3488,7 +3490,7 @@ pub mod pallet {
 
     /// Used for unique parameters
     #[pallet::storage] // subnet_id --> param --> node ID
-    pub type SubnetNodeUniqueParam<T> = StorageDoubleMap<
+    pub type UniqueParamSubnetNodeId<T> = StorageDoubleMap<
         _,
         Identity,
         u32,
@@ -5618,16 +5620,12 @@ pub mod pallet {
                         ColdkeyHotkeys::<T>::swap(&curr_coldkey, &new_coldkey);
 
                         // Identity is not required so we ensure it exists first
-                        match ColdkeyIdentity::<T>::try_get(&curr_coldkey) {
-                            Ok(coldkey_identity) => {
-                                ColdkeyIdentity::<T>::swap(&curr_coldkey, &new_coldkey);
-                                ColdkeyIdentityNameOwner::<T>::insert(
-                                    coldkey_identity.name.clone(),
-                                    &new_coldkey,
-                                );
-                            }
-                            // Has no identity, pass
-                            Err(()) => (),
+                        if let Ok(coldkey_identity) = ColdkeyIdentity::<T>::try_get(&curr_coldkey) {
+                            ColdkeyIdentity::<T>::swap(&curr_coldkey, &new_coldkey);
+                            ColdkeyIdentityNameOwner::<T>::insert(
+                                coldkey_identity.name.clone(),
+                                &new_coldkey,
+                            );
                         };
 
                         ColdkeyReputation::<T>::swap(&curr_coldkey, &new_coldkey);
@@ -6765,7 +6763,143 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Register subnet
+        /// Register a new subnet on the network
+        ///
+        /// This function creates a new subnet and enters it into the registration phase.
+        /// After registration, the subnet must accumulate sufficient nodes and delegate stake
+        /// before it can be activated (see `do_activate_subnet`).
+        ///
+        /// # Arguments
+        ///
+        /// * `owner` - The account that owns and controls the subnet
+        /// * `max_cost` - Maximum registration cost the owner is willing to pay (slippage protection)
+        /// * `subnet_registration_data` - Subnet configuration data (see `RegistrationSubnetData`)
+        ///
+        /// # Registration Requirements
+        ///
+        /// ## 1. Uniqueness Constraints
+        ///
+        /// - **Unique Name**: Subnet name must not already exist in `SubnetName` storage
+        /// - **Unique Repository**: Repository URL must not already exist in `SubnetRepo` storage
+        ///
+        /// ## 2. Network Capacity
+        ///
+        /// - **Max Subnets**: Total registered subnets must be less than `MaxSubnets + 1`
+        ///   - Network allows one extra subnet (n+1) to facilitate subnet rotation
+        ///   - If exceeded, subnets are removed during epoch preliminaries (see `do_epoch_preliminaries`)
+        ///
+        /// ## 3. Bootnode Configuration
+        ///
+        /// - **Non-Empty**: At least one bootnode must be provided
+        /// - **Count Limit**: Number of bootnodes must not exceed `MaxBootnodes`
+        /// - Bootnodes are P2P network entry points for subnet nodes and overwatchers
+        ///
+        /// ## 4. Stake Balance Configuration
+        ///
+        /// ### Minimum Stake Per Node
+        /// - Must be >= `MinSubnetMinStake` (network-wide minimum)
+        /// - Must be <= `MaxSubnetMinStake` (network-wide maximum)
+        /// - This is the minimum stake required for each subnet node
+        ///
+        /// ### Maximum Stake Per Node
+        /// - Must be <= `NetworkMaxStakeBalance` (prevents stake concentration)
+        /// - Must be >= minimum stake (logical consistency)
+        ///
+        /// ## 5. Delegate Stake Rewards Configuration
+        ///
+        /// - **Percentage Range**: Must be between `MinDelegateStakePercentage` and `MaxDelegateStakePercentage`
+        /// - **Percentage Cap**: Must not exceed 100% (`percentage_factor_as_u128()`)
+        /// - Determines what percentage of subnet emissions go to delegate stakers vs node operators
+        ///
+        /// ## 6. Initial Node Operators (Whitelist)
+        ///
+        /// - **Minimum Count**: At least `MinSubnetNodes` coldkeys must be whitelisted
+        /// - **Registration Slots**: Each coldkey must be allocated at least 1 registration slot
+        /// - During registration period, only these coldkeys can register nodes
+        /// - Removed upon activation (see `do_activate_subnet`)
+        ///
+        /// ## 7. Registration Cost (Dynamic Pricing)
+        ///
+        /// - **Cost Calculation**: Uses `get_current_registration_cost(block)` with:
+        ///   - Exponential decay based on time since last registration
+        ///   - Alpha parameter for concave decay curve
+        ///   - Minimum floor price `MinRegistrationCost`
+        /// - **Slippage Protection**: Actual cost must be <= `max_cost` parameter
+        /// - **Cost Update**: New cost multiplied by `NewRegistrationCostMultiplier` for next registration
+        /// - **Payment**: Cost sent to Treasury, reverts on failure
+        ///
+        /// # Slot Assignment
+        ///
+        /// - **Unique Slot**: Each subnet is assigned a unique slot in the epoch schedule via `assign_subnet_slot()`
+        /// - **Friendly UID**: Human-readable ID calculated as: `slot - DesignatedEpochSlots + 1`
+        /// - **Designated Slots**: First 3 slots reserved for:
+        ///   - Slot 0: Validator elections
+        ///   - Slot 1: Overwatch weight calculations
+        ///   - Slot 2: Emission weight calculations
+        ///
+        /// # Storage Updates
+        ///
+        /// The following storage items are initialized:
+        ///
+        /// - `SubnetsData` - Core subnet metadata (name, repo, description, state, etc.)
+        /// - `SubnetOwner` - Owner account
+        /// - `SubnetMinStakeBalance` / `SubnetMaxStakeBalance` - Stake limits
+        /// - `SubnetDelegateStakeRewardsPercentage` - Reward split configuration
+        /// - `LastSubnetDelegateStakeRewardsUpdate` - Timestamp for reward calculations
+        /// - `SubnetRegistrationInitialColdkeys` - Whitelisted node operators (temporary)
+        /// - `SubnetBootnodes` - P2P network entry points
+        /// - `SubnetName` / `SubnetRepo` - Reverse lookups for uniqueness
+        /// - `SubnetKeyTypes` - Cryptographic key types allowed
+        /// - `SubnetRegistrationEpoch` - Registration timestamp (temporary, removed on activation)
+        /// - `TotalSubnetUids` - Incremented to generate unique subnet ID
+        ///
+        /// # Post-Registration Flow
+        ///
+        /// After registration, the subnet enters the **Registration Period**:
+        ///
+        /// 1. **Registration Phase** (`SubnetRegistrationEpochs` duration):
+        ///    - Whitelisted coldkeys register nodes
+        ///    - Users delegate stake to the subnet
+        ///    - Must wait at least `MinSubnetRegistrationEpochs` before activation attempt, but can
+        ///      activate after the `MinSubnetRegistrationEpochs` in the registration phase.
+        ///
+        /// 2. **Enactment Phase** (`SubnetEnactmentEpochs` duration):
+        ///    - Grace period after registration phase
+        ///    - No new node registrations allowed
+        ///    - Delegate staking continues
+        ///    - Subnet must activate before this period ends
+        ///
+        /// 3. **Activation** (see `do_activate_subnet`):
+        ///    - Must meet minimum requirements:
+        ///      - Sufficient delegate stake (`get_min_subnet_delegate_stake_balance`)
+        ///      - Minimum node count (`MinSubnetNodes`)
+        ///      - Minimum reputation (`MinSubnetReputation`)
+        ///    - If requirements not met by end of enactment period, subnet is removed
+        ///
+        /// # Events
+        ///
+        /// Emits `SubnetRegistered` event with:
+        /// - `owner` - Subnet owner account
+        /// - `name` - Subnet name
+        /// - `subnet_id` - Unique subnet identifier
+        ///
+        /// # Errors
+        ///
+        /// - `SubnetNameExist` - Name already taken
+        /// - `SubnetRepoExist` - Repository URL already taken
+        /// - `MaxSubnets` - Network at capacity (> MaxSubnets + 1)
+        /// - `BootnodesEmpty` - No bootnodes provided
+        /// - `TooManyBootnodes` - Exceeds `MaxBootnodes`
+        /// - `InvalidSubnetMinStake` - Min stake outside allowed range
+        /// - `InvalidSubnetMaxStake` - Max stake exceeds network maximum
+        /// - `InvalidSubnetStakeParameters` - Min stake > max stake
+        /// - `InvalidMinDelegateStakePercentage` - Delegate percentage out of range
+        /// - `InvalidSubnetRegistrationInitialColdkeys` - Invalid whitelist (too few coldkeys or invalid slot counts)
+        /// - `CostGreaterThanMaxCost` - Registration cost exceeds slippage tolerance
+        /// - `NotEnoughBalanceToRegisterSubnet` - Owner lacks funds
+        /// - `CouldNotConvertToBalance` - Balance conversion overflow
+        /// - `NoAvailableSlots` - No epoch slots available for assignment
+        ///
         pub fn do_register_subnet(
             owner: T::AccountId,
             max_cost: u128,
@@ -6939,12 +7073,191 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Activate subnet or remove registering subnet if doesn't meet activation conditions
+        /// Activate a registered subnet or remove it if activation requirements are not met
         ///
-        /// If in registration period
-        /// - A subnet cannot be removed from registration until it is in the enactment period
+        /// This function transitions a subnet from `Registered` state to `Active` state, enabling
+        /// it to participate in consensus, earn emissions, and operate normally. The subnet must
+        /// meet specific timing and quality requirements to activate.
         ///
+        /// # Arguments
         ///
+        /// * `subnet_id` - The unique identifier of the subnet to activate
+        ///
+        /// # Activation State Machine
+        ///
+        /// ## Timeline Overview
+        ///
+        /// ```text
+        /// Registration (t=0)
+        ///     ↓
+        ///     ├─── MinSubnetRegistrationEpochs ───┤ ← Too early to activate
+        ///     │                                   │
+        ///     │   ✓ Accumulate nodes              │
+        ///     │   ✓ Accumulate delegate stake     │
+        ///     │                                   │
+        ///     ├───────────────────────────────────┤ ← Can start activating
+        ///     │   REGISTRATION PERIOD             │
+        ///     │   (SubnetRegistrationEpochs)      │
+        ///     │   - Nodes can register            │
+        ///     │   - Delegate staking allowed      │
+        ///     │   - Activation attempts allowed   │
+        ///     │   - Failures return error         │
+        ///     └───────────────────────────────────┘
+        ///             ↓
+        ///     ┌─── ENACTMENT PERIOD ───────────────┐
+        ///     │   (SubnetEnactmentEpochs)          │
+        ///     │   ⚠️  NO new node registrations    │
+        ///     │   ✓  Delegate staking continues    │
+        ///     │   ✓  Activation attempts allowed   │
+        ///     │   ⚠️  Failures remove subnet       │
+        ///     └────────────────────────────────────┘
+        ///             ↓
+        ///         ❌ TOO LATE
+        ///         Subnet removed (EnactmentPeriod)
+        /// ```
+        ///
+        /// # Timing Requirements
+        ///
+        /// ## 1. Minimum Registration Epochs
+        ///
+        /// - **Check**: `current_epoch >= registered_epoch + MinSubnetRegistrationEpochs`
+        /// - **Purpose**: Prevents premature activation before subnet has had time to accumulate resources
+        /// - **Note**: `MinSubnetRegistrationEpochs` < `SubnetRegistrationEpochs` (always less than full registration period)
+        /// - **Error**: `MinSubnetRegistrationEpochsNotMet` if attempted too early
+        ///
+        /// ## 2. Valid Activation Period
+        ///
+        /// Must be in one of two valid periods:
+        ///
+        /// ### Registration Period
+        /// - **Duration**: From registration to `registered_epoch + SubnetRegistrationEpochs`
+        /// - **Checked by**: `is_subnet_registering(subnet_id, state, epoch)`
+        /// - **Behavior**: Failed activation attempts return **error** (not removal)
+        /// - **Allows**: Node registrations + delegate staking
+        ///
+        /// ### Enactment Period (Grace Period)
+        /// - **Duration**: From end of registration to `registered_epoch + SubnetRegistrationEpochs + SubnetEnactmentEpochs`
+        /// - **Checked by**: `is_subnet_in_enactment(subnet_id, state, epoch)`
+        /// - **Behavior**: Failed activation attempts **remove subnet**
+        /// - **Allows**: Delegate staking only (NO new node registrations)
+        ///
+        /// # Activation Requirements
+        ///
+        /// Checked by `can_subnet_be_active(subnet_id)` - ALL must be satisfied:
+        ///
+        /// ## 1. Minimum Subnet Reputation (Redundant)
+        ///
+        /// - **Check**: `SubnetReputation >= MinSubnetReputation`
+        /// - **Default**: Usually initialized to minimum value on registration
+        /// - **Removal Reason**: `SubnetRemovalReason::MinReputation`
+        ///
+        /// ## 2. Minimum Active Nodes
+        ///
+        /// - **Check**: `TotalActiveSubnetNodes >= MinSubnetNodes`
+        /// - **Typical**: 3 nodes minimum
+        /// - **Note**: Counts active nodes, not just registered nodes
+        /// - **Removal Reason**: `SubnetRemovalReason::MinSubnetNodes`
+        ///
+        /// ## 3. Minimum Delegate Stake Balance
+        ///
+        /// - **Check**: `TotalSubnetDelegateStakeBalance >= get_min_subnet_delegate_stake_balance(subnet_id)`
+        /// - **Calculation**: Base percentage of total network issuance, scaled by node count
+        ///   - Base: `total_issuance * MinSubnetDelegateStakeFactor` (e.g., 0.1%)
+        ///   - Multiplier: Linear scale from 100% (at MinSubnetNodes) to MaxMinDelegateStakeMultiplier (at MaxSubnetNodes)
+        /// - **Dynamic**: Minimum increases as subnet adds more nodes
+        /// - **Removal Reason**: `SubnetRemovalReason::MinSubnetDelegateStake`
+        ///
+        /// # Activation Outcomes (4 Cases)
+        ///
+        /// ## Case 1: Outside All Valid Periods
+        ///
+        /// - **Condition**: `!in_registration_period && !in_enactment_period`
+        /// - **Action**: Remove subnet
+        /// - **Reason**: `SubnetRemovalReason::EnactmentPeriod`
+        /// - **Rationale**: Owner missed the activation deadline
+        /// - **Returns**: `Ok(weight)` after cleanup
+        ///
+        /// ## Case 2: In Registration Period, Can't Activate
+        ///
+        /// - **Condition**: `!can_subnet_be_active && in_registration_period`
+        /// - **Action**: Return error (no removal)
+        /// - **Error**: `SubnetActivationConditionsNotMetYet`
+        /// - **Rationale**: Still time to accumulate resources, allow retry
+        /// - **User Action**: Add more nodes or delegate stake, retry later
+        ///
+        /// ## Case 3: In Enactment Period, Can't Activate
+        ///
+        /// - **Condition**: `!can_subnet_be_active && in_enactment_period`
+        /// - **Action**: Remove subnet
+        /// - **Reason**: Specific failure reason (MinReputation, MinSubnetNodes, or MinSubnetDelegateStake)
+        /// - **Rationale**: Grace period expired, subnet failed to meet requirements
+        /// - **Returns**: `Ok(weight)` after cleanup
+        ///
+        /// ## Case 4: Can Activate (Success Path)
+        ///
+        /// - **Condition**: `can_subnet_be_active && (in_registration_period || in_enactment_period)`
+        /// - **Action**: Activate subnet
+        /// - **Returns**: `Ok(weight)` after activation
+        ///
+        /// # Activation Process
+        ///
+        /// When activation succeeds, the following occurs:
+        ///
+        /// ## State Transitions
+        ///
+        /// 1. **Subnet State**: `SubnetState::Registered` → `SubnetState::Active`
+        /// 2. **Start Epoch**: Set to `current_epoch + 1` (consensus begins next epoch)
+        /// 3. **Total Active Subnets**: Incremented by 1
+        ///
+        /// ## Storage Cleanup (Temporary Registration Data)
+        ///
+        /// - `SubnetRegistrationEpoch` - Removed (no longer needed)
+        /// - `SubnetRegistrationInitialColdkeys` - Removed (whitelist not needed after activation)
+        /// - `InitialColdkeyData` - Removed (registration tracking data)
+        ///
+        /// ## Initialization of Active Subnet State
+        ///
+        /// - `LastSubnetDelegateStakeRewardsUpdate` - Set to current block
+        /// - `PreviousSubnetPauseEpoch` - Set to current epoch (for pause logic)
+        /// - `PrevSubnetActivationEpoch` - Set to current epoch (network-wide tracking)
+        ///
+        /// # Subnet Removal
+        ///
+        /// When a subnet is removed (Cases 1 or 3), `do_remove_subnet()` is called which:
+        ///
+        /// - Removes all subnet data and configuration
+        /// - Cleans up all registered nodes (see `clean_subnet_nodes`)
+        /// - Frees the epoch slot for reuse
+        /// - Emits `SubnetDeactivated` event with removal reason
+        ///
+        /// **Important**: Delegate stakers must unstake manually after removal as they won't receive rewards
+        ///
+        /// # Weight Accounting
+        ///
+        /// This function carefully tracks database reads/writes for proper weight calculation:
+        ///
+        /// - **Reads**: SubnetsData(1), SubnetRegistrationEpoch(2), MinSubnetRegistrationEpochs(1), others(2) = ~6+
+        /// - **Writes**: SubnetsData(1), TotalActiveSubnets(1), removal of 3 items, initialization of 3 items = 7
+        /// - **Additional**: Weight from `do_remove_subnet` if removal occurs
+        ///
+        /// # Events
+        ///
+        /// - **Success**: `SubnetActivated { subnet_id }`
+        /// - **Removal**: `SubnetDeactivated { subnet_id, reason }` (emitted by `do_remove_subnet`)
+        ///
+        /// # Errors
+        ///
+        /// - `InvalidSubnetId` - Subnet does not exist
+        /// - `SubnetActivatedAlready` - Subnet is already in Active or Paused state (not Registered)
+        /// - `MinSubnetRegistrationEpochsNotMet` - Too early to activate (before minimum registration period)
+        /// - `SubnetActivationConditionsNotMetYet` - Requirements not met but still in registration period (retry allowed)
+        ///
+        /// # Notes
+        ///
+        /// - This function can only be called by the owner by `activate_subnet()`
+        /// - Can be called multiple times during registration period (retries allowed)
+        /// - After successful activation, subnet enters consensus on the next epoch (`start_epoch + 1`)
+        /// - Removal is permanent - owner must re-register and pay registration cost again and restart the process
         ///
         pub fn do_activate_subnet(subnet_id: u32) -> DispatchResultWithPostInfo {
             let mut weight = Weight::zero();
@@ -7098,6 +7411,326 @@ pub mod pallet {
             weight_meter.consume(weight);
         }
 
+        /// Remove a subnet and clean up all associated storage
+        ///
+        /// This function permanently removes a subnet from the network, cleaning up all configuration,
+        /// node data, and associated storage. This is called when a subnet fails to meet activation
+        /// requirements or is explicitly removed by governance.
+        ///
+        /// # Arguments
+        ///
+        /// * `subnet_id` - The unique identifier of the subnet to remove
+        /// * `reason` - The reason for removal (see `SubnetRemovalReason`)
+        ///
+        /// # Removal Reasons
+        ///
+        /// ## Activation-Related Removals
+        ///
+        /// - **`EnactmentPeriod`**: Subnet owner missed the activation deadline (passed enactment period end)
+        /// - **`MinReputation`**: Subnet failed to maintain minimum reputation requirement
+        /// - **`MinSubnetNodes`**: Subnet failed to meet minimum node count (typically 3)
+        /// - **`MinSubnetDelegateStake`**: Insufficient delegate stake balance
+        ///
+        /// ## Operational Removals
+        ///
+        /// - **`MaxPauseEpochs`**: Subnet was paused for too long (exceeded maximum pause duration)
+        /// - **`NotInConsensus`**: Subnet consistently failed to achieve consensus
+        /// - **`LessThanMinNodes`**: Active node count dropped below minimum threshold
+        /// - **`ValidatorProposalAbsent`**: Validator failed to submit proposals consistently
+        ///
+        /// ## Governance Removals
+        ///
+        /// - **`Owner`**: Subnet owner chose to remove their subnet
+        /// - **`Collective`**: Governance collective voted to remove the subnet
+        ///
+        /// # Removal Process
+        ///
+        /// The subnet is removed in the following order:
+        ///
+        /// ## 1. Core Subnet Data (6 items)
+        ///
+        /// - `SubnetsData` - Core metadata (name, repo, description, state, etc.)
+        /// - `SubnetName` - Reverse lookup by name (uniqueness constraint)
+        /// - `SubnetRepo` - Reverse lookup by repository URL (uniqueness constraint)
+        /// - `SubnetOwner` - Subnet owner account
+        /// - `PendingSubnetOwner` - Pending ownership transfer (if any)
+        /// - `SubnetRegistrationEpoch` - Registration timestamp (if still registered)
+        ///
+        /// ## 2. Subnet Configuration Parameters (27 items)
+        ///
+        /// ### Operational Parameters
+        /// - `ChurnLimit` - Maximum nodes that can enter/exit per epoch
+        /// - `ChurnLimitMultiplier` - Churn limit scaling factor
+        /// - `SubnetNodeQueueEpochs` - Epochs nodes must wait in queue
+        /// - `IdleClassificationEpochs` - Epochs before marking nodes idle
+        /// - `IncludedClassificationEpochs` - Epochs for inclusion classification
+        /// - `QueueImmunityEpochs` - Protection period for queued nodes
+        /// - `MaxRegisteredNodes` - Maximum allowed registered nodes
+        /// - `TargetNodeRegistrationsPerEpoch` - Target registration rate
+        /// - `NodeBurnRateAlpha` - Registration cost decay parameter
+        /// - `CurrentNodeBurnRate` - Current dynamic registration cost
+        /// - `NodeRegistrationsThisEpoch` - Tracking counter for this epoch
+        ///
+        /// ### Stake Configuration
+        /// - `SubnetMinStakeBalance` - Minimum stake per node
+        /// - `SubnetMaxStakeBalance` - Maximum stake per node
+        /// - `SubnetDelegateStakeRewardsPercentage` - Delegate reward split
+        /// - `LastSubnetDelegateStakeRewardsUpdate` - Last reward distribution timestamp
+        ///
+        /// ### Registration Data (Temporary)
+        /// - `SubnetRegistrationInitialColdkeys` - Whitelisted node operators
+        /// - `InitialColdkeyData` - Registration tracking data
+        ///
+        /// ### Network Configuration
+        /// - `SubnetBootnodes` - P2P network entry points
+        /// - `SubnetBootnodeAccess` - Accounts allowed to update bootnodes
+        /// - `SubnetKeyTypes` - Allowed cryptographic key types
+        ///
+        /// ### Reputation System
+        /// - `SubnetReputation` - Overall subnet reputation score
+        /// - `MinSubnetNodeReputation` - Minimum required node reputation
+        /// - `SubnetNodeMinWeightDecreaseReputationThreshold` - Weight threshold for penalties
+        /// - `AbsentDecreaseReputationFactor` - Penalty for absent nodes
+        /// - `IncludedIncreaseReputationFactor` - Reward for included nodes
+        /// - `BelowMinWeightDecreaseReputationFactor` - Penalty for low-weight nodes
+        /// - `NonAttestorDecreaseReputationFactor` - Penalty for non-attesting nodes
+        /// - `NonConsensusAttestorDecreaseReputationFactor` - Penalty for incorrect attestations
+        /// - `ValidatorAbsentSubnetNodeReputationFactor` - Validator absence impact
+        /// - `ValidatorNonConsensusSubnetNodeReputationFactor` - Validator consensus failure impact
+        ///
+        /// ### State Tracking
+        /// - `PreviousSubnetPauseEpoch` - Last pause timestamp
+        /// - `EmergencySubnetNodeElectionData` - Emergency validator election state
+        ///
+        /// ## 3. Subnet Identifiers (2 items)
+        ///
+        /// - `SubnetIdFriendlyUid` - Human-readable ID mapping
+        /// - `FriendlyUidSubnetId` - Reverse lookup for friendly ID
+        ///
+        /// ## 4. Slot Assignment (3 items via `free_slot_of_subnet`)
+        ///
+        /// - `SubnetSlot` - Assigned epoch slot
+        /// - `SlotAssignment` - Reverse lookup (slot → subnet)
+        /// - `AssignedSlots` - Set of currently assigned slots (freed for reuse)
+        ///
+        /// ## 5. Active Subnet Counter
+        ///
+        /// - `TotalActiveSubnets` - Decremented if subnet was in Active state
+        ///
+        /// ## 6. All Node Data (via `clean_subnet_nodes`)
+        ///
+        /// Removes all subnet node data including:
+        /// - `SubnetNodesData` - All node metadata (cleared via prefix)
+        /// - `RegisteredSubnetNodesData` - Registration data (cleared via prefix)
+        /// - `TotalActiveSubnetNodes` - Active node counter
+        /// - `TotalSubnetNodes` - Total node counter
+        /// - `TotalSubnetNodeUids` - Node ID counter
+        /// - `TotalActiveNodes` - Global active node counter (decremented)
+        /// - `PeerIdSubnetNodeId` - Peer ID mappings (cleared via prefix)
+        /// - `BootnodePeerIdSubnetNodeId` - Bootnode peer mappings (cleared via prefix)
+        /// - `ClientPeerIdSubnetNodeId` - Client peer mappings (cleared via prefix)
+        /// - `BootnodeSubnetNodeId` - Bootnode node mappings (cleared via prefix)
+        /// - `UniqueParamSubnetNodeId` - Unique parameter tracking (cleared via prefix)
+        /// - `HotkeySubnetNodeId` - Hotkey to node ID mappings (cleared via prefix)
+        /// - `SubnetNodeIdHotkey` - Reverse hotkey mappings (cleared via prefix)
+        /// - `SubnetNodeReputation` - Individual node reputations (cleared via prefix)
+        /// - `SubnetNodeConsecutiveIncludedEpochs` - Inclusion streaks (cleared via prefix)
+        /// - `SubnetElectedValidator` - Validator election results (cleared via prefix)
+        /// - `NodeSlotIndex` - Slot index mappings (cleared via prefix)
+        /// - `SubnetNodeElectionSlots` - Election slot arrays
+        /// - `SubnetNodeQueue` - Node queue
+        /// - `TotalElectableNodes` - Global electable node counter (decremented)
+        /// - `TotalSubnetElectableNodes` - Subnet electable node counter
+        ///
+        /// # Important: Data NOT Removed
+        ///
+        /// ## Consensus Submission Data (Preserved)
+        ///
+        /// - **`SubnetConsensusSubmission`**: Historical consensus data is **NOT** removed
+        ///   - Preserves consensus history for auditing and analysis
+        ///   - Does not impact blockchain logic for active subnets
+        ///   - Can be queried for historical subnet performance
+        ///
+        /// ## Stake Data (Preserved - User Action Required)
+        ///
+        /// - **Node Stake Balances**: Individual node stakes are NOT automatically removed
+        ///   - Node operators must call `remove_stake()` to reclaim stake
+        ///   - Stake remains locked until manually unstaked
+        ///   - Enters unbonding period upon unstaking
+        ///
+        /// - **Delegate Stake Balances**: Delegate stakes are NOT automatically removed
+        ///   - Delegate stakers must call `remove_account_delegate_stake()` to reclaim stake
+        ///   - Important: No rewards will be earned after subnet removal
+        ///   - Users should monitor for subnet removals and unstake promptly
+        ///
+        /// - **Account Mappings**: Some account-related storage persists
+        ///   - `ColdkeyHotkeys` - Coldkey to hotkey relationships
+        ///   - `HotkeyOwner` - Hotkey ownership records
+        ///   - `AccountSubnetStake` - Stake balances by account
+        ///   - `TotalSubnetStake` - Total stake counters
+        ///   - Cleaned up when stake is removed to zero
+        ///
+        /// # Weight Calculation
+        ///
+        /// This function carefully accounts for database operations:
+        ///
+        /// - **Base Reads**: 2 (SubnetsData check + state check)
+        /// - **Base Writes**: 26 (core subnet data + configurations)
+        /// - **Conditional Writes**: +1 (FriendlyUidSubnetId if exists)
+        /// - **Slot Cleanup**: +1 read, +3 writes (via `free_slot_of_subnet`)
+        /// - **Active Counter**: +1 read, +1 write (if subnet was active)
+        /// - **Node Cleanup**: Variable (see `clean_subnet_nodes` - scales with node count)
+        ///
+        /// Total approximate weight: ~4 reads + ~30 writes + node cleanup weight
+        ///
+        /// # Events
+        ///
+        /// Emits `SubnetDeactivated` event with:
+        /// - `subnet_id` - The removed subnet identifier
+        /// - `reason` - The reason for removal (see `SubnetRemovalReason`)
+        ///
+        /// # Errors
+        ///
+        /// This function does not return errors. If the subnet doesn't exist, it returns
+        /// early with minimal weight accounting (1 read). This is safe because:
+        /// - Called from contexts that already validated subnet existence
+        /// - Idempotent - safe to call multiple times
+        /// - Weight is always returned for proper accounting
+        ///
+        /// # Usage Contexts
+        ///
+        /// This function is called from several contexts:
+        ///
+        /// ## Manual Removal (Immediate)
+        ///
+        /// ### 1. Owner Removal
+        /// - **Path**: `owner_deactivate_subnet` extrinsic → `do_owner_deactivate_subnet` → `do_remove_subnet`
+        /// - **Who**: Subnet owner only
+        /// - **Reason**: `SubnetRemovalReason::Owner`
+        /// - **When**: Any time owner chooses to shut down their subnet
+        ///
+        /// ### 2. Collective/Governance Removal
+        /// - **Path**: `collective_remove_subnet` extrinsic → `do_collective_remove_subnet` → `do_remove_subnet`
+        /// - **Who**: Governance collective (requires vote/approval)
+        /// - **Reason**: `SubnetRemovalReason::Collective`
+        /// - **When**: Governance decides subnet should be removed (e.g., malicious behavior, policy violation)
+        ///
+        /// ## Automatic Removal via Activation Process
+        ///
+        /// ### 3. Activation Failure During Enactment
+        /// - **Path**: `activate_subnet` extrinsic → `do_activate_subnet` → `do_remove_subnet`
+        /// - **Who**: Called by owner attempting to activate
+        /// - **Reason**: `SubnetRemovalReason::MinReputation`, `MinSubnetNodes`, or `MinSubnetDelegateStake`
+        /// - **When**: Owner attempts activation during enactment period but requirements not met
+        ///
+        /// ### 4. Missed Activation Deadline
+        /// - **Path**: `activate_subnet` extrinsic → `do_activate_subnet` → `do_remove_subnet`
+        /// - **Who**: Called by owner attempting to activate
+        /// - **Reason**: `SubnetRemovalReason::EnactmentPeriod`
+        /// - **When**: Owner attempts activation after enactment period has expired
+        ///
+        /// ## Automatic Removal via Epoch Preliminaries
+        ///
+        /// The `do_epoch_preliminaries` function runs at the start of each epoch and performs
+        /// several health checks. Removal is triggered via `try_do_remove_subnet` (which calls
+        /// this function with weight metering) in the following scenarios:
+        ///
+        /// ### 5. Enactment Period - Insufficient Nodes
+        /// - **State**: Subnet in `Registered` state, within enactment period
+        /// - **Condition**: `TotalActiveSubnetNodes < MinSubnetNodes` (typically < 3 nodes)
+        /// - **Reason**: `SubnetRemovalReason::MinSubnetNodes`
+        /// - **Rationale**: Even in grace period, must maintain minimum node count
+        /// - **Note**: Delegate stake is NOT checked during enactment (users can still stake)
+        ///
+        /// ### 6. Failed to Activate (Post-Enactment)
+        /// - **State**: Subnet in `Registered` state, past enactment period
+        /// - **Condition**: `epoch > registered_epoch + SubnetRegistrationEpochs + SubnetEnactmentEpochs`
+        /// - **Reason**: `SubnetRemovalReason::EnactmentPeriod`
+        /// - **Rationale**: Owner failed to activate subnet within allowed time window
+        ///
+        /// ### 7. Paused Too Long with Low Reputation
+        /// - **State**: Subnet in `Paused` state
+        /// - **Condition**:
+        ///   1. `start_epoch + MaxSubnetPauseEpochs < current_epoch` (paused beyond limit)
+        ///   2. Reputation decreased by `MaxPauseEpochsSubnetReputationFactor`
+        ///   3. Resulting reputation < `MinSubnetReputation`
+        /// - **Reason**: `SubnetRemovalReason::PauseExpired`
+        /// - **Rationale**: Subnet paused too long and reputation dropped too low
+        /// - **Note**: Reputation is decreased first, then checked; subnet may survive if reputation stays above minimum
+        ///
+        /// ### 8. Insufficient Delegate Stake (Active Subnets)
+        /// - **State**: Subnet in `Active` state
+        /// - **Condition**:
+        ///   1. `TotalSubnetDelegateStakeBalance < get_min_subnet_delegate_stake_balance(subnet_id)`
+        ///   2. `epoch % DelegateStakeSubnetRemovalInterval == 0` (only on designated epochs)
+        /// - **Reason**: `SubnetRemovalReason::MinSubnetDelegateStake`
+        /// - **Rationale**: Insufficient community stake support, checked periodically to give time to recover
+        /// - **Note**: Not checked every epoch - only on interval epochs to allow recovery time
+        ///
+        /// ### 9. Low Reputation (Active Subnets)
+        /// - **State**: Subnet in `Active` state
+        /// - **Condition**: `SubnetReputation < MinSubnetReputation`
+        /// - **Reason**: `SubnetRemovalReason::MinReputation`
+        /// - **Rationale**: Subnet consistently underperforming or failing health checks
+        /// - **Note**: Reputation can be decreased by multiple factors:
+        ///   - Low electable node count (decreases reputation but doesn't immediately remove)
+        ///   - Consensus failures
+        ///   - Validator absence
+        ///   - Other runtime logic
+        ///
+        /// ### 10. Excess Subnets (Lowest Stake Removal)
+        /// - **State**: Subnet in `Active` state
+        /// - **Condition**:
+        ///   1. `total_subnets > MaxSubnets`
+        ///   2. `epoch % MaxSubnetRemovalInterval == 0` (designated removal epochs)
+        ///   3. `epoch >= PrevSubnetActivationEpoch + MinSubnetRemovalInterval` (cooldown period)
+        ///   4. Subnet has lowest `TotalSubnetDelegateStakeBalance` among all active subnets
+        /// - **Reason**: `SubnetRemovalReason::MaxSubnets`
+        /// - **Rationale**: Network at capacity, least-supported subnet removed
+        /// - **Note**: Network allows `MaxSubnets + 1` to facilitate rotation; weakest removed periodically
+        ///
+        /// ## Epoch Preliminaries Removal Logic Summary
+        ///
+        /// ```text
+        /// For each subnet:
+        ///   IF state == Registered:
+        ///     IF in registration period → Skip (no checks)
+        ///     IF in enactment period:
+        ///       IF active_nodes < min → Remove (MinSubnetNodes)
+        ///     IF past enactment period → Remove (EnactmentPeriod)
+        ///   
+        ///   IF state == Paused:
+        ///     IF paused_too_long:
+        ///       Decrease reputation
+        ///       IF reputation < min → Remove (PauseExpired)
+        ///   
+        ///   IF state == Active:
+        ///     IF delegate_stake < min AND is_dstake_epoch → Remove (MinSubnetDelegateStake)
+        ///     IF electable_nodes < min → Decrease reputation (NOT removed)
+        ///     IF reputation < min → Remove (MinReputation)
+        ///     IF excess_subnets AND is_removal_epoch AND can_remove → Track for removal
+        ///
+        /// IF excess subnets:
+        ///   Remove subnet with lowest delegate stake (MaxSubnets)
+        /// ```
+        ///
+        /// # Post-Removal Actions Required
+        ///
+        /// After a subnet is removed, users must take action:
+        ///
+        /// 1. **Node Operators**: Call `remove_stake()` to unstake and reclaim funds
+        /// 2. **Delegate Stakers**: Call `remove_account_delegate_stake()` to reclaim delegate stake
+        /// 3. **Owner**: Can re-register subnet (must pay registration cost again)
+        ///
+        /// # Notes
+        ///
+        /// - Removal is **permanent** and **immediate** (no grace period)
+        /// - Subnet ID can be reused after sufficient time
+        /// - Epoch slot is freed for assignment to new subnets
+        /// - Historical consensus data is preserved for analysis
+        /// - Total subnet count is not decremented (only active count)
+        /// - Removal during registration period returns all registration costs (governance decision)
+        ///
         pub fn do_remove_subnet(subnet_id: u32, reason: SubnetRemovalReason) -> Weight {
             let mut weight = Weight::zero();
             let db_weight = T::DbWeight::get();
@@ -7234,7 +7867,7 @@ pub mod pallet {
             weight_acc.add_clear_prefix(bootnode_subnet_node_id_removed.unique);
 
             let subnet_node_unique_param_removed =
-                SubnetNodeUniqueParam::<T>::clear_prefix(subnet_id, u32::MAX, None);
+                UniqueParamSubnetNodeId::<T>::clear_prefix(subnet_id, u32::MAX, None);
             weight_acc.add_clear_prefix(subnet_node_unique_param_removed.unique);
 
             let hotkey_subnet_node_id_removed =
@@ -7300,6 +7933,285 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Register a new subnet node (validator/miner) to a subnet
+        ///
+        /// This function registers a new node to a subnet, enabling it to participate in consensus,
+        /// validation, or compute work. The node must meet numerous requirements and pay a dynamic
+        /// burn fee. The registration process differs depending on whether the subnet is in the
+        /// registration period (auto-activation) or active state (queued entry).
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The coldkey account registering the node
+        /// * `subnet_id` - The subnet to register the node to
+        /// * `hotkey` - Unique hotkey account for this node (must be network-wide unique)
+        /// * `peer_id` - Libp2p peer ID for P2P communication
+        /// * `bootnode_peer_id` - Libp2p peer ID for bootnode connections
+        /// * `client_peer_id` - Libp2p peer ID for client connections
+        /// * `bootnode` - Optional bootnode multiaddr for network discovery
+        /// * `delegate_reward_rate` - Percentage of rewards shared with delegators (0-100%)
+        /// * `stake_to_be_added` - Initial stake amount (must meet minimum requirements)
+        /// * `unique` - Optional unique parameter for node identification (subnet-wide unique)
+        /// * `non_unique` - Optional non-unique parameter for node metadata
+        /// * `max_burn_amount` - Maximum registration burn fee willing to pay (fee change protection)
+        ///
+        /// # Registration Requirements
+        ///
+        /// ## 1. Subnet State Validation
+        ///
+        /// - **Valid Subnet**: Subnet ID must exist in `SubnetsData`
+        /// - **Not Paused**: Subnet must not be in `Paused` state
+        /// - **Valid Registration Window**: Must NOT be in enactment period
+        ///   - ✅ **Allowed**: Registration period (`SubnetState::Registered`, before enactment)
+        ///   - ✅ **Allowed**: Active state (`SubnetState::Active`)
+        ///   - ❌ **Blocked**: Enactment period (checked via `is_subnet_in_enactment`)
+        ///   - **Rationale**: Enactment is grace period for delegate staking only, no new nodes
+        ///
+        /// ## 2. Coldkey and Hotkey Validation
+        ///
+        /// ### Distinct Keys
+        /// - **Check**: `coldkey != hotkey`
+        /// - **Error**: `ColdkeyMatchesHotkey`
+        /// - **Rationale**: Security - keys must have separate purposes. Keep all subnets isolated
+        ///
+        /// ### Unique Hotkey (Network-Wide)
+        /// - **Check**: Hotkey must not exist in `HotkeyOwner` (network-wide uniqueness)
+        /// - **Error**: `HotkeyHasOwner`
+        /// - **Rationale**: One hotkey can only operate one node across entire network
+        ///
+        /// ### Not Already Registered to Coldkey
+        /// - **Check**: Hotkey not in `ColdkeyHotkeys[coldkey]`
+        /// - **Error**: `HotkeyAlreadyRegisteredToColdkey`
+        /// - **Note**: Redundant after network-wide check, but defensive
+        ///
+        /// ### No Existing Stake
+        /// - **Check**: `AccountSubnetStake[hotkey, subnet_id] == 0`
+        /// - **Error**: `MustUnstakeToRegister`
+        /// - **Note**: Redundant after hotkey uniqueness check
+        ///
+        /// ## 3. Peer ID Validation
+        ///
+        /// ### All Peer IDs Must Be Unique
+        /// - **Check**: `peer_id != bootnode_peer_id != client_peer_id`
+        /// - **Error**: `PeerIdsMustBeUnique`
+        /// - **Rationale**: Each peer ID serves different network functions
+        ///
+        /// ### Loosely validate Libp2p Peer ID Format
+        /// - **Checks**: All three peer IDs validated via `validate_peer_id()`
+        /// - **Errors**: `InvalidPeerId`, `InvalidBootnodePeerId`, `InvalidClientPeerId`
+        /// - **Format**: Must be valid base58-encoded libp2p peer IDs
+        ///
+        /// ### Subnet-Wide Peer ID Uniqueness
+        /// - **Checks**: Each peer ID must not exist in subnet via:
+        ///   - `PeerIdSubnetNodeId[subnet_id, peer_id]` - Standard peer ID
+        ///   - `BootnodePeerIdSubnetNodeId[subnet_id, bootnode_peer_id]` - Bootnode peer ID
+        ///   - `ClientPeerIdSubnetNodeId[subnet_id, client_peer_id]` - Client peer ID
+        /// - **Errors**: `PeerIdExist`, `BootnodePeerIdExist`, `ClientPeerIdExist`
+        /// - **Rationale**: Prevents impersonation and network conflicts within subnet
+        ///
+        /// ### Bootnode Uniqueness (If Provided)
+        /// - **Check**: If `bootnode` is `Some`, must not exist in `BootnodeSubnetNodeId[subnet_id]`
+        /// - **Error**: `BootnodeExist`
+        /// - **Rationale**: Each bootnode multiaddr must be unique within subnet
+        ///
+        /// ## 4. Registration Whitelist (During Registration Period Only)
+        ///
+        /// - **When**: Only checked if `SubnetRegistrationInitialColdkeys` exists (subnet in registration)
+        /// - **Condition 1**: Coldkey must be in the whitelist
+        ///   - **Error**: `ColdkeyRegistrationWhitelist` if not whitelisted
+        /// - **Condition 2**: Coldkey must not have exhausted registration slots
+        ///   - **Check**: `InitialColdkeyData[subnet_id][coldkey] < whitelist_max_registrations`
+        ///   - **Error**: `MaxRegisteredNodes` if quota exceeded
+        /// - **Post-Activation**: Whitelist removed, check skipped (anyone can register)
+        ///
+        /// ## 5. Subnet Capacity
+        ///
+        /// - **Check**: `SubnetNodeQueue.len() <= MaxRegisteredNodes`
+        /// - **Error**: `MaxRegisteredNodes`
+        /// - **Rationale**: Subnet has maximum node capacity to maintain performance
+        ///
+        /// ## 6. Unique Parameter Validation (If Provided)
+        ///
+        /// - **Check**: If `unique` is `Some`, must not exist in `UniqueParamSubnetNodeId[subnet_id]`
+        /// - **Error**: `SubnetNodeUniqueParamTaken`
+        /// - **Rationale**: Allows subnets to enforce custom uniqueness constraints (e.g., unique IP addresses)
+        ///
+        /// # Registration Cost (Burn Fee)
+        ///
+        /// ## Dynamic Pricing Mechanism
+        ///
+        /// - **Calculation**: `calculate_burn_amount(subnet_id)`
+        ///   - Uses exponential decay based on registration rate
+        ///   - Formula: `current_rate * alpha^(-registrations_this_epoch / target_rate)`
+        ///   - `NodeBurnRateAlpha` - Decay parameter (0-100%, typically ~50%)
+        ///   - `TargetNodeRegistrationsPerEpoch` - Target registration rate
+        ///   - `NodeRegistrationsThisEpoch` - Counter for this epoch
+        ///
+        /// - **Slippage Protection**: `burn_amount <= max_burn_amount`
+        ///   - **Error**: `MaxBurnAmountExceeded` if cost exceeds tolerance
+        ///   - Protects against front-running and rapid cost changes
+        ///
+        /// - **Payment**: Tokens permanently burned (sent to zero address)
+        ///   - **Error**: `BalanceBurnError` if coldkey lacks funds
+        ///
+        /// - **Recording**: Registration counted via `record_registration()` for next epoch's pricing
+        ///
+        /// # Stake Requirements
+        ///
+        /// - **Minimum Stake**: `stake_to_be_added >= SubnetMinStakeBalance[subnet_id]`
+        /// - **Maximum Stake**: `stake_to_be_added <= SubnetMaxStakeBalance[subnet_id]`
+        /// - **Process**: Calls `do_add_stake()` which:
+        ///   - Transfers tokens from coldkey to node stake account
+        ///   - Validates stake amount against subnet limits
+        ///   - Updates `AccountSubnetStake`, `TotalSubnetStake`, and related counters
+        /// - **Error**: Propagated from `do_add_stake` (e.g., insufficient balance, stake out of range)
+        ///
+        /// # Delegate Reward Rate
+        ///
+        /// - **Range**: 0-100% (`0` to `percentage_factor_as_u128()`)
+        /// - **Purpose**: Percentage of node rewards shared with delegators
+        /// - **Timestamp**: `last_delegate_reward_rate_update` set to current block if rate > 0
+        ///   - Cooldown period may apply for rate changes (enforced in update function)
+        ///
+        /// # Registration Process
+        ///
+        /// ## Storage Updates (All Registrations)
+        ///
+        /// The following storage is initialized for every node:
+        ///
+        /// ### Node Identity
+        /// - `TotalSubnetNodeUids[subnet_id]` - Incremented to generate unique node ID
+        /// - `HotkeySubnetNodeId[subnet_id, hotkey]` - Hotkey → node ID mapping
+        /// - `SubnetNodeIdHotkey[subnet_id, node_id]` - Reverse mapping (node ID → hotkey)
+        /// - `HotkeySubnetId[hotkey]` - Hotkey → subnet ID (for cross-subnet operations)
+        /// - `HotkeyOwner[hotkey]` - Hotkey → coldkey ownership
+        /// - `ColdkeyHotkeys[coldkey]` - Set of all hotkeys owned by coldkey (updated)
+        /// - `ColdkeySubnetNodes[coldkey][subnet_id]` - Set of node IDs owned by coldkey in subnet
+        ///
+        /// ### Peer ID Mappings
+        /// - `PeerIdSubnetNodeId[subnet_id, peer_id]` - Peer ID → node ID
+        /// - `BootnodePeerIdSubnetNodeId[subnet_id, bootnode_peer_id]` - Bootnode peer ID → node ID
+        /// - `ClientPeerIdSubnetNodeId[subnet_id, client_peer_id]` - Client peer ID → node ID
+        /// - `BootnodeSubnetNodeId[subnet_id, bootnode]` - Bootnode multiaddr → node ID (if provided)
+        ///
+        /// ### Custom Parameters
+        /// - `UniqueParamSubnetNodeId[subnet_id, unique]` - Unique param → node ID (if provided)
+        ///
+        /// ### Counters
+        /// - `TotalSubnetNodes[subnet_id]` - Incremented
+        /// - `TotalNodes` - Global counter incremented
+        ///
+        /// ## Registration Period Behavior (Auto-Activation)
+        ///
+        /// **When**: `subnet.state == SubnetState::Registered`
+        ///
+        /// - **Node State**: Immediately activated (no queue)
+        /// - **Process**: Calls `perform_activate_subnet_node()` which:
+        ///   - Sets node classification to `Active`
+        ///   - Inserts into `SubnetNodesData` (active nodes)
+        ///   - Adds to `SubnetNodeElectionSlots` (validator election pool)
+        ///   - Updates `TotalActiveSubnetNodes`, `TotalSubnetElectableNodes`
+        ///   - Emits `SubnetNodeActivated` event
+        /// - **Whitelist Counter**: `InitialColdkeyData[subnet_id][coldkey]` incremented
+        /// - **Rationale**: Registration period = bootstrapping phase, nodes needed ASAP
+        ///
+        /// ## Active State Behavior (Queued Entry)
+        ///
+        /// **When**: `subnet.state == SubnetState::Active`
+        ///
+        /// - **Node State**: Enters queue as `Registered` (not active yet)
+        /// - **Classification**: `SubnetNodeClass::Registered`
+        /// - **Start Epoch**: `subnet_epoch + 1` (waits at least 1 epoch)
+        /// - **Queue**: Added to `SubnetNodeQueue[subnet_id]`
+        /// - **Storage**: Inserted into `RegisteredSubnetNodesData[subnet_id, node_id]`
+        /// - **Emits**: `SubnetNodeRegistered` event (NOT activated yet)
+        /// - **Activation**: Must wait for:
+        ///   1. Queue immunity period (`QueueImmunityEpochs`)
+        ///   2. Available election slots
+        ///   3. Meets activation criteria (via churn logic in epoch processing)
+        /// - **Rationale**: Active subnets enforce orderly entry to prevent disruption
+        ///
+        /// # Storage Cleanup
+        ///
+        /// - **`clean_coldkey_subnet_nodes(coldkey)`**: Removes stale node references for coldkey
+        ///   - Cleans up `ColdkeySubnetNodes` for nodes that no longer exist
+        ///   - Ensures data consistency
+        ///
+        /// # Events
+        ///
+        /// ## Registration Period
+        /// - `SubnetNodeActivated { subnet_id, subnet_node_id, coldkey, hotkey, data }`
+        ///   - Emitted via `perform_activate_subnet_node`
+        ///
+        /// ## Active State
+        /// - `SubnetNodeRegistered { subnet_id, subnet_node_id, coldkey, hotkey, data }`
+        ///   - Node queued, not yet active
+        ///
+        /// # Errors
+        ///
+        /// ## Subnet Validation
+        /// - `InvalidSubnetId` - Subnet does not exist
+        /// - `SubnetIsPaused` - Subnet is paused (cannot accept new nodes)
+        /// - `SubnetMustBeRegisteringOrActivated` - In enactment period (registration blocked)
+        ///
+        /// ## Key Validation
+        /// - `ColdkeyMatchesHotkey` - Coldkey and hotkey must be different
+        /// - `HotkeyHasOwner` - Hotkey already in use (network-wide)
+        /// - `HotkeyAlreadyRegisteredToColdkey` - Hotkey already owned by this coldkey
+        ///
+        /// ## Peer ID Validation
+        /// - `PeerIdsMustBeUnique` - Peer IDs must be distinct from each other
+        /// - `InvalidPeerId` / `InvalidBootnodePeerId` / `InvalidClientPeerId` - Invalid libp2p format
+        /// - `PeerIdExist` / `BootnodePeerIdExist` / `ClientPeerIdExist` - Peer ID already used in subnet
+        /// - `BootnodeExist` - Bootnode multiaddr already used in subnet
+        ///
+        /// ## Capacity and Whitelist
+        /// - `ColdkeyRegistrationWhitelist` - Coldkey not whitelisted (registration period only)
+        /// - `MaxRegisteredNodes` - Subnet at capacity OR coldkey exhausted whitelist quota
+        ///
+        /// ## Unique Parameters
+        /// - `SubnetNodeUniqueParamTaken` - Unique parameter already in use
+        ///
+        /// ## Financial
+        /// - `MaxBurnAmountExceeded` - Burn cost exceeds slippage tolerance
+        /// - `BalanceBurnError` - Insufficient balance to pay burn fee
+        /// - `MustUnstakeToRegister` - Hotkey has existing stake (should be impossible)
+        ///
+        /// ## Staking (from do_add_stake)
+        /// - `StakeAmountBelowMinimum` - Stake below `SubnetMinStakeBalance`
+        /// - `StakeAmountExceedsMaximum` - Stake exceeds `SubnetMaxStakeBalance`
+        /// - `InsufficientBalance` - Coldkey lacks funds for stake
+        ///
+        /// # Important Notes
+        ///
+        /// ## Registration vs Activation
+        /// - **Registration Period**: Nodes immediately active (bootstrap phase)
+        /// - **Active State**: Nodes enter queue, activated later (orderly entry)
+        ///
+        /// ## Queue Activation (Active Subnets)
+        /// Queued nodes are activated during epoch processing based on:
+        /// - **Churn Limit**: Maximum nodes entering per epoch (`ChurnLimit`)
+        /// - **Queue Immunity**: Protection period (`QueueImmunityEpochs`)
+        /// - **Election Slots**: Available validator slots
+        /// - **Queue Order**: FIFO with immunity considerations
+        ///
+        /// ## Burn Fee Dynamics
+        /// - Cost increases as more nodes register in current epoch
+        /// - Cost decays exponentially each epoch based on actual vs target registrations
+        /// - Prevents spam while allowing legitimate growth
+        ///
+        /// ## Peer ID Security
+        /// - Subnet-wide uniqueness prevents impersonation
+        /// - Different peer IDs for different network functions (standard, bootnode, client)
+        /// - Signature verification should be used for additional security
+        ///
+        /// ## Coldkey Node Limits
+        /// - During registration: Limited by whitelist quota
+        /// - Post-activation: No explicit limit, but constrained by:
+        ///   - Subnet capacity (`MaxRegisteredNodes`)
+        ///   - Economic feasibility (stake requirements × number of nodes)
+        ///   - Queue wait times
+        ///
         pub fn do_register_subnet_node(
             origin: OriginFor<T>,
             subnet_id: u32,
@@ -7369,26 +8281,21 @@ pub mod pallet {
             //     and if the coldkey hasn't registered too many nodes
             // There must be SubnetRegistrationInitialColdkeys if not active
             // `SubnetRegistrationInitialColdkeys` is removed on activation
-            match SubnetRegistrationInitialColdkeys::<T>::try_get(subnet_id) {
-                Ok(map) => {
-                    // Check if coldkey exists in the mapping
-                    if let Some(&max_registrations) = map.get(&coldkey) {
-                        let current_registrations = InitialColdkeyData::<T>::get(subnet_id)
-                            .and_then(|map| map.get(&coldkey).copied())
-                            .unwrap_or(0);
+            if let Some(coldkey_map) = SubnetRegistrationInitialColdkeys::<T>::get(subnet_id) {
+                if let Some(&max_registrations) = coldkey_map.get(&coldkey) {
+                    let current_registrations = InitialColdkeyData::<T>::get(subnet_id)
+                        .and_then(|map| map.get(&coldkey).copied())
+                        .unwrap_or(0);
 
-                        ensure!(
-                            current_registrations < max_registrations,
-                            Error::<T>::MaxRegisteredNodes
-                        );
-                    } else {
-                        // Coldkey doesn't exist in the mapping
-                        return Err(Error::<T>::ColdkeyRegistrationWhitelist.into());
-                    }
+                    ensure!(
+                        current_registrations < max_registrations,
+                        Error::<T>::MaxRegisteredNodes
+                    );
+                } else {
+                    // Coldkey doesn't exist in the mapping
+                    return Err(Error::<T>::ColdkeyRegistrationWhitelist.into());
                 }
-                // Subnet is not registered, ignore initial coldkeys
-                Err(()) => (),
-            };
+            }
 
             // Ensure there are registered node slots available
             ensure!(
@@ -7492,10 +8399,10 @@ pub mod pallet {
             // [here]
             if let Some(unique_param) = unique.clone() {
                 ensure!(
-                    !SubnetNodeUniqueParam::<T>::contains_key(subnet_id, &unique_param),
+                    !UniqueParamSubnetNodeId::<T>::contains_key(subnet_id, &unique_param),
                     Error::<T>::SubnetNodeUniqueParamTaken
                 );
-                SubnetNodeUniqueParam::<T>::insert(subnet_id, &unique_param, subnet_node_id);
+                UniqueParamSubnetNodeId::<T>::insert(subnet_id, &unique_param, subnet_node_id);
             }
             HotkeySubnetNodeId::<T>::insert(subnet_id, &hotkey, subnet_node_id);
 
@@ -7566,7 +8473,6 @@ pub mod pallet {
             if subnet.state == SubnetState::Registered {
                 // Activate subnet node automatically
                 Self::perform_activate_subnet_node(
-                    coldkey.clone(),
                     subnet_id,
                     subnet.state,
                     subnet_node,
@@ -7604,74 +8510,85 @@ pub mod pallet {
         /// This should only be called if the subnet is in registration
         /// when a node is registering to the subnet
         pub fn perform_activate_subnet_node(
-            coldkey: T::AccountId,
             subnet_id: u32,
             subnet_state: SubnetState,
             mut subnet_node: SubnetNode<T::AccountId>,
             subnet_epoch: u32,
         ) -> DispatchResult {
+            // We're about to call `insert_node_into_election_slot`. We must always check
+            // max subnet nodes is not breached when calling this.
             ensure!(
                 TotalActiveSubnetNodes::<T>::get(subnet_id) < MaxSubnetNodes::<T>::get(),
                 Error::<T>::MaxRegisteredNodes
             );
 
-            // Default use if subnet is active and not currently registering
-            // --- If subnet activated, activate the node starting at `Idle`
-            subnet_node.classification.node_class = SubnetNodeClass::Idle;
-            // --- Increase subnet_epoch by one to ensure node starts on a fresh subnet_epoch unless subnet is still registering
-            subnet_node.classification.start_epoch = subnet_epoch + 1;
-
-            // --- If subnet in registration, activate node at `Validator` to start off subnet consensus
-            // --- Initial nodes before activation are entered as ``Validator`` nodes
-            // They initiate the first consensus subnet_epoch and are responsible for increasing classifications
-            // of other nodes that come in post activation
-            if subnet_state == SubnetState::Registered {
-                subnet_node.classification.node_class = SubnetNodeClass::Validator;
-                // --- Start node on current subnet_epoch for the next era
-                subnet_node.classification.start_epoch = subnet_epoch;
-
-                // --- Insert into election slot if entering as Validator class
-                // The only other way to enter the election slots is by being graduated by consensus
-                // This should not be possible due to registration checks max subnet nodes
-                ensure!(
-                    Self::insert_node_into_election_slot(subnet_id, subnet_node.id),
-                    Error::<T>::ElectionSlotInsertFail
-                );
-            }
-
-            // --- Enter node into the Idle class
-            SubnetNodesData::<T>::insert(subnet_id, subnet_node.id, &subnet_node);
-            // Increase total active nodes in subnet
-            TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| *n += 1);
-
-            // Increase total active nodes
-            TotalActiveNodes::<T>::mutate(|n: &mut u32| *n += 1);
-
-            ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-                rep.lifetime_node_count = rep.lifetime_node_count.saturating_add(1);
-                rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
-            });
-
-            Self::deposit_event(Event::SubnetNodeActivated {
-                subnet_id: subnet_id,
-                subnet_node_id: subnet_node.id,
-            });
+            // This can only return false if electrion slot insertion fails
+            ensure!(
+                Self::do_activate_subnet_node_v2(
+                    &mut WeightMeter::new(),
+                    subnet_id,
+                    subnet_state,
+                    subnet_node,
+                    subnet_epoch,
+                    false
+                ),
+                Error::<T>::ElectionSlotInsertFail
+            );
 
             Ok(())
         }
 
-        // This function should only ever be called by `emission_step` if:
-        // - the subnet is already activated
-        // - after the validator already elected on current epoch
-        // - max nodes is checked and there is room to activate a node
-        pub fn do_activate_subnet_node(
+        /// Activates a subnet node, transitioning it from a registered state to an active state.
+        ///
+        /// This function handles the logic for moving a node from the `RegisteredSubnetNodesData`
+        /// storage to the `SubnetNodesData` storage, effectively making it an active participant
+        /// in the subnet. It updates various counters and reputation metrics.
+        ///
+        /// # Logic
+        ///
+        /// 1. **Validation**: Checks if the subnet state and queue flag combination is valid.
+        /// 2. **Weight Check**: Verifies if there is enough weight remaining to perform the operation.
+        /// 3. **Queue Handling**: If called from the queue, ensures the node is in the `Registered` class.
+        /// 4. **State Transition**:
+        ///    - Moves the node data from `RegisteredSubnetNodesData` to `SubnetNodesData`.
+        ///    - Sets the node class to `Idle` initially.
+        ///    - If the subnet is in the `Registered` state and not queued, it attempts to promote
+        ///      the node to `Validator` class and insert it into an election slot.
+        /// 5. **Counters**: Updates `TotalActiveSubnetNodes`, `TotalActiveNodes`, and `ColdkeyReputation`.
+        /// 6. **Event**: Deposits a `SubnetNodeActivated` event.
+        ///
+        /// # Parameters
+        ///
+        /// * `weight_meter` - WeightMeter reference to track execution weight.
+        /// * `subnet_id` - ID of the subnet the node is activating on.
+        /// * `subnet_state` - Current state of the subnet.
+        /// * `subnet_node` - The node data to activate.
+        /// * `subnet_epoch` - The current subnet epoch.
+        /// * `queue` - Whether this activation is being processed from the queue.
+        ///             If `true`, the node is coming from the queue.
+        ///             If `false`, it's a direct activation (e.g. during subnet registration phase).
+        ///
+        /// # Returns
+        ///
+        /// * `bool` - `true` if activation was successful, `false` otherwise.
+        pub fn do_activate_subnet_node_v2(
             weight_meter: &mut WeightMeter,
             subnet_id: u32,
+            subnet_state: SubnetState,
             mut subnet_node: SubnetNode<T::AccountId>,
             subnet_epoch: u32,
+            queue: bool,
         ) -> bool {
             let mut weight = Weight::zero();
             let db_weight = T::DbWeight::get();
+
+            // These combination should never be called
+            if subnet_state == SubnetState::Registered && queue
+                || subnet_state == SubnetState::Active && !queue
+                || subnet_state == SubnetState::Paused
+            {
+                return false;
+            }
 
             // writes:
             // RegisteredSubnetNodesData
@@ -7686,21 +8603,34 @@ pub mod pallet {
                 return false;
             }
 
-            // --- Remove from RegisteredSubnetNodesData
-            if subnet_node.classification.node_class == SubnetNodeClass::Registered {
-                RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node.id);
-                // Default use if subnet is active and not currently registering
-                // --- If subnet activated, activate the node starting at `Idle`
-                subnet_node.classification.node_class = SubnetNodeClass::Idle;
-            } else {
-                // Redundant
+            if queue && subnet_node.classification.node_class != SubnetNodeClass::Registered {
                 // Because each queued node is always `SubnetNodeClass::Registered`
                 // return true and pop them out of the queue
                 return true;
-            };
+            }
 
+            // Try to take the RegisteredSubnetNodesData
+            weight = weight.saturating_add(db_weight.reads_writes(1, 1));
+            RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node.id);
+
+            // Default use if subnet is active and not currently registering
+            // --- If subnet activated, activate the node starting at `Idle`
+            subnet_node.classification.node_class = SubnetNodeClass::Idle;
             // --- Increase subnet_epoch by one to ensure node starts on a fresh subnet_epoch unless subnet is still registering
             subnet_node.classification.start_epoch = subnet_epoch + 1;
+
+            if subnet_state == SubnetState::Registered && !queue {
+                subnet_node.classification.node_class = SubnetNodeClass::Validator;
+                // --- Start node on current subnet_epoch for the next era
+                subnet_node.classification.start_epoch = subnet_epoch;
+
+                // --- Insert into election slot if entering as Validator class
+                // The only other way to enter the election slots is by being graduated by consensus
+                // This should not be possible due to registration checks max subnet nodes
+                if !Self::insert_node_into_election_slot(subnet_id, subnet_node.id) {
+                    return false;
+                }
+            }
 
             // --- Insert new active node
             SubnetNodesData::<T>::insert(subnet_id, subnet_node.id, &subnet_node);
@@ -7718,7 +8648,15 @@ pub mod pallet {
                 rep.total_active_nodes = rep.total_active_nodes.saturating_add(1);
             });
 
-            weight_meter.consume(db_weight.reads_writes(5, 1));
+            // (r/w)
+            // TotalActiveSubnetNodes
+            // TotalActiveNodes
+            // ColdkeyReputation
+            // (r)
+            // HotkeyOwner
+            // (w)
+            // SubnetNodesData
+            weight_meter.consume(db_weight.reads_writes(4, 4));
 
             Self::deposit_event(Event::SubnetNodeActivated {
                 subnet_id: subnet_id,

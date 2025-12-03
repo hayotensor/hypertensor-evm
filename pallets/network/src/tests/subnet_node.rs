@@ -8,11 +8,11 @@ use crate::{
     MaxRegisteredNodes, MaxRewardRateDecrease, MaxSubnetNodes, MaxSubnets, MinSubnetMinStake,
     MinSubnetNodes, NodeRewardRateUpdatePeriod, NodeSlotIndex, PeerIdSubnetNodeId,
     RegisteredSubnetNodesData, SubnetElectedValidator, SubnetMinStakeBalance, SubnetName,
-    SubnetNodeClass, SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeQueueEpochs,
-    SubnetNodeUniqueParam, SubnetNodesData, SubnetOwner, SubnetPauseCooldownEpochs,
-    SubnetRegistrationEpochs, SubnetState, TotalActiveNodes, TotalActiveSubnetNodes,
-    TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake, TotalSubnetElectableNodes,
-    TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
+    SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeElectionSlots,
+    SubnetNodeIdHotkey, SubnetNodeQueueEpochs, UniqueParamSubnetNodeId, SubnetNodesData, SubnetOwner,
+    SubnetPauseCooldownEpochs, SubnetRegistrationEpochs, SubnetState, TotalActiveNodes,
+    TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake,
+    TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -4210,7 +4210,7 @@ fn test_update_unique() {
 
         // sanity check
         assert_eq!(
-            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            UniqueParamSubnetNodeId::<Test>::try_get(subnet_id, &bounded_unique),
             Err(())
         );
 
@@ -4233,7 +4233,7 @@ fn test_update_unique() {
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
-        let unique_owner_id = SubnetNodeUniqueParam::<Test>::get(subnet_id, &bounded_unique);
+        let unique_owner_id = UniqueParamSubnetNodeId::<Test>::get(subnet_id, &bounded_unique);
         assert_eq!(subnet_node_id, unique_owner_id);
 
         // Allow same parameter if owner
@@ -4288,14 +4288,14 @@ fn test_update_unique() {
 
         // ensure old deletes
         assert_eq!(
-            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            UniqueParamSubnetNodeId::<Test>::try_get(subnet_id, &bounded_unique),
             Err(())
         );
 
         // new
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.unique, Some(new_bounded_unique.clone()));
-        let unique_owner_id = SubnetNodeUniqueParam::<Test>::get(subnet_id, &new_bounded_unique);
+        let unique_owner_id = UniqueParamSubnetNodeId::<Test>::get(subnet_id, &new_bounded_unique);
         assert_eq!(subnet_node_id, unique_owner_id);
     })
 }
@@ -4333,7 +4333,7 @@ fn test_update_unique_to_none() {
 
         // sanity check
         assert_eq!(
-            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            UniqueParamSubnetNodeId::<Test>::try_get(subnet_id, &bounded_unique),
             Err(())
         );
 
@@ -4347,7 +4347,7 @@ fn test_update_unique_to_none() {
 
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
         assert_eq!(subnet_node.unique, Some(bounded_unique.clone()));
-        let unique_owner_id = SubnetNodeUniqueParam::<Test>::get(subnet_id, &bounded_unique);
+        let unique_owner_id = UniqueParamSubnetNodeId::<Test>::get(subnet_id, &bounded_unique);
         assert_eq!(subnet_node_id, unique_owner_id);
 
         // Allow same parameter if owner
@@ -4368,7 +4368,7 @@ fn test_update_unique_to_none() {
         assert_eq!(subnet_node.unique, None);
         // Old unique parameter should be removed from storage
         assert_eq!(
-            SubnetNodeUniqueParam::<Test>::try_get(subnet_id, &bounded_unique),
+            UniqueParamSubnetNodeId::<Test>::try_get(subnet_id, &bounded_unique),
             Err(())
         );
     })
@@ -4917,6 +4917,262 @@ fn test_register_subnet_node_initial_coldkeys_max_registered() {
                 u128::MAX
             ),
             Error::<Test>::MaxRegisteredNodes
+        );
+    });
+}
+
+#[test]
+fn test_do_activate_subnet_node_subnet_active_node_queued() {
+    new_test_ext().execute_with(|| {
+        // Subnet is active
+        // Node is queued
+        let subnet_id = 1;
+        let subnet_node_id = 1;
+        let hotkey = account(1);
+        let peer_id = peer(1);
+        let bootnode_peer_id = peer(2);
+        let client_peer_id = peer(3);
+        let classification = SubnetNodeClassification {
+            node_class: SubnetNodeClass::Registered,
+            start_epoch: 0,
+        };
+
+        let subnet_node = SubnetNode {
+            id: subnet_node_id,
+            hotkey: hotkey,
+            peer_id: peer_id,
+            bootnode_peer_id: bootnode_peer_id,
+            client_peer_id: client_peer_id,
+            bootnode: Some(BoundedVec::new()),
+            classification: classification,
+            delegate_reward_rate: 0,
+            last_delegate_reward_rate_update: 0,
+            unique: None,
+            non_unique: None,
+        };
+
+        RegisteredSubnetNodesData::<Test>::insert(subnet_id, subnet_node_id, &subnet_node);
+        HotkeyOwner::<Test>::insert(hotkey.clone(), hotkey.clone());
+
+        // Starting values
+        let initial_active_subnet_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+        let initial_active_nodes = TotalActiveNodes::<Test>::get();
+        let coldkey_rep = ColdkeyReputation::<Test>::get(hotkey.clone());
+        let lifetime_node_count = coldkey_rep.lifetime_node_count;
+        let total_active_nodes = coldkey_rep.total_active_nodes;
+
+        // Queue is true
+        assert!(Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Active,
+            subnet_node,
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            true,
+        ));
+
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id),
+            Err(())
+        );
+        assert!(SubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id).is_ok());
+        assert_eq!(
+            SubnetNodesData::<Test>::get(subnet_id, subnet_node_id)
+                .classification
+                .node_class,
+            SubnetNodeClass::Idle
+        );
+
+        assert_eq!(
+            initial_active_subnet_nodes + 1,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
+        assert_eq!(initial_active_nodes + 1, TotalActiveNodes::<Test>::get());
+
+        assert_eq!(
+            lifetime_node_count + 1,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).lifetime_node_count
+        );
+        assert_eq!(
+            total_active_nodes + 1,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).total_active_nodes
+        );
+    });
+}
+
+#[test]
+fn test_do_activate_subnet_node_failures() {
+    new_test_ext().execute_with(|| {
+        // Subnet is registered
+        // Node is queued
+        let subnet_id = 1;
+        let subnet_node_id = 1;
+        let hotkey = account(1);
+        let peer_id = peer(1);
+        let bootnode_peer_id = peer(2);
+        let client_peer_id = peer(3);
+        let classification = SubnetNodeClassification {
+            node_class: SubnetNodeClass::Registered,
+            start_epoch: 0,
+        };
+
+        let subnet_node = SubnetNode {
+            id: subnet_node_id,
+            hotkey: hotkey,
+            peer_id: peer_id,
+            bootnode_peer_id: bootnode_peer_id,
+            client_peer_id: client_peer_id,
+            bootnode: Some(BoundedVec::new()),
+            classification: classification,
+            delegate_reward_rate: 0,
+            last_delegate_reward_rate_update: 0,
+            unique: None,
+            non_unique: None,
+        };
+
+        RegisteredSubnetNodesData::<Test>::insert(subnet_id, subnet_node_id, &subnet_node);
+        HotkeyOwner::<Test>::insert(hotkey.clone(), hotkey.clone());
+
+        // Starting values
+        let initial_active_subnet_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+        let initial_active_nodes = TotalActiveNodes::<Test>::get();
+        let coldkey_rep = ColdkeyReputation::<Test>::get(hotkey.clone());
+        let lifetime_node_count = coldkey_rep.lifetime_node_count;
+        let total_active_nodes = coldkey_rep.total_active_nodes;
+
+        assert!(!Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Registered,
+            subnet_node.clone(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            true,
+        ));
+
+        assert!(!Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Active,
+            subnet_node.clone(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            false,
+        ));
+
+        assert!(!Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Paused,
+            subnet_node.clone(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            true,
+        ));
+
+        assert!(!Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Paused,
+            subnet_node.clone(),
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            false,
+        ));
+
+        // Nothing should change
+        assert!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id).is_ok(),
+        );
+        assert_eq!(SubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id), Err(()));
+
+        assert_eq!(
+            initial_active_subnet_nodes,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
+        assert_eq!(initial_active_nodes, TotalActiveNodes::<Test>::get());
+
+        assert_eq!(
+            lifetime_node_count,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).lifetime_node_count
+        );
+        assert_eq!(
+            total_active_nodes,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).total_active_nodes
+        );
+    });
+}
+
+#[test]
+fn test_do_activate_subnet_node_registered_subnet() {
+    new_test_ext().execute_with(|| {
+        // Subnet is registered
+        // Node is queued
+
+        let subnet_id = 1;
+        let subnet_node_id = 1;
+        let hotkey = account(1);
+        let peer_id = peer(1);
+        let bootnode_peer_id = peer(2);
+        let client_peer_id = peer(3);
+        let classification = SubnetNodeClassification {
+            node_class: SubnetNodeClass::Registered,
+            start_epoch: 0,
+        };
+
+        let subnet_node = SubnetNode {
+            id: subnet_node_id,
+            hotkey: hotkey,
+            peer_id: peer_id,
+            bootnode_peer_id: bootnode_peer_id,
+            client_peer_id: client_peer_id,
+            bootnode: Some(BoundedVec::new()),
+            classification: classification,
+            delegate_reward_rate: 0,
+            last_delegate_reward_rate_update: 0,
+            unique: None,
+            non_unique: None,
+        };
+
+        HotkeyOwner::<Test>::insert(hotkey.clone(), hotkey.clone());
+
+        // Starting values
+        let initial_active_subnet_nodes = TotalActiveSubnetNodes::<Test>::get(subnet_id);
+        let initial_active_nodes = TotalActiveNodes::<Test>::get();
+        let coldkey_rep = ColdkeyReputation::<Test>::get(hotkey.clone());
+        let lifetime_node_count = coldkey_rep.lifetime_node_count;
+        let total_active_nodes = coldkey_rep.total_active_nodes;
+
+        assert!(Network::do_activate_subnet_node_v2(
+            &mut WeightMeter::new(),
+            subnet_id,
+            SubnetState::Registered,
+            subnet_node,
+            Network::get_current_subnet_epoch_as_u32(subnet_id),
+            false,
+        ));
+
+        assert_eq!(
+            RegisteredSubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id),
+            Err(())
+        );
+        assert!(SubnetNodesData::<Test>::try_get(subnet_id, subnet_node_id).is_ok());
+        assert_eq!(
+            SubnetNodesData::<Test>::get(subnet_id, subnet_node_id)
+                .classification
+                .node_class,
+            SubnetNodeClass::Validator
+        );
+
+        assert_eq!(
+            initial_active_subnet_nodes + 1,
+            TotalActiveSubnetNodes::<Test>::get(subnet_id)
+        );
+        assert_eq!(initial_active_nodes + 1, TotalActiveNodes::<Test>::get());
+
+        assert_eq!(
+            lifetime_node_count + 1,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).lifetime_node_count
+        );
+        assert_eq!(
+            total_active_nodes + 1,
+            ColdkeyReputation::<Test>::get(hotkey.clone()).total_active_nodes
         );
     });
 }
