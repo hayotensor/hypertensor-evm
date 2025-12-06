@@ -83,7 +83,6 @@ pub mod pallet {
             let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
             let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
             let account_id = T::AddressMapping::into_account_id(author);
-
             let block_reward_as_u128 = T::AuthorBlockEmissions::get();
             let block_reward = block_reward_as_u128.saturated_into::<BalanceOf<T>>();
 

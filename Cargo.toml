@@ -54,7 +54,7 @@ libm = "0.2.8"
 docify = { version = "0.2.7" }
 sp-arithmetic = { version = "0.30", default-features = false }
 
-solochain-template-runtime = { path = "./runtime", default-features = false }
+hypertensor-runtime = { path = "./runtime", default-features = false }
 pallet-template = { path = "./pallets/template", default-features = false }
 pallet-atomic-swap = { path = "./pallets/atomic-swap", default-features = false }
 pallet-collective = { path = "./pallets/collective", default-features = false }

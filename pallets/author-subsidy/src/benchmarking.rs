@@ -1,7 +1,7 @@
 //! Benchmarking setup for pallet-authory-subsidy
-// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_author_subsidy" --output pallets/author-subsidy/src/weights.rs --template ./.maintain/frame-weight-template.hbs
+// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_author_subsidy" --output pallets/author-subsidy/src/weights.rs --template ./.maintain/frame-weight-template.hbs
 
-// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_author_subsidy"
+// frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_author_subsidy"
 
 // cargo build --release --features runtime-benchmarks
 // cargo test --release --features runtime-benchmarks

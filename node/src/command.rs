@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[cfg(feature = "runtime-benchmarks")]
-use solochain_template_runtime::genesis_config_presets::get_account_id_from_seed;
+use hypertensor_runtime::genesis_config_presets::get_account_id_from_seed;
 // use crate::chain_spec::get_account_id_from_seed;
 
 impl SubstrateCli for Cli {
@@ -182,7 +182,7 @@ pub fn run() -> sc_cli::Result<()> {
             use frame_benchmarking_cli::{
                 BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE,
             };
-            use solochain_template_runtime::{Hashing, EXISTENTIAL_DEPOSIT};
+            use hypertensor_runtime::{Hashing, EXISTENTIAL_DEPOSIT};
 
             let runner = cli.create_runner(cmd)?;
             match cmd {

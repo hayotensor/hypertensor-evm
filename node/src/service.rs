@@ -19,7 +19,7 @@ use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPai
 use sp_core::{H256, U256};
 use sp_runtime::traits::{Block as BlockT, NumberFor};
 // Runtime
-use solochain_template_runtime::{
+use hypertensor_runtime::{
     opaque::Block, AccountId, Balance, Nonce, RuntimeApi, TransactionConverter,
 };
 
@@ -685,7 +685,7 @@ where
             inherent_data: &mut sp_inherents::InherentData,
         ) -> Result<(), sp_inherents::Error> {
             TIMESTAMP.with(|x| {
-                *x.borrow_mut() += solochain_template_runtime::SLOT_DURATION;
+                *x.borrow_mut() += hypertensor_runtime::SLOT_DURATION;
                 inherent_data.put_data(sp_timestamp::INHERENT_IDENTIFIER, &*x.borrow())
             })
         }

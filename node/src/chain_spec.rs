@@ -1,5 +1,5 @@
 use sc_chain_spec::{ChainType, Properties};
-use solochain_template_runtime::{SS58Prefix, WASM_BINARY};
+use hypertensor_runtime::{SS58Prefix, WASM_BINARY};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec;
@@ -8,7 +8,8 @@ fn properties() -> Properties {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "TENSOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
-    // properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("isEthereum".into(), true.into());
     properties
 }
 

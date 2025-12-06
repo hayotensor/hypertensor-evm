@@ -35,13 +35,13 @@ cargo build --release
 
 #### Run the node locally
 ```bash
-./target/release/solochain-template-node --dev
+./target/release/hypertensor-node --dev
 ```
 
 #### Run locally with manual sealing
 - Overwatch node testing
 ```bash
-./target/release/solochain-template-node --dev \
+./target/release/hypertensor-node --dev \
 	--tmp --log lalala=trace \
 	--chain=eth_dev \
 	--sealing=manual \

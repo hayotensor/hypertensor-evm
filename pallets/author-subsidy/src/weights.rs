@@ -13,7 +13,7 @@
 // benchmark
 // pallet
 // --runtime
-// target/release/wbuild/solochain-template-runtime/solochain_template_runtime.compact.compressed.wasm
+// target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm
 // --extrinsic
 // 
 // --pallet

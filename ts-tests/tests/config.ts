@@ -23,7 +23,7 @@ export const TEST_PATH = "subnet-test-name";
 
 export const FIRST_CONTRACT_ADDRESS = "0xc2bf5f29a4384b1ab0c063e1c666f02121b6084a";
 
-export const NODE_BINARY_NAME = "solochain-template-node";
+export const NODE_BINARY_NAME = "hypertensor-node";
 
 export const RUNTIME_SPEC_NAME = "frontier-template";
 

@@ -1,5 +1,5 @@
 [package]
-name = "solochain-template-node"
+name = "hypertensor-node"
 version = "0.0.0"
 license = "Unlicense"
 build = "build.rs"
@@ -79,7 +79,7 @@ fp-account = { workspace = true }
 fp-dynamic-fee = { workspace = true, features = ["default"] }
 fp-evm = { workspace = true, features = ["default"] }
 fp-rpc = { workspace = true, features = ["default"] }
-solochain-template-runtime = { workspace = true, features = ["std"] }
+hypertensor-runtime = { workspace = true, features = ["std"] }
 
 # Cumulus primitives
 cumulus-primitives-proof-size-hostfunction = { workspace = true }
@@ -105,10 +105,10 @@ rocksdb = [
 	"fc-db/rocksdb",
 	"fc-mapping-sync/rocksdb",
 	"fc-rpc/rocksdb",
-	"solochain-template-runtime/with-rocksdb-weights",
+	"hypertensor-runtime/with-rocksdb-weights",
 ]
 paritydb = [
-	"solochain-template-runtime/with-paritydb-weights",
+	"hypertensor-runtime/with-paritydb-weights",
 ]
 sql = [
 	"fc-db/sql",
@@ -121,5 +121,5 @@ runtime-benchmarks = [
 	"frame-benchmarking-cli/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
-	"solochain-template-runtime/runtime-benchmarks",
+	"hypertensor-runtime/runtime-benchmarks",
 ]
