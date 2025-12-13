@@ -439,6 +439,7 @@ impl<T: Config> Pallet<T> {
         min_attestation_percentage: u128,
         coldkey_reputation_decrease_factor: u128,
         min_validator_reputation: u128,
+        electable_nodes: u32,
         epoch: u32,
     ) -> Weight {
         let mut weight = Weight::zero();
@@ -460,17 +461,6 @@ impl<T: Config> Pallet<T> {
         };
 
         weight = weight.saturating_add(db_weight.reads(1));
-
-        if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
-            Self::decrease_coldkey_reputation(
-                coldkey,
-                attestation_percentage,
-                min_attestation_percentage,
-                coldkey_reputation_decrease_factor,
-                epoch,
-            );
-        }
-
 
         // --- Get stake balance. This is safe, uses Default value
         // This could be greater than the target stake balance
@@ -519,9 +509,36 @@ impl<T: Config> Pallet<T> {
         SubnetNodeReputation::<T>::insert(subnet_id, subnet_node_id, reputation);
         weight = weight.saturating_add(db_weight.writes(1));
 
-        if reputation < min_validator_reputation {
-            Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-            weight = weight.saturating_add(T::WeightInfo::perform_remove_subnet_node(0u32));
+        weight = weight.saturating_add(db_weight.reads(1));
+        if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+            // Decrease coldkey reputation
+            Self::decrease_coldkey_reputation(
+                coldkey.clone(),
+                attestation_percentage,
+                min_attestation_percentage,
+                coldkey_reputation_decrease_factor,
+                epoch,
+            );
+
+            // Remove validator if below min node reputation
+            if reputation < min_validator_reputation {
+                weight = weight.saturating_add(db_weight.reads(1));
+                let coldkey_subnet_nodes = ColdkeySubnetNodes::<T>::get(&coldkey);
+                // x = number of subnets (outer BTreeMap size)
+                let x = coldkey_subnet_nodes.len() as u32;
+                // c = number of nodes in the specific subnet (inner BTreeSet size)
+                let c = coldkey_subnet_nodes
+                    .get(&subnet_id)
+                    .map(|nodes| nodes.len() as u32)
+                    .unwrap_or(0);
+
+                Self::remove_active_subnet_node(subnet_id, subnet_node_id);
+                weight = weight.saturating_add(T::WeightInfo::remove_active_subnet_node(
+                    x,
+                    electable_nodes,
+                    c,
+                ));
+            }
         }
 
         Self::deposit_event(Event::Slashing {

@@ -42,7 +42,7 @@ fn test_update_coldkey() {
             OverwatchMinStakeBalance::<Test>::get(),
         );
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -346,7 +346,7 @@ fn test_update_coldkey_key_taken_err() {
 
         let account_n = max_subnet_nodes + end * subnets;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let total_subnet_nodes = TotalSubnetNodes::<Test>::get(subnet_id);
@@ -395,7 +395,7 @@ fn test_update_hotkey() {
 
         set_overwatch_stake(ow_hotkey_n, OverwatchMinStakeBalance::<Test>::get());
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
         let name = to_bounded::<DefaultMaxVectorLength>("name");
         let url = to_bounded::<DefaultMaxUrlLength>("url");

@@ -1809,7 +1809,7 @@ fn test_update_bootnodes_owner_updates() {
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let end = 4;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let owner = SubnetOwner::<Test>::get(subnet_id).unwrap();
@@ -2078,7 +2078,7 @@ fn test_excess_subnet_removal_lowest_delegate_stake_fail2() {
 //         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 //         let end = 4;
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let min_subnet_delegate_stake_balance =
@@ -2345,7 +2345,7 @@ fn test_do_epoch_preliminaries_remove_subnet_min_stake_balance() {
 //         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 //         let end = 4;
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         assert_err!(
@@ -2433,7 +2433,7 @@ fn test_get_min_subnet_delegate_stake_balance_v2() {
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let end = 4;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let total_network_issuance = Network::get_total_network_issuance();
@@ -2479,7 +2479,7 @@ fn test_get_total_network_issuance() {
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let end = 3;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id_1 = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         log::error!(" ");
@@ -2490,7 +2490,7 @@ fn test_get_total_network_issuance() {
             starting_total_network_issuance
         );
 
-        build_activated_subnet_new(subnet_name_2.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name_2.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id_2 = SubnetName::<Test>::get(subnet_name_2.clone()).unwrap();
 
         let post_total_network_issuance = Network::get_total_network_issuance();
@@ -2519,7 +2519,7 @@ fn test_emergency_validator_subnet() {
         let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
         let end = 3;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     });
 }

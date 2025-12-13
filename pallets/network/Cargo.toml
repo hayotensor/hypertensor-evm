@@ -34,6 +34,7 @@ libm.workspace = true
 pallet-collective = { version = "37.0.0", default-features = false, path = "../collective" }
 pallet-treasury.workspace = true
 fp-account = { workspace = true, features = ["serde"] }
+pallet-evm.workspace = true
 
 [dev-dependencies]
 sp-io = { default-features = true, workspace = true }

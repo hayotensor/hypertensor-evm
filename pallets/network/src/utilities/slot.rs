@@ -366,14 +366,7 @@ impl<T: Config> Pallet<T> {
             weight_meter.consume(per_node_processing_weight);
 
             // Attempt activation
-            // let can_consume = Self::do_activate_subnet_node(
-            //     weight_meter,
-            //     subnet_id,
-            //     subnet_node.clone(),
-            //     current_subnet_epoch,
-            // );
-
-            let can_consume = Self::do_activate_subnet_node_v2(
+            let can_consume = Self::do_activate_subnet_node(
                 weight_meter,
                 subnet_id,
                 SubnetState::Active,

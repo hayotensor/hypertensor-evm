@@ -115,7 +115,7 @@ impl<T: Config> Pallet<T> {
     }
     pub fn do_set_max_min_delegate_stake_multiplier(value: u128) -> DispatchResult {
         ensure!(
-            value <= Self::percentage_factor_as_u128(),
+            value >= Self::percentage_factor_as_u128(),
             Error::<T>::InvalidPercent
         );
         MaxMinDelegateStakeMultiplier::<T>::set(value);
@@ -188,7 +188,7 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    pub fn do_set_subnet_min_stakes(min: u128, max: u128) -> DispatchResult {
+    pub fn do_set_subnet_stakes(min: u128, max: u128) -> DispatchResult {
         ensure!(min < max, Error::<T>::InvalidValues);
 
         MinSubnetMinStake::<T>::set(min);
@@ -840,6 +840,19 @@ impl<T: Config> Pallet<T> {
         MaxEmergencyValidatorEpochsMultiplier::<T>::put(value);
 
         Self::deposit_event(Event::SetMaxEmergencyValidatorEpochsMultiplier(value));
+
+        Ok(())
+    }
+
+    pub fn do_set_max_emergency_subnet_nodes(value: u32) -> DispatchResult {
+        ensure!(
+            value >= MinSubnetNodes::<T>::get(),
+            Error::<T>::InvalidMaxEmergencySubnetNodes
+        );
+
+        MaxEmergencySubnetNodes::<T>::put(value);
+
+        Self::deposit_event(Event::SetMaxEmergencySubnetNodes(value));
 
         Ok(())
     }

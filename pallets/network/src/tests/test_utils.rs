@@ -12,12 +12,13 @@ use crate::{
     Reputation, StakeCooldownEpochs, StakeUnbondingLedger, SubnetConsensusSubmission, SubnetData,
     SubnetElectedValidator, SubnetIdFriendlyUid, SubnetMaxStakeBalance, SubnetMinStakeBalance,
     SubnetName, SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeConsensusData,
-    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeReputation, UniqueParamSubnetNodeId,
-    SubnetNodesData, SubnetOwner, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
+    SubnetNodeElectionSlots, SubnetNodeIdHotkey, SubnetNodeReputation, SubnetNodesData,
+    SubnetOwner, SubnetRegistrationEpoch, SubnetRegistrationEpochs,
     SubnetRegistrationInitialColdkeys, SubnetReputation, SubnetSlot, SubnetState, SubnetsData,
     TotalActiveNodes, TotalActiveSubnetNodes, TotalActiveSubnets, TotalOverwatchNodeUids,
     TotalOverwatchNodes, TotalOverwatchStake, TotalStake, TotalSubnetDelegateStakeBalance,
     TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake, TotalSubnetUids,
+    UniqueParamSubnetNodeId,
 };
 use fp_account::AccountId20;
 use frame_support::assert_ok;
@@ -138,7 +139,7 @@ pub fn make_commit(weight: u128, salt: Vec<u8>) -> sp_core::H256 {
     Hashing::hash_of(&(weight, salt))
 }
 
-pub fn build_activated_subnet_new(
+pub fn build_activated_subnet(
     subnet_name: Vec<u8>,
     start: u32,
     mut end: u32,
@@ -188,10 +189,10 @@ pub fn build_activated_subnet_new(
     );
 
     // Give each coldkey balance
-    for n in start..end {
-        let _n = n + 1;
-        let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
-    }
+    // for n in start..end {
+    //     let _n = n + 1;
+    //     let coldkey = get_coldkey(subnets, max_subnet_nodes, _n);
+    // }
 
     // --- Register subnet for activation
     assert_ok!(Network::register_subnet(
@@ -629,7 +630,8 @@ pub fn build_registered_subnet_new(
     let block_number = System::block_number();
     let epoch = System::block_number().saturating_div(epoch_length);
 
-    let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    // let subnets = TotalActiveSubnets::<Test>::get() + 1;
+    let subnets = TotalSubnetUids::<Test>::get() + 1;
     let max_subnets = MaxSubnets::<Test>::get();
     let max_subnet_nodes = MaxSubnetNodes::<Test>::get();
 

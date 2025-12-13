@@ -31,8 +31,8 @@ pub struct InflationV2 {
     pub foundation_term: f64,
 }
 
-const DEFAULT_INITIAL_MAX: f64 = 100000000000000000000000.0; // 100,000
-const DEFAULT_INITIAL_MIN: f64 = 75000000000000000000000.0; // 75,000
+const DEFAULT_INITIAL_MAX: f64 = 100000000000000000000000.0; // 100,000 (initially 10% @ 10,000,000 units)
+const DEFAULT_INITIAL_MIN: f64 = 75000000000000000000000.0; // 75,000 (initially 7.5% @ 10,000,000 units)
 const DEFAULT_FOUNDATION: f64 = 0.2;
 const DEFAULT_FOUNDATION_TERM: f64 = 7.0;
 
@@ -67,12 +67,6 @@ impl InflationV2 {
         let max = self.initial_max;
         let min = self.initial_min;
 
-        log::error!("max               {:?}", max);
-        log::error!("min               {:?}", min);
-
-        log::error!("min + (max - min) {:?}", min + (max - min));
-        log::error!("sigmoid_fn        {:?}", sigmoid_fn(x, mid, k));
-
         min + (max - min) * sigmoid_fn(x, mid, k)
     }
 }
@@ -98,7 +92,6 @@ impl<T: Config> Pallet<T> {
     pub fn get_epoch_emissions_v2() -> (u128, u128) {
         let node_utilization = Self::get_subnet_node_utilization_v2().min(1.0);
         let emissions = Self::get_inflation_v2(node_utilization);
-        log::error!("emissions                   {:?}", emissions);
 
         let (validator_emissions, foundation_emissions) = {
             let inflation = InflationV2::default();

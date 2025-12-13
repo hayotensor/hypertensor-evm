@@ -42,7 +42,7 @@ fn test_calculate_overwatch_rewards() {
 
         for s in 0..max_subnets {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
         }
 
         set_overwatch_epoch(1);
@@ -144,7 +144,7 @@ fn test_handle_subnet_emission_weights() {
 
         for s in 0..max_subnets {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
         }
 
         let _ = Network::handle_subnet_emission_weights(Network::get_current_epoch_as_u32());
@@ -178,7 +178,7 @@ fn test_calculate_subnet_weights() {
 
         for s in 0..max_subnets {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
         }
 
         let (subnet_weights, mut weight) =
@@ -209,7 +209,7 @@ fn test_precheck_subnet_consensus_submission() {
         let max_subnets = MaxSubnets::<Test>::get();
         let end = 4;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
@@ -328,7 +328,7 @@ fn test_calculate_rewards() {
         let max_subnets = MaxSubnets::<Test>::get();
         let end = 4;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let _ = Network::handle_subnet_emission_weights(Network::get_current_epoch_as_u32());

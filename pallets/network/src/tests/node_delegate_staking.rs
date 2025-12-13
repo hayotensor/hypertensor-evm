@@ -737,7 +737,7 @@ fn test_transfer_node_delegate_stake() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnet_name: Vec<u8> = "subnet-name".into();
-        build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_node_id = 1;
 
@@ -853,7 +853,7 @@ fn test_transfer_node_delegate_stake_partial_balance() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let subnet_name: Vec<u8> = "subnet-name".into();
-        build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_node_id = 1;
 
@@ -1251,7 +1251,7 @@ fn test_donate_node_delegate_stake() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let end = 4;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
 
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_node_id = 1;

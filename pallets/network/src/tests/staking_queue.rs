@@ -96,11 +96,11 @@ fn test_update_swap_queue_delegate_stake() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
-        build_activated_subnet_new(from_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(from_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let from_subnet_id = SubnetName::<Test>::get(from_subnet_name.clone()).unwrap();
 
         let to_subnet_name: Vec<u8> = "subnet-name-2".into();
-        build_activated_subnet_new(to_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(to_subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let to_subnet_id = SubnetName::<Test>::get(to_subnet_name.clone()).unwrap();
 
         let n_account = 255;
@@ -313,7 +313,7 @@ fn test_update_swap_queue_node_delegate_stake() {
         let end = 4;
 
         let from_subnet_name: Vec<u8> = "subnet-name".into();
-        build_activated_subnet_new(
+        build_activated_subnet(
             from_subnet_name.clone(),
             0,
             end,
@@ -324,7 +324,7 @@ fn test_update_swap_queue_node_delegate_stake() {
         let from_subnet_node_id = 1;
 
         let to_subnet_name: Vec<u8> = "subnet-name-2".into();
-        build_activated_subnet_new(to_subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(to_subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let to_subnet_id = SubnetName::<Test>::get(to_subnet_name.clone()).unwrap();
         let to_subnet_node_id = 1;
 
@@ -554,7 +554,7 @@ fn test_execute_ready_swap_calls() {
         let end = 4;
 
         let name_1: Vec<u8> = "subnet-name".into();
-        build_activated_subnet_new(name_1.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(name_1.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id_1 = SubnetName::<Test>::get(name_1.clone()).unwrap();
 
         let queues_count = 12;

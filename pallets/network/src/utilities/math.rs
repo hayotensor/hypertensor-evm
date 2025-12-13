@@ -140,8 +140,6 @@ impl<T: Config> Pallet<T> {
             exp / (1.0 + exp)
         };
 
-        log::error!("sigmoid {:?}", sigmoid);
-
         sigmoid.clamp(0.0, 1.0)
     }
 

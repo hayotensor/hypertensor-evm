@@ -1,5 +1,5 @@
-use sc_chain_spec::{ChainType, Properties};
 use hypertensor_runtime::{SS58Prefix, WASM_BINARY};
+use sc_chain_spec::{ChainType, Properties};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec;

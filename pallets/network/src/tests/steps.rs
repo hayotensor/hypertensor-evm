@@ -35,7 +35,7 @@ fn test_do_epoch_preliminaries_remove_expired_pause() {
         let mut first_subnet_id = 0;
         for s in 0..last_subnet {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
             let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
             remove_subnet_id = subnet_id;
 
@@ -123,7 +123,7 @@ fn test_do_epoch_preliminaries_remove_under_min_delegate_stake() {
         let mut first_subnet_id = 0;
         for s in 0..last_subnet {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
             let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
             remove_subnet_id = subnet_id;
 
@@ -191,7 +191,7 @@ fn test_do_epoch_preliminaries_remove_under_min_delegate_stake_fail() {
         let mut first_subnet_id = 0;
         for s in 0..last_subnet {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
             let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
             remove_subnet_id = subnet_id;
 
@@ -250,7 +250,7 @@ fn test_do_epoch_preliminaries_remove_under_min_reputation() {
         let mut first_subnet_id = 0;
         for s in 0..last_subnet {
             let subnet_name: Vec<u8> = format!("subnet-name-{s}").into();
-            build_activated_subnet_new(subnet_name.clone().into(), 0, end, deposit_amount, amount);
+            build_activated_subnet(subnet_name.clone().into(), 0, end, deposit_amount, amount);
             let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
             remove_subnet_id = subnet_id;
 

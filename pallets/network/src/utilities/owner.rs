@@ -158,7 +158,12 @@ impl<T: Config> Pallet<T> {
 
         ensure!(
             subnet_node_ids.len() as u32 >= MinSubnetNodes::<T>::get(),
-            Error::<T>::SubnetMustBePaused
+            Error::<T>::InvalidMinEmergencySubnetNodes
+        );
+
+        ensure!(
+            subnet_node_ids.len() as u32 <= MaxEmergencySubnetNodes::<T>::get(),
+            Error::<T>::InvalidMaxEmergencySubnetNodes
         );
 
         let target_emergency_epochs = Self::get_max_steps_for_node_removal(subnet_id);

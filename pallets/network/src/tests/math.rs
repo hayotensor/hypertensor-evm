@@ -161,27 +161,102 @@ fn test_checked_mul_div() {
     });
 }
 
-#[test]
-fn test_sigmoid_decreasing_bounds() {
-    new_test_ext().execute_with(|| {
-        let min = 0.5;
-        let max = 2.0;
-        let mid = 0.5;
-        let k = 5.0;
+// #[test]
+// fn test_sigmoid_decreasing_bounds() {
+//     new_test_ext().execute_with(|| {
+//         let min = 0.5;
+//         let max = 2.0;
+//         let mid = 0.5;
+//         let k = 5.0;
 
-        let xs = [0.0, 0.25, 0.5, 0.75, 1.0];
-        for &x in &xs {
-            let y = Network::sigmoid_decreasing(x, mid, k, min, max);
-            assert!(
-                y >= min && y <= max,
-                "y={} is out of bounds [{},{}]",
-                y,
-                min,
-                max
-            );
-        }
-    });
-}
+//         let xs = [0.0, 0.25, 0.5, 0.75, 1.0];
+//         for &x in &xs {
+//             let y = Network::sigmoid_decreasing(x, mid, k, min, max);
+//             assert!(
+//                 y >= min && y <= max,
+//                 "y={} is out of bounds [{},{}]",
+//                 y,
+//                 min,
+//                 max
+//             );
+//         }
+//     });
+// }
+
+// #[test]
+// fn test_sigmoid_decreasing_symmetry() {
+//     new_test_ext().execute_with(|| {
+//         let min = 0.0;
+//         let max = 1.0;
+//         let mid = 0.5;
+//         let k = 5.0;
+
+//         let y_left = Network::sigmoid_decreasing(0.25, mid, k, min, max);
+//         let y_right = Network::sigmoid_decreasing(0.75, mid, k, min, max);
+
+//         let complement_diff = (y_left + y_right - 1.0).abs();
+//         log::error!("complement_diff={:?}", complement_diff);
+//         assert!(
+//             complement_diff < 1e-6,
+//             "Expected y_left + y_right ≈ 1.0, got {} + {}",
+//             y_left,
+//             y_right
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_sigmoid_decreasing_monotonicity() {
+//     new_test_ext().execute_with(|| {
+//         let min = 0.0;
+//         let max = 1.0;
+//         let mid = 0.5;
+//         let k = 5.0;
+
+//         let y0 = Network::sigmoid_decreasing(0.0, mid, k, min, max);
+//         let y1 = Network::sigmoid_decreasing(0.25, mid, k, min, max);
+//         let y2 = Network::sigmoid_decreasing(0.5, mid, k, min, max);
+//         let y3 = Network::sigmoid_decreasing(0.75, mid, k, min, max);
+//         let y4 = Network::sigmoid_decreasing(1.0, mid, k, min, max);
+
+//         assert!(
+//             y0 > y1 && y1 > y2 && y2 > y3 && y3 > y4,
+//             "Function is not decreasing properly"
+//         );
+//     });
+// }
+
+// #[test]
+// fn test_sigmoid_decreasing_extreme_k() {
+//     new_test_ext().execute_with(|| {
+//         let min = 0.0;
+//         let max = 1.0;
+//         let mid = 0.5;
+
+//         // Very small k → almost linear
+//         let y_low_k0 = Network::sigmoid_decreasing(0.0, mid, 0.01, min, max);
+//         let y_high_k0 = Network::sigmoid_decreasing(1.0, mid, 0.01, min, max);
+//         assert!(y_low_k0 > y_high_k0);
+
+//         // Very large k → almost step function
+//         let y_low_k1 = Network::sigmoid_decreasing(0.0, mid, 50.0, min, max);
+//         let y_high_k1 = Network::sigmoid_decreasing(1.0, mid, 50.0, min, max);
+//         // assert!((y_low_k1 - max).abs() < 1e-12);
+//         // assert!((y_high_k1 - min).abs() < 1e-12);
+//         assert!(
+//             (y_low_k1 - max).abs() < 1e-6,
+//             "y_low_k1={} not close to max={}",
+//             y_low_k1,
+//             max
+//         );
+//         assert!(
+//             (y_high_k1 - min).abs() < 1e-6,
+//             "y_high_k1={} not close to min={}",
+//             y_high_k1,
+//             min
+//         );
+//     });
+// }
 
 #[test]
 fn test_sigmoid_decreasing_symmetry() {
@@ -191,8 +266,8 @@ fn test_sigmoid_decreasing_symmetry() {
         let mid = 0.5;
         let k = 5.0;
 
-        let y_left = Network::sigmoid_decreasing(0.25, mid, k, min, max);
-        let y_right = Network::sigmoid_decreasing(0.75, mid, k, min, max);
+        let y_left = Network::sigmoid_decreasing_v2(0.25, mid, k);
+        let y_right = Network::sigmoid_decreasing_v2(0.75, mid, k);
 
         let complement_diff = (y_left + y_right - 1.0).abs();
         log::error!("complement_diff={:?}", complement_diff);
@@ -213,11 +288,11 @@ fn test_sigmoid_decreasing_monotonicity() {
         let mid = 0.5;
         let k = 5.0;
 
-        let y0 = Network::sigmoid_decreasing(0.0, mid, k, min, max);
-        let y1 = Network::sigmoid_decreasing(0.25, mid, k, min, max);
-        let y2 = Network::sigmoid_decreasing(0.5, mid, k, min, max);
-        let y3 = Network::sigmoid_decreasing(0.75, mid, k, min, max);
-        let y4 = Network::sigmoid_decreasing(1.0, mid, k, min, max);
+        let y0 = Network::sigmoid_decreasing_v2(0.0, mid, k);
+        let y1 = Network::sigmoid_decreasing_v2(0.25, mid, k);
+        let y2 = Network::sigmoid_decreasing_v2(0.5, mid, k);
+        let y3 = Network::sigmoid_decreasing_v2(0.75, mid, k);
+        let y4 = Network::sigmoid_decreasing_v2(1.0, mid, k);
 
         assert!(
             y0 > y1 && y1 > y2 && y2 > y3 && y3 > y4,
@@ -234,13 +309,13 @@ fn test_sigmoid_decreasing_extreme_k() {
         let mid = 0.5;
 
         // Very small k → almost linear
-        let y_low_k0 = Network::sigmoid_decreasing(0.0, mid, 0.01, min, max);
-        let y_high_k0 = Network::sigmoid_decreasing(1.0, mid, 0.01, min, max);
+        let y_low_k0 = Network::sigmoid_decreasing_v2(0.0, mid, 0.01);
+        let y_high_k0 = Network::sigmoid_decreasing_v2(1.0, mid, 0.01);
         assert!(y_low_k0 > y_high_k0);
 
         // Very large k → almost step function
-        let y_low_k1 = Network::sigmoid_decreasing(0.0, mid, 50.0, min, max);
-        let y_high_k1 = Network::sigmoid_decreasing(1.0, mid, 50.0, min, max);
+        let y_low_k1 = Network::sigmoid_decreasing_v2(0.0, mid, 50.0);
+        let y_high_k1 = Network::sigmoid_decreasing_v2(1.0, mid, 50.0);
         // assert!((y_low_k1 - max).abs() < 1e-12);
         // assert!((y_high_k1 - min).abs() < 1e-12);
         assert!(

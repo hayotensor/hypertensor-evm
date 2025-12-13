@@ -56,6 +56,9 @@ impl<T: Config> Pallet<T> {
         // EmergencySubnetNodeElectionData
         weight_meter.consume(db_weight.reads(1));
 
+        let electable_nodes = SubnetNodeElectionSlots::<T>::get(subnet_id).len() as u32;
+        weight_meter.consume(db_weight.reads(1));
+
         // --- If under minimum attestation ratio, penalize validator, skip rewards
         if consensus_submission_data.attestation_ratio < min_attestation_percentage {
             // --- Slash validator
@@ -68,9 +71,10 @@ impl<T: Config> Pallet<T> {
                 min_attestation_percentage,
                 coldkey_reputation_decrease_factor,
                 min_validator_reputation,
+                electable_nodes,
                 current_epoch,
             );
-            weight_meter.consume(T::WeightInfo::slash_validator());
+            weight_meter.consume(slash_validator_weight);
 
             let new_subnet_reputation = Self::get_decrease_reputation(
                 subnet_reputation,
@@ -106,10 +110,35 @@ impl<T: Config> Pallet<T> {
                 weight_meter.consume(db_weight.reads_writes(1, 1));
                 if new_reputation < min_validator_reputation {
                     // Remove node if below minimum threshold
-                    if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
-                        Self::perform_remove_subnet_node(subnet_id, subnet_node_id);
-                        weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
+                    weight_meter.consume(db_weight.reads(1));
+                    if let Some(hotkey) = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node_id) {
+                        weight_meter.consume(db_weight.reads(1));
+                        if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+                            weight_meter.consume(db_weight.reads(1));
+                            let coldkey_subnet_nodes = ColdkeySubnetNodes::<T>::get(&coldkey);
+                            // x = number of subnets (outer BTreeMap size)
+                            let x = coldkey_subnet_nodes.len() as u32;
+                            // c = number of nodes in the specific subnet (inner BTreeSet size)
+                            let c = coldkey_subnet_nodes
+                                .get(&subnet_id)
+                                .map(|nodes| nodes.len() as u32)
+                                .unwrap_or(0);
+
+                            if weight_meter.can_consume(T::WeightInfo::remove_active_subnet_node(
+                                x,
+                                electable_nodes,
+                                c,
+                            )) {
+                                Self::remove_active_subnet_node(subnet_id, subnet_node_id);
+                                weight_meter.consume(T::WeightInfo::remove_active_subnet_node(
+                                    x,
+                                    electable_nodes,
+                                    c,
+                                ));
+                            }
+                        }
                     }
+
                     continue;
                 }
             }
@@ -209,17 +238,51 @@ impl<T: Config> Pallet<T> {
             // These are not yet activated nodes so this does not impact the emissions distribution
             if let Some(remove_queue_node_id) = consensus_submission_data.remove_queue_node_id {
                 // `perform_remove_subnet_node` handles SubnetNodeQueue retain
-                if weight_meter
-                    .can_consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32))
-                {
-                    Self::perform_remove_subnet_node(subnet_id, remove_queue_node_id);
-                    weight_meter
-                        .consume(T::WeightInfo::perform_remove_subnet_node(queue.len() as u32));
+                // if weight_meter
+                //     .can_consume(T::WeightInfo::perform_remove_subnet_node(0u32, queue.len() as u32))
+                // {
+                //     Self::perform_remove_subnet_node(subnet_id, remove_queue_node_id);
+                //     weight_meter
+                //         .consume(T::WeightInfo::perform_remove_subnet_node(0u32, queue.len() as u32));
 
-                    Self::deposit_event(Event::QueuedNodeRemoved {
-                        subnet_id,
-                        subnet_node_id: remove_queue_node_id,
-                    });
+                //     Self::deposit_event(Event::QueuedNodeRemoved {
+                //         subnet_id,
+                //         subnet_node_id: remove_queue_node_id,
+                //     });
+                // }
+
+                weight_meter.consume(db_weight.reads(1));
+                if let Some(hotkey) = SubnetNodeIdHotkey::<T>::get(subnet_id, remove_queue_node_id)
+                {
+                    weight_meter.consume(db_weight.reads(1));
+                    if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+                        weight_meter.consume(db_weight.reads(1));
+                        let coldkey_subnet_nodes = ColdkeySubnetNodes::<T>::get(&coldkey);
+                        // x = number of subnets (outer BTreeMap size)
+                        let x = coldkey_subnet_nodes.len() as u32;
+                        // c = number of nodes in the specific subnet (inner BTreeSet size)
+                        let c = coldkey_subnet_nodes
+                            .get(&subnet_id)
+                            .map(|nodes| nodes.len() as u32)
+                            .unwrap_or(0);
+
+                        if weight_meter.can_consume(T::WeightInfo::remove_registered_subnet_node(
+                            x,
+                            electable_nodes,
+                            c,
+                        )) {
+                            Self::remove_registered_subnet_node(subnet_id, remove_queue_node_id);
+                            weight_meter.consume(T::WeightInfo::remove_registered_subnet_node(
+                                x,
+                                electable_nodes,
+                                c,
+                            ));
+                            Self::deposit_event(Event::QueuedNodeRemoved {
+                                subnet_id,
+                                subnet_node_id: remove_queue_node_id,
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -233,6 +296,7 @@ impl<T: Config> Pallet<T> {
         if subnet_reputation != percentage_factor
             && consensus_submission_data.data_length >= MinSubnetNodes::<T>::get()
         {
+            // TODO: Increase reputation based on attestation ratio
             let new_subnet_reputation = Self::get_increase_reputation(
                 subnet_reputation,
                 InConsensusSubnetReputationFactor::<T>::get(),
@@ -270,10 +334,33 @@ impl<T: Config> Pallet<T> {
 
             if reputation < min_validator_reputation {
                 // Remove node if they haven't already been removed
-                // Note: We used 0u32 because the node is not in the queue
-                if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
-                    Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-                    weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
+                weight_meter.consume(db_weight.reads(1));
+                if let Some(hotkey) = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node.id) {
+                    weight_meter.consume(db_weight.reads(1));
+                    if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+                        weight_meter.consume(db_weight.reads(1));
+                        let coldkey_subnet_nodes = ColdkeySubnetNodes::<T>::get(&coldkey);
+                        // x = number of subnets (outer BTreeMap size)
+                        let x = coldkey_subnet_nodes.len() as u32;
+                        // c = number of nodes in the specific subnet (inner BTreeSet size)
+                        let c = coldkey_subnet_nodes
+                            .get(&subnet_id)
+                            .map(|nodes| nodes.len() as u32)
+                            .unwrap_or(0);
+
+                        if weight_meter.can_consume(T::WeightInfo::remove_active_subnet_node(
+                            x,
+                            electable_nodes,
+                            c,
+                        )) {
+                            Self::remove_active_subnet_node(subnet_id, subnet_node.id);
+                            weight_meter.consume(T::WeightInfo::remove_active_subnet_node(
+                                x,
+                                electable_nodes,
+                                c,
+                            ));
+                        }
+                    }
                 }
 
                 continue;
@@ -467,10 +554,34 @@ impl<T: Config> Pallet<T> {
             }
 
             if reputation < min_validator_reputation {
-                // Remove node if they haven't already
-                if weight_meter.can_consume(T::WeightInfo::perform_remove_subnet_node(0u32)) {
-                    Self::perform_remove_subnet_node(subnet_id, subnet_node.id);
-                    weight_meter.consume(T::WeightInfo::perform_remove_subnet_node(0u32));
+                // Remove node if they haven't already due to reputation decreases logic above
+                weight_meter.consume(db_weight.reads(1));
+                if let Some(hotkey) = SubnetNodeIdHotkey::<T>::get(subnet_id, subnet_node.id) {
+                    weight_meter.consume(db_weight.reads(1));
+                    if let Ok(coldkey) = HotkeyOwner::<T>::try_get(&hotkey) {
+                        weight_meter.consume(db_weight.reads(1));
+                        let coldkey_subnet_nodes = ColdkeySubnetNodes::<T>::get(&coldkey);
+                        // x = number of subnets (outer BTreeMap size)
+                        let x = coldkey_subnet_nodes.len() as u32;
+                        // c = number of nodes in the specific subnet (inner BTreeSet size)
+                        let c = coldkey_subnet_nodes
+                            .get(&subnet_id)
+                            .map(|nodes| nodes.len() as u32)
+                            .unwrap_or(0);
+
+                        if weight_meter.can_consume(T::WeightInfo::remove_active_subnet_node(
+                            x,
+                            electable_nodes,
+                            c,
+                        )) {
+                            Self::remove_active_subnet_node(subnet_id, subnet_node.id);
+                            weight_meter.consume(T::WeightInfo::remove_active_subnet_node(
+                                x,
+                                electable_nodes,
+                                c,
+                            ));
+                        }
+                    }
                 }
 
                 continue;

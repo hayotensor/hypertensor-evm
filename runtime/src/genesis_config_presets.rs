@@ -278,11 +278,17 @@ pub fn local_config_genesis() -> Value {
         // Pre-funded accounts
         vec![
             AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")), // Alith
+            AccountId::from(hex!("317D7a5a2ba5787A99BE4693Eb340a10C71d680b")), // Alith hotkey
             AccountId::from(hex!("3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0")), // Baltathar
+            AccountId::from(hex!("c30fE91DE91a3FA79E42Dfe7a01917d0D92D99D7")), // Baltathar hotkey
             AccountId::from(hex!("798d4Ba9baf0064Ec19eB4F0a1a45785ae9D6DFc")), // Charleth
+            AccountId::from(hex!("2f7703Ba9953d422294079A1CB32f5d2B60E38EB")), // Charleth hotkey
             AccountId::from(hex!("773539d4Ac0e786233D90A233654ccEE26a613D9")), // Dorothy
+            AccountId::from(hex!("294BFfC18b5321264f55c517Aca2963bEF9D29EA")), // Dorothy hotkey
             AccountId::from(hex!("Ff64d3F6efE2317EE2807d223a0Bdc4c0c49dfDB")), // Ethan
+            AccountId::from(hex!("919a696741e5bEe48538D43CB8A34a95261E62fc")), // Ethan hotkey
             AccountId::from(hex!("C0F0f4ab324C46e55D02D0033343B4Be8A55532d")), // Faith
+            AccountId::from(hex!("D4eb2503fA9F447CCa7b78D9a86F2fdbc964401e")), // Faith hotkey
         ],
         vec![
             authority_keys_from_seed("Alice"),

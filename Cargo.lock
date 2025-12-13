@@ -6964,6 +6964,7 @@ dependencies = [
  "log",
  "pallet-balances",
  "pallet-collective",
+ "pallet-evm",
  "pallet-insecure-randomness-collective-flip",
  "pallet-treasury",
  "pallet-tx-pause",

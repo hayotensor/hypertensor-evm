@@ -448,7 +448,7 @@ fn test_owner_pause_subnet() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -522,7 +522,7 @@ fn test_owner_unpause_subnet() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
@@ -607,7 +607,7 @@ fn test_owner_unpause_subnet_repause_cooldown_error() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let pause_cooldown_epochs = SubnetPauseCooldownEpochs::<Test>::get();
@@ -744,7 +744,7 @@ fn test_owner_unpause_subnet_verify_queue_updated() {
         let start = 0;
         let end = 4;
 
-        build_activated_subnet_new(
+        build_activated_subnet(
             subnet_name.clone(),
             start,
             end,
@@ -839,7 +839,7 @@ fn test_owner_set_emergency_validator_subnet() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let max = 12;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -989,7 +989,7 @@ fn test_owner_fork_subnet_max_fork_epoch() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let max = 12;
 
-        build_activated_subnet_new(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, max, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1125,7 +1125,7 @@ fn test_owner_deactivate_subnet() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1159,7 +1159,7 @@ fn test_owner_update_name() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_name = subnet_data.name;
@@ -1170,7 +1170,7 @@ fn test_owner_update_name() {
 
         // Subnet 2
         let subnet_name_2: Vec<u8> = "subnet-name-2".into();
-        build_activated_subnet_new(subnet_name_2.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name_2.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id_2 = SubnetName::<Test>::get(subnet_name_2.clone()).unwrap();
         let owner_2 = account(2);
         SubnetOwner::<Test>::insert(subnet_id_2, &owner_2);
@@ -1243,7 +1243,7 @@ fn test_owner_update_name_name_exists_error() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_name = subnet_data.name;
@@ -1273,7 +1273,7 @@ fn test_owner_update_repo() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_repo = subnet_data.repo;
@@ -1284,7 +1284,7 @@ fn test_owner_update_repo() {
         SubnetOwner::<Test>::insert(subnet_id, &original_owner);
 
         let subnet_name_2: Vec<u8> = "subnet-name-2".into();
-        build_activated_subnet_new(subnet_name_2.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name_2.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id_2 = SubnetName::<Test>::get(subnet_name_2.clone()).unwrap();
         let owner_2 = account(2);
         SubnetOwner::<Test>::insert(subnet_id_2, &owner_2);
@@ -1355,7 +1355,7 @@ fn test_owner_update_name_repo_exists_error() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_repo = subnet_data.repo;
@@ -1385,7 +1385,7 @@ fn test_owner_update_description() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_description = subnet_data.description;
@@ -1426,7 +1426,7 @@ fn test_owner_update_misc() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
         let subnet_data = SubnetsData::<Test>::get(subnet_id).unwrap();
         let prev_misc = subnet_data.misc;
@@ -1467,7 +1467,7 @@ fn test_owner_update_churn_limit() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1507,7 +1507,7 @@ fn test_owner_update_registration_queue_epochs() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1547,7 +1547,7 @@ fn test_owner_update_registration_queue_epochs_invalid_registration_queue_epochs
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1587,7 +1587,7 @@ fn test_owner_update_idle_classification_epochs() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1627,7 +1627,7 @@ fn test_owner_update_idle_classification_epochs_invalid_idle_classification_epoc
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1667,7 +1667,7 @@ fn test_owner_update_included_classification_epochs() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1707,7 +1707,7 @@ fn test_owner_update_included_classification_epochs_invalid_included_classificat
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1807,7 +1807,7 @@ fn test_owner_add_initial_coldkeys_must_be_registering() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1899,7 +1899,7 @@ fn test_owner_remove_initial_coldkeys_must_be_registering() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -1978,7 +1978,7 @@ fn test_owner_remove_subnet_node() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
     });
 }
@@ -1991,7 +1991,7 @@ fn test_owner_remove_subnet_node() {
 //         let amount: u128 = 1000000000000000000000;
 //         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let original_owner = account(1);
@@ -2052,7 +2052,7 @@ fn test_owner_remove_subnet_node() {
 //         let amount: u128 = 1000000000000000000000;
 //         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let original_owner = account(1);
@@ -2092,7 +2092,7 @@ fn test_owner_remove_subnet_node() {
 //         let amount: u128 = 1000000000000000000000;
 //         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let original_owner = account(1);
@@ -2133,7 +2133,7 @@ fn test_owner_remove_subnet_node() {
 //         let amount: u128 = 1000000000000000000000;
 //         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let original_owner = account(1);
@@ -2173,7 +2173,7 @@ fn test_owner_remove_subnet_node() {
 //         let amount: u128 = 1000000000000000000000;
 //         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-//         build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+//         build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
 //         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
 //         let original_owner = account(1);
@@ -2214,7 +2214,7 @@ fn test_owner_update_min_max_stake() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -2292,7 +2292,7 @@ fn test_owner_update_delegate_stake_percentage() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -2344,7 +2344,7 @@ fn test_owner_update_delegate_stake_percentage_update_too_soon() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -2393,7 +2393,7 @@ fn test_owner_update_delegate_stake_percentage_update_too_large() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -2488,7 +2488,7 @@ fn test_owner_update_max_registered_nodes() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -2528,7 +2528,7 @@ fn test_owner_update_max_registered_nodes_invalid_max_registered_nodes() {
         let amount: u128 = 1000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3037,7 +3037,7 @@ fn test_owner_revert_emergency_validator_set() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3088,7 +3088,7 @@ fn test_owner_update_min_subnet_node_reputation() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3125,7 +3125,7 @@ fn test_owner_update_absent_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3161,7 +3161,7 @@ fn test_owner_update_included_increase_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3197,7 +3197,7 @@ fn test_owner_update_below_min_weight_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3235,7 +3235,7 @@ fn test_owner_update_non_attestor_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3273,7 +3273,7 @@ fn test_owner_update_non_consensus_attestor_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3311,7 +3311,7 @@ fn test_owner_update_validator_absent_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);
@@ -3349,7 +3349,7 @@ fn test_owner_update_validator_non_consensus_decrease_reputation_factor() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let original_owner = account(1);

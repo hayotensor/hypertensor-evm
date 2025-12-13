@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use super::*;
+use frame_support::pallet_prelude::Weight;
 
 impl<T: Config> Pallet<T> {
     pub fn do_update_node_delegate_reward_rate(
@@ -463,7 +464,9 @@ impl<T: Config> Pallet<T> {
         }
 
         if let Some(unique) = unique.clone() {
-            if let Ok(owner_subnet_node_id) = UniqueParamSubnetNodeId::<T>::try_get(subnet_id, &unique) {
+            if let Ok(owner_subnet_node_id) =
+                UniqueParamSubnetNodeId::<T>::try_get(subnet_id, &unique)
+            {
                 ensure!(
                     owner_subnet_node_id == subnet_node_id,
                     Error::<T>::UniqueParameterTaken
@@ -586,33 +589,75 @@ impl<T: Config> Pallet<T> {
         .unwrap_or(false)
     }
 
-    /// Removes a subnet node, can be registering, active, or deactive
-    pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
-        let mut is_active = false;
-        let mut is_registered = false;
+    pub fn remove_active_subnet_node(subnet_id: u32, subnet_node_id: u32) {
         let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            is_active = true;
             SubnetNodesData::<T>::take(subnet_id, subnet_node_id)
-        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
-            is_registered = true;
+        } else {
+            return;
+        };
+
+        Self::common_remove_subnet_node(subnet_id, subnet_node_id, subnet_node.clone());
+        
+        if subnet_node.classification.node_class == SubnetNodeClass::Validator {
+            // --- Try removing node from election slots (only happens if Validator classification)
+            // Updates:
+            // - `SubnetNodeElectionSlots`
+            // - `TotalSubnetElectableNodes`
+            // - `TotalElectableNodes`
+            Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
+        }
+
+        // Subtract from active node counts
+        TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
+        TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
+        // If emergency validators set, remove node ID
+        EmergencySubnetNodeElectionData::<T>::mutate_exists(subnet_id, |maybe_data| {
+            if let Some(data) = maybe_data {
+                data.subnet_node_ids.retain(|&id| id != subnet_node_id);
+            }
+        });
+    }
+
+    pub fn remove_registered_subnet_node(subnet_id: u32, subnet_node_id: u32) {
+        let subnet_node = if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id)
+        {
             RegisteredSubnetNodesData::<T>::take(subnet_id, subnet_node_id)
         } else {
             return;
         };
 
+        Self::common_remove_subnet_node(subnet_id, subnet_node_id, subnet_node.clone());
+
+        SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
+            nodes.retain(|node| node.id != subnet_node_id);
+        });
+    }
+
+    pub fn common_remove_subnet_node(
+        subnet_id: u32,
+        subnet_node_id: u32,
+        subnet_node: SubnetNode<T::AccountId>,
+    ) {
         let hotkey = subnet_node.hotkey;
         let peer_id = subnet_node.peer_id;
 
         if let Some(unique) = subnet_node.unique {
-            UniqueParamSubnetNodeId::<T>::remove(subnet_id, unique)
+            UniqueParamSubnetNodeId::<T>::remove(subnet_id, unique);
+        }
+
+        if let Some(bootnode) = subnet_node.bootnode {
+            BootnodeSubnetNodeId::<T>::remove(subnet_id, bootnode);
         }
 
         // Remove all subnet node elements
         PeerIdSubnetNodeId::<T>::remove(subnet_id, &peer_id);
         BootnodePeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.bootnode_peer_id);
+        ClientPeerIdSubnetNodeId::<T>::remove(subnet_id, subnet_node.client_peer_id);
         HotkeySubnetNodeId::<T>::remove(subnet_id, &hotkey);
         SubnetNodeIdHotkey::<T>::remove(subnet_id, subnet_node_id);
         SubnetNodeReputation::<T>::remove(subnet_id, subnet_node_id);
+        SubnetNodeIdleConsecutiveEpochs::<T>::remove(subnet_id, subnet_node_id);
+        SubnetNodeConsecutiveIncludedEpochs::<T>::remove(subnet_id, subnet_node_id);
         // We don't remove `HotkeySubnetId`. This is only removed when a node fully removes stake
 
         let coldkey = HotkeyOwner::<T>::get(&hotkey);
@@ -627,44 +672,41 @@ impl<T: Config> Pallet<T> {
             }
         });
 
+        // Subtract from coldkey reputation
+        ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
+            rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
+        });
+
         // Note: We don't remove the HotkeyOwner so the user can remove stake with coldkey
 
         // Update total subnet peers by subtracting  1
         TotalSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
         TotalNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
 
-        if subnet_node.classification.node_class == SubnetNodeClass::Validator {
-            // --- Try removing node from election slots (only happens if Validator classification)
-            Self::remove_node_from_election_slot(subnet_id, subnet_node_id);
-        }
-
-        if is_active {
-            // Subtract from active node counts
-            TotalActiveSubnetNodes::<T>::mutate(subnet_id, |n: &mut u32| n.saturating_dec());
-            TotalActiveNodes::<T>::mutate(|n: &mut u32| n.saturating_dec());
-            // Subtract from coldkey reputation
-            ColdkeyReputation::<T>::mutate(&coldkey, |rep| {
-                rep.total_active_nodes = rep.total_active_nodes.saturating_sub(1);
-            });
-            // If emergency validators set, remove node ID
-            EmergencySubnetNodeElectionData::<T>::mutate_exists(subnet_id, |maybe_data| {
-                if let Some(data) = maybe_data {
-                    data.subnet_node_ids.retain(|&id| id != subnet_node_id);
-                }
-            });
-        } else if is_registered {
-            // Remove from queue
-            // This is only ever called by a user called extrinsic, not by blockchain validator logic
-            // Therefor this expensive part is paid for
-            SubnetNodeQueue::<T>::mutate(subnet_id, |nodes| {
-                nodes.retain(|node| node.id != subnet_node_id);
-            });
-        }
-
         Self::deposit_event(Event::SubnetNodeRemoved {
             subnet_id: subnet_id,
             subnet_node_id: subnet_node_id,
         });
+    }
+
+    pub fn perform_remove_subnet_node(subnet_id: u32, subnet_node_id: u32) {
+        let mut is_active = false;
+        let mut is_registered = false;
+        let subnet_node = if SubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            is_active = true;
+            SubnetNodesData::<T>::get(subnet_id, subnet_node_id)
+        } else if RegisteredSubnetNodesData::<T>::contains_key(subnet_id, subnet_node_id) {
+            is_registered = true;
+            RegisteredSubnetNodesData::<T>::get(subnet_id, subnet_node_id)
+        } else {
+            return;
+        };
+
+        if is_active {
+            Self::remove_active_subnet_node(subnet_id, subnet_node_id);
+        } else if is_registered {
+            Self::remove_registered_subnet_node(subnet_id, subnet_node_id);
+        }
     }
 
     pub fn get_subnet_node(

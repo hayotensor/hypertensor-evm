@@ -257,7 +257,7 @@ fn test_set_overwatch_peer_id() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         // overwatch
@@ -372,7 +372,7 @@ fn test_set_overwatch_peer_id_errors() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         let max_subnets = MaxSubnets::<Test>::get();
@@ -406,7 +406,7 @@ fn test_remove_overwatch_node() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         // overwatch
@@ -476,7 +476,7 @@ fn test_anyone_remove_overwatch_node() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
         let min_subnet_nodes = MinSubnetNodes::<Test>::get();
         let end = min_subnet_nodes;
-        build_activated_subnet_new(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, end, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name.clone()).unwrap();
 
         // overwatch

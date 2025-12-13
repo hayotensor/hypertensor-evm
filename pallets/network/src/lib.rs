@@ -382,6 +382,7 @@ pub mod pallet {
         SetInConsensusSubnetReputationFactor(u128),
         SetOverwatchWeightFactor(u128),
         SetMaxEmergencyValidatorEpochsMultiplier(u128),
+        SetMaxEmergencySubnetNodes(u32),
         SetOverwatchStakeWeightFactor(u128),
         SetSubnetWeightFactors(SubnetWeightFactorsData),
         SetValidatorRewardMidpoint(u128),
@@ -718,6 +719,8 @@ pub mod pallet {
         SubnetMustBeActive,
         /// Subnet state must be paused to perform this action
         SubnetMustBePaused,
+        InvalidMinEmergencySubnetNodes,
+        InvalidMaxEmergencySubnetNodes,
         /// Subnet is paused, cannot perform this action
         SubnetIsPaused,
         /// Transaction rate limiter exceeded
@@ -824,6 +827,8 @@ pub mod pallet {
         MinDelegateStake,
         /// Elected validator on current epoch cannot unstake to ensure they are able to be rewarded or penalized
         ElectedValidatorCannotUnstake,
+        /// Elected validator on current epoch cannot remove to ensure they are able to be rewarded or penalized
+        ElectedValidatorCannotRemove,
         MinActiveNodeStakeEpochs,
         /// Shares entered is zero, must be greater than
         SharesZero,
@@ -1977,7 +1982,7 @@ pub mod pallet {
     /// - MaxSubnetNodes
     #[pallet::type_value]
     pub fn DefaultMaxSubnetNodes() -> u32 {
-        512
+        256
     }
     /// This type value is referenced in:
     /// - SubnetMinStakeBalance
@@ -2711,6 +2716,10 @@ pub mod pallet {
         // 200%, doubles the target seudo fork epochs
         2000000000000000000
     }
+    #[pallet::type_value]
+    pub fn DefaultMaxEmergencySubnetNodes() -> u32 {
+        64
+    }
 
     //
     // Subnet elements
@@ -2830,6 +2839,10 @@ pub mod pallet {
     #[pallet::storage]
     pub type EmergencySubnetNodeElectionData<T> =
         StorageMap<_, Identity, u32, EmergencySubnetValidatorData, OptionQuery>;
+
+    #[pallet::storage]
+    pub type MaxEmergencySubnetNodes<T> =
+        StorageValue<_, u32, ValueQuery, DefaultMaxEmergencySubnetNodes>;
 
     /// The multiplier used to get the EmergencySubnetValidatorData.max_emergency_validators_epoch
     /// Example: `current subnet epoch + target_emergency_validators_epochs * MaxEmergencyValidatorEpochsMultiplier`
@@ -4681,6 +4694,15 @@ pub mod pallet {
                 Error::<T>::NotKeyOwner
             );
 
+            // Check if validator
+            let subnet_epoch = Self::get_current_subnet_epoch_as_u32(subnet_id);
+            let is_chosen_validator: bool =
+                Self::is_chosen_validator(subnet_id, subnet_node_id, subnet_epoch);
+            ensure!(
+                !is_chosen_validator,
+                Error::<T>::ElectedValidatorCannotRemove
+            );
+
             Self::do_remove_subnet_node(subnet_id, subnet_node_id)
         }
 
@@ -6253,9 +6275,9 @@ pub mod pallet {
 
         #[pallet::call_index(103)]
         #[pallet::weight({0})]
-        pub fn set_subnet_min_stakes(origin: OriginFor<T>, min: u128, max: u128) -> DispatchResult {
+        pub fn set_subnet_stakes(origin: OriginFor<T>, min: u128, max: u128) -> DispatchResult {
             T::SuperMajorityCollectiveOrigin::ensure_origin(origin)?;
-            Self::do_set_subnet_min_stakes(min, max)
+            Self::do_set_subnet_stakes(min, max)
         }
 
         #[pallet::call_index(104)]
@@ -6732,6 +6754,13 @@ pub mod pallet {
 
         #[pallet::call_index(159)]
         #[pallet::weight({0})]
+        pub fn set_max_emergency_subnet_nodes(origin: OriginFor<T>, value: u32) -> DispatchResult {
+            T::MajorityCollectiveOrigin::ensure_origin(origin)?;
+            Self::do_set_max_emergency_subnet_nodes(value)
+        }
+
+        #[pallet::call_index(160)]
+        #[pallet::weight({0})]
         pub fn set_overwatch_stake_weight_factor(
             origin: OriginFor<T>,
             value: u128,
@@ -6740,7 +6769,7 @@ pub mod pallet {
             Self::do_set_overwatch_stake_weight_factor(value)
         }
 
-        #[pallet::call_index(160)]
+        #[pallet::call_index(161)]
         #[pallet::weight({0})]
         pub fn set_subnet_weight_factors(
             origin: OriginFor<T>,
@@ -6750,7 +6779,7 @@ pub mod pallet {
             Self::do_set_subnet_weight_factors(value)
         }
 
-        #[pallet::call_index(161)]
+        #[pallet::call_index(162)]
         #[pallet::weight({0})]
         pub fn set_churn_limit_multipliers(
             origin: OriginFor<T>,
@@ -8281,6 +8310,7 @@ pub mod pallet {
             //     and if the coldkey hasn't registered too many nodes
             // There must be SubnetRegistrationInitialColdkeys if not active
             // `SubnetRegistrationInitialColdkeys` is removed on activation
+            // Note: `SubnetRegistrationInitialColdkeys` is removed on activation
             if let Some(coldkey_map) = SubnetRegistrationInitialColdkeys::<T>::get(subnet_id) {
                 if let Some(&max_registrations) = coldkey_map.get(&coldkey) {
                     let current_registrations = InitialColdkeyData::<T>::get(subnet_id)
@@ -8524,7 +8554,7 @@ pub mod pallet {
 
             // This can only return false if electrion slot insertion fails
             ensure!(
-                Self::do_activate_subnet_node_v2(
+                Self::do_activate_subnet_node(
                     &mut WeightMeter::new(),
                     subnet_id,
                     subnet_state,
@@ -8571,7 +8601,7 @@ pub mod pallet {
         /// # Returns
         ///
         /// * `bool` - `true` if activation was successful, `false` otherwise.
-        pub fn do_activate_subnet_node_v2(
+        pub fn do_activate_subnet_node(
             weight_meter: &mut WeightMeter,
             subnet_id: u32,
             subnet_state: SubnetState,

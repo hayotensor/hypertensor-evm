@@ -7,11 +7,12 @@ use crate::{
     DelegateStakeCooldownEpochs, DelegateStakeSubnetRemovalInterval, DelegateStakeWeightFactor,
     Error, InConsensusSubnetReputationFactor, InflationSigmoidMidpoint, InflationSigmoidSteepness,
     LessThanMinNodesSubnetReputationFactor, MaxBootnodes, MaxChurnLimit, MaxChurnLimitMultiplier,
-    MaxDelegateStakePercentage, MaxEmergencyValidatorEpochsMultiplier, MaxIdleClassificationEpochs,
-    MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes, MaxMinDelegateStakeMultiplier,
-    MaxMinSubnetNodeReputation, MaxNodeBurnRate, MaxNodeReputationFactor, MaxOverwatchNodes,
-    MaxPauseEpochsSubnetReputationFactor, MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount,
-    MaxSubnetBootnodeAccess, MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
+    MaxDelegateStakePercentage, MaxEmergencySubnetNodes, MaxEmergencyValidatorEpochsMultiplier,
+    MaxIdleClassificationEpochs, MaxIncludedClassificationEpochs, MaxMaxRegisteredNodes,
+    MaxMinDelegateStakeMultiplier, MaxMinSubnetNodeReputation, MaxNodeBurnRate,
+    MaxNodeReputationFactor, MaxOverwatchNodes, MaxPauseEpochsSubnetReputationFactor,
+    MaxQueueEpochs, MaxRewardRateDecrease, MaxSlashAmount, MaxSubnetBootnodeAccess,
+    MaxSubnetDelegateStakeRewardsPercentageChange, MaxSubnetMinStake,
     MaxSubnetNodeMinWeightDecreaseReputationThreshold, MaxSubnetNodes, MaxSubnetPauseEpochs,
     MaxSubnetRemovalInterval, MaxSubnets, MaxSwapQueueCallsPerBlock, MaxUnbondings,
     MaximumHooksWeightV2, MinActiveNodeStakeEpochs, MinAttestationPercentage, MinChurnLimit,
@@ -95,7 +96,7 @@ fn test_collective_remove_subnet() {
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
         // Build subnet
-        build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name).unwrap();
 
         // Remove subnet with collective origin (super majority required)
@@ -113,7 +114,7 @@ fn test_collective_remove_subnet_fails_without_super_majority() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 0, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name).unwrap();
 
         // Should fail with regular majority
@@ -251,7 +252,7 @@ fn test_set_max_min_delegate_stake_multiplier() {
     new_test_ext().execute_with(|| {
         System::set_block_number(System::block_number() + 1);
 
-        let new_value: u128 = 5;
+        let new_value: u128 = Network::percentage_factor_as_u128() + 1;
 
         assert_ok!(Network::set_max_min_delegate_stake_multiplier(
             RuntimeOrigin::from(pallet_collective::RawOrigin::Members(5, 5)),
@@ -672,14 +673,14 @@ fn test_set_included_classification_epochs() {
 }
 
 #[test]
-fn test_set_subnet_min_stakes() {
+fn test_set_subnet_stakes() {
     new_test_ext().execute_with(|| {
         System::set_block_number(System::block_number() + 1);
 
         let min: u128 = 1000000000000000000;
         let max: u128 = 100000000000000000000000;
 
-        assert_ok!(Network::set_subnet_min_stakes(
+        assert_ok!(Network::set_subnet_stakes(
             RuntimeOrigin::from(pallet_collective::RawOrigin::Members(4, 5)),
             min,
             max
@@ -1343,7 +1344,7 @@ fn test_collective_remove_subnet_node() {
         let deposit_amount: u128 = 10000000000000000000000;
         let stake_amount: u128 = MinSubnetMinStake::<Test>::get();
 
-        build_activated_subnet_new(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
+        build_activated_subnet(subnet_name.clone(), 0, 4, deposit_amount, stake_amount);
         let subnet_id = SubnetName::<Test>::get(subnet_name).unwrap();
 
         // Remove a subnet node with super majority
@@ -1841,6 +1842,36 @@ fn test_set_max_emergency_validator_epochs_multiplier() {
         assert_eq!(
             *network_events().last().unwrap(),
             Event::SetMaxEmergencyValidatorEpochsMultiplier(new_value)
+        );
+    });
+}
+
+#[test]
+fn test_set_max_emergency_subnet_nodes() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(System::block_number() + 1);
+
+        let new_value = MinSubnetNodes::<Test>::get() + 1;
+
+        assert_ok!(Network::set_max_emergency_subnet_nodes(
+            RuntimeOrigin::from(pallet_collective::RawOrigin::Members(2, 3)),
+            new_value
+        ));
+
+        assert_eq!(MaxEmergencySubnetNodes::<Test>::get(), new_value);
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::SetMaxEmergencySubnetNodes(new_value)
+        );
+
+        let new_value = MinSubnetNodes::<Test>::get() - 1;
+
+        assert_err!(
+            Network::set_max_emergency_subnet_nodes(
+                RuntimeOrigin::from(pallet_collective::RawOrigin::Members(2, 3)),
+                new_value
+            ),
+            Error::<Test>::InvalidMaxEmergencySubnetNodes
         );
     });
 }
