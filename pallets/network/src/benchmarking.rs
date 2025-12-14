@@ -1,5 +1,6 @@
 //! Benchmarking setup for pallet-network
 // frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_network" --output pallets/network/src/weights.rs --template ./.maintain/frame-weight-template.hbs
+
 // frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_network" --output pallets/network/src/weights.rs --template ./.maintain/frame-weight-template.hbs --steps 2
 
 // frame-omni-bencher v1 benchmark pallet --runtime target/release/wbuild/hypertensor-runtime/hypertensor_runtime.compact.compressed.wasm --extrinsic "" --pallet "pallet_network"
@@ -18,31 +19,28 @@ use super::*;
 use crate::Pallet as Network;
 use crate::*;
 use frame_benchmarking::v2::*;
-use frame_support::pallet_prelude::DispatchError;
-use frame_support::pallet_prelude::Zero;
-use frame_support::Callable;
 use frame_support::{
-    assert_noop, assert_ok,
+    assert_noop, assert_ok, Callable,
     traits::{EnsureOrigin, Get, OnInitialize, UnfilteredDispatchable},
     weights::WeightMeter,
+    pallet_prelude::{DispatchError, Zero},
 };
-use frame_system::limits::BlockWeights;
-use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
+use frame_system::{
+    RawOrigin,
+    pallet_prelude::BlockNumberFor,
+    limits::BlockWeights
+};
 pub use pallet::*;
-// use pallet_collective::Pallet as Collective;
 use fp_account::AccountId20;
 use pallet_collective::{Instance1, Members};
 use pallet_evm::{AddressMapping, IdentityAddressMapping};
 use pallet_treasury::Pallet as Treasury;
-use scale_info::prelude::format;
-use scale_info::prelude::vec;
-use sp_core::blake2_128;
-use sp_core::OpaquePeerId as PeerId;
-use sp_core::{keccak_256, H160};
-use sp_runtime::traits::Hash;
-use sp_runtime::traits::Header;
-use sp_runtime::SaturatedConversion;
-use sp_runtime::Vec;
+use scale_info::prelude::{vec, format};
+use sp_core::{OpaquePeerId as PeerId, keccak_256, blake2_128, H160};
+use sp_runtime::{
+    SaturatedConversion, Vec,
+    traits::{Hash, Header},
+};
 
 const SEED: u32 = 0;
 const DEFAULT_SCORE: u128 = 100e+18 as u128;
@@ -68,56 +66,6 @@ fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
     let caller: T::AccountId = account(name, index, SEED);
     caller
 }
-
-// pub fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
-//     // Combine name and index into a single input to avoid account clashing
-//     let mut input = name.as_bytes().to_vec();
-//     input.extend_from_slice(&index.to_le_bytes());
-//     let hash = keccak_256(&input);
-//     let account_id20 = AccountId20::from(H160::from_slice(&hash[0..20]));
-//     // Encode and decode to convert types without requiring trait bounds on callers
-//     let account_id = T::AccountId::decode(&mut &account_id20.encode()[..]).expect("AccountId20 should decode to T::AccountId");
-//     account_id
-// }
-
-// pub fn get_account<T: Config>(_name: &'static str, index: u32) -> T::AccountId {
-//     use sp_runtime::traits::TrailingZeroInput;
-//     let hash = keccak_256(&index.to_le_bytes());
-//     T::AccountId::decode(&mut TrailingZeroInput::new(&hash[0..20]))
-//         .expect("H160 bytes should decode to T::AccountId")
-// }
-
-// pub fn get_account<T: Config>(_name: &'static str, index: u32) -> T::AccountId {
-//     use sp_runtime::traits::TrailingZeroInput;
-//     let hash = keccak_256(&index.to_le_bytes());
-//     let account_id20 = AccountId20::from(H160::from_slice(&hash[0..20]));
-//     T::AccountId::decode(&mut TrailingZeroInput::new(account_id20.as_ref()))
-//         .expect("AccountId20 bytes should decode to T::AccountId")
-// }
-
-// pub fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
-// pub fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
-//     // Combine name and index into a single input to avoid account clashing
-//     let mut input = name.as_bytes().to_vec();
-//     input.extend_from_slice(&index.to_le_bytes());
-//     let hash = keccak_256(&input);
-//     let account_id20 = AccountId20::from(H160::from_slice(&hash[0..20]));
-//     // Encode and decode to convert types without requiring trait bounds on callers
-//     T::AccountId::decode(&mut &account_id20.encode()[..]).expect("AccountId20 should decode to T::AccountId")
-// }
-
-// pub fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
-//     let hash = keccak_256(&index.to_le_bytes());
-//     let account_id20 = AccountId20::from(H160::from_slice(&hash[0..20]));
-//     // Encode and decode to convert types
-//     T::AccountId::decode(&mut &account_id20.encode()[..]).expect("AccountId20 should decode to T::AccountId")
-// }
-
-// pub fn get_account<T: Config>(name: &'static str, index: u32) -> T::AccountId where <T as frame_system::Config>::AccountId: From<H160> {
-//     let hash = keccak_256(&index.to_le_bytes());
-//     let account_id = AccountId20::from(H160::from_slice(&hash[0..20]));
-//     <IdentityAddressMapping as AddressMapping<T>>::into_account_id(account_id.into())
-// }
 
 fn get_alice<T: Config>() -> T::AccountId {
     let alice: T::AccountId = get_account::<T>("alice", 0);
@@ -1324,44 +1272,6 @@ where
         T::MaxMembers::get()
     ));
 }
-
-// fn make_set_max_activation_grace_epochs_proposal<C>(
-// ) -> Box<<C as pallet_collective::Config<pallet_collective::Instance1>>::Proposal>
-// where
-//     C: Config + pallet_collective::Config<pallet_collective::Instance1>,
-//     <C as pallet_collective::Config<pallet_collective::Instance1>>::Proposal: From<crate::Call<C>>,
-// {
-//     // Create your network call
-//     let network_call = crate::Call::<C>::set_max_activation_grace_epochs { value: 999 };
-
-//     // Convert to the collective's Proposal type and box it
-//     let proposal = <C as pallet_collective::Config<pallet_collective::Instance1>>::Proposal::from(
-//         network_call,
-//     );
-//     Box::new(proposal)
-// }
-
-// fn propose_collective<T: Config, I>(
-//     proposer: T::AccountId,
-//     threshold: u32,
-//     proposal: Box<<T as pallet_collective::Config<pallet_collective::Instance1>>::Proposal>,
-//     length_bound: u32,
-// ) -> Result<(), sp_runtime::DispatchError>
-// where
-//     T: Config + pallet_collective::Config<pallet_collective::Instance1>,
-// {
-//     pallet_collective::Pallet::<T, pallet_collective::Instance1>::propose(
-//         RawOrigin::Signed(proposer.clone()).into(),
-//         threshold,
-//         proposal,
-//         length_bound,
-//     )
-// }
-
-// fn get_treasury_pot<T: Config<I>, I: 'static>(
-// ) {
-// 	Treasury::<T, I>::pot();
-// }
 
 #[benchmarks]
 mod benchmarks {
@@ -6733,8 +6643,9 @@ mod benchmarks {
     }
 
     // Informational purposes only
+    // Note: This must be ran with x > BLOCKS_PER_EPOCH - 3 (See runtime/src/lib.rs)
     #[benchmark]
-    fn calculate_subnet_weights(x: Linear<1, 65>) {
+    fn calculate_subnet_weights(x: Linear<1, 64>) {
         // Activate subnets
         let end = MinSubnetNodes::<T>::get();
         NewRegistrationCostMultiplier::<T>::set(1000000000000000000);
@@ -6771,6 +6682,5 @@ mod benchmarks {
         }
     }
 
-    // impl_benchmark_test_suite!(Network, crate::mock::new_test_ext(), crate::mock::Test);
     impl_benchmark_test_suite!(Network, tests::mock::new_test_ext(), tests::mock::Test);
 }

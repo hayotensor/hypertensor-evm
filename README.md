@@ -214,7 +214,7 @@ Please follow the [Substrate Docker instructions
 here](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/docker/README.md) to
 build the Docker container with the Substrate Node Template binary.
 
-# Frontier Node Template
+# Hypertensor Node Template
 
 A [FRAME](https://docs.substrate.io/v3/runtime/frame)-based [Substrate](https://substrate.io) template node with the Ethereum RPC support, ready for hacking.
 
@@ -233,19 +233,19 @@ $ cargo build --release
 To execute the chain, run:
 
 ```sh
-$ ./target/release/frontier-template-node --dev
+$ ./target/release/hypertensor-node --dev
 ```
 
 The node also supports to use manual seal (to produce block manually through RPC). This is also used by the `ts-tests`:
 
 ```sh
-$ ./target/release/frontier-template-node --dev --sealing=manual
+$ ./target/release/hypertensor-node --dev --sealing=manual
 ```
 
 The output shows the following logs:
 
 ```sh
-2024-03-06 10:39:57 Frontier Node    
+2024-03-06 10:39:57 Hypertensor Node    
 2024-03-06 10:39:57 ✌️  version 0.0.0-f301825c59d    
 2024-03-06 10:39:57 ❤️  by Parity Technologies <admin@parity.io>, 2021-2024    
 2024-03-06 10:39:57 📋 Chain specification: Development    

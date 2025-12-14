@@ -23,7 +23,10 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 #[allow(unused_imports)]
 use sp_core::ecdsa;
-use sp_core::{OpaquePeerId, Pair, Public, H160, U256};
+use sp_core::{
+    OpaquePeerId, Pair, Public, H160, U256,
+    crypto::Ss58Codec,
+};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 // Frontier
 use crate::{AccountId, Balance, SS58Prefix, Signature};
@@ -59,6 +62,21 @@ where
 
 pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
     (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
+}
+
+pub fn authority_keys_from_ss58(s_aura: &str, s_grandpa: &str) -> (AuraId, GrandpaId) {
+	(
+		aura_from_ss58_addr(s_aura),
+		grandpa_from_ss58_addr(s_grandpa),
+	)
+}
+
+pub fn aura_from_ss58_addr(s: &str) -> AuraId {
+	Ss58Codec::from_ss58check(s).unwrap()
+}
+
+pub fn grandpa_from_ss58_addr(s: &str) -> GrandpaId {
+	Ss58Codec::from_ss58check(s).unwrap()
 }
 
 const UNITS: Balance = 1_000_000_000_000_000_000;
@@ -299,12 +317,61 @@ pub fn local_config_genesis() -> Value {
     )
 }
 
+pub fn hoskinson_config_genesis() -> Value {
+    testnet_genesis(
+        // Sudo account (Alith)
+        AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")),
+        // Pre-funded accounts
+        vec![
+            AccountId::from(hex!("f24FF3a9CF04c71Dbc94D0b566f7A27B94566cac")), // Alith
+            AccountId::from(hex!("317D7a5a2ba5787A99BE4693Eb340a10C71d680b")), // Alith hotkey
+            AccountId::from(hex!("3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0")), // Baltathar
+            AccountId::from(hex!("c30fE91DE91a3FA79E42Dfe7a01917d0D92D99D7")), // Baltathar hotkey
+            AccountId::from(hex!("798d4Ba9baf0064Ec19eB4F0a1a45785ae9D6DFc")), // Charleth
+            AccountId::from(hex!("2f7703Ba9953d422294079A1CB32f5d2B60E38EB")), // Charleth hotkey
+            AccountId::from(hex!("773539d4Ac0e786233D90A233654ccEE26a613D9")), // Dorothy
+            AccountId::from(hex!("294BFfC18b5321264f55c517Aca2963bEF9D29EA")), // Dorothy hotkey
+            AccountId::from(hex!("Ff64d3F6efE2317EE2807d223a0Bdc4c0c49dfDB")), // Ethan
+            AccountId::from(hex!("919a696741e5bEe48538D43CB8A34a95261E62fc")), // Ethan hotkey
+            AccountId::from(hex!("C0F0f4ab324C46e55D02D0033343B4Be8A55532d")), // Faith
+            AccountId::from(hex!("D4eb2503fA9F447CCa7b78D9a86F2fdbc964401e")), // Faith hotkey
+            AccountId::from(hex!("0D8479bEa19985904d1a6a04dF7829a9cAD462B6")), // Bridge
+            AccountId::from(hex!("bBCB2a3Bf58f1ceCCF3DdA1b6f9137DDAD13c0A8")), // Faucet
+        ],
+        vec![
+            // Hypertensor Team
+            authority_keys_from_ss58(
+				"5E4mc4NDegQ9PmrWfVXLM8J9JRLbiihKTjbryTH4ERiuMzVf",
+				"5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
+			),
+            // Rizzo
+            authority_keys_from_ss58(
+				"5D5CaW7QNMftHKrVVZ6YAW2fsiw8SCuaiRbFYxcUv7RTf7Lm",
+				"5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
+			),
+            // Seeker
+            authority_keys_from_ss58(
+				"5Dy7ZDhb72g2ag8xGXtvsjJwrCooQkRXNNYE981aDqLT9CwW",
+				"5CMxfSAARev3X9qDFxR6xZyHjM5rUfr6FDqYHAcc5n7VwvHX",
+			),
+            // RT
+            authority_keys_from_ss58(
+				"5GKcgkBqjXezP1MtwQ9GzTZNiLChzc48NHPGHFTq58r8wm6z",
+				"5G51nnSdBGVxyhHLKMrwZbVymTVLeKtrR7KKjkrdkrBgs1nb",
+			),
+        ],
+        42,
+        false,
+    )
+}
+
 /// Provides the JSON representation of predefined genesis config for given `id`.
 pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
     let patch = match id.as_ref() {
         "ETHEREUM_DEV_RUNTIME_PRESET" => ethereum_development_config_genesis(true),
         sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(false),
         sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET => local_config_genesis(),
+        "HOSKINSON_RUNTIME_PRESET" => hoskinson_config_genesis(),
         _ => return None,
     };
     Some(
@@ -320,5 +387,6 @@ pub fn preset_names() -> Vec<PresetId> {
         PresetId::from("ETHEREUM_DEV_RUNTIME_PRESET"),
         PresetId::from(sp_genesis_builder::DEV_RUNTIME_PRESET),
         PresetId::from(sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET),
+        PresetId::from("HOSKINSON_RUNTIME_PRESET"),
     ]
 }

@@ -17,7 +17,7 @@ use hypertensor_runtime::genesis_config_presets::get_account_id_from_seed;
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "Frontier Node".into()
+        "Hypertensor Node".into()
     }
 
     fn impl_version() -> String {
@@ -50,26 +50,12 @@ impl SubstrateCli for Cli {
                 let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
                 Box::new(chain_spec::eth_development_chain_spec(enable_manual_seal)?)
             }
+            "hoskinson" => Box::new(chain_spec::hoskinson_chain_spec()?),
             "" | "local" => Box::new(chain_spec::local_chain_spec()?),
             path => Box::new(chain_spec::ChainSpec::from_json_file(
                 std::path::PathBuf::from(path),
             )?),
         })
-
-        // Ok(match id {
-        // 	"dev" => {
-        // 		let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
-        // 		Box::new(chain_spec::development_config(enable_manual_seal))
-        // 	}
-        // 	"development" => {
-        // 		let enable_manual_seal = self.sealing.map(|_| true).unwrap_or_default();
-        // 		Box::new(chain_spec::development_config(enable_manual_seal))
-        // 	}
-        // 	"" | "local" => Box::new(chain_spec::local_testnet_config()),
-        // 	path => Box::new(chain_spec::ChainSpec::from_json_file(
-        // 		std::path::PathBuf::from(path),
-        // 	)?),
-        // })
     }
 }
 

@@ -51,3 +51,16 @@ pub fn local_chain_spec() -> Result<ChainSpec, String> {
     .with_genesis_config_preset_name(sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET)
     .build())
 }
+
+pub fn hoskinson_chain_spec() -> Result<ChainSpec, String> {
+    Ok(ChainSpec::builder(
+        WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?,
+        None,
+    )
+    .with_name("Hoskinson Testnet")
+    .with_id("hoskinson_testnet")
+    .with_chain_type(ChainType::Live)
+    .with_properties(properties())
+    .with_genesis_config_preset_name("HOSKINSON_RUNTIME_PRESET")
+    .build())
+}
