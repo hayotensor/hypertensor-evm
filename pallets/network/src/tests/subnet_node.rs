@@ -9,11 +9,11 @@ use crate::{
     MinSubnetNodes, NodeRewardRateUpdatePeriod, NodeSlotIndex, PeerIdSubnetNodeId,
     RegisteredSubnetNodesData, SubnetElectedValidator, SubnetMinStakeBalance, SubnetName,
     SubnetNode, SubnetNodeClass, SubnetNodeClassification, SubnetNodeElectionSlots,
-    SubnetNodeIdHotkey, SubnetNodeQueueEpochs, SubnetNodesData, SubnetOwner,
+    SubnetNodeIdHotkey, SubnetNodeQueueEpochs, SubnetNodeReputation, SubnetNodesData, SubnetOwner,
     SubnetPauseCooldownEpochs, SubnetRegistrationEpochs, SubnetState, TotalActiveNodes,
     TotalActiveSubnetNodes, TotalActiveSubnets, TotalElectableNodes, TotalNodes, TotalStake,
     TotalSubnetElectableNodes, TotalSubnetNodeUids, TotalSubnetNodes, TotalSubnetStake,
-    UniqueParamSubnetNodeId, SubnetNodeReputation,
+    UniqueParamSubnetNodeId,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -1394,13 +1394,12 @@ fn test_remove_subnet_node_registered() {
             Err(())
         );
 
-        assert!(
-            SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).is_ok()
-        );
+        assert!(SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).is_ok());
 
-        assert!(
-            SubnetNodesData::<Test>::contains_key(subnet_id, hotkey_subnet_node_id)
-        );
+        assert!(SubnetNodesData::<Test>::contains_key(
+            subnet_id,
+            hotkey_subnet_node_id
+        ));
 
         let coldkey_subnet_nodes = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
         assert!(coldkey_subnet_nodes
@@ -1539,9 +1538,7 @@ fn test_remove_subnet_node_registered() {
         subnet_node.classification.node_class = SubnetNodeClass::Included;
         SubnetNodesData::<Test>::insert(subnet_id, hotkey_subnet_node_id, subnet_node);
 
-        assert!(
-            SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).is_ok()
-        );
+        assert!(SubnetNodesData::<Test>::try_get(subnet_id, hotkey_subnet_node_id).is_ok());
 
         let coldkey_subnet_nodes = ColdkeySubnetNodes::<Test>::get(coldkey.clone());
         assert!(coldkey_subnet_nodes
@@ -5190,7 +5187,6 @@ fn test_do_activate_subnet_node_registered_subnet() {
     });
 }
 
-
 #[test]
 fn test_slash_validator() {
     new_test_ext().execute_with(|| {
@@ -5214,7 +5210,10 @@ fn test_slash_validator() {
 
         let subnet_node_id = HotkeySubnetNodeId::<Test>::get(subnet_id, hotkey.clone()).unwrap();
         let subnet_node = SubnetNodesData::<Test>::get(subnet_id, subnet_node_id);
-        assert_eq!(subnet_node.classification.node_class, SubnetNodeClass::Validator);
+        assert_eq!(
+            subnet_node.classification.node_class,
+            SubnetNodeClass::Validator
+        );
 
         let starting_node_rep = SubnetNodeReputation::<Test>::get(subnet_id, subnet_node_id);
         let starting_ck_rep = ColdkeyReputation::<Test>::get(coldkey.clone()).score;

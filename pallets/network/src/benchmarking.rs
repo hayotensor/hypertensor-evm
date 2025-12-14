@@ -11,6 +11,7 @@
 // cargo build --package pallet-network --features runtime-benchmarks
 // cargo build --package pallet-collective --features runtime-benchmarks
 // cargo +nightly build --release --features runtime-benchmarks
+// ./target/release/hypertensor-node benchmark machine
 
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
@@ -18,28 +19,25 @@ use super::*;
 #[allow(unused)]
 use crate::Pallet as Network;
 use crate::*;
+use fp_account::AccountId20;
 use frame_benchmarking::v2::*;
 use frame_support::{
-    assert_noop, assert_ok, Callable,
+    assert_noop, assert_ok,
+    pallet_prelude::{DispatchError, Zero},
     traits::{EnsureOrigin, Get, OnInitialize, UnfilteredDispatchable},
     weights::WeightMeter,
-    pallet_prelude::{DispatchError, Zero},
+    Callable,
 };
-use frame_system::{
-    RawOrigin,
-    pallet_prelude::BlockNumberFor,
-    limits::BlockWeights
-};
+use frame_system::{limits::BlockWeights, pallet_prelude::BlockNumberFor, RawOrigin};
 pub use pallet::*;
-use fp_account::AccountId20;
 use pallet_collective::{Instance1, Members};
 use pallet_evm::{AddressMapping, IdentityAddressMapping};
 use pallet_treasury::Pallet as Treasury;
-use scale_info::prelude::{vec, format};
-use sp_core::{OpaquePeerId as PeerId, keccak_256, blake2_128, H160};
+use scale_info::prelude::{format, vec};
+use sp_core::{blake2_128, keccak_256, OpaquePeerId as PeerId, H160};
 use sp_runtime::{
-    SaturatedConversion, Vec,
     traits::{Hash, Header},
+    SaturatedConversion, Vec,
 };
 
 const SEED: u32 = 0;

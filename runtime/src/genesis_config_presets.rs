@@ -23,10 +23,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 #[allow(unused_imports)]
 use sp_core::ecdsa;
-use sp_core::{
-    OpaquePeerId, Pair, Public, H160, U256,
-    crypto::Ss58Codec,
-};
+use sp_core::{crypto::Ss58Codec, OpaquePeerId, Pair, Public, H160, U256};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 // Frontier
 use crate::{AccountId, Balance, SS58Prefix, Signature};
@@ -65,18 +62,18 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 }
 
 pub fn authority_keys_from_ss58(s_aura: &str, s_grandpa: &str) -> (AuraId, GrandpaId) {
-	(
-		aura_from_ss58_addr(s_aura),
-		grandpa_from_ss58_addr(s_grandpa),
-	)
+    (
+        aura_from_ss58_addr(s_aura),
+        grandpa_from_ss58_addr(s_grandpa),
+    )
 }
 
 pub fn aura_from_ss58_addr(s: &str) -> AuraId {
-	Ss58Codec::from_ss58check(s).unwrap()
+    Ss58Codec::from_ss58check(s).unwrap()
 }
 
 pub fn grandpa_from_ss58_addr(s: &str) -> GrandpaId {
-	Ss58Codec::from_ss58check(s).unwrap()
+    Ss58Codec::from_ss58check(s).unwrap()
 }
 
 const UNITS: Balance = 1_000_000_000_000_000_000;
@@ -341,24 +338,24 @@ pub fn hoskinson_config_genesis() -> Value {
         vec![
             // Hypertensor Team
             authority_keys_from_ss58(
-				"5E4mc4NDegQ9PmrWfVXLM8J9JRLbiihKTjbryTH4ERiuMzVf",
-				"5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
-			),
+                "5E4mc4NDegQ9PmrWfVXLM8J9JRLbiihKTjbryTH4ERiuMzVf",
+                "5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
+            ),
             // Rizzo
             authority_keys_from_ss58(
-				"5D5CaW7QNMftHKrVVZ6YAW2fsiw8SCuaiRbFYxcUv7RTf7Lm",
-				"5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
-			),
+                "5D5CaW7QNMftHKrVVZ6YAW2fsiw8SCuaiRbFYxcUv7RTf7Lm",
+                "5CNH3bFLnT3pdojebX9yGTEzusmTNK1WVJnEbYMojkULk2Ye",
+            ),
             // Seeker
             authority_keys_from_ss58(
-				"5Dy7ZDhb72g2ag8xGXtvsjJwrCooQkRXNNYE981aDqLT9CwW",
-				"5CMxfSAARev3X9qDFxR6xZyHjM5rUfr6FDqYHAcc5n7VwvHX",
-			),
+                "5Dy7ZDhb72g2ag8xGXtvsjJwrCooQkRXNNYE981aDqLT9CwW",
+                "5CMxfSAARev3X9qDFxR6xZyHjM5rUfr6FDqYHAcc5n7VwvHX",
+            ),
             // RT
             authority_keys_from_ss58(
-				"5GKcgkBqjXezP1MtwQ9GzTZNiLChzc48NHPGHFTq58r8wm6z",
-				"5G51nnSdBGVxyhHLKMrwZbVymTVLeKtrR7KKjkrdkrBgs1nb",
-			),
+                "5GKcgkBqjXezP1MtwQ9GzTZNiLChzc48NHPGHFTq58r8wm6z",
+                "5G51nnSdBGVxyhHLKMrwZbVymTVLeKtrR7KKjkrdkrBgs1nb",
+            ),
         ],
         42,
         false,

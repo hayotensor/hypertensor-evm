@@ -3,10 +3,13 @@ use crate::tests::test_utils::*;
 use crate::Event;
 use crate::{
     MaxSubnetNodes, MaxSubnets, MinSubnetMinStake, SubnetElectedValidator, SubnetName,
-    SubnetNodeClass, TotalActiveSubnets,
+    SubnetNodeClass, TotalActiveSubnets, PeerIdOverwatchNodeId, SubnetBootnodesV2,
+    DefaultMaxVectorLength,
 };
 use frame_support::assert_ok;
 use frame_support::traits::Currency;
+use sp_runtime::BoundedVec;
+use sp_std::collections::btree_map::BTreeMap;
 
 //
 // RPC Getter Function Tests
@@ -103,6 +106,25 @@ fn test_proof_of_stake_all_peer_id_types() {
             Network::proof_of_stake(subnet_id, client_peer_id.0.to_vec(), 1),
             "Proof of stake should work with client_peer_id"
         );
+
+        // Test with overwatch node
+        let overwatch_node_peer_id = peer(1);
+        PeerIdOverwatchNodeId::<Test>::insert(subnet_id, &overwatch_node_peer_id, 1);
+        assert!(
+            Network::proof_of_stake(subnet_id, overwatch_node_peer_id.0.to_vec(), 1),
+            "Proof of stake should work with overwatch node peer_id"
+        );
+
+        let bv = |b: u8| BoundedVec::<u8, DefaultMaxVectorLength>::try_from(vec![b]).unwrap();
+        let add_map = BTreeMap::from([(peer(2), bv(2)), (peer(3), bv(3))]);
+
+        SubnetBootnodesV2::<Test>::insert(subnet_id, add_map);
+
+        assert!(
+            Network::proof_of_stake(subnet_id, peer(2).0.to_vec(), 1),
+            "Proof of stake should work with bootnode peer_id"
+        );
+
     })
 }
 

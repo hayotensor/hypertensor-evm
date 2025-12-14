@@ -506,6 +506,11 @@ pub mod pallet {
             added: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
             removed: BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>,
         },
+        BootnodesUpdatedV2 {
+            subnet_id: u32,
+            added: BTreeMap<PeerId, BoundedVec<u8, DefaultMaxVectorLength>>,
+            removed: BTreeSet<PeerId>,
+        },
         SubnetPaused {
             subnet_id: u32,
             owner: T::AccountId,
@@ -2720,6 +2725,14 @@ pub mod pallet {
     pub fn DefaultMaxEmergencySubnetNodes() -> u32 {
         64
     }
+    #[pallet::type_value]
+    pub fn DefaultSubnetWeightFactors() -> SubnetWeightFactorsData {
+        return SubnetWeightFactorsData {
+            delegate_stake: 400000000000000000,
+            node_count: 400000000000000000,
+            net_flow: 200000000000000000,
+        };
+    }
 
     //
     // Subnet elements
@@ -3173,15 +3186,6 @@ pub mod pallet {
         pub net_flow: u128,
     }
 
-    #[pallet::type_value]
-    pub fn DefaultSubnetWeightFactors() -> SubnetWeightFactorsData {
-        return SubnetWeightFactorsData {
-            delegate_stake: 400000000000000000,
-            node_count: 400000000000000000,
-            net_flow: 200000000000000000,
-        };
-    }
-
     #[pallet::storage]
     pub type SubnetWeightFactors<T: Config> =
         StorageValue<_, SubnetWeightFactorsData, ValueQuery, DefaultSubnetWeightFactors>;
@@ -3220,6 +3224,27 @@ pub mod pallet {
     #[pallet::storage]
     pub type SubnetBootnodes<T> =
         StorageMap<_, Identity, u32, BTreeSet<BoundedVec<u8, DefaultMaxVectorLength>>, ValueQuery>;
+
+    // #[derive(Default, Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    // pub struct SubnetBootnodeData {
+    //     pub bootnode: BoundedVec<u8, DefaultMaxVectorLength>,
+    //     pub peer_id: PeerId,
+    // }
+
+    // #[pallet::type_value]
+    // pub fn DefaultCurrentNodeBurnRate() -> u128 {
+    //     // 100%
+    //     1000000000000000000
+    // }
+
+    #[pallet::storage]
+    pub type SubnetBootnodesV2<T> = StorageMap<
+        _,
+        Identity,
+        u32,
+        BTreeMap<PeerId, BoundedVec<u8, DefaultMaxVectorLength>>,
+        ValueQuery,
+    >;
 
     /// Set of accounts that have access to add bootnodes
     #[pallet::storage]

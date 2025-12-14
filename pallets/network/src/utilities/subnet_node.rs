@@ -597,7 +597,7 @@ impl<T: Config> Pallet<T> {
         };
 
         Self::common_remove_subnet_node(subnet_id, subnet_node_id, subnet_node.clone());
-        
+
         if subnet_node.classification.node_class == SubnetNodeClass::Validator {
             // --- Try removing node from election slots (only happens if Validator classification)
             // Updates:

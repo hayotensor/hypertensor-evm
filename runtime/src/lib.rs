@@ -173,7 +173,7 @@ pub const YEAR: BlockNumber = DAYS * 365; // 5256000
 // Blocks per epoch
 // pub const BLOCKS_PER_EPOCH: u32 = 300; // Mainnet | 30 minutes/e
 pub const BLOCKS_PER_EPOCH: u32 = 150; // Testnet | 15 minutes/e
-// pub const BLOCKS_PER_EPOCH: u32 = 20; // Local | 2 minutes/e
+                                       // pub const BLOCKS_PER_EPOCH: u32 = 20; // Local | 2 minutes/e
 pub const EPOCHS_PER_YEAR: u32 = (YEAR as u32) / BLOCKS_PER_EPOCH;
 
 pub const TENSOR: u128 = 1_000_000_000_000_000_000; // 1e18

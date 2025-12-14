@@ -11,11 +11,11 @@ use crate::{
     MinMaxRegisteredNodes, MinQueueEpochs, MinRegistrationCost, MinSubnetMinStake, MinSubnetNodes,
     MinSubnetRegistrationEpochs, MinSubnetRemovalInterval, MinSubnetReputation,
     NetworkMaxStakeBalance, PrevSubnetActivationEpoch, RegistrationCostDecayBlocks,
-    RegistrationSubnetData, SlotAssignment, SubnetBootnodeAccess, SubnetBootnodes, SubnetData,
-    SubnetElectedValidator, SubnetEnactmentEpochs, SubnetName, SubnetOwner,
-    SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason, SubnetReputation,
-    SubnetSlot, SubnetState, SubnetsData, TotalActiveSubnets, TotalSubnetDelegateStakeBalance,
-    TotalSubnetNodes,
+    RegistrationSubnetData, SlotAssignment, SubnetBootnodeAccess, SubnetBootnodes,
+    SubnetBootnodesV2, SubnetData, SubnetElectedValidator, SubnetEnactmentEpochs, SubnetName,
+    SubnetOwner, SubnetRegistrationEpoch, SubnetRegistrationEpochs, SubnetRemovalReason,
+    SubnetReputation, SubnetSlot, SubnetState, SubnetsData, TotalActiveSubnets,
+    TotalSubnetDelegateStakeBalance, TotalSubnetNodes,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -1789,6 +1789,123 @@ fn test_update_bootnodes() {
             Event::BootnodesUpdated {
                 subnet_id,
                 added: add_set.clone(),
+                removed: BTreeSet::new(),
+            }
+        );
+    });
+}
+
+#[test]
+fn test_update_bootnodes_v2() {
+    new_test_ext().execute_with(|| {
+        increase_epochs(1);
+        // --- Setup ---
+        let caller = account(0);
+        let unauth_caller = account(1);
+        let max_bootnodes = MaxBootnodes::<Test>::get();
+        let subnet_id = 1u32;
+
+        assert_err!(
+            Network::do_update_bootnodes_v2(
+                RuntimeOrigin::signed(caller.clone()),
+                subnet_id,
+                BTreeMap::new(),
+                BTreeSet::new(),
+            ),
+            Error::<Test>::InvalidSubnetId
+        );
+
+        let subnet_name: Vec<u8> = "subnet-name".into();
+        let subnet_data = SubnetData {
+            id: subnet_id,
+            friendly_id: subnet_id,
+            name: subnet_name.clone(),
+            repo: subnet_name.clone(),
+            description: subnet_name.clone(),
+            misc: subnet_name.clone(),
+            state: SubnetState::Registered,
+            start_epoch: u32::MAX,
+        };
+
+        // Store subnet data
+        SubnetsData::<Test>::insert(subnet_id, &subnet_data);
+
+        // Give caller access to manage bootnodes
+        SubnetBootnodeAccess::<Test>::insert(subnet_id, BTreeSet::from([caller.clone()]));
+
+        // Helper to build a bounded vec from bytes
+        let bv = |b: u8| BoundedVec::<u8, DefaultMaxVectorLength>::try_from(vec![b]).unwrap();
+
+        // --- Case 1: Add bootnodes ---
+        let add_map = BTreeMap::from([(peer(1), bv(1)), (peer(2), bv(2))]);
+        assert_ok!(Network::do_update_bootnodes_v2(
+            RuntimeOrigin::signed(caller.clone()),
+            subnet_id,
+            add_map.clone(),
+            BTreeSet::new(),
+        ));
+
+        // Verify bootnodes added
+        let stored = SubnetBootnodesV2::<Test>::get(subnet_id);
+        assert!(stored.contains_key(&peer(1)));
+        assert!(stored.contains_key(&peer(2)));
+
+        // --- Case 2: Remove a bootnode ---
+        let remove_set = BTreeSet::from([peer(1)]);
+        assert_ok!(Network::do_update_bootnodes_v2(
+            RuntimeOrigin::signed(caller.clone()),
+            subnet_id,
+            BTreeMap::new(),
+            remove_set.clone(),
+        ));
+
+        // Verify bootnode removed
+        let stored = SubnetBootnodesV2::<Test>::get(subnet_id);
+        assert!(!stored.contains_key(&peer(1)));
+        assert!(stored.contains_key(&peer(2))); // peer(2) still present
+
+        // --- Case 3: Too many bootnodes ---
+        // Fill to max
+        let mut add_map = BTreeMap::new();
+        for i in 3..=max_bootnodes as u8 {
+            add_map.insert(peer(i as u32), bv(i));
+        }
+        assert_ok!(Network::do_update_bootnodes_v2(
+            RuntimeOrigin::signed(caller.clone()),
+            subnet_id,
+            add_map.clone(),
+            BTreeSet::new(),
+        ));
+
+        // Try to add one more (should fail)
+        let too_many = BTreeMap::from([(peer(99), bv(99)), (peer(100), bv(100))]);
+        assert_err!(
+            Network::do_update_bootnodes_v2(
+                RuntimeOrigin::signed(caller.clone()),
+                subnet_id,
+                too_many.clone(),
+                BTreeSet::new(),
+            ),
+            Error::<Test>::TooManyBootnodes
+        );
+
+        // --- Case 4: Unauthorized caller ---
+        assert_err!(
+            Network::do_update_bootnodes_v2(
+                RuntimeOrigin::signed(unauth_caller),
+                subnet_id,
+                BTreeMap::new(),
+                BTreeSet::new(),
+            ),
+            Error::<Test>::InvalidAccess
+        );
+
+        // --- Case 5: Check event ---
+        assert_eq!(
+            *network_events().last().unwrap(),
+            Event::BootnodesUpdatedV2 {
+                subnet_id,
+                added: add_map.clone(),
                 removed: BTreeSet::new(),
             }
         );

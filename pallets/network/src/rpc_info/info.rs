@@ -279,7 +279,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// # Options
     ///
-    /// - Can use either a subnet node ID or peer ID, or bootnode peer ID
+    /// - Can use either a subnet nodes peer ID, subnet nodes bootnode peer ID, overwatch node peer ID, or subnet bootnode peer ID
     ///
     /// The most secure way to call this function is by peer ID with signatures
     ///
@@ -332,8 +332,13 @@ impl<T: Config> Pallet<T> {
             return true;
         }
 
-        // Finally, check overwatch node
-        PeerIdOverwatchNodeId::<T>::try_get(subnet_id, peer_id).is_ok()
+        // Check overwatch node
+        if let Ok(_) = PeerIdOverwatchNodeId::<T>::try_get(subnet_id, &peer_id) {
+            return true;
+        }
+
+        // Check bootnodes
+        SubnetBootnodesV2::<T>::get(subnet_id).contains_key(&peer_id)
     }
 
     /// Get all bootnodes organized by the official bootnodes and node bootnodes

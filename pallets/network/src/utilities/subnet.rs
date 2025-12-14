@@ -236,18 +236,67 @@ impl<T: Config> Pallet<T> {
             }
 
             for item in add.iter() {
-                // Check in the for loop for length in case some inserts are false
-                ensure!(
-                    bootnodes.len() < max_bootnodes as usize,
-                    Error::<T>::TooManyBootnodes
-                );
                 bootnodes.insert(item.clone());
             }
+
+            ensure!(
+                bootnodes.len() <= max_bootnodes as usize,
+                Error::<T>::TooManyBootnodes
+            );
 
             Ok(())
         })?;
 
         Self::deposit_event(Event::BootnodesUpdated {
+            subnet_id,
+            added: add,
+            removed: remove,
+        });
+
+        Ok(())
+    }
+
+    pub fn do_update_bootnodes_v2(
+        origin: T::RuntimeOrigin,
+        subnet_id: u32,
+        add: BTreeMap<PeerId, BoundedVec<u8, DefaultMaxVectorLength>>,
+        remove: BTreeSet<PeerId>,
+    ) -> DispatchResult {
+        let account_id: T::AccountId = ensure_signed(origin)?;
+
+        ensure!(
+            SubnetsData::<T>::contains_key(subnet_id),
+            Error::<T>::InvalidSubnetId
+        );
+
+        // Must be owner or have access
+        // The owner has the ability to set access so instead of requiring them to add to the list, we allow them to be the caller
+        ensure!(
+            Self::is_subnet_owner(&account_id, subnet_id).unwrap_or(false)
+                || SubnetBootnodeAccess::<T>::get(subnet_id).contains(&account_id),
+            Error::<T>::InvalidAccess
+        );
+
+        let max_bootnodes = MaxBootnodes::<T>::get();
+
+        SubnetBootnodesV2::<T>::try_mutate(subnet_id, |bootnodes| -> DispatchResult {
+            for item in remove.iter() {
+                bootnodes.remove(item);
+            }
+
+            for (peer_id, data) in add.iter() {
+                bootnodes.insert(peer_id.clone(), data.clone());
+            }
+
+            ensure!(
+                bootnodes.len() <= max_bootnodes as usize,
+                Error::<T>::TooManyBootnodes
+            );
+
+            Ok(())
+        })?;
+
+        Self::deposit_event(Event::BootnodesUpdatedV2 {
             subnet_id,
             added: add,
             removed: remove,
